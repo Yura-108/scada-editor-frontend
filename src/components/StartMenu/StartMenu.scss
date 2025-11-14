@@ -1,0 +1,99 @@
+.form-start {
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 12px;
+  background: #ffffff;
+
+  &__title {
+    font-size: 1.5rem;
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__label {
+    font-size: 1rem;
+    color: #000;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+
+  &__input {
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
+    border: 2px solid #000;
+    border-radius: 8px;
+
+    &:focus {
+      outline: none;
+      border-color: #4361ee;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+      background-color: #ffffff;
+    }
+
+    &::placeholder {
+      color: #9aa8bc;
+    }
+  }
+
+  &__submit {
+    padding: 0.8rem 1.5rem;
+    background-color: #4361ee;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+
+    &:hover {
+      background-color: #4361ee;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &--disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+      }
+    }
+  }
+
+  // Анимация при фокусе
+  @keyframes inputFocus {
+    from {
+      box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.2);
+    }
+    to {
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+  }
+}

@@ -1,0 +1,19 @@
+#root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.main-container {
+    display: flex;
+    min-width: 70%;
+    box-sizing: border-box;
+    padding-inline: 20px;
+    .device-tree-panel {
+
+    }
+
+    .params {
+        margin-left: auto;
+    }
+}
