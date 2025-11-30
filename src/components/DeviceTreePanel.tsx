@@ -17,7 +17,8 @@ const DeviceTreePanel = () => {
         y: number;
         nodeKey: string;
     } | null>(null);
-    const {nodes, selectedDevice, removeDevice} = useDeviceStore();
+    const {nodes, selectedDevice, removeDevice, addDevice} = useDeviceStore();
+    console.log(nodes);
 
     const handleSelect = (keys: Key[]) => {
         const key = keys[0] as string | undefined;
@@ -38,16 +39,36 @@ const DeviceTreePanel = () => {
             nodeKey: node.key,
         });
     };
-    const handleContextAction = async (action: 'add' | 'edit' | 'delete', nodeKey: string) => {
+    const handleContextAction = async (action: DeviceAction, nodeKey: string) => {
         if (action === 'delete') {
             if (confirm('Удалить этот узел и все дочерние?')) {
                await removeDevice(nodeKey);
             }
         }
-        if (action === 'add') {
-            const title = prompt('Название нового узла:');
+        if (action === 'add channel') {
+            const title = prompt('Название нового канала:');
             if (title) {
-                console.log('add');
+                const tempNode = {
+                    type: 'cha',
+                    title,
+                    isLeaf: true,
+                    parentKey: nodeKey,
+                };
+
+                await addDevice(tempNode);
+            }
+        }
+        if (action === 'add subtype') {
+            const title = prompt('Название нового подтипа:');
+            if (title) {
+                const tempNode = {
+                    type: 'sub',
+                    title,
+                    isLeaf: true,
+                    parentKey: nodeKey,
+                };
+
+                await addDevice(tempNode);
             }
         }
         if (action === 'edit') {

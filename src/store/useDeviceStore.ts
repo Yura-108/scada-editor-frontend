@@ -12,7 +12,7 @@ interface DeviceStoreState {
 
   loadTree: (site: string, project: string) => Promise<void>;
 
-  addDevice: (parentKey: string, title: string) => Promise<void>;
+  addDevice: (node: {type: string; title: string; isLeaf: boolean; parentKey: string}) => Promise<void>;
   removeDevice: (Key: string) => Promise<void>;
 
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
@@ -43,11 +43,11 @@ export const useDeviceStore = create<DeviceStoreState>()(
           });
         },
 
-        addDevice: async (parentKey: string, title: string) => {
-          const res = await fetch('/api/device/add', {
+        addDevice: async (node) => {
+          const res = await fetch('/api/device/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parentKey, title }),
+            body: JSON.stringify(node),
           });
 
           const newNode: DeviceNodeType = await res.json();

@@ -7,12 +7,13 @@ import clsx from 'clsx';
 type MenuItem = {
   label: string;
   icon: React.ReactNode;
-  action: 'add' | 'edit' | 'delete';
+  action: DeviceAction;
   danger?: boolean;
 };
 
 const menuItems: MenuItem[] = [
-  { label: 'Добавить дочерний', icon: <Plus className="w-4 h-4" />, action: 'add' },
+  { label: 'Добавить Канал', icon: <Plus className="w-4 h-4" />, action: 'add channel' },
+  { label: 'Добавить Подтип', icon: <Plus className="w-4 h-4" />, action: 'add subtype' },
   { label: 'Редактировать', icon: <Edit3 className="w-4 h-4" />, action: 'edit' },
   { label: 'Удалить', icon: <Trash2 className="w-4 h-4" />, action: 'delete', danger: true },
 ];
@@ -22,7 +23,7 @@ type NodeContextMenuProps = {
   x: number;
   y: number;
   nodeKey: string | null;
-  onAction: (action: 'add' | 'edit' | 'delete', nodeKey: string) => void;
+  onAction: (action: DeviceAction, nodeKey: string) => void;
   onClose: () => void;
 };
 

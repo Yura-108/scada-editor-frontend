@@ -1,44 +1,21 @@
-import {NextRequest, NextResponse} from "next/server";
-import {cookies} from "next/headers";
+import { protectedRoute } from "@/lib/protected";
+import {NextResponse} from "next/server";
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    const {id} = await params;
+export const DELETE = protectedRoute(async (_request, { token, params }) => {
+    const { id } = params;
 
-    if (!accessToken) {
-        return NextResponse.json({message: 'Unauthorized'}, {status: 401});
+    const response = await fetch(`${process.env.BACKEND_URL}/api/node/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => {});
+        return NextResponse.json(
+          { error: err?.message || "Ошибка удаления" },
+          { status: response.status }
+        );
     }
 
-    if (!id) {
-        return NextResponse.json({ message: 'ID обязателен' }, { status: 400 });
-    }
-
-    const backendUrl = `${process.env.BACKEND_URL}/api/node/${id}`;
-
-    try {
-        const response = await fetch(backendUrl, {
-            method: 'DELETE',
-            headers: {
-                Authorization: `Bearer ${accessToken}`, // ← передаём токен
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const data = await response.json().catch(() => ({}));
-            return NextResponse.json(
-                { error: data?.message || "Ошибка при удалении узла" },
-                { status: response.status }
-            );
-        }
-
-        return new NextResponse(null, { status: 204 });
-    } catch (err) {
-        console.error(err);
-        return NextResponse.json({ error: "Ошибка при удалении" }, { status: 500 });
-    }
-}
+    return new NextResponse(null, { status: 204 });
+});

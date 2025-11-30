@@ -1,0 +1,1 @@
+type DeviceAction = 'add channel' | 'add subtype' | 'delete' | 'edit';
