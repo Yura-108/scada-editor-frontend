@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {DeviceNodeType} from "@/types/nodeTypes";
+import {cookies} from "next/headers";
 
 // Получить список всех устройств
 export async function GET(req: NextRequest) {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+
+    if (!accessToken) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+
   const { searchParams } = new URL(req.url);
   const site = searchParams.get('site');
   const project = searchParams.get('project');
@@ -13,13 +22,20 @@ export async function GET(req: NextRequest) {
 
   const backendUrl = `${process.env.BACKEND_URL}/api/node/all?site=${site}&project=${project}`;
 
-  const res = await fetch(backendUrl);
+    const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${accessToken}`, // ← передаём токен
+            'Content-Type': 'application/json',
+        },
+    });
 
-  const data = await res.json().catch(() => null);
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Ошибка ${response.status}: ${text}`);
+    }
 
-  if (!res.ok) {
-    return NextResponse.json(data || { message: 'Server error' }, { status: res.status });
-  }
+  const data = await response.json().catch(() => null);
 
   return NextResponse.json(data);
 }

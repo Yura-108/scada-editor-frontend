@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   if (!ok) {
     return Response.json({ message: data.message }, { status });
   }
-
+  console.log("Login data:", data);
   const token = data.token || data.accessToken;
   return setTokenCookie(token);
 }

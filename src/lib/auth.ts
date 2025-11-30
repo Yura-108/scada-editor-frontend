@@ -7,6 +7,11 @@ export async function callAuth(path: string, body: { login: string; password: st
     body: JSON.stringify(body),
   });
 
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Ошибка ${response.status}: ${text}`);
+  }
+
   const data = await response.json();
 
   return {
