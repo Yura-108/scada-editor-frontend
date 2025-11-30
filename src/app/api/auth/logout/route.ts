@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-  const response = NextResponse.json(
-    { message: 'Выход выполнен' },
-    { status: 200 }
-  );
+  const response = NextResponse.json({ message: 'Выход выполнен' }, { status: 200 });
 
   // Удаляем httpOnly cookie
   response.cookies.set({

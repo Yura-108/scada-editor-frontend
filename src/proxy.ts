@@ -15,7 +15,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Если не авторизован и пытается зайти в /app/*
-  if (!token && protectedRoutes.some(route => pathname.startsWith(route))) {
+  if (!token && protectedRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

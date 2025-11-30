@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
@@ -23,4 +23,57 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.custom-tree .rc-tree-treenode {
+  padding: 3px 0;
+  display: flex;
+}
+
+.custom-tree .rc-tree-node-content-wrapper {
+  padding: 0 !important;
+  border-radius: 8px;
+}
+
+.custom-tree .rc-tree-switcher {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-tree .rc-tree-switcher-line-icon {
+  display: none !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+.rc-tree .rc-tree-indent-unit {
+  width: 16px; /* ширина одного уровня вложенности */
+  display: inline-block;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }

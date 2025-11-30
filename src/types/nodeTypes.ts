@@ -18,9 +18,14 @@ export type DeviceParamsType = {
   name: string;
   type: string;
   value: string;
-}
+};
 export type DeviceParamsFromAddFunc = {
   parentKey: string;
   name: string;
   value: string;
-}
+};
+
+export type DeviceTreeResponse = {
+  nodes: DeviceNodeType[];
+  params: DeviceParamsType[];
+};

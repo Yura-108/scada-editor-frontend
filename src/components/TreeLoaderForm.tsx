@@ -2,27 +2,27 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Search, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 const fetchProjectData = async (site: string, project: string) => {
   const res = await fetch(
-    `/api/projects/tree?site=${encodeURIComponent(site)}&project=${encodeURIComponent(project)}`
+    `/api/projects/tree?site=${encodeURIComponent(site)}&project=${encodeURIComponent(project)}`,
   );
   if (!res.ok) throw new Error('Не удалось загрузить данные');
   return res.json();
 };
 
 export default function TreeLoaderForm({
-                                            site,
-                                            project,
-                                            onSuccess,
-                                          }: {
+  site,
+  project,
+  onSuccess,
+}: {
   site: string;
   project: string;
   onSuccess: (data: any) => void;
 }) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['project-tree', site, project],
+    queryKey: ['device-tree', site, project],
     queryFn: () => fetchProjectData(site, project),
     enabled: !!site && !!project, // запрос только если поля заполнены
     retry: false,

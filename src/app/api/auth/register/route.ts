@@ -1,10 +1,9 @@
-import {callAuth} from "@/lib/auth";
-import {setTokenCookie} from "@/lib/setTokenCookies";
-
+import { callAuth } from '@/lib/auth';
+import { setTokenCookie } from '@/lib/setTokenCookies';
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { ok, status, data } = await callAuth("/api/auth/register", body);
+  const { ok, status, data } = await callAuth('/api/auth/register', body);
 
   if (!ok) {
     return Response.json({ message: data.message }, { status });

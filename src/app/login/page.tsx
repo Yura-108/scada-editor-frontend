@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import {loginSchema} from "@/schemas/authSchema";
+import { loginSchema } from '@/schemas/authSchema';
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -75,10 +75,11 @@ export default function LoginPage() {
                 type="text"
                 placeholder="Login"
                 className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                  ${errors.login
-                  ? 'border-red-500 focus:border-red-500'
-                  : 'border-gray-200 focus:border-purple-500'
-                } outline-none text-gray-800 placeholder-gray-400`}
+                  ${
+                    errors.login
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:border-purple-500'
+                  } outline-none text-gray-800 placeholder-gray-400`}
               />
               {errors.login && (
                 <p className="mt-2 text-sm text-red-600 font-medium">{errors.login.message}</p>
@@ -88,8 +89,18 @@ export default function LoginPage() {
             {/* Пароль */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z" />
+                <svg
+                  className="h-5 w-5 text-purple-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"
+                  />
                 </svg>
               </div>
               <input
@@ -97,10 +108,11 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Пароль"
                 className={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                  ${errors.password
-                  ? 'border-red-500 focus:border-red-500'
-                  : 'border-gray-200 focus:border-purple-500'
-                } outline-none text-gray-800 placeholder-gray-400`}
+                  ${
+                    errors.password
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:border-purple-500'
+                  } outline-none text-gray-800 placeholder-gray-400`}
               />
               <button
                 type="button"
@@ -131,8 +143,20 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Входим...
                 </>
@@ -146,7 +170,10 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-gray-600">
               Нет аккаунта?{' '}
-              <a href="/register" className="text-purple-600 font-bold hover:text-purple-700 transition-colors">
+              <a
+                href="/register"
+                className="text-purple-600 font-bold hover:text-purple-700 transition-colors"
+              >
                 Зарегистрироваться
               </a>
             </p>

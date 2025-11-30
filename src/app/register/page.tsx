@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
-import {useRouter} from "next/navigation";
-import {registerSchema} from "@/schemas/authSchema";
+import { useRouter } from 'next/navigation';
+import { registerSchema } from '@/schemas/authSchema';
 
 type FormData = z.infer<typeof registerSchema>;
 
@@ -20,9 +20,9 @@ export default function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-    reset
+    reset,
   } = useForm<FormData>({
-    resolver: zodResolver(registerSchema)
+    resolver: zodResolver(registerSchema),
   });
 
   const router = useRouter();
@@ -58,7 +58,6 @@ export default function RegisterForm() {
       // Можно сразу редиректить в приложение
       router.push('/app');
       router.refresh(); // обновляем серверные данные (если используешь Server Components)
-
     } catch (err: any) {
       console.error('Ошибка регистрации:', err);
       setServerError(err.message || 'Что-то пошло не так. Попробуйте позже.');
@@ -156,7 +155,9 @@ export default function RegisterForm() {
                   )}
                 </button>
                 {errors.confirmPassword && (
-                  <p className="mt-2 text-sm text-red-600 font-medium">{errors.confirmPassword.message}</p>
+                  <p className="mt-2 text-sm text-red-600 font-medium">
+                    {errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
 
@@ -169,8 +170,20 @@ export default function RegisterForm() {
                 {isLoading ? (
                   <span className="flex items-center justify-center">
                     <svg className="animate-spin h-6 w-6 mr-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
                     </svg>
                     Создание аккаунта...
                   </span>
@@ -183,7 +196,10 @@ export default function RegisterForm() {
             <div className="mt-8 text-center">
               <p className="text-gray-600">
                 Уже есть аккаунт?{' '}
-                <a href="login/" className="text-purple-600 font-bold hover:text-purple-700 transition-colors">
+                <a
+                  href="login/"
+                  className="text-purple-600 font-bold hover:text-purple-700 transition-colors"
+                >
                   Войти
                 </a>
               </p>
