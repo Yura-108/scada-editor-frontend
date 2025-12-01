@@ -11,14 +11,8 @@ import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/components/SwitcherIcon';
 
 const DeviceTreePanel = () => {
-    const [contextMenu, setContextMenu] = useState<{
-        visible: boolean;
-        x: number;
-        y: number;
-        nodeKey: string;
-    } | null>(null);
-    const {nodes, selectedDevice, removeDevice, addDevice} = useDeviceStore();
-    console.log(nodes);
+    const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+    const {nodes, selectedDevice, handleContextAction} = useDeviceStore();
 
     const handleSelect = (keys: Key[]) => {
         const key = keys[0] as string | undefined;
@@ -39,47 +33,7 @@ const DeviceTreePanel = () => {
             nodeKey: node.key,
         });
     };
-    const handleContextAction = async (action: DeviceAction, nodeKey: string) => {
-        if (action === 'delete') {
-            if (confirm('Удалить этот узел и все дочерние?')) {
-               await removeDevice(nodeKey);
-            }
-        }
-        if (action === 'add channel') {
-            const title = prompt('Название нового канала:');
-            if (title) {
-                const tempNode = {
-                    type: 'cha',
-                    title,
-                    isLeaf: true,
-                    parentKey: nodeKey,
-                };
 
-                await addDevice(tempNode);
-            }
-        }
-        if (action === 'add subtype') {
-            const title = prompt('Название нового подтипа:');
-            if (title) {
-                const tempNode = {
-                    type: 'sub',
-                    title,
-                    isLeaf: true,
-                    parentKey: nodeKey,
-                };
-
-                await addDevice(tempNode);
-            }
-        }
-        if (action === 'edit') {
-            console.log('edit');
-            // const newTitle = prompt('Новое название:', node.title.props.node.title);
-            // if (newTitle) {
-            //     console.log('edit');
-            // }
-        }
-        setContextMenu(null);
-    };
 
     const treeData = useMemo(() => {
         const map = new Map<string, DataNode>();

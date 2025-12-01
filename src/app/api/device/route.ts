@@ -52,42 +52,7 @@ import {protectedRoute} from "@/lib/protected";
      body: JSON.stringify(node),
    });
 
-   const newDevice = response.json();
+   const newDevice = await response.json().catch(() => null);
 
    return NextResponse.json(newDevice, {status: 201});
  })
-
-
-// Создать новое устройство
-// export async function POST(req: NextRequest) {
-//   try {
-//     const node = await req.json();
-//
-//     if (!node) {
-//       return NextResponse.json(
-//         {error: "Неверный тип узла!"},
-//         {status: 400}
-//       );
-//     }
-//
-//     console.log(node);
-//
-//     const backendUrl = `${process.env.BACKEND_URL}/api/node`;
-//
-//     const response = await fetch(backendUrl, {
-//       method: 'POST',
-//       headers: {'Content-Type': 'application/json'},
-//       body: JSON.stringify(node),
-//     });
-//
-//     const newDevice = response.json();
-//
-//     return NextResponse.json(newDevice, {status: 201});
-//   } catch (err) {
-//     console.error(err);
-//     return NextResponse.json(
-//       {error: "Ошибка при создании устройства"},
-//       {status: 500}
-//     );
-//   }
-// }

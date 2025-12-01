@@ -3,9 +3,12 @@
 import { create } from 'zustand/react';
 import { DeviceNodeType, DeviceParamsType, DeviceTreeResponse } from '@/types/nodeTypes';
 import { devtools, persist } from 'zustand/middleware';
+import React from "react";
 interface DeviceStoreState {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
+  contextMenu: ContextMenu | null;
+  setContextMenu: (menu: ContextMenu | null) => void;
   selectedDevice: string | null;
 
   getParams(deviceKey: string | null): DeviceParamsType[];
@@ -16,6 +19,7 @@ interface DeviceStoreState {
   removeDevice: (Key: string) => Promise<void>;
 
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
+  handleContextAction: (action: DeviceAction, nodeKey: string) => Promise<void>;
 }
 
 export const useDeviceStore = create<DeviceStoreState>()(
@@ -24,6 +28,8 @@ export const useDeviceStore = create<DeviceStoreState>()(
       (set, get) => ({
         nodes: [],
         params: [],
+        contextMenu: null,
+        setContextMenu: (menu) => set({ contextMenu: menu }),
         selectedDevice: null,
 
         getParams: (deviceKey: string | null) => {
@@ -50,10 +56,11 @@ export const useDeviceStore = create<DeviceStoreState>()(
             body: JSON.stringify(node),
           });
 
-          const newNode: DeviceNodeType = await res.json();
+          const {nodeDTO, params} = await res.json();
 
           set((state) => ({
-            nodes: [...state.nodes, newNode],
+            nodes: [...state.nodes, nodeDTO],
+            params: [...state.params, params],
           }));
         },
 
@@ -91,6 +98,35 @@ export const useDeviceStore = create<DeviceStoreState>()(
               return upd ? { ...param, value: upd.value } : param;
             }),
           }));
+        },
+        handleContextAction: async (action, nodeKey) => {
+          if (action === 'delete') {
+            if (confirm('Удалить этот узел и все дочерние?')) {
+              await get().removeDevice(nodeKey);
+            }
+          }
+          if (action === 'add') {
+            const title = prompt('Название нового узла:');
+            if (title) {
+              const type = nodeKey.startsWith('dev') ? 'sub' : 'cha';
+              const tempNode = {
+                type,
+                title,
+                isLeaf: true,
+                parentKey: nodeKey,
+              };
+
+              await get().addDevice(tempNode);
+            }
+          }
+          if (action === 'edit') {
+            console.log('edit');
+            // const newTitle = prompt('Новое название:', node.title.props.node.title);
+            // if (newTitle) {
+            //     console.log('edit');
+            // }
+          }
+          get().setContextMenu(null);
         },
       }),
       {

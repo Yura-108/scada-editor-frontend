@@ -12,8 +12,7 @@ type MenuItem = {
 };
 
 const menuItems: MenuItem[] = [
-  { label: 'Добавить Канал', icon: <Plus className="w-4 h-4" />, action: 'add channel' },
-  { label: 'Добавить Подтип', icon: <Plus className="w-4 h-4" />, action: 'add subtype' },
+  { label: 'Добавить Узел', icon: <Plus className="w-4 h-4" />, action: 'add' },
   { label: 'Редактировать', icon: <Edit3 className="w-4 h-4" />, action: 'edit' },
   { label: 'Удалить', icon: <Trash2 className="w-4 h-4" />, action: 'delete', danger: true },
 ];
@@ -59,23 +58,28 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
     <div className="fixed z-50" style={{ top: y, left: x }}>
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
         <div className="py-2">
-          {menuItems.map((item) => (
-            <button
-              key={item.action}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(item.action, nodeKey);
-                onClose();
-              }}
-              className={clsx(
-                'w-full px-4 py-3 flex items-center gap-3 text-sm font-medium transition-all hover:bg-gray-100',
-                item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700',
-              )}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {menuItems.map((item) => {
+            if (nodeKey.startsWith('cha') && item.action === 'add') {
+              return;
+            }
+            return (
+              <button
+                key={item.action}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction(item.action, nodeKey);
+                  onClose();
+                }}
+                className={clsx(
+                  'w-full px-4 py-3 flex items-center gap-3 text-sm font-medium transition-all hover:bg-gray-100',
+                  item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700',
+                )}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

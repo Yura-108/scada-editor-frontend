@@ -115,7 +115,7 @@ const DeviceParams = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl">
+    <div className="h-full  flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl">
       {/* Заголовок */}
       <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
