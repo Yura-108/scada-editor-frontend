@@ -1,7 +1,7 @@
 'use client';
 
 import StartMenu from '@/components/StartMenu';
-import LogoutButton from '@/components/LogoutButton';
+import LogoutButton from '@/components/ui/LogoutButton';
 import DeviceTreePanel from '@/components/DeviceTreePanel';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import DeviceParams from '@/components/DeviceParams';

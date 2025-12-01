@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+
 export async function PATCH(request: NextRequest) {
   let body;
 
@@ -23,10 +25,8 @@ export async function PATCH(request: NextRequest) {
 
   const changes = body.value as { key: string; value: string }[];
 
-  const backendUrl = `${process.env.BACKEND_URL}/api/param/update`;
-
   try {
-    const backendResponse = await fetch(backendUrl, {
+    const backendResponse = await fetch(`${BACKEND_URL}/api/param/update`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

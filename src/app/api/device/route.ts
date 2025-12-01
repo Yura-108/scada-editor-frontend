@@ -1,6 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
-import {cookies} from "next/headers";
 import {protectedRoute} from "@/lib/protected";
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
  export const GET = protectedRoute(async (req: NextRequest, {token}) => {
    const {searchParams} = new URL(req.url);
@@ -11,9 +12,7 @@ import {protectedRoute} from "@/lib/protected";
      return NextResponse.json({message: 'Bad request'}, {status: 400});
    }
 
-   const backendUrl = `${process.env.BACKEND_URL}/api/node/all?site=${site}&project=${project}`;
-
-   const response = await fetch(backendUrl, {
+   const response = await fetch(`${BACKEND_URL}/api/node/all?site=${site}&project=${project}`, {
      method: 'GET',
      headers: {
       Authorization: `Bearer ${token}`, // ← передаём токен
@@ -41,9 +40,7 @@ import {protectedRoute} from "@/lib/protected";
      );
    }
 
-   const backendUrl = `${process.env.BACKEND_URL}/api/node`;
-
-   const response = await fetch(backendUrl, {
+   const response = await fetch(`${BACKEND_URL}/api/node`, {
      method: 'POST',
      headers: {
        Authorization: `Bearer ${token}`, // ← передаём токен

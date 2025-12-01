@@ -3,12 +3,14 @@
 import { create } from 'zustand/react';
 import { DeviceNodeType, DeviceParamsType, DeviceTreeResponse } from '@/types/nodeTypes';
 import { devtools, persist } from 'zustand/middleware';
-import React from "react";
+import {ContextMenuType} from "@/types/contextMenu.type";
+import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
+
 interface DeviceStoreState {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
-  contextMenu: ContextMenu | null;
-  setContextMenu: (menu: ContextMenu | null) => void;
+  contextMenu: ContextMenuType | null;
+  setContextMenu: (menu: ContextMenuType | null) => void;
   selectedDevice: string | null;
 
   getParams(deviceKey: string | null): DeviceParamsType[];
@@ -20,6 +22,7 @@ interface DeviceStoreState {
 
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
   handleContextAction: (action: DeviceAction, nodeKey: string) => Promise<void>;
+  handleContextParamAction: (action: ParamAction, paramKey: string) => Promise<void>;
 }
 
 export const useDeviceStore = create<DeviceStoreState>()(
@@ -60,7 +63,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
           set((state) => ({
             nodes: [...state.nodes, nodeDTO],
-            params: [...state.params, params],
+            params: [...state.params, ...params],
           }));
         },
 
@@ -128,6 +131,9 @@ export const useDeviceStore = create<DeviceStoreState>()(
           }
           get().setContextMenu(null);
         },
+        handleContextParamAction: async (action, paramKey) => {
+
+        }
       }),
       {
         name: 'device-store', // имя для persist (localStorage)

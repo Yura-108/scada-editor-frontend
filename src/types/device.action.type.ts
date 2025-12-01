@@ -1,1 +1,0 @@
-type DeviceAction = 'add' | 'delete' | 'edit';
