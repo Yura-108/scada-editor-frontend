@@ -19,10 +19,11 @@ interface DeviceStoreState {
 
   addDevice: (node: {type: string; title: string; isLeaf: boolean; parentKey: string}) => Promise<void>;
   removeDevice: (Key: string) => Promise<void>;
-
+  deleteOptionParam: (key: string) => Promise<void>;
+  appOptionParam: (param: {name: string; value: string; parentKey: string}) => Promise<void>;
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
   handleContextAction: (action: DeviceAction, nodeKey: string) => Promise<void>;
-  handleContextParamAction: (action: ParamAction, paramKey: string) => Promise<void>;
+  handleContextParamAction: (action: ParamAction, paramKey: string | null) => Promise<void>;
 }
 
 export const useDeviceStore = create<DeviceStoreState>()(
@@ -79,6 +80,32 @@ export const useDeviceStore = create<DeviceStoreState>()(
           }));
         },
 
+        deleteOptionParam: async (key) => {
+          await fetch(`/api/device/param/${key}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          set((state) => ({
+            params: state.params.filter(p => p.key !== key)
+          }))
+        },
+        appOptionParam: async (param) => {
+          const res = await fetch('/api/device/param/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(param),
+          });
+
+          const newParam = await res.json();
+
+          console.log(newParam)
+
+          set((state) => ({
+            params: [...state.params, newParam]
+          }));
+        },
+
         updateParam: async (changes: { key: string; value: string }[]) => {
           const res = await fetch('/api/device/param', {
             method: 'PATCH',
@@ -132,7 +159,21 @@ export const useDeviceStore = create<DeviceStoreState>()(
           get().setContextMenu(null);
         },
         handleContextParamAction: async (action, paramKey) => {
+          if (action === 'delete') {
+            if (paramKey) await get().deleteOptionParam(paramKey);
+          }
+          if (action === 'add') {
+            const title = prompt('Название нового параметра:');
+            if (title) {
+              const newParam = {
+                name: 'Общие параметры',
+                value: title,
+                paramKey: get().selectedDevice ?? ''
+              };
 
+              await get().appOptionParam(newParam);
+            }
+          }
         }
       }),
       {

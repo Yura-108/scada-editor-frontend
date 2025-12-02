@@ -9,6 +9,7 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 
+
 type ParamType = 'input' | 'textarea' | 'checkbox' | 'option';
 
 interface Param {
@@ -25,10 +26,13 @@ const DeviceParams = () => {
   const getParams = useDeviceStore((state) => state.getParams);
   const updateParam = useDeviceStore((state) => state.updateParam);
   const handleContextParamAction = useDeviceStore((state) => state.handleContextParamAction)
+  const params = useDeviceStore(state => state.params);
+
 
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
-  }, [selectedDevice, getParams]);
+  }, [selectedDevice, params]);
+
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
 
@@ -100,20 +104,20 @@ const DeviceParams = () => {
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = (e: React.MouseEvent, key: string | null = null) => {
     e.preventDefault();
     e.stopPropagation();
 
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
-      key: '',
+      key: key,
     });
   }
 
   if (!selectedDevice) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400">
+      <div className="flex flex-col items-center justify-start mt-10 h-full text-gray-400">
         <AlertCircle className="w-12 h-12 mb-4"/>
         <p className="text-lg">Выберите устройство или канал</p>
       </div>
@@ -203,23 +207,37 @@ const DeviceParams = () => {
             <label htmlFor={"general_params"} className="block text-sm font-semibold text-gray-700 mb-3">
               Общие параметры
             </label>
-            <select
-              multiple={true}
-              name="general_params"
-              id="general_params"
-              className={"w-full h-40 px-3 py-2 \n" +
-              "         border border-gray-300 rounded-lg \n" +
-              "         bg-white text-gray-700 \n" +
-              "         focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 \n" +
-              "         shadow-sm \n" +
-              "         hover:border-gray-400 \n" +
-              "         transition duration-200 ease-in-out"}
-              onContextMenu={handleContextMenu}
+            <div
+              onContextMenu={(e) => handleContextMenu(e, null)}
+              className={"w-full pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
             >
-              {rawParams.filter(param => param.type === 'option').map(option => (
-                <option key={option.key} value={option.value}>{option.value}</option>
-              ))}
-            </select>
+              {rawParams.filter(param => param.type === 'option').map(p => (
+                  <div
+                    key={p.key}
+                    onContextMenu={(e) => handleContextMenu(e, p.key)}
+                    className={"text-black hover:bg-blue-200 transition duration-200 ease-in-out p-0.5"}
+                  >
+                    {p.value}
+                  </div>
+                ))}
+            </div>
+            {/*<select*/}
+            {/*  multiple={true}*/}
+            {/*  name="general_params"*/}
+            {/*  id="general_params"*/}
+            {/*  className={"w-full h-40 px-3 py-2 \n" +*/}
+            {/*  "         border border-gray-300 rounded-lg \n" +*/}
+            {/*  "         bg-white text-gray-700 \n" +*/}
+            {/*  "         focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 \n" +*/}
+            {/*  "         shadow-sm \n" +*/}
+            {/*  "         hover:border-gray-400 \n" +*/}
+            {/*  "         transition duration-200 ease-in-out"}*/}
+            {/*  onContextMenu={handleContextMenu}*/}
+            {/*>*/}
+            {/*  {rawParams.filter(param => param.type === 'option').map(option => (*/}
+            {/*    <option key={option.key} value={option.value}>{option.value}</option>*/}
+            {/*  ))}*/}
+            {/*</select>*/}
           </div>
         </div>
         {/* Контекстное меню */}

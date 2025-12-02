@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {protectedRoute} from "@/lib/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -50,3 +51,31 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ message: 'Внутренняя ошибка сервера' }, { status: 500 });
   }
 }
+
+export const POST = protectedRoute(async (req: NextRequest, {token}) => {
+  const param = await req.json();
+
+  if (!param) {
+    return NextResponse.json(
+      {error: "Неверный тип узла!"},
+      {status: 400}
+    );
+  }
+
+  console.log(param)
+
+  const response = await fetch(`${BACKEND_URL}/api/param`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(param),
+  });
+
+  const newParam = await response.json().catch(() => null);
+
+  console.log(newParam)
+
+  return NextResponse.json(newParam, {status: 201});
+})

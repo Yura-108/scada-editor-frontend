@@ -3,7 +3,7 @@ import {ReactNode} from "react";
 export type ContextMenuType = {
   x: number;
   y: number;
-  key: string;
+  key: string | null;
 }
 
 export type ContextMenuItem<T extends string = string> = {

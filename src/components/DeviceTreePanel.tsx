@@ -97,7 +97,7 @@ const DeviceTreePanel = () => {
             x={contextMenu.x}
             y={contextMenu.y}
             items={nodeMenuItems}
-            onAction={(action) => handleContextAction(action, contextMenu.key)}
+            onAction={(action) => handleContextAction(action, contextMenu.key ?? '')}
             onClose={() => setContextMenu(null)}/>
         )}
       </div>
