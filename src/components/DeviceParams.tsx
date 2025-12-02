@@ -27,6 +27,8 @@ const DeviceParams = () => {
     return selectedDevice ? getParams(selectedDevice) : [];
   }, [selectedDevice, params, getParams]);
 
+  console.log(rawParams)
+
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
   const optionItems = rawParams.filter(param => param.type === 'option');
@@ -201,7 +203,7 @@ const DeviceParams = () => {
           })}
 
           <div className={'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 p-4 col-span-2 border-gray-300 hover:border-gray-400'}>
-            <label htmlFor={"general_params"} className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
               Общие параметры
             </label>
             <div

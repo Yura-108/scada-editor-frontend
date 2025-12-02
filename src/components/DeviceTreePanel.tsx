@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import Tree from 'rc-tree';
 import {DataNode, Key} from 'rc-tree/es/interface';
 import {Router} from 'lucide-react';
@@ -12,29 +12,36 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuType} from "@/types/contextMenu.type";
 
+
 const DeviceTreePanel = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const {nodes, selectedDevice, handleContextAction} = useDeviceStore();
 
-  const handleSelect = (keys: Key[]) => {
+  const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
     if (key) useDeviceStore.setState({selectedDevice: key});
-  };
+  }, []);
+
   const handleNodeClick = (nodeKey: string) => {
     useDeviceStore.setState({selectedDevice: nodeKey});
   };
-  const handleContextMenu = (e: React.MouseEvent, node: DeviceNodeType) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleSelect([node.key]);
 
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      key: node.key,
-    });
-  };
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, node: DeviceNodeType) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSelect([node.key]);
+
+      setContextMenu({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        key: node.key,
+      });
+    },
+    [handleSelect, setContextMenu] // зависимости
+  );
+
 
   const treeData = useMemo(() => {
     const map = new Map<string, DataNode>();

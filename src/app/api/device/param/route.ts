@@ -3,7 +3,7 @@ import {protectedRoute} from "@/lib/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = protectedRoute(async (request: NextRequest, {token})=> {
   let body;
 
   try {
@@ -11,12 +11,11 @@ export async function PATCH(request: NextRequest) {
   } catch {
     return NextResponse.json({ message: 'Invalid JSON' }, { status: 400 });
   }
-
   // Валидация: { value: [{ key: string, value: string }] }
   if (
     !body ||
     !Array.isArray(body.value) ||
-    body.value.some((item: any) => typeof item.key !== 'string' || item.value === undefined)
+    body.value.some((item: {key: number; value: string}) => item.value === undefined)
   ) {
     return NextResponse.json(
       { message: 'Ожидается { value: [{ key: string, value: string }] }' },
@@ -30,8 +29,8 @@ export async function PATCH(request: NextRequest) {
     const backendResponse = await fetch(`${BACKEND_URL}/api/param/update`, {
       method: 'PATCH',
       headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        Cookie: request.headers.get('cookie') || '',
       },
       body: JSON.stringify(changes),
     });
@@ -50,7 +49,7 @@ export async function PATCH(request: NextRequest) {
     console.error('Proxy error:', error);
     return NextResponse.json({ message: 'Внутренняя ошибка сервера' }, { status: 500 });
   }
-}
+})
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const param = await req.json();
@@ -62,8 +61,6 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
-  console.log(param)
-
   const response = await fetch(`${BACKEND_URL}/api/param`, {
     method: 'POST',
     headers: {
@@ -74,8 +71,6 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   });
 
   const newParam = await response.json().catch(() => null);
-
-  console.log(newParam)
 
   return NextResponse.json(newParam, {status: 201});
 })

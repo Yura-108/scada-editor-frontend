@@ -5,6 +5,7 @@ import { DeviceNodeType, DeviceParamsType, DeviceTreeResponse } from '@/types/no
 import { devtools, persist } from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
+import {loginSchema} from "@/schemas/authSchema";
 
 interface DeviceStoreState {
   nodes: DeviceNodeType[];
@@ -122,6 +123,14 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
           const updatedList = updated.value;
 
+          // set((state) => ({
+          //   params: [
+          //     ...state.params.filter(p => !updatedList.some(u => u.key === p.key)),
+          //     ...updatedList
+          //   ]
+          // }));
+
+
           set((state) => ({
             params: state.params.map((param) => {
               const upd = updatedList.find((u: DeviceParamsType) => u.key === String(param.key));
@@ -172,6 +181,14 @@ export const useDeviceStore = create<DeviceStoreState>()(
               };
 
               await get().appOptionParam(newParam);
+            }
+          }
+          if (action === 'edit') {
+            const title = prompt('Название параметра:');
+            if (title && paramKey) {
+              const changes = [{key: paramKey, value: title}];
+              console.log(changes);
+              await get().updateParam(changes);
             }
           }
         }
