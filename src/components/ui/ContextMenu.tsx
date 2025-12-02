@@ -9,18 +9,11 @@ import {ContextMenuProps} from "@/types/contextMenu.type";
 // Правильный тип для глобального обработчика
 let globalContextMenuCloser: ((e: MouseEvent) => void) | null = null;
 
-const ContextMenu = <T extends string = string>({
-                                                  visible,
-                                                  x,
-                                                  y,
-                                                  items,
-                                                  onAction,
-                                                  onClose,
-                                                }: ContextMenuProps<T>) => {
+const ContextMenu = <T extends string = string>({menu, items, onAction, onClose, selectElement}: ContextMenuProps<T>) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!menu.visible) return;
 
     // Убираем предыдущий глобальный обработчик (если был)
     if (globalContextMenuCloser) {
@@ -54,11 +47,11 @@ const ContextMenu = <T extends string = string>({
         globalContextMenuCloser = null;
       }
     };
-  }, [visible, onClose]);
+  }, [menu.visible, onClose]);
 
   // Клик вне меню — закрываем (по желанию, можно убрать, если мешает)
   useEffect(() => {
-    if (!visible) return;
+    if (!menu.visible) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -68,11 +61,21 @@ const ContextMenu = <T extends string = string>({
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [visible, onClose]);
+  }, [menu.visible, onClose]);
 
-  if (!visible) return null;
+  if (!menu.visible) return null;
 
-  const visibleItems = items.filter(item => !item.hidden);
+  const visibleItems = items.filter(item => {
+    if (selectElement) {
+      if (!menu.key) return item.key == 'add';
+
+      return item.key === 'edit' || item.key === 'delete';
+    } else {
+      if (menu.key) {
+        return !(menu.key.startsWith('cha') && item.key === 'add');
+      }
+    }
+  });
 
   if (visibleItems.length === 0) return null;
 
@@ -80,7 +83,7 @@ const ContextMenu = <T extends string = string>({
     <div
       ref={menuRef}
       className="fixed z-[9999]"
-      style={{ top: y, left: x }}
+      style={{ top: menu.y, left: menu.x }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">

@@ -1,6 +1,7 @@
 import {ReactNode} from "react";
 
 export type ContextMenuType = {
+  visible: boolean;
   x: number;
   y: number;
   key: string | null;
@@ -18,10 +19,9 @@ export type ContextMenuItem<T extends string = string> = {
 };
 
 export type ContextMenuProps<T extends string = string> = {
-  visible: boolean;
-  x: number;
-  y: number;
+  menu: ContextMenuType;
   items: ContextMenuItem<T>[];
   onAction: (action: T) => void;
   onClose: () => void;
+  selectElement?: boolean;
 };

@@ -10,31 +10,27 @@ import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 
 
-type ParamType = 'input' | 'textarea' | 'checkbox' | 'option';
-
-interface Param {
-  key: number | string;
-  parentKey: string;
-  name: string;
-  type: ParamType;
-  value: string;
-}
+// type ParamType = 'input' | 'textarea' | 'checkbox' | 'option';
+//
+// interface Param {
+//   key: number | string;
+//   parentKey: string;
+//   name: string;
+//   type: ParamType;
+//   value: string;
+// }
 
 const DeviceParams = () => {
-  const selectedDevice = useDeviceStore((state) => state.selectedDevice);
-  const nodes = useDeviceStore((state) => state.nodes);
-  const getParams = useDeviceStore((state) => state.getParams);
-  const updateParam = useDeviceStore((state) => state.updateParam);
-  const handleContextParamAction = useDeviceStore((state) => state.handleContextParamAction)
-  const params = useDeviceStore(state => state.params);
-
+  const {nodes,selectedDevice,getParams,updateParam, handleContextParamAction, params} = useDeviceStore();
 
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
-  }, [selectedDevice, params]);
+  }, [selectedDevice, params, getParams]);
 
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
+  const optionItems = rawParams.filter(param => param.type === 'option');
+  const normalParams = rawParams.filter(param => param.type !== 'option');
 
   // Локальное состояние для редактирования
   const [editedParams, setEditedParams] = useState<Map<string, string>>(new Map());
@@ -109,6 +105,7 @@ const DeviceParams = () => {
     e.stopPropagation();
 
     setContextMenu({
+      visible: true,
       x: e.clientX,
       y: e.clientY,
       key: key,
@@ -153,7 +150,7 @@ const DeviceParams = () => {
       {/* Форма */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6">
         <div className="space-y-6 max-w-2xl mx-auto grid grid-cols-3 gap-4 grid-flow-row-dense">
-          {rawParams.filter(p => p.type !== 'option').map((param) => {
+          {normalParams.map((param) => {
             const keyStr = String(param.key);
             const value = editedParams.get(keyStr) ?? param.value ?? '';
             const hasChanged = (param.value || '') !== value;
@@ -211,41 +208,27 @@ const DeviceParams = () => {
               onContextMenu={(e) => handleContextMenu(e, null)}
               className={"w-full pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
             >
-              {rawParams.filter(param => param.type === 'option').map(p => (
+              {optionItems.map(p => (
                   <div
                     key={p.key}
                     onContextMenu={(e) => handleContextMenu(e, p.key)}
-                    className={"text-black hover:bg-blue-200 transition duration-200 ease-in-out p-0.5"}
+                    className={clsx(
+                      "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
+                      "    border-l-0 hover:border-l-4 hover:border-blue-500",
+                      contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
+                    )}
                   >
                     {p.value}
                   </div>
                 ))}
             </div>
-            {/*<select*/}
-            {/*  multiple={true}*/}
-            {/*  name="general_params"*/}
-            {/*  id="general_params"*/}
-            {/*  className={"w-full h-40 px-3 py-2 \n" +*/}
-            {/*  "         border border-gray-300 rounded-lg \n" +*/}
-            {/*  "         bg-white text-gray-700 \n" +*/}
-            {/*  "         focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 \n" +*/}
-            {/*  "         shadow-sm \n" +*/}
-            {/*  "         hover:border-gray-400 \n" +*/}
-            {/*  "         transition duration-200 ease-in-out"}*/}
-            {/*  onContextMenu={handleContextMenu}*/}
-            {/*>*/}
-            {/*  {rawParams.filter(param => param.type === 'option').map(option => (*/}
-            {/*    <option key={option.key} value={option.value}>{option.value}</option>*/}
-            {/*  ))}*/}
-            {/*</select>*/}
           </div>
         </div>
         {/* Контекстное меню */}
         {contextMenu && (
           <ContextMenu
-            visible={true}
-            x={contextMenu.x}
-            y={contextMenu.y}
+            selectElement={true}
+            menu={contextMenu}
             items={paramMenuItems}
             onAction={(action) => handleContextParamAction(action, contextMenu?.key)}
             onClose={() => setContextMenu(null)}

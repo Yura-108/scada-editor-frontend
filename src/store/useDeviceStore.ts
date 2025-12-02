@@ -124,7 +124,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
           set((state) => ({
             params: state.params.map((param) => {
-              const upd = updatedList.find((u: any) => u.key === String(param.key));
+              const upd = updatedList.find((u: DeviceParamsType) => u.key === String(param.key));
               return upd ? { ...param, value: upd.value } : param;
             }),
           }));
@@ -168,7 +168,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
               const newParam = {
                 name: 'Общие параметры',
                 value: title,
-                paramKey: get().selectedDevice ?? ''
+                parentKey: get().selectedDevice ?? ''
               };
 
               await get().appOptionParam(newParam);

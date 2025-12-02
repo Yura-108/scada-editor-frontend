@@ -29,6 +29,7 @@ const DeviceTreePanel = () => {
     handleSelect([node.key]);
 
     setContextMenu({
+      visible: true,
       x: e.clientX,
       y: e.clientY,
       key: node.key,
@@ -64,7 +65,7 @@ const DeviceTreePanel = () => {
     });
 
     return roots;
-  }, [nodes]);
+  }, [handleContextMenu, nodes]);
 
   return (
     <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
@@ -93,9 +94,7 @@ const DeviceTreePanel = () => {
         {/* Контекстное меню */}
         {contextMenu && (
           <ContextMenu
-            visible={true}
-            x={contextMenu.x}
-            y={contextMenu.y}
+            menu={contextMenu}
             items={nodeMenuItems}
             onAction={(action) => handleContextAction(action, contextMenu.key ?? '')}
             onClose={() => setContextMenu(null)}/>
