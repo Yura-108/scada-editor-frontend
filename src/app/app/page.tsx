@@ -14,16 +14,18 @@ export default function Workspace() {
         <LogoutButton />
       </div>
       <StartMenu />
-      <div className="h-screen flex justify-around pt-5">
+      <div className="h-screen container mx-auto flex flex-col md:flex-row justify-around pt-8 pb-20 gap-6">
         {nodes && (
-          <div className="transition-all duration-300 ease-in-out">
+          <div className="transition-all duration-300 ease-in-out basis-[20%]">
             <DeviceTreePanel />
           </div>
         )}
-        <div className="transition-all duration-300 ease-in-out">
+        <div className="transition-all duration-300 ease-in-out basis-[80%]">
           <DeviceParams />
         </div>
       </div>
+
+
     </div>
   );
 }

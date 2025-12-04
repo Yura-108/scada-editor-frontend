@@ -2,7 +2,7 @@
 
 import React, {useState, useEffect, useMemo} from 'react';
 import {useDeviceStore} from '@/store/useDeviceStore';
-import {Save, AlertCircle, CheckCircle2, Settings} from 'lucide-react';
+import {Save, AlertCircle, CheckCircle2, Settings, Edit3} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
@@ -26,9 +26,6 @@ const DeviceParams = () => {
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
   }, [selectedDevice, params, getParams]);
-
-  console.log(rawParams)
-
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
   const optionItems = rawParams.filter(param => param.type === 'option');
@@ -57,12 +54,12 @@ const DeviceParams = () => {
   }, [selectedDevice, getParams]);
 
   const hasChanges = useMemo(() => {
-    return rawParams.some((p) => {
+    return normalParams.some((p) => {
       const original = p.value || '';
       const edited = editedParams.get(String(p.key)) || '';
       return original !== edited;
     });
-  }, [rawParams, editedParams]);
+  }, [normalParams, editedParams]);
 
   const handleChange = (key: string, value: string) => {
     setEditedParams((prev) => new Map(prev).set(key, value));
@@ -75,7 +72,7 @@ const DeviceParams = () => {
 
     try {
       // Собираем ТОЛЬКО изменённые параметры
-      const changes = rawParams
+      const changes = normalParams
         .filter((p) => {
           const original = p.value ?? '';
           const edited = editedParams.get(String(p.key)) ?? '';
@@ -137,7 +134,7 @@ const DeviceParams = () => {
   }
 
   return (
-    <div className="h-full  flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl">
+    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl mb-2">
       {/* Заголовок */}
       <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
@@ -151,8 +148,7 @@ const DeviceParams = () => {
 
       {/* Форма */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6">
-        <div className="space-y-6 max-w-2xl mx-auto grid grid-cols-3 gap-4 grid-flow-row-dense">
-          {normalParams.map((param) => {
+        <div className="space-y-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 grid-flow-row-dense">          {normalParams.map((param) => {
             const keyStr = String(param.key);
             const value = editedParams.get(keyStr) ?? param.value ?? '';
             const hasChanged = (param.value || '') !== value;
@@ -202,29 +198,7 @@ const DeviceParams = () => {
             );
           })}
 
-          <div className={'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 p-4 col-span-2 border-gray-300 hover:border-gray-400'}>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Общие параметры
-            </label>
-            <div
-              onContextMenu={(e) => handleContextMenu(e, null)}
-              className={"w-full pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
-            >
-              {optionItems.map(p => (
-                  <div
-                    key={p.key}
-                    onContextMenu={(e) => handleContextMenu(e, p.key)}
-                    className={clsx(
-                      "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
-                      "    border-l-0 hover:border-l-4 hover:border-blue-500",
-                      contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
-                    )}
-                  >
-                    {p.value}
-                  </div>
-                ))}
-            </div>
-          </div>
+
         </div>
         {/* Контекстное меню */}
         {contextMenu && (
@@ -239,8 +213,16 @@ const DeviceParams = () => {
       </div>
 
       {/* Футер с кнопкой */}
-      <div className="px-6 py-5 border-t border-gray-200 bg-white">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
+      <div className="px-6 border-b-2 py-2 border-t border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <button
+            className={clsx(
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+            )}
+          >
+            <Edit3 className="w-5 h-5"/>
+            {isSaving ? 'Сохранение...' : 'Начать редактирование'}
+          </button>
           <div className="flex items-center gap-3">
             {saveStatus === 'success' && (
               <div className="flex items-center gap-2 text-green-600 font-medium">
@@ -260,7 +242,7 @@ const DeviceParams = () => {
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
             className={clsx(
-              'flex items-center gap-3 px-8 py-4 rounded-xl font-bold text-white transition-all transform',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
               hasChanges
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl'
                 : 'bg-gray-400 cursor-not-allowed',
@@ -270,6 +252,30 @@ const DeviceParams = () => {
             <Save className="w-5 h-5"/>
             {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
           </button>
+        </div>
+      </div>
+
+      <div className={'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm transition-all duration-200 p-4 col-span-2 border-gray-300 hover:border-gray-400'}>
+        <label className="block text-lg font-semibold text-gray-700 mb-3">
+          Общие параметры
+        </label>
+        <div
+          onContextMenu={(e) => handleContextMenu(e, null)}
+          className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
+        >
+          {optionItems.map(p => (
+            <div
+              key={p.key}
+              onContextMenu={(e) => handleContextMenu(e, p.key)}
+              className={clsx(
+                "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
+                "    border-l-0 hover:border-l-4 hover:border-blue-500",
+                contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
+              )}
+            >
+              {p.value}
+            </div>
+          ))}
         </div>
       </div>
     </div>

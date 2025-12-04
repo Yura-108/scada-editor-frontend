@@ -6,6 +6,7 @@ import { devtools, persist } from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {loginSchema} from "@/schemas/authSchema";
+import {string} from "zod";
 
 interface DeviceStoreState {
   nodes: DeviceNodeType[];
@@ -100,8 +101,6 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
           const newParam = await res.json();
 
-          console.log(newParam)
-
           set((state) => ({
             params: [...state.params, newParam]
           }));
@@ -123,20 +122,26 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
           const updatedList = updated.value;
 
-          // set((state) => ({
-          //   params: [
-          //     ...state.params.filter(p => !updatedList.some(u => u.key === p.key)),
-          //     ...updatedList
-          //   ]
-          // }));
+          type paramFromServer = {
+            key: string;
+            value: string;
+          }
 
-
-          set((state) => ({
-            params: state.params.map((param) => {
-              const upd = updatedList.find((u: DeviceParamsType) => u.key === String(param.key));
+          set((state) => {
+            // Обновляем существующие
+            const merged = state.params.map((param) => {
+              const upd = updatedList.find((u: paramFromServer) => u.key === param.key);
               return upd ? { ...param, value: upd.value } : param;
-            }),
-          }));
+            });
+
+            // Добавляем новые, которых не было
+            const newParams = updatedList.filter((u: paramFromServer) => !state.params.some((p) => p.key === u.key));
+
+            return {
+              params: [...merged, ...newParams],
+            };
+          });
+
         },
         handleContextAction: async (action, nodeKey) => {
           if (action === 'delete') {
@@ -187,7 +192,6 @@ export const useDeviceStore = create<DeviceStoreState>()(
             const title = prompt('Название параметра:');
             if (title && paramKey) {
               const changes = [{key: paramKey, value: title}];
-              console.log(changes);
               await get().updateParam(changes);
             }
           }

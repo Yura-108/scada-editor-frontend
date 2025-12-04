@@ -12,7 +12,7 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children}) =>
   return (
     <div
       className={clsx(
-        'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 p-4',
+        'text-sm group relative flex flex-col h-full bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 p-4',
         hasChanged
           ? 'border-purple-400 ring-4 ring-purple-100'
           : 'border-gray-300 hover:border-gray-400',
