@@ -24,8 +24,6 @@ export default function Workspace() {
           <DeviceParams />
         </div>
       </div>
-
-
     </div>
   );
 }

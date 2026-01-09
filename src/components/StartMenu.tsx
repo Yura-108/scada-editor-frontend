@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { Search, Building2, FolderOpen, AlertCircle, RefreshCw } from 'lucide-react';
 import { useDeviceStore } from '@/store/useDeviceStore';
+import {subscribeDeviceTree, unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
 
 export default function StartMenu() {
   const [site, setSite] = useState('');
   const [project, setProject] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSubscription, setActiveSubscription] = useState<{ site: string; project: string} | null>(null)
 
   const { loadTree, nodes } = useDeviceStore();
 
@@ -16,6 +18,14 @@ export default function StartMenu() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (activeSubscription) {
+      unsubscribeDeviceTree(
+        activeSubscription.site,
+        activeSubscription.project
+      );
+    }
+
 
     if (!site.trim() || !project.trim()) {
       setError('Пожалуйста, заполните оба поля');
@@ -26,8 +36,13 @@ export default function StartMenu() {
     setError(null);
 
     try {
-      await loadTree(site.trim(), project.trim());
-      // Успех — данные уже в сторе!
+      const s = site.trim();
+      const p = project.trim();
+
+      await loadTree(s, p);
+      subscribeDeviceTree(s, p);
+      setActiveSubscription({site: s, project: p});
+
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
       setError(
