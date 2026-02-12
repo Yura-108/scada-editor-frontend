@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Search, Building2, FolderOpen, AlertCircle, RefreshCw } from 'lucide-react';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import {subscribeDeviceTree, unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
+import {wsClient} from "@/shared/websocket/wsClient";
 
 export default function StartMenu() {
   const [site, setSite] = useState('');
@@ -16,8 +17,21 @@ export default function StartMenu() {
 
   const hasData = nodes.length > 0;
 
+  React.useEffect(() => {
+    return () => {
+      if (activeSubscription) {
+        unsubscribeDeviceTree(
+          activeSubscription.site,
+          activeSubscription.project
+        );
+      }
+    };
+  }, [activeSubscription]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isLoading) return;
 
     if (activeSubscription) {
       unsubscribeDeviceTree(
@@ -39,9 +53,19 @@ export default function StartMenu() {
       const s = site.trim();
       const p = project.trim();
 
-      await loadTree(s, p);
-      subscribeDeviceTree(s, p);
-      setActiveSubscription({site: s, project: p});
+      if (activeSubscription?.site === s && activeSubscription?.project === p) return;
+
+        await loadTree(s, p);
+
+      wsClient.onConnect = () => {
+        subscribeDeviceTree(s, p)
+      }
+
+     if (!wsClient.active) {
+       wsClient.activate();
+     } else {
+       subscribeDeviceTree(s, p)
+     }
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';

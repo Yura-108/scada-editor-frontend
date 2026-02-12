@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {useDeviceStore} from '@/store/useDeviceStore';
 import {Save, AlertCircle, CheckCircle2, Settings, Edit3} from 'lucide-react';
 import {clsx} from 'clsx';
@@ -8,17 +8,9 @@ import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
+// @ts-ignore
+import debounce from 'lodash/debounce';
 
-
-// type ParamType = 'input' | 'textarea' | 'checkbox' | 'option';
-//
-// interface Param {
-//   key: number | string;
-//   parentKey: string;
-//   name: string;
-//   type: ParamType;
-//   value: string;
-// }
 
 const DeviceParams = () => {
   const {nodes,selectedDevice,getParams,updateParam, handleContextParamAction, params} = useDeviceStore();
@@ -37,67 +29,117 @@ const DeviceParams = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
 
-  // Инициализируем редактируемые значения
+  const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
+
+  const debouncedSaveDraft = useCallback(
+    debounce((key: string, data: Record<string, string>) => {
+      localStorage.setItem(key, JSON.stringify(data));
+    }, 400),
+    []
+  );
+
   useEffect(() => {
-    if (!selectedDevice) {
+    if (!draftKey || !selectedDevice) {
       setEditedParams(new Map());
       return;
     }
+    try {
+      const saved = localStorage.getItem(draftKey);
 
-    const params = getParams(selectedDevice);
-    const map = new Map<string, string>();
-    params.forEach((p) => {
-      map.set(String(p.key), p.value ?? '');
-    });
-    setEditedParams(map);
-    setSaveStatus('idle');
-  }, [selectedDevice, getParams]);
+      if (saved) {
+        const arr: {key: number; value: string}[] = JSON.parse(saved);
+
+        const map = new Map<string, string>(arr.map(item => [String(item.key), item.value]));
+        setEditedParams(map);
+      }
+    } catch (error) {
+      console.warn("Ошибка чтения draft", error);
+      setEditedParams(new Map());
+    }
+  }, [selectedDevice]);
+
+  useEffect(() => {
+    if (!draftKey || !selectedDevice) return;
+
+    const arr = [...editedParams].map(([key, value]) => ({
+      key: Number(key),
+      value
+    }));
+
+
+    if (arr.length === 0) {
+      localStorage.removeItem(draftKey);
+    } else {
+      debouncedSaveDraft(draftKey, arr);
+    }
+  }, [editedParams, draftKey]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSaveDraft.cancel();
+    };
+  }, [debouncedSaveDraft]);
 
   const hasChanges = useMemo(() => {
-    return normalParams.some((p) => {
-      const original = p.value || '';
-      const edited = editedParams.get(String(p.key)) || '';
-      return original !== edited;
-    });
-  }, [normalParams, editedParams]);
+    return editedParams.size > 0;
+  }, [editedParams]);
 
   const handleChange = (key: string, value: string) => {
-    setEditedParams((prev) => new Map(prev).set(key, value));
+    if (!selectedDevice) return;
+    const serverValue = getParams(selectedDevice).find((param) => String(param.key) === key)?.value ?? '';
+    setEditedParams((prev) => {
+      const next = new Map(prev);
+
+      if (value === serverValue) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+      return next;
+    })
     setSaveStatus('idle');
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    setSaveStatus('idle');
 
     try {
-      // Собираем ТОЛЬКО изменённые параметры
-      const changes = normalParams
-        .filter((p) => {
-          const original = p.value ?? '';
-          const edited = editedParams.get(String(p.key)) ?? '';
-          return original !== edited;
-        })
-        .map((p) => ({
-          key: String(p.key),
-          value: editedParams.get(String(p.key)) ?? '',
-        }));
+      const arrayChanges: Array<{key: string; value: string}> = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith('device-params-draft:')) continue;
+        const raw = localStorage.getItem(key);
 
-      if (changes.length === 0) {
-        setSaveStatus('success');
-        return;
+        if (!raw) continue;
+        const parsed: {key: string; value: string}[] = JSON.parse(raw);
+
+        parsed.forEach(item => {
+          arrayChanges.push({
+            key: item.key,
+            value: item.value,
+          });
+        });
+      }
+      console.log(arrayChanges);
+      if (arrayChanges.length > 0) {
+        await updateParam(arrayChanges);
       }
 
-      await updateParam(changes);
-
+      // очистка после успеха
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('device-params-draft:')) {
+          localStorage.removeItem(key);
+        }
+      }
+      setEditedParams(new Map());
       setSaveStatus('success');
     } catch (err) {
-      console.error('Save error:', err);
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
-  };
+  }
 
   const handleContextMenu = (e: React.MouseEvent, key: string | null = null) => {
     e.preventDefault();
@@ -133,8 +175,10 @@ const DeviceParams = () => {
     );
   }
 
+  console.log(hasChanges);
+
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl mb-2">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl mb-2">
       {/* Заголовок */}
       <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
@@ -145,10 +189,54 @@ const DeviceParams = () => {
           {currentDevice?.title || 'Device'} • {rawParams.length} параметров
         </p>
       </div>
+      {/* Футер с кнопкой */}
+      <div className="px-6 border-b-2 py-2 border-t border-gray-200 bg-white">
+        <div className="flex items-center gap-2">
+          <button
+            className={clsx(
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+            )}
+          >
+            <Edit3 className="w-5 h-5"/>
+            {isSaving ? 'Сохранение...' : 'Начать редактирование'}
+          </button>
+
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            className={clsx(
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
+              hasChanges
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl'
+                : 'bg-gray-400 cursor-not-allowed',
+              isSaving && 'opacity-70 cursor-wait',
+            )}
+          >
+            <Save className="w-5 h-5"/>
+            {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
+          </button>
+
+          <div className="flex items-center gap-3">
+            {saveStatus === 'success' && (
+              <div className="flex items-center gap-2 text-green-600 font-medium">
+                <CheckCircle2 className="w-5 h-5"/>
+                Сохранено!
+              </div>
+            )}
+            {saveStatus === 'error' && (
+              <div className="flex items-center gap-2 text-red-600 font-medium">
+                <AlertCircle className="w-5 h-5"/>
+                Ошибка сохранения
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Форма */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6">
-        <div className="space-y-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 grid-flow-row-dense">          {normalParams.map((param) => {
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
+        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
+          {normalParams.map((param) => {
             const keyStr = String(param.key);
             const value = editedParams.get(keyStr) ?? param.value ?? '';
             const hasChanged = (param.value || '') !== value;
@@ -210,49 +298,6 @@ const DeviceParams = () => {
             onClose={() => setContextMenu(null)}
           />
         )}
-      </div>
-
-      {/* Футер с кнопкой */}
-      <div className="px-6 border-b-2 py-2 border-t border-gray-200 bg-white">
-        <div className="flex items-center justify-between">
-          <button
-            className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
-            )}
-          >
-            <Edit3 className="w-5 h-5"/>
-            {isSaving ? 'Сохранение...' : 'Начать редактирование'}
-          </button>
-          <div className="flex items-center gap-3">
-            {saveStatus === 'success' && (
-              <div className="flex items-center gap-2 text-green-600 font-medium">
-                <CheckCircle2 className="w-5 h-5"/>
-                Сохранено!
-              </div>
-            )}
-            {saveStatus === 'error' && (
-              <div className="flex items-center gap-2 text-red-600 font-medium">
-                <AlertCircle className="w-5 h-5"/>
-                Ошибка сохранения
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
-              hasChanges
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl'
-                : 'bg-gray-400 cursor-not-allowed',
-              isSaving && 'opacity-70 cursor-wait',
-            )}
-          >
-            <Save className="w-5 h-5"/>
-            {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
-          </button>
-        </div>
       </div>
 
       <div className={'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm transition-all duration-200 p-4 col-span-2 border-gray-300 hover:border-gray-400'}>

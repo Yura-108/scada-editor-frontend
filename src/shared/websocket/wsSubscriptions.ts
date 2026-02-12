@@ -22,8 +22,10 @@ export function subscribeDeviceTree(site: string, project: string) {
   // ❗ защита от двойной подписки
   if (subscriptions.has(destination)) return;
 
+  console.log("subscribed device tree", site, project);
   const sub = wsClient.subscribe(destination, (msg) => {
     const event: WSEvent = JSON.parse(msg.body);
+    console.log(event);
 
     useDeviceStore.setState((state) => {
       switch (event.type) {

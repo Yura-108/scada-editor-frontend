@@ -15,16 +15,14 @@ export const PATCH = protectedRoute(async (request: NextRequest, {token})=> {
   if (
     !body ||
     !Array.isArray(body.value) ||
-    body.value.some((item: {key: number; value: string}) => item.value === undefined)
+    body.value.some((item: {key: string; value: string}) => item.value === undefined)
   ) {
     return NextResponse.json(
       { message: 'Ожидается { value: [{ key: string, value: string }] }' },
       { status: 400 },
     );
   }
-
   const changes = body.value as { key: string; value: string }[];
-
   try {
     const backendResponse = await fetch(`${BACKEND_URL}/api/param/update`, {
       method: 'PATCH',

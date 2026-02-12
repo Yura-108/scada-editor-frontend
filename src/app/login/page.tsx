@@ -38,14 +38,16 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || 'Неверный логин или пароль');
+        setServerError(error.message || 'Неверный логин или пароль');
       }
 
       // Успешный вход → редирект в рабочую область
       router.push('/app');
       router.refresh(); // обновляем серверные данные (если используешь Server Components)
-    } catch (err: any) {
-      setServerError(err.message || 'Что-то пошло не так');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setServerError(err.message || 'Что-то пошло не так');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -9,3 +9,7 @@ export const wsClient = new Client({
   reconnectDelay: 5000,
   debug: () => {},
 });
+
+wsClient.onConnect = () => {
+  console.log("WS Connected!");
+}

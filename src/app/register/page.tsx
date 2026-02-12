@@ -19,8 +19,7 @@ export default function RegisterForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
-    reset,
+    formState: { errors }
   } = useForm<FormData>({
     resolver: zodResolver(registerSchema),
   });
@@ -40,27 +39,23 @@ export default function RegisterForm() {
         body: JSON.stringify({
           login: data.login,
           password: data.password,
-          // если нужно имя/email — добавь сюда
-          // name: data.name,
-          // email: data.email,
         }),
-        credentials: 'include', // важно для получения httpOnly cookie
+        credentials: 'include',
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        // Ошибки от бэкенда (например: "Логин уже занят")
-        throw new Error(result.message || 'Ошибка регистрации');
+        setServerError(result.message || 'Ошибка регистрации');
       }
 
-      // Успешная регистрация → JWT в httpOnly cookie уже установлен
-      // Можно сразу редиректить в приложение
       router.push('/app');
-      router.refresh(); // обновляем серверные данные (если используешь Server Components)
-    } catch (err: any) {
-      console.error('Ошибка регистрации:', err);
-      setServerError(err.message || 'Что-то пошло не так. Попробуйте позже.');
+      router.refresh();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('Ошибка регистрации:', err);
+        setServerError(err.message || 'Что-то пошло не так. Попробуйте позже.');
+      }
     } finally {
       setIsLoading(false);
     }

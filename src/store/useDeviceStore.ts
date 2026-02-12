@@ -105,8 +105,9 @@ export const useDeviceStore = create<DeviceStoreState>()(
             params: [...state.params, newParam]
           }));
         },
-
-        updateParam: async (changes: { key: string; value: string }[]) => {
+        updateParam: async (
+          changes: { key: string; value: string }[]
+        ) => {
           const res = await fetch('/api/device/param', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -121,7 +122,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
           const updated = await res.json(); // ожидаем { value: [ { key, value }, ... ] }
 
           const updatedList = updated.value;
-
+          console.log(updatedList);
           type paramFromServer = {
             key: string;
             value: string;
@@ -141,7 +142,6 @@ export const useDeviceStore = create<DeviceStoreState>()(
               params: [...merged, ...newParams],
             };
           });
-
         },
         handleContextAction: async (action, nodeKey) => {
           if (action === 'delete') {
