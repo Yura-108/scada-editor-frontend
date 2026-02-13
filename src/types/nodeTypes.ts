@@ -29,3 +29,5 @@ export type DeviceTreeResponse = {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
 };
+
+export type ParamType = 'input' | 'textarea';

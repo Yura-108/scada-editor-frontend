@@ -66,17 +66,13 @@ const ContextMenu = <T extends string = string>({menu, items, onAction, onClose,
   if (!menu.visible) return null;
 
   const visibleItems = items.filter(item => {
-    if (selectElement) {
-      if (!menu.key) return item.key == 'add';
-
-      return item.key === 'edit' || item.key === 'delete';
-    } else {
-      if (menu.key) {
+      if (typeof menu.key === 'string') {
         return !(menu.key.startsWith('cha') && item.key === 'add');
+      } else if (typeof menu.key !== 'number') {
+        return item.key === 'add';
       }
-    }
+      return true;
   });
-
   if (visibleItems.length === 0) return null;
 
   return (

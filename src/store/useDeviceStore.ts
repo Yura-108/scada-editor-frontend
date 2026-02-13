@@ -12,19 +12,19 @@ interface DeviceStoreState {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
   contextMenu: ContextMenuType | null;
+  editingDevices: Set<string>;
+  toggleEditing: (key: string) => void;
   setContextMenu: (menu: ContextMenuType | null) => void;
   selectedDevice: string | null;
-
   getParams(deviceKey: string | null): DeviceParamsType[];
-
   loadTree: (site: string, project: string) => Promise<void>;
-
-  addDevice: (node: {type: string; title: string; isLeaf: boolean; parentKey: string}) => Promise<void>;
+  addDevice: (node: {type: string; title: string; isLeaf: boolean; parentKey: string | null}) => Promise<void>;
   removeDevice: (Key: string) => Promise<void>;
   deleteOptionParam: (key: string) => Promise<void>;
+  removeParam: (key: string) => Promise<void>;
   appOptionParam: (param: {name: string; value: string; parentKey: string}) => Promise<void>;
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
-  handleContextAction: (action: DeviceAction, nodeKey: string) => Promise<void>;
+  handleContextAction: (action: DeviceAction, nodeKey: string | null) => Promise<void>;
   handleContextParamAction: (action: ParamAction, paramKey: string | null) => Promise<void>;
 }
 
@@ -35,6 +35,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
         nodes: [],
         params: [],
         contextMenu: null,
+        editingDevices: new Set<string>(),
         setContextMenu: (menu) => set({ contextMenu: menu }),
         selectedDevice: null,
 
@@ -54,7 +55,16 @@ export const useDeviceStore = create<DeviceStoreState>()(
             params: json.params,
           });
         },
+        toggleEditing: (key: string) =>
+          set(state => {
+            const copy = new Set(state.editingDevices);
 
+            copy.has(key)
+              ? copy.delete(key)
+              : copy.add(key);
+
+            return { editingDevices: copy };
+          }),
         addDevice: async (node) => {
           const res = await fetch('/api/device/', {
             method: 'POST',
@@ -105,6 +115,21 @@ export const useDeviceStore = create<DeviceStoreState>()(
             params: [...state.params, newParam]
           }));
         },
+        removeParam: async (key: string) => {
+          try {
+            await fetch(`/api/device/param/${key}`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+            });
+
+            set((state) => ({
+              params: state.params.filter(p => p.key !== key),
+            }));
+          }  catch (err) {
+            console.error('Ошибка при удалении параметра:', err);
+            throw err; // чтобы компонент мог отреагировать
+          }
+        },
         updateParam: async (
           changes: { key: string; value: string }[]
         ) => {
@@ -145,6 +170,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
         },
         handleContextAction: async (action, nodeKey) => {
           if (action === 'delete') {
+            if (!nodeKey) return;
             if (confirm('Удалить этот узел и все дочерние?')) {
               await get().removeDevice(nodeKey);
             }
@@ -152,15 +178,27 @@ export const useDeviceStore = create<DeviceStoreState>()(
           if (action === 'add') {
             const title = prompt('Название нового узла:');
             if (title) {
-              const type = nodeKey.startsWith('dev') ? 'sub' : 'cha';
-              const tempNode = {
-                type,
-                title,
-                isLeaf: true,
-                parentKey: nodeKey,
-              };
+              if (nodeKey) {
+                const type = nodeKey.startsWith('dev') ? 'sub' : 'cha';
+                const tempNode = {
+                  type,
+                  title,
+                  isLeaf: type !== 'sub',
+                  parentKey: nodeKey,
+                };
 
-              await get().addDevice(tempNode);
+                await get().addDevice(tempNode);
+              } else {
+                const tempNode = {
+                  type: 'dev',
+                  title,
+                  isLeaf: false,
+                  parentKey: null,
+                };
+
+                await get().addDevice(tempNode);
+              }
+
             }
           }
           if (action === 'edit') {

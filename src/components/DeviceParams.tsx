@@ -2,7 +2,7 @@
 
 import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {useDeviceStore} from '@/store/useDeviceStore';
-import {Save, AlertCircle, CheckCircle2, Settings, Edit3} from 'lucide-react';
+import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
@@ -10,10 +10,12 @@ import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 // @ts-ignore
 import debounce from 'lodash/debounce';
+import { AddParamModal } from "./AddParamModal";
+import {ParamType} from "../types/nodeTypes";
 
 
 const DeviceParams = () => {
-  const {nodes,selectedDevice,getParams,updateParam, handleContextParamAction, params} = useDeviceStore();
+  const {nodes,selectedDevice,getParams,updateParam, handleContextParamAction, params, removeParam, editingDevices, toggleEditing} = useDeviceStore();
 
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
@@ -28,7 +30,11 @@ const DeviceParams = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const isEditing = (deviceKey: string) => {
+    return editingDevices.has(deviceKey);
+  }
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
   const debouncedSaveDraft = useCallback(
@@ -84,6 +90,17 @@ const DeviceParams = () => {
     return editedParams.size > 0;
   }, [editedParams]);
 
+  const handleRemoveParam = (key: string) => {
+    if (confirm('Вы уверены, что хотите удалить этот параметр?')) {
+      removeParam(key)
+        .then(() => {
+          console.log(`Параметр ${key} удалён`);
+        })
+        .catch((err) => {
+          console.error('Ошибка при удалении параметра:', err);
+        });
+    }
+  }
   const handleChange = (key: string, value: string) => {
     if (!selectedDevice) return;
     const serverValue = getParams(selectedDevice).find((param) => String(param.key) === key)?.value ?? '';
@@ -152,6 +169,16 @@ const DeviceParams = () => {
       key: key,
     });
   }
+  const handleAddParam = (name: string, value: string, type: ParamType) => {
+    const newParam = {
+      parentKey: selectedDevice,
+      name,
+      value,
+      type,
+    };
+
+    console.log(newParam);
+  }
 
   if (!selectedDevice) {
     return (
@@ -174,11 +201,8 @@ const DeviceParams = () => {
       </div>
     );
   }
-
-  console.log(hasChanges);
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl mb-2">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl">
       {/* Заголовок */}
       <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
@@ -196,9 +220,20 @@ const DeviceParams = () => {
             className={clsx(
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
+            onClick={() => toggleEditing(selectedDevice)}
           >
             <Edit3 className="w-5 h-5"/>
-            {isSaving ? 'Сохранение...' : 'Начать редактирование'}
+            {isEditing(selectedDevice) ? 'Закончить редактирование' : 'Начать редактирование'}
+          </button>
+
+          <button
+            className={clsx(
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+            )}
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus size={20} />
+            {isSaving ? 'Сохранение...' : 'Добавить параметр'}
           </button>
 
           <button
@@ -233,96 +268,116 @@ const DeviceParams = () => {
         </div>
       </div>
 
-      {/* Форма */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
-        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
-          {normalParams.map((param) => {
-            const keyStr = String(param.key);
-            const value = editedParams.get(keyStr) ?? param.value ?? '';
-            const hasChanged = (param.value || '') !== value;
-
-            return (
-              <ParamWrapper key={param.key} param={param} hasChanged={hasChanged}>
-                {param.type === 'input' && (
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={(e) => handleChange(keyStr, e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all text-gray-800 font-medium"
-                    placeholder="Введите значение..."
-                  />
-                )}
-
-                {param.type === 'textarea' && (
-                  <textarea
-                    value={value}
-                    onChange={(e) => handleChange(keyStr, e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all resize-none font-medium text-gray-800"
-                    placeholder="Введите описание..."
-                  />
-                )}
-
-                {param.type === 'checkbox' && (
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      id={`cb-${param.key}`}
-                      checked={value === '1' || value === 'true' || value === 'on'}
-                      onChange={(e) => handleChange(keyStr, e.target.checked ? '1' : '0')}
-                      className="w-6 h-6 rounded border-gray-300 hover:border-gray-400 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <label
-                      htmlFor={`cb-${param.key}`}
-                      className="text-lg font-medium text-gray-700 cursor-pointer"
-                    >
-                      {value === '1' || value === 'true' || value === 'on'
-                        ? 'Включено'
-                        : 'Выключено'}
-                    </label>
-                  </div>
-                )}
-              </ParamWrapper>
-            );
-          })}
-
-
-        </div>
-        {/* Контекстное меню */}
-        {contextMenu && (
-          <ContextMenu
-            selectElement={true}
-            menu={contextMenu}
-            items={paramMenuItems}
-            onAction={(action) => handleContextParamAction(action, contextMenu?.key)}
-            onClose={() => setContextMenu(null)}
-          />
+      <div
+        className={clsx(
+          "relative transition-all",
+          !isEditing(selectedDevice) && "pointer-events-none select-none opacity-50"
         )}
-      </div>
+      >
+        {/* Форма */}
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
+            {normalParams.map((param) => {
+              const keyStr = String(param.key);
+              const value = editedParams.get(keyStr) ?? param.value ?? '';
+              const hasChanged = (param.value || '') !== value;
 
-      <div className={'text-sm group relative flex flex-col justify-between bg-white rounded-2xl shadow-sm transition-all duration-200 p-4 col-span-2 border-gray-300 hover:border-gray-400'}>
-        <label className="block text-lg font-semibold text-gray-700 mb-3">
-          Общие параметры
-        </label>
-        <div
-          onContextMenu={(e) => handleContextMenu(e, null)}
-          className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
-        >
-          {optionItems.map(p => (
-            <div
-              key={p.key}
-              onContextMenu={(e) => handleContextMenu(e, p.key)}
-              className={clsx(
-                "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
-                "    border-l-0 hover:border-l-4 hover:border-blue-500",
-                contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
-              )}
-            >
-              {p.value}
-            </div>
-          ))}
+              return (
+                <ParamWrapper
+                  key={param.key}
+                  param={param}
+                  hasChanged={hasChanged}
+                  onRemove={handleRemoveParam}
+                >
+                  {param.type === 'input' && (
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => handleChange(keyStr, e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all text-gray-800 font-medium"
+                      placeholder="Введите значение..."
+                    />
+                  )}
+
+                  {param.type === 'textarea' && (
+                    <textarea
+                      value={value}
+                      onChange={(e) => handleChange(keyStr, e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all resize-none font-medium text-gray-800"
+                      placeholder="Введите описание..."
+                    />
+                  )}
+
+                  {param.type === 'checkbox' && (
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="checkbox"
+                        id={`cb-${param.key}`}
+                        checked={value === '1' || value === 'true' || value === 'on'}
+                        onChange={(e) => handleChange(keyStr, e.target.checked ? '1' : '0')}
+                        className="w-6 h-6 rounded border-gray-300 hover:border-gray-400 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <label
+                        htmlFor={`cb-${param.key}`}
+                        className="text-lg font-medium text-gray-700 cursor-pointer"
+                      >
+                        {value === '1' || value === 'true' || value === 'on'
+                          ? 'Включено'
+                          : 'Выключено'}
+                      </label>
+                    </div>
+                  )}
+                </ParamWrapper>
+              );
+            })}
+
+
+          </div>
+          {/* Контекстное меню */}
+          {contextMenu && (
+            <ContextMenu
+              selectElement={true}
+              menu={contextMenu}
+              items={paramMenuItems}
+              onAction={(action) => handleContextParamAction(action, contextMenu?.key)}
+              onClose={() => setContextMenu(null)}
+            />
+          )}
         </div>
+
+        {/* Общие параметры */}
+        <div className='text-sm group relative flex flex-col justify-between transition-all duration-200 px-6 py-6 col-span-2'>
+          <label className="block text-lg font-semibold text-gray-700 mb-3">
+            Общие параметры
+          </label>
+          <div
+            onContextMenu={(e) => handleContextMenu(e, null)}
+            className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
+          >
+            {optionItems.map(p => (
+              <div
+                key={p.key}
+                onContextMenu={(e) => handleContextMenu(e, p.key)}
+                className={clsx(
+                  "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
+                  "    border-l-0 hover:border-l-4 hover:border-blue-500",
+                  contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
+                )}
+              >
+                {p.value}
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
+      {/* Модалка добавления параметра */}
+      <AddParamModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAdd={(name, value, type) => handleAddParam(name, value, type)}
+      />
     </div>
   );
 };
