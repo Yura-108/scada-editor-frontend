@@ -15,8 +15,18 @@ import {ParamType} from "../types/nodeTypes";
 
 
 const DeviceParams = () => {
-  const {nodes,selectedDevice,getParams,updateParam, handleContextParamAction, params, removeParam, editingDevices, toggleEditing} = useDeviceStore();
-
+  const {
+    nodes,
+    selectedDevice,
+    getParams,
+    updateParam,
+    handleContextParamAction,
+    params,
+    removeParam,
+    editingDevices,
+    startEditing,
+    stopEditing,
+  } = useDeviceStore();
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
   }, [selectedDevice, params, getParams]);
@@ -32,9 +42,16 @@ const DeviceParams = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isEditing = (deviceKey: string) => {
-    return editingDevices.has(deviceKey);
-  }
+  const handleToggle = (key: string) => {
+    if (isEditing(key)) {
+      stopEditing(key);
+    } else {
+      startEditing(key);
+    }
+  };
+
+  const isEditing = (deviceKey: string) => editingDevices.includes(deviceKey);
+
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
   const debouncedSaveDraft = useCallback(
@@ -220,7 +237,7 @@ const DeviceParams = () => {
             className={clsx(
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
-            onClick={() => toggleEditing(selectedDevice)}
+            onClick={() => handleToggle(selectedDevice)}
           >
             <Edit3 className="w-5 h-5"/>
             {isEditing(selectedDevice) ? 'Закончить редактирование' : 'Начать редактирование'}

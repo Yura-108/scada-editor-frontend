@@ -12,8 +12,9 @@ interface DeviceStoreState {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
   contextMenu: ContextMenuType | null;
-  editingDevices: Set<string>;
-  toggleEditing: (key: string) => void;
+  editingDevices: Array<string>;
+  startEditing: (key: string) => Promise<void>;
+  stopEditing: (key: string) => Promise<void>;
   setContextMenu: (menu: ContextMenuType | null) => void;
   selectedDevice: string | null;
   getParams(deviceKey: string | null): DeviceParamsType[];
@@ -35,7 +36,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
         nodes: [],
         params: [],
         contextMenu: null,
-        editingDevices: new Set<string>(),
+        editingDevices: [] as string[],
         setContextMenu: (menu) => set({ contextMenu: menu }),
         selectedDevice: null,
 
@@ -55,16 +56,39 @@ export const useDeviceStore = create<DeviceStoreState>()(
             params: json.params,
           });
         },
-        toggleEditing: (key: string) =>
-          set(state => {
-            const copy = new Set(state.editingDevices);
+        startEditing: async (key: string) => {
+          const {editingDevices} = get();
 
-            copy.has(key)
-              ? copy.delete(key)
-              : copy.add(key);
+          if (editingDevices.includes(key)) return;
 
-            return { editingDevices: copy };
-          }),
+          try {
+            await fetch(`api/lock/`, {
+              method: 'POST',
+              body: JSON.stringify(editingDevices),
+            });
+
+            set({
+              editingDevices: [...editingDevices, key],
+            });
+          } catch (err) {
+            console.error("Lock failed: ", err);
+          }
+        },
+        stopEditing: async (key: string) => {
+          try {
+            await fetch(`api/unlock/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify([key]),
+            });
+
+            set(state => ({
+              editingDevices: state.editingDevices.filter(k => k !== key),
+            }));
+          } catch (err) {
+            console.error("Unlock failed: ", err);
+          }
+        },
         addDevice: async (node) => {
           const res = await fetch('/api/device/', {
             method: 'POST',
