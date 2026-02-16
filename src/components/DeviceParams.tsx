@@ -12,6 +12,7 @@ import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
 import { AddParamModal } from "./AddParamModal";
 import {ParamType} from "../types/nodeTypes";
+import { treeSearch } from "@/lib/treeSearch";
 
 
 const DeviceParams = () => {
@@ -43,15 +44,15 @@ const DeviceParams = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleToggle = (key: string) => {
+    const editingTree = treeSearch(key, nodes) ?? [];
     if (isEditing(key)) {
-      stopEditing(key);
+      stopEditing(editingTree);
     } else {
-      startEditing(key);
+      startEditing(editingTree);
     }
   };
 
   const isEditing = (deviceKey: string) => editingDevices.includes(deviceKey);
-
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
   const debouncedSaveDraft = useCallback(

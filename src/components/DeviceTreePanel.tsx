@@ -16,7 +16,17 @@ import clsx from "clsx";
 
 const DeviceTreePanel = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
-  const {nodes, selectedDevice, handleContextAction} = useDeviceStore();
+  const {
+    nodes,
+    selectedDevice,
+    handleContextAction
+  } = useDeviceStore();
+
+  const editingDevices = useDeviceStore(
+    s => s.editingDevices
+  );
+
+
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
     if (key) useDeviceStore.setState({selectedDevice: key});

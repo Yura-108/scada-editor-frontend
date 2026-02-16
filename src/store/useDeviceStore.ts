@@ -5,16 +5,14 @@ import { DeviceNodeType, DeviceParamsType, DeviceTreeResponse } from '@/types/no
 import { devtools, persist } from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
-import {loginSchema} from "@/schemas/authSchema";
-import {string} from "zod";
 
 interface DeviceStoreState {
   nodes: DeviceNodeType[];
   params: DeviceParamsType[];
   contextMenu: ContextMenuType | null;
   editingDevices: Array<string>;
-  startEditing: (key: string) => Promise<void>;
-  stopEditing: (key: string) => Promise<void>;
+  startEditing: (keys: string[]) => Promise<void>;
+  stopEditing: (keys: string[]) => Promise<void>;
   setContextMenu: (menu: ContextMenuType | null) => void;
   selectedDevice: string | null;
   getParams(deviceKey: string | null): DeviceParamsType[];
@@ -56,34 +54,32 @@ export const useDeviceStore = create<DeviceStoreState>()(
             params: json.params,
           });
         },
-        startEditing: async (key: string) => {
+        startEditing: async (keys: string[]) => {
           const {editingDevices} = get();
-
-          if (editingDevices.includes(key)) return;
-
+          const filteredKeys = keys.filter((key: string) => !editingDevices.includes(key));
           try {
             await fetch(`api/lock/`, {
               method: 'POST',
-              body: JSON.stringify(editingDevices),
+              body: JSON.stringify(filteredKeys),
             });
 
             set({
-              editingDevices: [...editingDevices, key],
+              editingDevices: [...editingDevices, ...filteredKeys],
             });
           } catch (err) {
             console.error("Lock failed: ", err);
           }
         },
-        stopEditing: async (key: string) => {
+        stopEditing: async (keys: string[]) => {
           try {
             await fetch(`api/unlock/`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify([key]),
+              body: JSON.stringify(keys),
             });
 
             set(state => ({
-              editingDevices: state.editingDevices.filter(k => k !== key),
+              editingDevices: state.editingDevices.filter(device => !keys.includes(device)),
             }));
           } catch (err) {
             console.error("Unlock failed: ", err);
