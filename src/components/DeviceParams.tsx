@@ -11,9 +11,8 @@ import {paramMenuItems} from "@/constants/contextMenuItems";
 // @ts-ignore
 import debounce from 'lodash/debounce';
 import { AddParamModal } from "./AddParamModal";
-import {ParamType} from "../types/nodeTypes";
 import { treeSearch } from "@/lib/treeSearch";
-
+import { isEditingDevice } from "@/lib/useIsEditingDevice";
 
 const DeviceParams = () => {
   const {
@@ -24,9 +23,10 @@ const DeviceParams = () => {
     handleContextParamAction,
     params,
     removeParam,
-    editingDevices,
-    startEditing,
+    toggleEditing,
+    addParam,
     stopEditing,
+    editingDevices
   } = useDeviceStore();
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
@@ -43,16 +43,6 @@ const DeviceParams = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleToggle = (key: string) => {
-    const editingTree = treeSearch(key, nodes) ?? [];
-    if (isEditing(key)) {
-      stopEditing(editingTree);
-    } else {
-      startEditing(editingTree);
-    }
-  };
-
-  const isEditing = (deviceKey: string) => editingDevices.includes(deviceKey);
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
   const debouncedSaveDraft = useCallback(
@@ -61,6 +51,23 @@ const DeviceParams = () => {
     }, 400),
     []
   );
+
+  useEffect(() => {
+    return () => {
+      const { editingDevices, stopEditing } = useDeviceStore.getState();
+      if (editingDevices.length === 0) return;
+
+      (async () => {
+        try {
+          await stopEditing(editingDevices);
+        } catch (err) {
+          console.error("Cleanup unlock failed:", err);
+        }
+      })();
+    };
+  }, []);
+
+
 
   useEffect(() => {
     if (!draftKey || !selectedDevice) {
@@ -107,7 +114,6 @@ const DeviceParams = () => {
   const hasChanges = useMemo(() => {
     return editedParams.size > 0;
   }, [editedParams]);
-
   const handleRemoveParam = (key: string) => {
     if (confirm('Вы уверены, что хотите удалить этот параметр?')) {
       removeParam(key)
@@ -134,7 +140,6 @@ const DeviceParams = () => {
     })
     setSaveStatus('idle');
   };
-
   const handleSave = async () => {
     setIsSaving(true);
 
@@ -155,7 +160,7 @@ const DeviceParams = () => {
           });
         });
       }
-      console.log(arrayChanges);
+
       if (arrayChanges.length > 0) {
         await updateParam(arrayChanges);
       }
@@ -175,7 +180,6 @@ const DeviceParams = () => {
       setIsSaving(false);
     }
   }
-
   const handleContextMenu = (e: React.MouseEvent, key: string | null = null) => {
     e.preventDefault();
     e.stopPropagation();
@@ -187,15 +191,15 @@ const DeviceParams = () => {
       key: key,
     });
   }
-  const handleAddParam = (name: string, value: string, type: ParamType) => {
+  const handleAddParam = async (type: string, value: string) => {
+    if (!selectedDevice) return;
     const newParam = {
-      parentKey: selectedDevice,
-      name,
+      id: Number(type),
       value,
-      type,
+      parentKey: selectedDevice
     };
 
-    console.log(newParam);
+    await addParam(newParam);
   }
 
   if (!selectedDevice) {
@@ -238,15 +242,22 @@ const DeviceParams = () => {
             className={clsx(
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
-            onClick={() => handleToggle(selectedDevice)}
+            onClick={() => toggleEditing(selectedDevice)}
           >
             <Edit3 className="w-5 h-5"/>
-            {isEditing(selectedDevice) ? 'Закончить редактирование' : 'Начать редактирование'}
+            {isEditingDevice(selectedDevice) ? 'Закончить редактирование' : 'Начать редактирование'}
           </button>
 
           <button
+            disabled={!isEditingDevice(selectedDevice)}
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
+
+              // активная кнопка
+              'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
+
+              // disabled стили
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:from-purple-600 disabled:hover:to-indigo-600'
             )}
             onClick={() => setIsModalOpen(true)}
           >
@@ -254,20 +265,30 @@ const DeviceParams = () => {
             {isSaving ? 'Сохранение...' : 'Добавить параметр'}
           </button>
 
+
           <button
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
             className={clsx(
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
-              hasChanges
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl'
-                : 'bg-gray-400 cursor-not-allowed',
-              isSaving && 'opacity-70 cursor-wait',
+
+              // базовый стиль (как у первой кнопки)
+              'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-xl',
+
+              // hover только когда не disabled
+              'hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
+
+              // disabled состояние
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none',
+
+              // состояние сохранения
+              isSaving && 'cursor-wait'
             )}
           >
             <Save className="w-5 h-5"/>
             {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
           </button>
+
 
           <div className="flex items-center gap-3">
             {saveStatus === 'success' && (
@@ -289,7 +310,7 @@ const DeviceParams = () => {
       <div
         className={clsx(
           "relative transition-all",
-          !isEditing(selectedDevice) && "pointer-events-none select-none opacity-50"
+          !isEditingDevice(selectedDevice) && "pointer-events-none select-none opacity-50",
         )}
       >
         {/* Форма */}
@@ -394,7 +415,7 @@ const DeviceParams = () => {
       <AddParamModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onAdd={(name, value, type) => handleAddParam(name, value, type)}
+        onAdd={(type, name) => handleAddParam(type, name)}
       />
     </div>
   );

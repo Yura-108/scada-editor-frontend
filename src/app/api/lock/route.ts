@@ -22,7 +22,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     body: JSON.stringify(editingDevicesKeys),
   });
 
-  const newDevice = await response.json().catch(() => null);
+  const lockedDevices = await response.json().catch(() => null);
 
-  return NextResponse.json(newDevice, {status: 201});
+  return NextResponse.json(lockedDevices, {status: 201});
 })

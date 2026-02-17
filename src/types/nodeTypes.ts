@@ -19,6 +19,12 @@ export type DeviceParamsType = {
   type: string;
   value: string;
 };
+
+export type DeviceParamsLayoutType = {
+  id: string;
+  name: string;
+  type: string;
+}
 export type DeviceParamsFromAddFunc = {
   parentKey: string;
   name: string;

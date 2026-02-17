@@ -4,12 +4,18 @@ import React, {useRef} from "react";
 import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
-
+import { isEditingDevice } from "@/lib/useIsEditingDevice";
 
 // Правильный тип для глобального обработчика
 let globalContextMenuCloser: ((e: MouseEvent) => void) | null = null;
 
-const ContextMenu = <T extends string = string>({menu, items, onAction, onClose, selectElement}: ContextMenuProps<T>) => {
+const ContextMenu = <T extends string = string>({
+  menu,
+  items,
+  onAction,
+  onClose,
+  selectElement
+}: ContextMenuProps<T>) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,7 +54,6 @@ const ContextMenu = <T extends string = string>({menu, items, onAction, onClose,
       }
     };
   }, [menu.visible, onClose]);
-
   // Клик вне меню — закрываем (по желанию, можно убрать, если мешает)
   useEffect(() => {
     if (!menu.visible) return;
@@ -66,23 +71,35 @@ const ContextMenu = <T extends string = string>({menu, items, onAction, onClose,
   if (!menu.visible) return null;
 
   const visibleItems = items.filter(item => {
-      if (typeof menu.key === 'string') {
-        return !(menu.key.startsWith('cha') && item.key === 'add');
-      } else if (typeof menu.key !== 'number') {
-        return item.key === 'add';
+    if (typeof menu.key === 'string') {
+      if (isEditingDevice(menu.key)) {
+        return (
+          item.key !== 'edit' &&
+          !(menu.key.startsWith('cha') && item.key === 'add')
+        );
       }
-      return true;
+
+      return item.key === 'edit';
+    }
+
+    if (typeof menu.key !== 'number') {
+      return item.key === 'add';
+    }
+
+    return true;
   });
+
   if (visibleItems.length === 0) return null;
 
   return (
     <div
       ref={menuRef}
       className="fixed z-[9999]"
-      style={{ top: menu.y, left: menu.x }}
+      style={{top: menu.y, left: menu.x}}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+      <div
+        className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
         <div className="py-2 min-w-[180px]">
           {visibleItems.map((item) => (
             <React.Fragment key={item.key}>
@@ -106,7 +123,7 @@ const ContextMenu = <T extends string = string>({menu, items, onAction, onClose,
                 {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
                 <span>{item.label}</span>
               </button>
-              {item.dividerAfter && <hr className="border-gray-200 mx-2" />}
+              {item.dividerAfter && <hr className="border-gray-200 mx-2"/>}
             </React.Fragment>
           ))}
         </div>

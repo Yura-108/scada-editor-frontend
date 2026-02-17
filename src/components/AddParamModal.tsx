@@ -1,27 +1,46 @@
-import { useState } from 'react';
-import {ParamType} from "../types/nodeTypes";
+import {useEffect, useMemo, useState } from 'react';
+import { useDeviceStore } from "@/store/useDeviceStore";
 
 interface AddParamModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (name: string, value: string, type: ParamType) => void;
+  onAdd: (name: string, value: string) => void;
 }
 
 export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
-  const [name, setName] = useState('');
-  const [value, setValue] = useState('');
-  const [type, setType] = useState<'input' | 'textarea'>('input');
+  const {paramsTypes} = useDeviceStore();
 
-  if (!open) return null;
+  const filteredParams = useMemo(
+    () => paramsTypes.filter(p => p.type !== 'option'),
+    [paramsTypes]
+  );
+  const [value, setValue] = useState('');
+  const [name, setName] = useState(filteredParams[0]?.id ?? '');
+
+  useEffect(() => {
+    if (filteredParams.length > 0) {
+      setName(filteredParams[0].id);
+    }
+  }, [filteredParams]);
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [onClose]);
+
 
   const handleSubmit = () => {
-    if (!name.trim()) return; // можно добавить валидацию
-    onAdd(name.trim(), value, type);
-    setName('');
+    if (!value.trim()) return;
+    onAdd(name, value);
     setValue('');
-    setType('input');
+    setName(filteredParams[0].id);
     onClose();
   };
+
+  if (!open || filteredParams.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
@@ -52,28 +71,32 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
 
         {/* Контент */}
         <div className="p-6 space-y-5 text-white">
-          {/* Имя параметра */}
+          {/* Тип */}
           <div>
-            <label htmlFor="nameParam" className="block mb-1.5 text-sm font-medium opacity-90">
-              Имя параметра
+            <label htmlFor={"typeParam"} className="block mb-1.5 text-sm font-medium opacity-90">
+              Тип поля
             </label>
-            <input
-              id="nameParam"
-              type="text"
+            <select
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Например: theme или maxLength"
-              className={`
-                w-full px-4 py-2.5
+              className="
+                w-full px-4 py-2.5 appearance-none
                 bg-white/10 backdrop-blur-sm
                 border border-white/20 rounded-lg
-                text-white placeholder:text-white/50
+                text-white
                 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/30
                 transition-all duration-200
-              `}
-            />
-          </div>
+                cursor-pointer
+              "
+            >
+              {filteredParams.map(paramType => (
+                <option className="text-black bg-white" key={paramType.id} value={paramType.id}>
+                  {paramType.name}
+                </option>
+              ))}
+            </select>
 
+          </div>
           {/* Значение параметра */}
           <div>
             <label htmlFor="valueParam" className="block mb-1.5 text-sm font-medium opacity-90">
@@ -96,35 +119,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
             />
           </div>
 
-          {/* Тип */}
-          <div>
-            <label htmlFor={"typeParam"} className="block mb-1.5 text-sm font-medium opacity-90">
-              Тип поля
-            </label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as 'input' | 'textarea')}
-              className="
-                w-full px-4 py-2.5 appearance-none
-                bg-white/10 backdrop-blur-sm
-                border border-white/20 rounded-lg
-                text-white
-                focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/30
-                transition-all duration-200
-                cursor-pointer
-              "
-            >
-              <option className="text-black bg-white" value="input">
-                input
-              </option>
 
-              <option className="text-black bg-white" value="textarea">
-                textarea
-              </option>
-
-            </select>
-
-          </div>
         </div>
 
         {/* Футер */}
@@ -144,7 +139,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
 
           <button
             onClick={handleSubmit}
-            disabled={!name.trim()}
+            disabled={!value.trim()}
             className={`
               px-5 py-2.5 text-sm font-medium
               bg-white/20 hover:bg-white/30

@@ -4,13 +4,17 @@
 import { useRouter } from 'next/navigation';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { useDeviceStore } from "@/store/useDeviceStore";
 
 export default function LogoutButton() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const stopEditing = useDeviceStore(s => s.stopEditing);
+  const editingDevices = useDeviceStore(s => s.editingDevices);
 
   const handleLogout = async () => {
     setIsLoading(true);
+    await stopEditing(editingDevices);
 
     try {
       // Вызываем API Route, который удалит httpOnly cookie

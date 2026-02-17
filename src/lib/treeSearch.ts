@@ -1,7 +1,6 @@
 import { DeviceNodeType} from '@/types/nodeTypes';
 
 export const treeSearch = (key: string, devices: DeviceNodeType[]) => {
-  console.log(key)
   if (key.startsWith('cha')) return [key];
   if (key.startsWith('sub')) {
     const channels = devices.filter(device => device?.parentKey === key).map(device => device.key);

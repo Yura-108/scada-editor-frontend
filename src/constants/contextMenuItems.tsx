@@ -18,6 +18,12 @@ export const nodeMenuItems: ContextMenuItem<DeviceAction>[] = [
     action: 'edit',
   },
   {
+    key: 'exit_edit',
+    label: 'Завершить редактирование',
+    icon: <Edit3 className="w-4 h-4" />,
+    action: 'edit',
+  },
+  {
     key: 'delete',
     label: 'Удалить',
     icon: <Trash2 className="w-4 h-4" />,

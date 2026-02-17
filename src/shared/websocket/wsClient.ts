@@ -6,10 +6,10 @@ export const wsClient = new Client({
     new SockJS("http://localhost:8080/ws", null, {
       withCredentials: true,
     } as any),
+
   reconnectDelay: 5000,
-  debug: () => {},
 });
 
 wsClient.onConnect = () => {
   console.log("WS Connected!");
-}
+};

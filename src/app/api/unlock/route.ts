@@ -5,7 +5,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const editingDevicesKeys = await req.json();
-
+  console.log(editingDevicesKeys);
   if (!editingDevicesKeys) {
     return NextResponse.json(
       {error: "Массив пуст!"},
@@ -21,8 +21,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     },
     body: JSON.stringify(editingDevicesKeys),
   });
+  const unlockedDevices = await response.json().catch(() => null);
 
-  const newDevice = await response.json().catch(() => null);
-
-  return NextResponse.json(newDevice, {status: 201});
+  return NextResponse.json(unlockedDevices, {status: 201});
 })

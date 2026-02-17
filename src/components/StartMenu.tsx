@@ -3,17 +3,17 @@
 import React, { useState } from 'react';
 import { Search, Building2, FolderOpen, AlertCircle, RefreshCw } from 'lucide-react';
 import { useDeviceStore } from '@/store/useDeviceStore';
-import {subscribeDeviceTree, unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
-import {wsClient} from "@/shared/websocket/wsClient";
+import {unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
+import { safeSubscribeDeviceTree } from "@/lib/safeSubscribeDeviceTree";
 
 export default function StartMenu() {
-  const [site, setSite] = useState('');
-  const [project, setProject] = useState('');
+  const [site, setSite] = useState('Брест-1');
+  const [project, setProject] = useState('Термоконтроль');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSubscription, setActiveSubscription] = useState<{ site: string; project: string} | null>(null)
 
-  const { loadTree, nodes } = useDeviceStore();
+  const { loadTree, nodes, getParamsTypes } = useDeviceStore();
 
   const hasData = nodes.length > 0;
 
@@ -33,14 +33,6 @@ export default function StartMenu() {
 
     if (isLoading) return;
 
-    if (activeSubscription) {
-      unsubscribeDeviceTree(
-        activeSubscription.site,
-        activeSubscription.project
-      );
-    }
-
-
     if (!site.trim() || !project.trim()) {
       setError('Пожалуйста, заполните оба поля');
       return;
@@ -53,20 +45,20 @@ export default function StartMenu() {
       const s = site.trim();
       const p = project.trim();
 
-      if (activeSubscription?.site === s && activeSubscription?.project === p) return;
-
-        await loadTree(s, p);
-
-      wsClient.onConnect = () => {
-        subscribeDeviceTree(s, p)
+      if (!s || !p) {
+        setError("Пожалуйста, заполните оба поля");
+        return;
       }
 
-     if (!wsClient.active) {
-       wsClient.activate();
-     } else {
-       subscribeDeviceTree(s, p)
-     }
+      if (activeSubscription) {
+        unsubscribeDeviceTree(activeSubscription.site, activeSubscription.project);
+      }
 
+      await loadTree(s, p);
+      await getParamsTypes();
+      await safeSubscribeDeviceTree(s, p);
+
+      setActiveSubscription({ site: site, project: p });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
       setError(
