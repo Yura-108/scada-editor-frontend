@@ -3,18 +3,60 @@
 import {useEditorStore} from "@/store/useEditorStore";
 import {Rnd} from "react-rnd";
 import {useDroppable} from "@dnd-kit/core";
-import {useRef} from "react";
-
-const GRID = 20;
-const snap = (v: number) => Math.round(v / GRID) * GRID;
+import {useEffect, useRef} from "react";
+import { GRID, snap } from "@/lib/utils";
 
 export default function Canvas() {
-  const {elements, updateElement, select, selectedId} = useEditorStore();
+  const {
+    elements,
+    updateElement,
+    select,
+    selectedId,
+    setCanvasRect,
+    deleteSelectedElement,
+    copySelectedElement,
+    pasteSelectedElement
+  } = useEditorStore();
 
   const {setNodeRef} = useDroppable({
     id: 'canvas'
   });
 
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const updateRect = () => {
+      if (ref.current) {
+        setCanvasRect(ref.current.getBoundingClientRect());
+      }
+    }
+
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    return () => window.removeEventListener("resize", updateRect);
+  }, [setCanvasRect]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        deleteSelectedElement();
+      }
+
+      if (e.ctrlKey && e.key === "c") {
+        e.preventDefault();
+        copySelectedElement();
+      }
+
+      if (e.ctrlKey && e.key === "v") {
+        e.preventDefault();
+        pasteSelectedElement();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const ref = useRef<HTMLDivElement>(null);
 

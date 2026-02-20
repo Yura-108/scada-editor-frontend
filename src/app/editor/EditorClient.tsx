@@ -5,7 +5,7 @@ import {
   DragOverlay,
   closestCenter,
 } from "@dnd-kit/core";
-import { useState } from "react";
+import {useEffect, useState } from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import PropertiesPanel from "@/components/PropertiesPanel";
@@ -14,7 +14,6 @@ import Palette from "@/components/Palette";
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const addElementAt = useEditorStore((s) => s.addElementAt);
-
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -24,9 +23,14 @@ export default function EditorPage() {
       onDragEnd={(event) => {
         const { over, activatorEvent } = event;
 
-        if (over?.id === "canvas") {
-          const e = activatorEvent as MouseEvent;
-          addElementAt(e.clientX, e.clientY);
+        if (over?.id === "canvas" && activatorEvent) {
+          const e = activatorEvent as MouseEvent | TouchEvent;
+
+          const pageX = 'touches' in e ? e.touches[0].pageX : e.pageX;
+          const pageY = 'touches' in e ? e.touches[0]?.pageY : e.pageY;
+
+          if (pageX === undefined || pageY === undefined) return;
+          addElementAt(pageX, pageY);
         }
 
         setActiveId(null);
