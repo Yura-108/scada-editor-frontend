@@ -1,7 +1,7 @@
 "use client";
 
 import {useDraggable} from "@dnd-kit/core";
-import {PaletteItemType} from "../types/palette.types";
+import {PaletteItemType} from "@/types/palette.types";
 
 interface PaletteItemProps {
   item: PaletteItemType;

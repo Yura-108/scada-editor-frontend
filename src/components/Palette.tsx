@@ -1,44 +1,87 @@
 "use client";
 
 import { useState } from "react";
-import {paletteItems} from "@/constants/palette";
+import { paletteItems } from "@/constants/palette";
 import PaletteItem from "./PaletteItem";
+import {Search, X} from "lucide-react"; // рекомендую добавить иконку поиска
 
 export default function Palette() {
   const [search, setSearch] = useState("");
 
-  const filtered = paletteItems.filter(item =>
+  const filtered = paletteItems.filter((item) =>
     item.label.toLowerCase().includes(search.toLowerCase()),
-  )
+  );
 
   const grouped = filtered.reduce((acc, item) => {
-    if (!acc[item.category]) acc[item.category] = [];
-    acc[item.category].push(item);
+    const cat = item.category || "Другое";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
     return acc;
   }, {} as Record<string, typeof filtered>);
 
-  return (
-    <div className="w-64 bg-[#111] text-white p-3 rounded">
-      <input
-        className="w-full mb-3 px-2 py-1 bg-[#222] rounded"
-        placeholder="Search..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
-      {Object.entries(grouped).map(([category, items]) => (
-        <div key={category} className="mb-4">
-          <div  className="text-xs text-gray-400 mb-2 uppercase">
-            {category}
-          </div>
+  // Сортируем категории (опционально — можно убрать или поменять порядок)
+  const sortedCategories = Object.keys(grouped).sort((a, b) => {
+    // пример: ставим "Основные" первыми, если есть
+    if (a === "Основные") return -1;
+    if (b === "Основные") return 1;
+    return a.localeCompare(b);
+  });
 
-          <div className="flex flex-col gap-2">
-            {items.map((item) => (
-              <PaletteItem key={item.type} item={item} />
-            ))}
-          </div>
+  return (
+    <div className="h-full flex flex-col bg-neutral-950/70 border-r border-neutral-800">
+      {/* Поиск */}
+
+      <div className="p-4 pb-3 border-b border-neutral-800 shrink-0">
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
+            size={16}
+          />
+          <input
+            type="text"
+            placeholder="Поиск элементов..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={`
+              w-full bg-neutral-900/70 border border-neutral-700 rounded-lg
+              pl-10 pr-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500
+              focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600/50
+              transition-all
+            `}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
-      ))}
+      </div>
+
+      {/* Список */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {sortedCategories.length === 0 ? (
+          <div className="text-center text-neutral-500 text-sm py-10">
+            Ничего не найдено
+          </div>
+        ) : (
+          sortedCategories.map((category) => (
+            <div key={category} className="space-y-2.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 px-1">
+                {category}
+              </h3>
+
+              <div className="grid gap-1.5">
+                {grouped[category].map((item) => (
+                  <PaletteItem key={item.type} item={item} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
-

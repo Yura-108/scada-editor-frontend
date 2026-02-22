@@ -5,50 +5,140 @@ import {
   DragOverlay,
   closestCenter,
 } from "@dnd-kit/core";
-import {useEffect, useState } from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import { useEffect, useState } from "react";
+import { useEditorStore } from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import PropertiesPanel from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
+import { BaseElementType } from "@/types/editorElement.type";
+import { Save, Upload } from "lucide-react"; // ← рекомендую добавить lucide-react
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const addElementAt = useEditorStore((s) => s.addElementAt);
+
+  const exportSchema = useEditorStore((s) => s.exportSchema);
+  // const importSchema = useEditorStore((s) => s.loadSchema); // предполагаем, что метод есть
+  const elements = useEditorStore((s) => s.elements);
+
+  // Автосохранение каждые 5 секунд при изменении элементов
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      exportSchema();
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [elements, exportSchema]);
+
+  // const handleImport = async () => {
+  //   try {
+  //     const input = document.createElement("input");
+  //     input.type = "file";
+  //     input.accept = ".json";
+  //     input.onchange = async (e) => {
+  //       const file = (e.target as HTMLInputElement).files?.[0];
+  //       if (!file) return;
+  //
+  //       const text = await file.text();
+  //       try {
+  //         const data = JSON.parse(text);
+  //         importSchema(data); // предполагаем, что метод принимает объект
+  //         // можно добавить toast "Схема загружена"
+  //       } catch (err) {
+  //         console.error("Неверный формат файла", err);
+  //         // можно показать alert или toast
+  //       }
+  //     };
+  //     input.click();
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+
   return (
-    <DndContext
-      collisionDetection={closestCenter}
-      onDragStart={(event) => {
-        setActiveId(event.active.id as string);
-      }}
-      onDragEnd={(event) => {
-        const { over, activatorEvent } = event;
+    <div className="h-screen w-screen flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
+      {/* Верхняя панель */}
+      <header className="h-14 bg-neutral-900/80 border-b border-neutral-800 flex items-center justify-between px-4 shrink-0">
+        <div className="text-lg font-semibold tracking-tight">
+          Редактор схем
+        </div>
 
-        if (over?.id === "canvas" && activatorEvent) {
-          const e = activatorEvent as MouseEvent | TouchEvent;
+        <div className="flex items-center gap-3">
+          <button
+            onClick={exportSchema}
+            className={`
+              flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium
+              bg-neutral-800 hover:bg-neutral-700 border border-neutral-700
+              transition-colors active:scale-[0.98]
+            `}
+          >
+            <Save size={16} />
+            Сохранить
+          </button>
 
-          const pageX = 'touches' in e ? e.touches[0].pageX : e.pageX;
-          const pageY = 'touches' in e ? e.touches[0]?.pageY : e.pageY;
+          <button
+            // onClick={importSchema}
+            className={`
+              flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium
+              bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/40
+              transition-colors active:scale-[0.98] shadow-sm
+            `}
+          >
+            <Upload size={16} />
+            Загрузить
+          </button>
+        </div>
+      </header>
 
-          if (pageX === undefined || pageY === undefined) return;
-          addElementAt(pageX, pageY);
-        }
+      {/* Основная область */}
+      <DndContext
+        collisionDetection={closestCenter}
+        onDragStart={(e) => setActiveId(e.active.id as string)}
+        onDragEnd={(event) => {
+          const { over, active, activatorEvent } = event;
 
-        setActiveId(null);
-      }}
-    >
-      <div className="flex gap-4 p-4">
-        <Palette />
-        <Canvas />
-        <PropertiesPanel />
-      </div>
+          if (over?.id === "canvas") {
+            const mouseEvent = activatorEvent as MouseEvent | TouchEvent;
+            const rect = useEditorStore.getState().canvasRect;
+            if (!rect) return;
 
-      <DragOverlay>
-        {activeId ? (
-          <div className="bg-blue-500 text-white px-3 py-2 rounded shadow-lg">
-            {activeId}
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+            // лучше использовать координаты относительно canvas
+            const clientX =
+              "clientX" in mouseEvent ? mouseEvent.clientX : 0;
+            const clientY =
+              "clientY" in mouseEvent ? mouseEvent.clientY : 0;
+
+            const type = active.id as BaseElementType;
+            useEditorStore.getState().addElementAt(clientX, clientY, type);
+          }
+
+          setActiveId(null);
+        }}
+      >
+        <div className="flex flex-1 overflow-hidden">
+          {/* Левая панель — палитра элементов */}
+          <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">
+            <Palette />
+          </aside>
+
+          {/* Центральная область — холст */}
+          <main className="flex-1 bg-neutral-950 relative">
+            <Canvas />
+          </main>
+
+          {/* Правая панель — свойства */}
+          <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
+            <PropertiesPanel />
+          </aside>
+        </div>
+
+        <DragOverlay dropAnimation={null}>
+          {activeId ? (
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
+              {activeId}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </div>
   );
 }

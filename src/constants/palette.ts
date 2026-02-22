@@ -29,6 +29,12 @@ export const paletteItems: PaletteItemType[] = [
     category: "Indicators",
     defaultProps: { value: 0 },
   },
+  {
+    type: "indicator",
+    label: "Indicator",
+    category: "Indicators",
+    defaultProps: {value: 0}
+  },
 
   // PROCESS
   {
