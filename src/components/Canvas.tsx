@@ -212,7 +212,7 @@ export default function Canvas() {
             }}
             className={`
               transition-shadow duration-150
-              ${isSelected ? "shadow-[0_0_0_3px_#3b82f6,0_0_12px_#3b82f680]" : "shadow-sm"}
+              ${isSelected ? "" : "shadow-sm"}
               hover:shadow-[0_0_0_2px_#60a5fa80]
             `}
           >

@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import { useEditorStore } from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
-import PropertiesPanel from "@/components/PropertiesPanel";
+import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
 import { BaseElementType } from "@/types/editorElement.type";
 import { Save, Upload } from "lucide-react"; // ← рекомендую добавить lucide-react
@@ -16,9 +16,41 @@ import { Save, Upload } from "lucide-react"; // ← рекомендую доб�
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const elements = useEditorStore((s) => s.elements);
+  const updateElement = useEditorStore((s) => s.updateElement);
+
   const exportSchema = useEditorStore((s) => s.exportSchema);
   // const importSchema = useEditorStore((s) => s.loadSchema); // предполагаем, что метод есть
-  const elements = useEditorStore((s) => s.elements);
+
+  const selectedElementId = useEditorStore((s) => s.selectedId);
+
+  const selectedElement = elements.find(el => el.id === selectedElementId)
+
+  const temporal = useEditorStore.temporal;
+
+  const { undo, redo } = temporal.getState();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+        }
+        if (e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          redo();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
 
   // Автосохранение каждые 5 секунд при изменении элементов
   useEffect(() => {
@@ -28,31 +60,6 @@ export default function EditorPage() {
 
     return () => clearTimeout(timeout);
   }, [elements, exportSchema]);
-
-  // const handleImport = async () => {
-  //   try {
-  //     const input = document.createElement("input");
-  //     input.type = "file";
-  //     input.accept = ".json";
-  //     input.onchange = async (e) => {
-  //       const file = (e.target as HTMLInputElement).files?.[0];
-  //       if (!file) return;
-  //
-  //       const text = await file.text();
-  //       try {
-  //         const data = JSON.parse(text);
-  //         importSchema(data); // предполагаем, что метод принимает объект
-  //         // можно добавить toast "Схема загружена"
-  //       } catch (err) {
-  //         console.error("Неверный формат файла", err);
-  //         // можно показать alert или toast
-  //       }
-  //     };
-  //     input.click();
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
 
   return (
     <div className="h-screen w-screen flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
@@ -127,7 +134,21 @@ export default function EditorPage() {
 
           {/* Правая панель — свойства */}
           <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-            <PropertiesPanel />
+            {selectedElement ? (
+              <PropertiesPanel
+                element={selectedElement}
+                updateElement={updateElement}
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center text-center p-6">
+                <div className="text-neutral-500 text-sm font-medium tracking-tight">
+                  Выберите элемент
+                </div>
+                <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">
+                  Кликните на любой элемент на холсте, чтобы открыть его свойства
+                </div>
+              </div>
+            )}
           </aside>
         </div>
 

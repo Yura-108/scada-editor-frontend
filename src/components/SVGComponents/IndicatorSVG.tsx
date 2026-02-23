@@ -1,4 +1,4 @@
-export function IndicatorSVG({ color = "#00FF00", size = 30 }: { color?: string; size?: number }) {
+export function Indicator({ color = "#00FF00", size = 30 }: { color?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 30 30">
       {/* Корпус */}

@@ -1,4 +1,4 @@
-export function LampSVG({ color = "#FFD700", size = 40 }: { color?: string; size?: number }) {
+export function Lamp({ color = "#FFD700", size = 40 }: { color?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40">
       {/* Корпус лампы */}

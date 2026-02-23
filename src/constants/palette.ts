@@ -52,10 +52,10 @@ export const paletteItems: PaletteItemType[] = [
   },
 
   // SHAPES
-  {
-    type: "line",
-    label: "Line",
-    category: "Shapes",
-    defaultProps: {},
-  },
+  // {
+  //   type: "line",
+  //   label: "Line",
+  //   category: "Shapes",
+  //   defaultProps: {},
+  // },
 ];
