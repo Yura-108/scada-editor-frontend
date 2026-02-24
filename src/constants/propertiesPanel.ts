@@ -1,6 +1,5 @@
 import { DiagramElement, PropertySchema } from "@/types/editorElement.type";
 
-
 export const basePropertySchema: PropertySchema[] = [
   {
     key: "x",
@@ -28,13 +27,167 @@ export const basePropertySchema: PropertySchema[] = [
     type: "text",
   },
   {
-    key: "bg",
-    label: "Background",
-    type: "color",
+    key: "rotate",
+    label: "Поворот",
+    type: "number",
+    min: -360,
+    max: 360,
+    defaultValue: 0,
+  },
+  {
+    key: "scaleX",
+    label: "Масштаб X",
+    type: "number",
+    min: -5,
+    max: 5,
+    step: 0.1,
+    defaultValue: 1,
+  },
+  {
+    key: "scaleY",
+    label: "Масштаб Y",
+    type: "number",
+    min: -5,
+    max: 5,
+    step: 0.1,
+    defaultValue: 1,
+  },
+  {
+    key: "flipX",
+    label: "Отразить по X",
+    type: "boolean",
+    defaultValue: false,
+  },
+  {
+    key: "flipY",
+    label: "Отразить по Y",
+    type: "boolean",
+    defaultValue: false,
+  },
+  {
+    key: "opacity",
+    label: "Прозрачность",
+    type: "number",
+    min: 0,
+    max: 1,
+    step: 0.1,
+    defaultValue: 1,
   },
 ];
 
 export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]> = {
+  rectangle: [
+    {
+      key: "bg",
+      label: "Цвет заливки",
+      type: "color",
+      defaultValue: "#4b5563",
+    },
+    {
+      key: "strokeColor",
+      label: "Цвет обводки",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина обводки",
+      type: "number",
+      min: 0,
+      max: 20,
+      defaultValue: 2,
+    },
+    {
+      key: "rx",
+      label: "Скругление углов (X)",
+      type: "number",
+      min: 0,
+      max: 100,
+      defaultValue: 0,
+    },
+    {
+      key: "ry",
+      label: "Скругление углов (Y)",
+      type: "number",
+      min: 0,
+      max: 100,
+      defaultValue: 0,
+    },
+  ],
+
+  circle: [
+    {
+      key: "bg",
+      label: "Цвет заливки",
+      type: "color",
+      defaultValue: "#4b5563",
+    },
+    {
+      key: "strokeColor",
+      label: "Цвет обводки",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина обводки",
+      type: "number",
+      min: 0,
+      max: 20,
+      defaultValue: 2,
+    },
+    {
+      key: "rx",
+      label: "Горизонтальный радиус",
+      type: "number",
+      min: 10,
+      max: 200,
+      defaultValue: 50,
+    },
+    {
+      key: "ry",
+      label: "Вертикальный радиус",
+      type: "number",
+      min: 10,
+      max: 200,
+      defaultValue: 50,
+    },
+  ],
+
+  line: [
+    {
+      key: "strokeColor",
+      label: "Цвет линии",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: 3,
+    },
+    {
+      key: "strokeDasharray",
+      label: "Стиль (пунктир)",
+      type: "select",
+      options: [
+        { label: "Сплошная", value: "" },
+        { label: "Пунктир", value: "5 5" },
+        { label: "Штрих-пунктир", value: "10 5 2 5" },
+      ],
+      defaultValue: "",
+    },
+    {
+      key: "arrowEnd",
+      label: "Стрелка в конце",
+      type: "boolean",
+      defaultValue: false,
+    },
+  ],
+
   valve: [
     {
       key: "status",

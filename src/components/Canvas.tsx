@@ -1,19 +1,25 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "@/store/useEditorStore";
 import { GRID, snap } from "@/lib/utils";
 import NodeElement from "@/components/NodeElement";
 import { BaseElement, Port } from "@/types/editorElement.type";
+import {cn} from "@/lib/utils"
+
 
 export default function Canvas() {
   const {
     elements,
     updateElement,
     select,
-    selectedId,
+    selectedIds,
+    setSelectedId,
+    selectMultiple,
+    groupSelected,
+    ungroupSelected,
     setCanvasRect,
     deleteSelectedElement,
     copySelectedElement,
@@ -83,6 +89,149 @@ export default function Canvas() {
     }
   }
 
+  const handleSelect = useCallback((id: string, e: React.MouseEvent) => {
+    if (e.shiftKey) {
+      const newSelection = selectedIds.includes(id)
+        ? selectedIds.filter(i => i !== id)
+        : [...selectedIds, id];
+      selectMultiple(newSelection);
+    } else {
+      selectMultiple([id]);
+    }
+  }, [selectedIds, selectMultiple]);
+
+  const renderElement = (el: DiagramElement, parentOffsetX = 0, parentOffsetY = 0) => {
+    const isSelected = selectedIds.includes(el.id);
+    const absoluteX = el.parentId ? parentOffsetX + el.x : el.x;
+    const absoluteY = el.parentId ? parentOffsetY + el.y : el.y;
+
+    if (el.type === "group") {
+      const group = el as GroupElement;
+
+      return (
+        <Rnd
+          key={el.id}
+          size={{ width: el.w, height: el.h }}
+          position={{ x: absoluteX, y: absoluteY }}
+          bounds="parent"
+          dragGrid={[GRID, GRID]}
+          resizeGrid={[GRID, GRID]}
+          cancel=".port, input, textarea, button, .child-element"
+          onDragStop={(_, d) => {
+            updateElement(el.id, { x: snap(d.x), y: snap(d.y) })
+          }}
+          onResizeStop={(_, __, ref, ___, pos) =>
+            updateElement(el.id, {
+              w: Math.round(parseFloat(ref.style.width)),
+              h: Math.round(parseFloat(ref.style.height)),
+              x: snap(pos.x),
+              y: snap(pos.y),
+            })
+          }
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              handleSelect(el.id, e)
+            }
+          }}
+        >
+          <div
+            className={cn(
+              "w-full h-full relative rounded-lg border-2",
+              isSelected
+                ? "border-blue-500 bg-blue-900/30 ring-2 ring-blue-400/60"
+                : "border-blue-700/50 bg-blue-950/20 hover:bg-blue-950/30",
+              "transition-all duration-150 overflow-hidden"
+            )}
+            style={{
+
+              borderStyle: group.borderStyle || "dashed",
+              borderColor: group.borderColor || "#60a5fa",
+              backgroundColor: el.bg || "rgba(59,130,246,0.08)",
+            }}
+          >
+            {/* Рекурсивный рендер детей с offset'ом от группы */}
+            {group.children.map((childId) => {
+              const child = elements.find((e) => e.id === childId);
+              if (!child || child.type === "connection") return null;
+              // Передаем абсолютные координаты группы как parentOffset для детей
+              return renderElement(child, absoluteX, absoluteY);
+            })}
+          </div>
+        </Rnd>
+      );
+    }
+
+    // Обычный элемент (лист)
+    return (
+      <Rnd
+        key={el.id}
+        size={{ width: el.w, height: el.h }}
+        position={{ x: absoluteX, y: absoluteY }}
+        bounds={el.parentId ? "parent" : "parent"}
+        dragGrid={[GRID, GRID]}
+        resizeGrid={[GRID, GRID]}
+        cancel=".port, input, textarea, button"
+        onDragStop={(_, d) => {
+          if (el.parentId) {
+            // Если у элемента есть родитель, обновляем его координаты ОТНОСИТЕЛЬНО родителя
+            const parent = elements.find(e => e.id === el.parentId);
+            if (parent) {
+              // d.x и d.y - это абсолютные координаты на канвасе
+              // Преобразуем их в относительные координаты внутри группы
+              const relativeX = d.x - parent.x;
+              const relativeY = d.y - parent.y;
+
+              // Проверяем, что элемент не выходит за границы группы
+              const boundedX = Math.max(0, Math.min(relativeX, parent.w - el.w));
+              const boundedY = Math.max(0, Math.min(relativeY, parent.h - el.h));
+
+              updateElement(el.id, {
+                x: snap(boundedX),
+                y: snap(boundedY)
+              });
+            }
+          } else {
+            // Если нет родителя - абсолютные координаты
+            updateElement(el.id, {x: snap(d.x), y: snap(d.y)})
+          }
+        }}
+        onResizeStop={(_, __, ref, ___, pos) => {
+          if (el.parentId) {
+            const parent = elements.find(e => e.id === el.parentId);
+            if (parent) {
+              updateElement(el.id, {
+                w: Math.round(parseFloat(ref.style.width)),
+                h: Math.round(parseFloat(ref.style.height)),
+                x: snap(pos.x - parent.x),
+                y: snap(pos.y - parent.y),
+              });
+            }
+          } else {
+            updateElement(el.id, {
+              w: Math.round(parseFloat(ref.style.width)),
+              h: Math.round(parseFloat(ref.style.height)),
+              x: snap(pos.x),
+              y: snap(pos.y),
+            });
+          }
+        }}
+        onMouseDown={(e) => handleSelect(el.id, e)}
+        className={cn(
+          "child-element z-10 transition-shadow duration-150",
+          isSelected ? "shadow-lg" : "shadow-sm",
+          "hover:shadow-[0_0_0_2px_#60a5fa80]"
+        )}
+      >
+        <NodeElement
+          element={el}
+          isSelected={isSelected}
+          onMouseDownPort={(portId) => startConnection(el.id, portId)}
+          onMouseUpPort={(portId) => finishConnection(el.id, portId)}
+        />
+      </Rnd>
+    );
+  };
+
   return (
     <div
       ref={(node) => {
@@ -106,7 +255,11 @@ export default function Canvas() {
       }}
       onMouseUp={() => connecting && cancelConnection()}
       onMouseDown={(e) => {
-        if (e.button === 0) select(null);
+        if (e.button !== 0) return;
+
+        if (e.target === e.currentTarget) {
+          selectMultiple([]);
+        }
       }}
     >
       {/* Фоновая сетка */}
@@ -179,52 +332,8 @@ export default function Canvas() {
       </svg>
 
       {/* Узлы */}
-      {nodes.map((el) => {
-        const isSelected = selectedId === el.id;
-
-        return (
-          <Rnd
-            key={el.id}
-            size={{ width: el.w, height: el.h }}
-            position={{ x: el.x, y: el.y }}
-            bounds="parent"
-            dragGrid={[GRID, GRID]}
-            resizeGrid={[GRID, GRID]}
-            cancel=".port, input, textarea, button"
-            onDragStop={(_, d) =>
-              updateElement(el.id, {
-                x: snap(d.x),
-                y: snap(d.y),
-              })
-            }
-            onResizeStop={(_, __, ref, ___, pos) =>
-              updateElement(el.id, {
-                w: Math.round(parseFloat(ref.style.width)),
-                h: Math.round(parseFloat(ref.style.height)),
-                x: snap(pos.x),
-                y: snap(pos.y),
-              })
-            }
-            onMouseDown={(e) => {
-              if (e.button !== 0) return;
-              e.stopPropagation();
-              select(el.id);
-            }}
-            className={`
-              transition-shadow duration-150
-              ${isSelected ? "" : "shadow-sm"}
-              hover:shadow-[0_0_0_2px_#60a5fa80]
-            `}
-          >
-            <NodeElement
-              element={el}
-              isSelected={isSelected}
-              onMouseDownPort={(portId) => startConnection(el.id, portId)}
-              onMouseUpPort={(portId) => finishConnection(el.id, portId)}
-            />
-          </Rnd>
-        );
-      })}
+      {elements.filter(el => el.type !== "connection")
+        .map(el => renderElement(el))}
 
       {/* Подсказка, если канвас пустой */}
       {nodes.length === 0 && (
@@ -235,3 +344,4 @@ export default function Canvas() {
     </div>
   );
 }
+

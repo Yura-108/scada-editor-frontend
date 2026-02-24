@@ -12,6 +12,10 @@ import Tank from "@/components/SVGComponents/TankSVG";          // ← тепе�
 import { Valve } from "@/components/SVGComponents/ValveSvg";
 import { Text } from "@/components/SVGComponents/TextSvg";
 import { NumericDisplay } from "@/components/SVGComponents/NumericDisplaySVG";
+import Line from "@/components/SVGComponents/Line";
+import Circle from "@/components/SVGComponents/Circle";
+import Rectangle from "@/components/SVGComponents/Rectangle"
+
 
 type Props = {
   element: BaseElement;
@@ -40,6 +44,12 @@ export default function NodeElement({
     };
 
     switch (element.type) {
+      case "line":
+        return <Line element={element} />
+      case "rectangle":
+        return <Rectangle element={element} />
+      case "circle":
+        return <Circle element={element} />
       case "lamp":
         return <Lamp element={element} />;
 
@@ -71,8 +81,7 @@ export default function NodeElement({
   };
 
   return (
-    <div className={containerClasses} style={{ background: element.bg || "transparent" }}>
-      {/* Лейбл сверху (если не текстовый элемент) */}
+    <div className={containerClasses} style={{ background: "transparent" }}>
       {element.label && element.type !== "text" && (
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-neutral-900/90 text-neutral-200 text-xs rounded border border-neutral-700 shadow-sm whitespace-nowrap z-10">
           {element.label}
@@ -83,54 +92,6 @@ export default function NodeElement({
       <div className="w-full h-full flex items-center justify-center p-1 sm:p-2">
         {renderContent()}
       </div>
-
-      {/* Порты */}
-      {element.ports?.map((port) => {
-        const portStyle: React.CSSProperties = {};
-        switch (port.position) {
-          case "top":
-            portStyle.top = -8;
-            portStyle.left = "50%";
-            portStyle.transform = "translateX(-50%)";
-            break;
-          case "bottom":
-            portStyle.bottom = -8;
-            portStyle.left = "50%";
-            portStyle.transform = "translateX(-50%)";
-            break;
-          case "left":
-            portStyle.left = -8;
-            portStyle.top = "50%";
-            portStyle.transform = "translateY(-50%)";
-            break;
-          case "right":
-            portStyle.right = -8;
-            portStyle.top = "50%";
-            portStyle.transform = "translateY(-50%)";
-            break;
-        }
-
-        return (
-          <div
-            key={port.id}
-            className={cn(
-              "absolute w-4 h-4 bg-white border-2 border-gray-500 rounded-full cursor-crosshair z-20",
-              "hover:bg-blue-400 hover:border-blue-600 hover:scale-125 transition-all duration-150",
-              port.connected && "bg-green-500 border-green-700 shadow-green-500/50 shadow-md"
-            )}
-            style={portStyle}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              onMouseDownPort(port.id);
-            }}
-            onMouseUp={(e) => {
-              e.stopPropagation();
-              onMouseUpPort(port.id);
-            }}
-            title={port.label || port.position}
-          />
-        );
-      })}
     </div>
   );
 }

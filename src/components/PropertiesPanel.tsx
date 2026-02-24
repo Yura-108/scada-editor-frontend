@@ -39,9 +39,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
       {/* Properties grid */}
       <div className="space-y-4">
-        {schema.map((property) => {
+        {schema.map((property, index) => {
           const value = (element as any)[property.key] ?? property.defaultValue;
-          const uniqueKey = `${element.id}-${property.key}`;
+          // Добавляем index для уникальности
+          const uniqueKey = `${element.id}-${property.key}-${index}`;
 
           const label = (
             <label

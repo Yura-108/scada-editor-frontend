@@ -22,12 +22,12 @@ export default function EditorPage() {
   const exportSchema = useEditorStore((s) => s.exportSchema);
   // const importSchema = useEditorStore((s) => s.loadSchema); // предполагаем, что метод есть
 
-  const selectedElementId = useEditorStore((s) => s.selectedId);
+  const selectedElementIds = useEditorStore((s) => s.selectedIds);
 
-  const selectedElement = elements.find(el => el.id === selectedElementId)
+  const selectedElement = elements.find(el => el.id === selectedElementIds[0])
 
   const temporal = useEditorStore.temporal;
-
+  const selectedIds = useEditorStore((s) => s.selectedIds);
   const { undo, redo } = temporal.getState();
 
   useEffect(() => {
@@ -44,6 +44,15 @@ export default function EditorPage() {
         if (e.key.toLowerCase() === 'y') {
           e.preventDefault();
           redo();
+        }
+
+        if (e.key.toLowerCase() === "g") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            useEditorStore.getState().ungroupSelected();
+          } else {
+            useEditorStore.getState().groupSelected();
+          }
         }
       }
     };
@@ -92,6 +101,27 @@ export default function EditorPage() {
           >
             <Upload size={16} />
             Загрузить
+          </button>
+        </div>
+
+        <div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">
+          <button
+            onClick={useEditorStore.getState().groupSelected}
+            disabled={selectedIds.length < 2}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-sm font-medium"
+          >
+            Сгруппировать
+          </button>
+
+          <button
+            onClick={useEditorStore.getState().ungroupSelected}
+            disabled={!selectedIds.some(id => {
+              const el = useEditorStore.getState().elements.find(e => e.id === id);
+              return el?.type === "group";
+            })}
+            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm font-medium"
+          >
+            Разгруппировать
           </button>
         </div>
       </header>

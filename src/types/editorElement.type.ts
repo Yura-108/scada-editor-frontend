@@ -1,120 +1,123 @@
-export type PortPosition = "top" | "right" | "bottom" | "left";
+// types/editorElement.type.ts
 
-export type Port = {
+// Базовый интерфейс для всех элементов на холсте (листья + группы)
+export interface BaseCanvasElement {
   id: string;
-  position: PortPosition;
-};
-
-export type BaseElementType = "lamp" | "button" | "indicator" | "svg" | "input" | "tank" | "text";
-
-export interface BaseElement {
-  id: string;
-  type: BaseElementType;
   x: number;
   y: number;
   w: number;
   h: number;
+  parentId?: string;
+  rotation?: number;          // если планируешь поворот групп
   label?: string;
+  visible?: boolean;
   bg?: string;
-  ports?: { id: string; position: "top" | "bottom" | "left" | "right" }[];
-};
-
-export type ConnectionElement = {
-  id: string;
-  type: "connection";
-  fromNode: string;
-  fromPort: string;
-  toNode: string;
-  toPort: string;
-};
-
-export type ElementType = BaseElement | ConnectionElement;
-
-export type CanvasSchema = {
-  id: string;
-  name: string;
-  elements: ElementType[];
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export interface ValveElement extends BaseElement {
-  type: "valve";
-  status: "open" | "closed" | "error";
+  ports?: Port[];
 }
 
-export interface NumericDisplayElement extends BaseElement {
-  type: "numeric";
-  value: number;
-  unit?: string;
-  precision?: number;
-}
-
-export interface TextElement extends BaseElement {
-  type: "text";
-  text: string;
-  fontSize: number;
-  color: string;
-  bold?: boolean;
-}
-// types/editorElement.type.ts  (или где у тебя тип)
-
-export type DiagramElement = {
-  id: string;
+// Простой элемент (листовой)
+export interface LeafElement extends BaseCanvasElement {
   type:
+    | "lamp"
+    | "button"
+    | "indicator"
+    | "tank"
     | "valve"
     | "numeric"
     | "text"
-    | "button"
-    | "indicator"
-    | "lamp"
-    | "tank"           // ← добавили
-    | string;          // для будущих расширений
+    | "rectangle"     // ← новый
+    | "circle"        // ← новый
+    | "line"          // ← новый
+    | "svg"         // если есть кастомные SVG
+    | "input";      // если есть
 
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-
-  // Общие / часто используемые
-  label?: string;
+  // Общие свойства (можно вынести в mixin, если много дублирования)
   color?: string;
   size?: number | "small" | "medium" | "large";
-  visible?: boolean;
 
-  // Специфичные для tank
-  level?: number;                // 0–100
+  // Специфичные свойства (по типу)
+  status?: "open" | "closed" | "error" | "on" | "off" | "warning";
+  value?: number | string;
+  unit?: string;
+  precision?: number;
+  level?: number;                // tank
   fluidColor?: string;
   strokeColor?: string;
   backgroundColor?: string;
   showPercentage?: boolean;
   textColor?: string;
   scaleLines?: boolean;
-
-  // Для других элементов (оставляем как было)
-  status?: string;
-  value?: number;
-  unit?: string;
-  precision?: number;
   fontSize?: number;
   bold?: boolean;
-  // ... и т.д.
-};
+  text?: string;
+  // Для rectangle
+  rx?: number;                  // скругление углов (border-radius)
+  ry?: number;
 
-export type PropertyType =
-  | "text"
-  | "number"
-  | "select"
-  | "color"
-  | "boolean";
+  // Для circle / ellipse
+  rx?: number;                  // горизонтальный радиус (для ellipse)
+  ry?: number;                  // вертикальный радиус
 
-export interface PropertySchema {
-  key: string;
-  label: string;
-  type: PropertyType;
-  options?: { label: string; value: string }[];
+  // Для line
+  x2?: number;                  // конечная точка X
+  y2?: number;                  // конечная точка Y
+  strokeWidth?: number;
+  strokeDasharray?: string;     // "5 5" для пунктира и т.д.
+  arrowStart?: boolean;
+  arrowEnd?: boolean;
+
+  rotate?: number;      // градусы
+  scaleX?: number;      // 1 = норм
+  scaleY?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  opacity?: number;     // 0-1
+  zIndex?: number;
+  // ... добавляй по мере необходимости
 }
 
+// Группа / Faceplate / Container
+export interface GroupElement extends BaseCanvasElement {
+  type: "group" | "faceplate";
+  children: string[];           // массив ID дочерних элементов (плоский список)
+  // children?: (LeafElement | GroupElement)[];   ← вложенные объекты (альтернатива, но тяжелее для zustand/undo)
 
+  // Дополнительные свойства группы
+  collapsed?: boolean;          // свёрнута ли группа визуально
+  borderStyle?: "solid" | "dashed" | "none";
+  borderColor?: string;
+  backgroundOpacity?: number;   // прозрачность фона группы
+}
 
+// Соединение (линия/провод)
+export interface ConnectionElement {
+  id: string;
+  type: "connection";
+  fromNode: string;             // id узла-источника
+  fromPort: string;             // id порта-источника
+  toNode: string;
+  toPort: string;
+  // можно добавить: color, thickness, label, waypoints и т.д.
+}
+
+// Общий тип для всех элементов на холсте
+export type DiagramElement = LeafElement | GroupElement | ConnectionElement;
+
+// Порты (оставляем почти без изменений)
+export type PortPosition = "top" | "right" | "bottom" | "left";
+
+export type Port = {
+  id: string;
+  position: PortPosition;
+  // можно расширить позже: connectedTo?: string; type?: "input" | "output"; label?: string;
+};
+
+// Схема всего холста
+export type CanvasSchema = {
+  id: string;
+  name: string;
+  elements: DiagramElement[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+};

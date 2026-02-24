@@ -4,6 +4,24 @@ import { PaletteItemType } from "@/types/palette.types";
 export const paletteItems: PaletteItemType[] = [
   // BASIC
   {
+    type: "line",
+    label: "Line",
+    category: "Basic",
+    defaultProps: {label: "Line"}
+  },
+  {
+    type: "circle",
+    label: "Circle",
+    category: "Basic",
+    defaultProps: {label: "Circle"}
+  },
+  {
+    type: "rectangle",
+    label: "Rectangle",
+    category: "Basic",
+    defaultProps: {label: "Rectangle"}
+  },
+  {
     type: "button",
     label: "Button",
     category: "Basic",
