@@ -38,66 +38,104 @@ export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]
   valve: [
     {
       key: "status",
-      label: "Valve Status",
+      label: "Состояние клапана",
       type: "select",
       options: [
-        { label: "Open", value: "open" },
-        { label: "Closed", value: "closed" },
-        { label: "Opening", value: "opening" },
-        { label: "Closing", value: "closing" },
-        { label: "Error", value: "error" },
+        { label: "Открыт",   value: "open" },
+        { label: "Закрыт",   value: "closed" },
+        { label: "Ошибка",   value: "error" },
       ],
       defaultValue: "closed",
     },
     {
-      key: "fillColorOpen",
-      label: "Open Fill Color",
-      type: "color",
-      defaultValue: "#00cc00", // зелёный
+      key: "label",
+      label: "Метка / название",
+      type: "text",
+      placeholder: "V-101, Клапан 1 и т.д.",
+      defaultValue: "",
     },
     {
-      key: "fillColorClosed",
-      label: "Closed Fill Color",
+      key: "colorOpen",
+      label: "Цвет при открытом",
       type: "color",
-      defaultValue: "#ff4d4f", // красный
+      defaultValue: "#16a34a",
+    },
+    {
+      key: "colorClosed",
+      label: "Цвет при закрытом",
+      type: "color",
+      defaultValue: "#0f172a",
+    },
+    {
+      key: "colorError",
+      label: "Цвет при ошибке",
+      type: "color",
+      defaultValue: "#dc2626",
+    },
+    {
+      key: "size",
+      label: "Размер",
+      type: "number",
+      min: 40,
+      max: 200,
+      step: 10,
+      defaultValue: 80,
     },
   ],
-
   numeric: [
     {
       key: "value",
-      label: "Displayed Value",
+      label: "Значение",
       type: "number",
       defaultValue: 0,
     },
     {
       key: "unit",
-      label: "Unit",
+      label: "Единица измерения",
       type: "text",
-      placeholder: "°C, bar, % etc.",
+      placeholder: "°C, %, bar, кПа и т.д.",
+      defaultValue: "",
     },
     {
       key: "precision",
-      label: "Decimal Places",
+      label: "Знаков после запятой",
       type: "number",
       min: 0,
       max: 6,
-      defaultValue: 1,
+      step: 1,
+      defaultValue: 2,
     },
     {
-      key: "minValue",
-      label: "Min Scale",
-      type: "number",
-      defaultValue: 0,
+      key: "color",
+      label: "Цвет значения",
+      type: "color",
+      defaultValue: "#22d3ee",
     },
     {
-      key: "maxValue",
-      label: "Max Scale",
-      type: "number",
-      defaultValue: 100,
+      key: "backgroundColor",
+      label: "Цвет фона",
+      type: "color",
+      defaultValue: "#0f172a",
+    },
+    {
+      key: "unitColor",
+      label: "Цвет единицы",
+      type: "color",
+      defaultValue: "#94a3b8",
+    },
+    // Опционально — если хочешь дать больше контроля
+    {
+      key: "fontFamily",
+      label: "Шрифт",
+      type: "select",
+      options: [
+        { label: "Monospace", value: "monospace" },
+        { label: "Inter", value: "Inter, sans-serif" },
+        { label: "Arial", value: "Arial, sans-serif" },
+      ],
+      defaultValue: "monospace",
     },
   ],
-
   text: [
     {
       key: "text",
@@ -142,8 +180,6 @@ export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]
       defaultValue: "center",
     },
   ],
-
-  // Новый элемент — Button
   button: [
     {
       key: "color",
@@ -184,86 +220,89 @@ export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]
       defaultValue: true,
     },
   ],
-
-  // Новый элемент — Indicator (световой индикатор / лампочка состояния)
   indicator: [
     {
       key: "status",
-      label: "Indicator Status",
+      label: "Состояние",
       type: "select",
       options: [
-        { label: "Off", value: "off" },
-        { label: "On", value: "on" },
-        { label: "Error", value: "error" },
-        { label: "Warning", value: "warning" },
+        { label: "Выключен", value: "off" },
+        { label: "Включён",  value: "on" },
+        { label: "Ошибка",   value: "error" },
+        { label: "Предупреждение", value: "warning" },
       ],
       defaultValue: "off",
     },
     {
       key: "colorOn",
-      label: "Color when ON",
+      label: "Цвет включённого",
       type: "color",
-      defaultValue: "#00FF00", // ярко-зелёный
+      defaultValue: "#00FF00",
     },
     {
       key: "colorOff",
-      label: "Color when OFF",
+      label: "Цвет выключенного",
       type: "color",
       defaultValue: "#444444",
     },
     {
       key: "colorError",
-      label: "Error Color",
+      label: "Цвет ошибки",
       type: "color",
       defaultValue: "#FF0000",
     },
     {
+      key: "colorWarning",
+      label: "Цвет предупреждения",
+      type: "color",
+      defaultValue: "#FFB800",
+    },
+    {
       key: "glowIntensity",
-      label: "Glow Strength",
+      label: "Интенсивность свечения",
       type: "number",
       min: 0,
       max: 1,
-      step: 0.1,
+      step: 0.05,
       defaultValue: 0.4,
     },
     {
       key: "size",
-      label: "Size (px)",
+      label: "Размер",
       type: "number",
       min: 20,
       max: 100,
+      step: 5,
       defaultValue: 30,
     },
   ],
-
-  // Новый элемент — Lamp (лампа, похожа на indicator, но с базой/другим дизайном)
   lamp: [
     {
       key: "status",
-      label: "Lamp State",
+      label: "Состояние лампы",
       type: "select",
       options: [
-        { label: "Off", value: "off" },
-        { label: "On", value: "on" },
-        { label: "Blinking", value: "blinking" },
+        { label: "Выключена", value: "off" },
+        { label: "Включена",  value: "on" },
+        { label: "Мигает",    value: "blinking" },
       ],
       defaultValue: "off",
     },
     {
       key: "color",
-      label: "Lamp Color (when On)",
+      label: "Цвет свечения (вкл)",
       type: "color",
-      defaultValue: "#FFD700", // жёлтый/золотой
+      defaultValue: "#FFD700",
     },
     {
       key: "colorOff",
-      label: "Off Color",
+      label: "Цвет выключенной лампы",
       type: "color",
       defaultValue: "#333333",
     },
     {
       key: "glowIntensity",
-      label: "Glow / Halo Intensity",
+      label: "Интенсивность свечения",
       type: "number",
       min: 0,
       max: 1,
@@ -271,21 +310,21 @@ export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]
       defaultValue: 0.3,
     },
     {
-      key: "size",
-      label: "Size (px)",
-      type: "number",
-      min: 30,
-      max: 150,
-      defaultValue: 40,
-    },
-    {
       key: "showBase",
-      label: "Show Base / Socket",
+      label: "Показывать цоколь",
       type: "boolean",
       defaultValue: true,
     },
+    {
+      key: "size",
+      label: "Размер",
+      type: "number",
+      min: 20,
+      max: 120,
+      step: 5,
+      defaultValue: 40,
+    },
   ],
-
   tank: [
     {
       key: "level",

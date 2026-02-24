@@ -22,6 +22,8 @@ export const Text: React.FC<TextProps> = ({ element }) => {
     height: customHeight,
   } = element;
 
+  // console.log(fontSize)
+
   // Размеры — берём из element.w / element.h, если они есть (от Rnd), иначе дефолт
   const width = customWidth ?? element.w ?? 160;
   const height = customHeight ?? element.h ?? 50;
