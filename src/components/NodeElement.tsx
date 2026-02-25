@@ -14,7 +14,9 @@ import { Text } from "@/components/SVGComponents/TextSvg";
 import { NumericDisplay } from "@/components/SVGComponents/NumericDisplaySVG";
 import Line from "@/components/SVGComponents/Line";
 import Circle from "@/components/SVGComponents/Circle";
-import Rectangle from "@/components/SVGComponents/Rectangle"
+import Rectangle from "@/components/SVGComponents/Rectangle";
+import Polygon from "@/components/SVGComponents/Polygon";
+import Path from "@/components/SVGComponents/Path";
 
 
 type Props = {
@@ -36,7 +38,6 @@ export default function NodeElement({
   );
 
   const renderContent = () => {
-    // Базовые дефолты, если в элементе ничего нет
     const common = {
       size: element.size ?? 60,
       color: element.color ?? undefined,
@@ -46,18 +47,27 @@ export default function NodeElement({
     switch (element.type) {
       case "line":
         return <Line element={element} />
+
       case "rectangle":
         return <Rectangle element={element} />
+
       case "circle":
         return <Circle element={element} />
+
       case "lamp":
-        return <Lamp element={element} />;
+        return <Lamp element={element} />
+
+      case "polygon":
+        return <Polygon element={element} />
+
+      case "path":
+        return <Path element={element} />
 
       case "button":
-        return <Button element={element} />;
+        return <Button element={element} />
 
       case "indicator":
-        return <Indicator element={element} />;
+        return <Indicator element={element} />
 
       case "tank":
         return <Tank element={element} />;  // ← теперь передаём весь element

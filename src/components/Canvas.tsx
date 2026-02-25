@@ -8,7 +8,7 @@ import { GRID, snap } from "@/lib/utils";
 import NodeElement from "@/components/NodeElement";
 import { BaseElement, Port } from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
-
+import getAbsolutePosition from "@/lib/getAbsolutePosition";
 
 export default function Canvas() {
   const {
@@ -102,8 +102,8 @@ export default function Canvas() {
 
   const renderElement = (el: DiagramElement, parentOffsetX = 0, parentOffsetY = 0) => {
     const isSelected = selectedIds.includes(el.id);
-    const absoluteX = el.parentId ? parentOffsetX + el.x : el.x;
-    const absoluteY = el.parentId ? parentOffsetY + el.y : el.y;
+    const { x: absoluteX, y: absoluteY } =
+      getAbsolutePosition(el, elements);
 
     if (el.type === "group") {
       const group = el as GroupElement;
@@ -118,7 +118,22 @@ export default function Canvas() {
           resizeGrid={[GRID, GRID]}
           cancel=".port, input, textarea, button, .child-element"
           onDragStop={(_, d) => {
-            updateElement(el.id, { x: snap(d.x), y: snap(d.y) })
+            if (el.parentId) {
+              const parent = elements.find(e => e.id === el.parentId);
+              if (!parent) return;
+
+              const parentAbs = getAbsolutePosition(parent, elements);
+
+              updateElement(el.id, {
+                x: snap(d.x - parentAbs.x),
+                y: snap(d.y - parentAbs.y),
+              });
+            } else {
+              updateElement(el.id, {
+                x: snap(d.x),
+                y: snap(d.y),
+              });
+            }
           }}
           onResizeStop={(_, __, ref, ___, pos) =>
             updateElement(el.id, {
@@ -149,12 +164,11 @@ export default function Canvas() {
               backgroundColor: el.bg || "rgba(59,130,246,0.08)",
             }}
           >
-            {/* Рекурсивный рендер детей с offset'ом от группы */}
             {group.children.map((childId) => {
               const child = elements.find((e) => e.id === childId);
               if (!child || child.type === "connection") return null;
               // Передаем абсолютные координаты группы как parentOffset для детей
-              return renderElement(child, absoluteX, absoluteY);
+              return renderElement(child);
             })}
           </div>
         </Rnd>
@@ -167,45 +181,41 @@ export default function Canvas() {
         key={el.id}
         size={{ width: el.w, height: el.h }}
         position={{ x: absoluteX, y: absoluteY }}
-        bounds={el.parentId ? "parent" : "parent"}
+        bounds={"parent"}
         dragGrid={[GRID, GRID]}
         resizeGrid={[GRID, GRID]}
         cancel=".port, input, textarea, button"
         onDragStop={(_, d) => {
           if (el.parentId) {
-            // Если у элемента есть родитель, обновляем его координаты ОТНОСИТЕЛЬНО родителя
             const parent = elements.find(e => e.id === el.parentId);
-            if (parent) {
-              // d.x и d.y - это абсолютные координаты на канвасе
-              // Преобразуем их в относительные координаты внутри группы
-              const relativeX = d.x - parent.x;
-              const relativeY = d.y - parent.y;
+            if (!parent) return;
 
-              // Проверяем, что элемент не выходит за границы группы
-              const boundedX = Math.max(0, Math.min(relativeX, parent.w - el.w));
-              const boundedY = Math.max(0, Math.min(relativeY, parent.h - el.h));
+            const parentAbs = getAbsolutePosition(parent, elements);
 
-              updateElement(el.id, {
-                x: snap(boundedX),
-                y: snap(boundedY)
-              });
-            }
+            updateElement(el.id, {
+              x: snap(d.x - parentAbs.x),
+              y: snap(d.y - parentAbs.y),
+            });
           } else {
-            // Если нет родителя - абсолютные координаты
-            updateElement(el.id, {x: snap(d.x), y: snap(d.y)})
+            updateElement(el.id, {
+              x: snap(d.x),
+              y: snap(d.y),
+            });
           }
         }}
         onResizeStop={(_, __, ref, ___, pos) => {
           if (el.parentId) {
             const parent = elements.find(e => e.id === el.parentId);
-            if (parent) {
-              updateElement(el.id, {
-                w: Math.round(parseFloat(ref.style.width)),
-                h: Math.round(parseFloat(ref.style.height)),
-                x: snap(pos.x - parent.x),
-                y: snap(pos.y - parent.y),
-              });
-            }
+            if (!parent) return;
+
+            const parentAbs = getAbsolutePosition(parent, elements);
+
+            updateElement(el.id, {
+              w: Math.round(parseFloat(ref.style.width)),
+              h: Math.round(parseFloat(ref.style.height)),
+              x: snap(pos.x - parentAbs.x),
+              y: snap(pos.y - parentAbs.y),
+            });
           } else {
             updateElement(el.id, {
               w: Math.round(parseFloat(ref.style.width)),

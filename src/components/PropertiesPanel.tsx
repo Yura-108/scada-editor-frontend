@@ -6,7 +6,7 @@ import { DiagramElement } from "@/types/editorElement.type";
 import { elementPropertyMap, basePropertySchema } from "@/constants/propertiesPanel";
 
 interface PropertiesPanelProps {
-  element: DiagramElement | null;           // ← добавил null-check, т.к. часто нет выбранного
+  element: DiagramElement | null;
   updateElement: (id: string, patch: Partial<DiagramElement>) => void;
 }
 
@@ -16,8 +16,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 }) => {
   if (!element) {
     return (
-      <div className="h-full flex items-center justify-center text-neutral-500 text-sm">
-        Select an element to edit properties
+      <div className="h-full flex items-center justify-center text-neutral-500 text-sm italic">
+        Выберите элемент для редактирования свойств
       </div>
     );
   }
@@ -28,20 +28,21 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-950/70 backdrop-blur-sm border-l border-neutral-800 p-4 space-y-5 text-sm">
+    <div className="h-full flex flex-col bg-neutral-950/70 backdrop-blur-sm border-l border-neutral-800 overflow-hidden">
       {/* Header */}
-      <div className="pb-3 border-b border-neutral-800">
-        <h3 className="text-base font-medium text-neutral-200">
+      <div className="shrink-0 p-4 pb-3 border-b border-neutral-800">
+        <h3 className="text-base font-medium text-neutral-200 tracking-tight">
           {element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties
         </h3>
-        <p className="text-xs text-neutral-500 mt-0.5">ID: {element.id.slice(0, 8)}...</p>
+        <p className="text-xs text-neutral-500 mt-1 font-mono">
+          ID: {element.id.slice(0, 8)}...
+        </p>
       </div>
 
-      {/* Properties grid */}
-      <div className="space-y-4">
+      {/* Список свойств */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
         {schema.map((property, index) => {
           const value = (element as any)[property.key] ?? property.defaultValue;
-          // Добавляем index для уникальности
           const uniqueKey = `${element.id}-${property.key}-${index}`;
 
           const label = (
@@ -54,10 +55,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           );
 
           const baseInputClasses = cn(
-            "w-full bg-neutral-900/80 border border-neutral-700 rounded-md px-3 py-1.5 text-sm",
+            "w-full bg-neutral-900/80 border border-neutral-700 rounded-lg px-3 py-2 text-sm",
             "text-neutral-100 placeholder:text-neutral-600",
             "focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50",
-            "transition-all duration-150"
+            "transition-all duration-200 hover:border-neutral-600"
           );
 
           switch (property.type) {
@@ -104,17 +105,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   {label}
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-md border border-neutral-600 shadow-sm flex-shrink-0"
+                      className="w-8 h-8 rounded-md border border-neutral-600 shadow-sm flex-shrink-0 ring-1 ring-neutral-700/50"
                       style={{ backgroundColor: value ?? "#ffffff" }}
                     />
                     <input
                       id={`prop-${property.key}`}
                       type="color"
-                      className={cn(
-                        baseInputClasses,
-                        "h-9 p-1 cursor-pointer"
-                      )}
-                      value={element.bg?.startsWith("#") ? element.bg : "#ffffff"}
+                      className={cn(baseInputClasses, "h-9 p-1 cursor-pointer")}
+                      value={value ?? "#ffffff"}
                       onChange={(e) =>
                         updateElement(element.id, { [property.key]: e.target.value })
                       }
@@ -156,9 +154,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     }
                     className={cn(
                       "w-4 h-4 rounded border-neutral-600 bg-neutral-800",
-                      "text-blue-500 focus:ring-blue-500/40",
+                      "text-blue-500 focus:ring-blue-500/40 focus:ring-offset-neutral-950",
                       "checked:bg-blue-600 checked:border-blue-600",
-                      "transition-colors"
+                      "transition-all duration-150"
                     )}
                   />
                   <label

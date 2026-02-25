@@ -25,6 +25,8 @@ export interface LeafElement extends BaseCanvasElement {
     | "valve"
     | "numeric"
     | "text"
+    | "polygon"
+    | "path"
     | "rectangle"     // ← новый
     | "circle"        // ← новый
     | "line"          // ← новый
@@ -54,10 +56,6 @@ export interface LeafElement extends BaseCanvasElement {
   rx?: number;                  // скругление углов (border-radius)
   ry?: number;
 
-  // Для circle / ellipse
-  rx?: number;                  // горизонтальный радиус (для ellipse)
-  ry?: number;                  // вертикальный радиус
-
   // Для line
   x2?: number;                  // конечная точка X
   y2?: number;                  // конечная точка Y
@@ -73,6 +71,8 @@ export interface LeafElement extends BaseCanvasElement {
   flipY?: boolean;
   opacity?: number;     // 0-1
   zIndex?: number;
+  points?: string;
+  d?: string; // SVG path data
   // ... добавляй по мере необходимости
 }
 

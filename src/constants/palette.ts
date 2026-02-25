@@ -22,6 +22,18 @@ export const paletteItems: PaletteItemType[] = [
     defaultProps: {label: "Rectangle"}
   },
   {
+    type: "polygon",
+    label: "Polygon",
+    category: "Basic",
+    defaultProps: {label: "Polygon"}
+  },
+  {
+    type: "path",
+    label: "Path",
+    category: "Basic",
+    defaultProps: {label: "Path"}
+  },
+  {
     type: "button",
     label: "Button",
     category: "Basic",

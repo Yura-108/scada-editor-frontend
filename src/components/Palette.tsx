@@ -3,34 +3,19 @@
 import { useState } from "react";
 import { paletteItems } from "@/constants/palette";
 import PaletteItem from "./PaletteItem";
-import {Search, X} from "lucide-react"; // рекомендую добавить иконку поиска
+import {Search, X} from "lucide-react";
+import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 
 export default function Palette() {
   const [search, setSearch] = useState("");
 
-  const filtered = paletteItems.filter((item) =>
-    item.label.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const grouped = filtered.reduce((acc, item) => {
-    const cat = item.category || "Другое";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
-    return acc;
-  }, {} as Record<string, typeof filtered>);
-
-  // Сортируем категории (опционально — можно убрать или поменять порядок)
-  const sortedCategories = Object.keys(grouped).sort((a, b) => {
-    // пример: ставим "Основные" первыми, если есть
-    if (a === "Основные") return -1;
-    if (b === "Основные") return 1;
-    return a.localeCompare(b);
-  });
+  const filtered = filterPalette(paletteItems, search);
+  const grouped = groupPalette(filtered);
+  const sortedCategories = sortCategories(grouped);
 
   return (
     <div className="h-full flex flex-col bg-neutral-950/70 border-r border-neutral-800">
       {/* Поиск */}
-
       <div className="p-4 pb-3 border-b border-neutral-800 shrink-0">
         <div className="relative">
           <Search
@@ -61,7 +46,7 @@ export default function Palette() {
       </div>
 
       {/* Список */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
         {sortedCategories.length === 0 ? (
           <div className="text-center text-neutral-500 text-sm py-10">
             Ничего не найдено

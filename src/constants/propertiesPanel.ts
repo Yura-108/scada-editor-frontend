@@ -187,6 +187,62 @@ export const elementPropertyMap: Record<DiagramElement["type"], PropertySchema[]
       defaultValue: false,
     },
   ],
+  polygon: [
+    {
+      key: "points",
+      label: "Точки (x,y через пробел)",
+      type: "text",
+      defaultValue: "10,10 90,10 50,90",
+    },
+    {
+      key: "bg",
+      label: "Цвет заливки",
+      type: "color",
+      defaultValue: "#4b5563",
+    },
+    {
+      key: "strokeColor",
+      label: "Цвет обводки",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина",
+      type: "number",
+      min: 0,
+      max: 20,
+      defaultValue: 2,
+    },
+  ],
+  path: [
+    {
+      key: "d",
+      label: "Path (d)",
+      type: "text",
+      defaultValue: "M10 50 Q50 10 90 50 T90 90",
+    },
+    {
+      key: "bg",
+      label: "Заливка",
+      type: "color",
+      defaultValue: "none",
+    },
+    {
+      key: "strokeColor",
+      label: "Цвет линии",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина",
+      type: "number",
+      min: 0,
+      max: 20,
+      defaultValue: 2,
+    },
+  ],
 
   valve: [
     {

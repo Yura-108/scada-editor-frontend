@@ -216,7 +216,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: schema.elements
         });
       },
-// В store:
       groupSelected: () => {
         const { elements, selectedIds } = get();
 
@@ -242,7 +241,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           maxY = Math.max(maxY, el.y + el.h);
         });
 
-        // Обновляем детей: делаем их координаты относительными и добавляем parentId
         const updatedElements = elements.map(el => {
           if (leafIds.includes(el.id)) {
             return {
@@ -274,7 +272,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: [newGroupId],
         });
       },
-
       ungroupSelected: () => {
         const { elements, selectedIds } = get();
 
@@ -288,40 +285,6 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         groups.forEach(group => {
           // Возвращаем детям абсолютные координаты и убираем parentId
-          newElements = newElements.map(el => {
-            if (group.children.includes(el.id)) {
-              return {
-                ...el,
-                x: el.x + group.x, // превращаем относительные координаты в абсолютные
-                y: el.y + group.y,
-                parentId: undefined,
-              };
-            }
-            return el;
-          });
-
-          // Удаляем саму группу
-          newElements = newElements.filter(e => e.id !== group.id);
-        });
-
-        set({
-          elements: newElements,
-          selectedIds: groups.flatMap(g => g.children),
-        });
-      },
-      ungroupSelected: () => {
-        const { elements, selectedIds } = get();
-
-        const groups = selectedIds
-          .map(id => elements.find(el => el.id === id && el.type === "group"))
-          .filter(Boolean) as GroupElement[];
-
-        if (!groups.length) return;
-
-        let newElements = [...elements];
-
-        groups.forEach(group => {
-          // Убираем parentId у детей и делаем их координаты абсолютными
           newElements = newElements.map(el => {
             if (group.children.includes(el.id)) {
               return {
