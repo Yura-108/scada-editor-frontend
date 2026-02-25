@@ -15,23 +15,25 @@ export interface BaseCanvasElement {
   ports?: Port[];
 }
 
+export type ElementType =
+  | "lamp"
+  | "button"
+  | "indicator"
+  | "tank"
+  | "valve"
+  | "numeric"
+  | "text"
+  | "polygon"
+  | "path"
+  | "rectangle"     // ← новый
+  | "circle"        // ← новый
+  | "line"          // ← новый
+  | "svg"         // если есть кастомные SVG
+  | "input";
+
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
-  type:
-    | "lamp"
-    | "button"
-    | "indicator"
-    | "tank"
-    | "valve"
-    | "numeric"
-    | "text"
-    | "polygon"
-    | "path"
-    | "rectangle"     // ← новый
-    | "circle"        // ← новый
-    | "line"          // ← новый
-    | "svg"         // если есть кастомные SVG
-    | "input";      // если есть
+  type: ElementType;
 
   // Общие свойства (можно вынести в mixin, если много дублирования)
   color?: string;
@@ -89,28 +91,10 @@ export interface GroupElement extends BaseCanvasElement {
   backgroundOpacity?: number;   // прозрачность фона группы
 }
 
-// Соединение (линия/провод)
-export interface ConnectionElement {
-  id: string;
-  type: "connection";
-  fromNode: string;             // id узла-источника
-  fromPort: string;             // id порта-источника
-  toNode: string;
-  toPort: string;
-  // можно добавить: color, thickness, label, waypoints и т.д.
-}
 
 // Общий тип для всех элементов на холсте
-export type DiagramElement = LeafElement | GroupElement | ConnectionElement;
+export type DiagramElement = LeafElement | GroupElement;
 
-// Порты (оставляем почти без изменений)
-export type PortPosition = "top" | "right" | "bottom" | "left";
-
-export type Port = {
-  id: string;
-  position: PortPosition;
-  // можно расширить позже: connectedTo?: string; type?: "input" | "output"; label?: string;
-};
 
 // Схема всего холста
 export type CanvasSchema = {

@@ -10,7 +10,6 @@ import { useEditorStore } from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
-import { BaseElementType } from "@/types/editorElement.type";
 import { Save, Upload } from "lucide-react"; // ← рекомендую добавить lucide-react
 
 export default function EditorPage() {
@@ -144,7 +143,7 @@ export default function EditorPage() {
             const clientY =
               "clientY" in mouseEvent ? mouseEvent.clientY : 0;
 
-            const type = active.id as BaseElementType;
+            const type = active.id;
             useEditorStore.getState().addElementAt(clientX, clientY, type);
           }
 

@@ -1,7 +1,8 @@
 import getTransform from "@/lib/getTransform";
+import {LeafElement} from "@/types/editorElement.type";
 
 interface LineProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export default function Line({ element }: LineProps) {

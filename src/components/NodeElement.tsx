@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { BaseElement } from "@/types/editorElement.type";
+import {LeafElement} from "@/types/editorElement.type";
 
 // SVG-компоненты, которые ожидают { element }
 import { Lamp } from "@/components/SVGComponents/LampSVG";
@@ -20,17 +20,13 @@ import Path from "@/components/SVGComponents/Path";
 
 
 type Props = {
-  element: BaseElement;
+  element: LeafElement;
   isSelected: boolean;
-  onMouseDownPort: (portId: string) => void;
-  onMouseUpPort: (portId: string) => void;
 };
 
 export default function NodeElement({
   element,
   isSelected,
-  onMouseDownPort,
-  onMouseUpPort,
 }: Props) {
   const containerClasses = cn(
     "w-full h-full relative flex items-center justify-center rounded overflow-hidden",
@@ -38,12 +34,6 @@ export default function NodeElement({
   );
 
   const renderContent = () => {
-    const common = {
-      size: element.size ?? 60,
-      color: element.color ?? undefined,
-      label: element.label ?? element.type.charAt(0).toUpperCase() + element.type.slice(1),
-    };
-
     switch (element.type) {
       case "line":
         return <Line element={element} />

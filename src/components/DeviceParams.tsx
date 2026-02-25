@@ -11,7 +11,6 @@ import {paramMenuItems} from "@/constants/contextMenuItems";
 // @ts-ignore
 import debounce from 'lodash/debounce';
 import { AddParamModal } from "./AddParamModal";
-import { treeSearch } from "@/lib/treeSearch";
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
 
 const DeviceParams = () => {
@@ -25,8 +24,6 @@ const DeviceParams = () => {
     removeParam,
     toggleEditing,
     addParam,
-    stopEditing,
-    editingDevices
   } = useDeviceStore();
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];

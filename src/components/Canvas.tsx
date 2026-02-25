@@ -1,40 +1,32 @@
 "use client";
 
-import { useMemo, useRef, useEffect, useCallback } from "react";
+import React, { useMemo, useRef, useEffect, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "@/store/useEditorStore";
 import { GRID, snap } from "@/lib/utils";
 import NodeElement from "@/components/NodeElement";
-import { BaseElement, Port } from "@/types/editorElement.type";
+import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
+import getParentAbsolutePosition from "@/lib/getParentAbsolutePosition";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 
 export default function Canvas() {
   const {
     elements,
     updateElement,
-    select,
     selectedIds,
-    setSelectedId,
     selectMultiple,
-    groupSelected,
-    ungroupSelected,
     setCanvasRect,
     deleteSelectedElement,
     copySelectedElement,
     pasteSelectedElement,
-    connecting,
-    startConnection,
-    updateConnectionPosition,
-    finishConnection,
-    cancelConnection,
   } = useEditorStore();
 
   const { setNodeRef } = useDroppable({ id: "canvas" });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Обновление размеров и позиции канваса
+  // Обновление размеров и позиции canvas
   useEffect(() => {
     const updateRect = () => {
       if (containerRef.current) {
@@ -76,20 +68,18 @@ export default function Canvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
 
-  const nodes = useMemo(() => elements.filter((el) => el.type !== "connection"), [elements]);
-  const connections = useMemo(() => elements.filter((el) => el.type === "connection"), [elements]);
+  const rootElements = useMemo(
+    () => elements.filter(el => !el.parentId),
+    [elements]
+  );
 
-  function getPortCoords(node: BaseElement, port: Port) {
-    switch (port.position) {
-      case "top":    return { x: node.x + node.w / 2, y: node.y };
-      case "right":  return { x: node.x + node.w,     y: node.y + node.h / 2 };
-      case "bottom": return { x: node.x + node.w / 2, y: node.y + node.h };
-      case "left":   return { x: node.x,              y: node.y + node.h / 2 };
-      default:       return { x: node.x,              y: node.y };
-    }
-  }
+  const elementsMap = useMemo(() => {
+    const map: Record<string, DiagramElement> = {};
+    elements.forEach(el => map[el.id] = el);
+    return map;
+  }, [elements]);
 
-  const handleSelect = useCallback((id: string, e: React.MouseEvent) => {
+  const handleSelect = useCallback((id: string, e: MouseEvent) => {
     if (e.shiftKey) {
       const newSelection = selectedIds.includes(id)
         ? selectedIds.filter(i => i !== id)
@@ -100,10 +90,10 @@ export default function Canvas() {
     }
   }, [selectedIds, selectMultiple]);
 
-  const renderElement = (el: DiagramElement, parentOffsetX = 0, parentOffsetY = 0) => {
+  const renderElement = (el: DiagramElement) => {
     const isSelected = selectedIds.includes(el.id);
-    const { x: absoluteX, y: absoluteY } =
-      getAbsolutePosition(el, elements);
+    // const { x: absoluteX, y: absoluteY } =
+    //   getAbsolutePosition(el, elements);
 
     if (el.type === "group") {
       const group = el as GroupElement;
@@ -112,40 +102,30 @@ export default function Canvas() {
         <Rnd
           key={el.id}
           size={{ width: el.w, height: el.h }}
-          position={{ x: absoluteX, y: absoluteY }}
+          position={{ x: el.x, y: el.y }}
           bounds="parent"
           dragGrid={[GRID, GRID]}
           resizeGrid={[GRID, GRID]}
           cancel=".port, input, textarea, button, .child-element"
           onDragStop={(_, d) => {
-            if (el.parentId) {
-              const parent = elements.find(e => e.id === el.parentId);
-              if (!parent) return;
-
-              const parentAbs = getAbsolutePosition(parent, elements);
-
-              updateElement(el.id, {
-                x: snap(d.x - parentAbs.x),
-                y: snap(d.y - parentAbs.y),
-              });
-            } else {
-              updateElement(el.id, {
-                x: snap(d.x),
-                y: snap(d.y),
-              });
-            }
+            updateElement(el.id, {
+              x: d.x,
+              y: d.y
+            });
           }}
           onResizeStop={(_, __, ref, ___, pos) =>
             updateElement(el.id, {
-              w: Math.round(parseFloat(ref.style.width)),
-              h: Math.round(parseFloat(ref.style.height)),
-              x: snap(pos.x),
-              y: snap(pos.y),
+              w: parseFloat(ref.style.width),
+              h: parseFloat(ref.style.height),
+              x: pos.x,
+              y: pos.y,
             })
           }
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              handleSelect(el.id, e)
+            const isChildClicked = (e.target as HTMLElement).closest('.child-element');
+
+            if (!isChildClicked) {
+              handleSelect(el.id, e);
             }
           }}
         >
@@ -158,16 +138,14 @@ export default function Canvas() {
               "transition-all duration-150 overflow-hidden"
             )}
             style={{
-
               borderStyle: group.borderStyle || "dashed",
               borderColor: group.borderColor || "#60a5fa",
               backgroundColor: el.bg || "rgba(59,130,246,0.08)",
             }}
           >
             {group.children.map((childId) => {
-              const child = elements.find((e) => e.id === childId);
-              if (!child || child.type === "connection") return null;
-              // Передаем абсолютные координаты группы как parentOffset для детей
+              const child = elementsMap[childId];
+              if (!child) return null;
               return renderElement(child);
             })}
           </div>
@@ -180,52 +158,33 @@ export default function Canvas() {
       <Rnd
         key={el.id}
         size={{ width: el.w, height: el.h }}
-        position={{ x: absoluteX, y: absoluteY }}
+        position={{ x: el.x, y: el.y }}
         bounds={"parent"}
         dragGrid={[GRID, GRID]}
         resizeGrid={[GRID, GRID]}
         cancel=".port, input, textarea, button"
         onDragStop={(_, d) => {
-          if (el.parentId) {
-            const parent = elements.find(e => e.id === el.parentId);
-            if (!parent) return;
+          // const parentAbs = getParentAbsolutePosition(el, elements);
 
-            const parentAbs = getAbsolutePosition(parent, elements);
-
-            updateElement(el.id, {
-              x: snap(d.x - parentAbs.x),
-              y: snap(d.y - parentAbs.y),
-            });
-          } else {
-            updateElement(el.id, {
-              x: snap(d.x),
-              y: snap(d.y),
-            });
-          }
+          updateElement(el.id, {
+            x: d.x ,
+            y: d.y,
+          });
         }}
         onResizeStop={(_, __, ref, ___, pos) => {
-          if (el.parentId) {
-            const parent = elements.find(e => e.id === el.parentId);
-            if (!parent) return;
+          // const parentAbs = getParentAbsolutePosition(el, elements);
 
-            const parentAbs = getAbsolutePosition(parent, elements);
-
-            updateElement(el.id, {
-              w: Math.round(parseFloat(ref.style.width)),
-              h: Math.round(parseFloat(ref.style.height)),
-              x: snap(pos.x - parentAbs.x),
-              y: snap(pos.y - parentAbs.y),
-            });
-          } else {
-            updateElement(el.id, {
-              w: Math.round(parseFloat(ref.style.width)),
-              h: Math.round(parseFloat(ref.style.height)),
-              x: snap(pos.x),
-              y: snap(pos.y),
-            });
-          }
+          updateElement(el.id, {
+            w: parseFloat(ref.style.width),
+            h: parseFloat(ref.style.height),
+            x: pos.x ,
+            y: pos.y ,
+          });
         }}
-        onMouseDown={(e) => handleSelect(el.id, e)}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          handleSelect(el.id, e)
+        }}
         className={cn(
           "child-element z-10 transition-shadow duration-150",
           isSelected ? "shadow-lg" : "shadow-sm",
@@ -233,11 +192,7 @@ export default function Canvas() {
         )}
       >
         <NodeElement
-          element={el}
-          isSelected={isSelected}
-          onMouseDownPort={(portId) => startConnection(el.id, portId)}
-          onMouseUpPort={(portId) => finishConnection(el.id, portId)}
-        />
+          element={el as LeafElement} isSelected={isSelected} />
       </Rnd>
     );
   };
@@ -255,15 +210,6 @@ export default function Canvas() {
         select-none
         touch-none
       `}
-      onMouseMove={(e) => {
-        if (!connecting || !containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        updateConnectionPosition(
-          Math.round(e.clientX - rect.left),
-          Math.round(e.clientY - rect.top)
-        );
-      }}
-      onMouseUp={() => connecting && cancelConnection()}
       onMouseDown={(e) => {
         if (e.button !== 0) return;
 
@@ -284,69 +230,12 @@ export default function Canvas() {
         }}
       />
 
-      {/* Соединения (SVG слой) */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none z-0"
-        style={{ minWidth: "100%", minHeight: "100%" }}
-      >
-        {/* Постоянные связи */}
-        {connections.map((conn) => {
-          const fromNode = nodes.find((n) => n.id === conn.fromNode);
-          const toNode   = nodes.find((n) => n.id === conn.toNode);
-          if (!fromNode || !toNode) return null;
-
-          const fromPort = fromNode.ports?.find((p) => p.id === conn.fromPort);
-          const toPort   = toNode.ports?.find((p) => p.id === conn.toPort);
-          if (!fromPort || !toPort) return null;
-
-          const start = getPortCoords(fromNode, fromPort);
-          const end   = getPortCoords(toNode,   toPort);
-
-          return (
-            <line
-              key={conn.id}
-              x1={start.x}
-              y1={start.y}
-              x2={end.x}
-              y2={end.y}
-              stroke="#64748b"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          );
-        })}
-
-        {/* Временная связь при перетаскивании */}
-        {connecting && (() => {
-          const fromNode = nodes.find((n) => n.id === connecting.fromNode);
-          if (!fromNode) return null;
-
-          const fromPort = fromNode.ports?.find((p) => p.id === connecting.fromPort);
-          if (!fromPort) return null;
-
-          const start = getPortCoords(fromNode, fromPort);
-
-          return (
-            <line
-              x1={start.x}
-              y1={start.y}
-              x2={connecting.mouseX}
-              y2={connecting.mouseY}
-              stroke="#60a5fa"
-              strokeWidth="3"
-              strokeDasharray="6 4"
-              strokeLinecap="round"
-            />
-          );
-        })()}
-      </svg>
 
       {/* Узлы */}
-      {elements.filter(el => el.type !== "connection")
-        .map(el => renderElement(el))}
+      {rootElements.map(el => renderElement(el))}
 
-      {/* Подсказка, если канвас пустой */}
-      {nodes.length === 0 && (
+      {/* Подсказка, если canvas пустой */}
+      {rootElements.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
           Перетащите элемент из палитры сюда
         </div>

@@ -1,7 +1,8 @@
 import getTransform from "@/lib/getTransform";
+import {LeafElement} from "@/types/editorElement.type";
 
 interface CircleProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export default function Circle({ element }: CircleProps) {

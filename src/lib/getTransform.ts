@@ -1,4 +1,6 @@
-export default function getTransform(element: BaseElement) {
+import {LeafElement} from "@/types/editorElement.type";
+
+export default function getTransform(element: LeafElement) {
   const rotate = element.rotate ?? 0;
   const scaleX = element.scaleX ?? 1;
   const scaleY = element.scaleY ?? 1;

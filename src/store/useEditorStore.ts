@@ -1,13 +1,14 @@
 import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
-import {BaseElement, GroupElement, BaseElementType, CanvasSchema, ConnectionElement, ElementType} from "@/types/editorElement.type";
+import {GroupElement, CanvasSchema, DiagramElement, ElementType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
+import getAbsolutePosition from "@/lib/getAbsolutePosition";
 
 type EditorState = {
-  elements: ElementType[];
+  elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
-  clipboard: ElementType | null;
+  clipboard: DiagramElement | null;
   canvasRect: DOMRect | null;
   connecting: {
     fromNode: string;
@@ -17,25 +18,21 @@ type EditorState = {
   } | null;
 
   setCanvasRect: (rect: DOMRect) => void;
-  updateElement: (id: string, data: Partial<ElementType>) => void;
+  updateElement: (id: string, data: Partial<DiagramElement>) => void;
   select: (id: string | null) => void;
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
-  addElementAt: (x: number, y: number, type: BaseElementType | "connection") => void;
+  addElementAt: (x: number, y: number, type: ElementType) => void;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
-  startConnection: (nodeId: string, portId: string) => void;
-  updateConnectionPosition: (x: number, y: number) => void;
-  finishConnection: (toNode: string, toPort: string) => void;
-  cancelConnection: () => void;
   exportSchema: () => void;
   loadSchema: (schema: CanvasSchema) => void;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
 
-  removeElements: (ids: string[]) => void;
+  // removeElements: (ids: string[]) => void;
 }
 
 export const useEditorStore = create<EditorState>()(temporal(
@@ -55,13 +52,6 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (!element) return;
 
         if (element.type === "group" && (updates.x !== undefined || updates.y !== undefined)) {
-          const oldX = element.x;
-          const oldY = element.y;
-          const newX = updates.x ?? oldX;
-          const newY = updates.y ?? oldY;
-
-          const deltaX = newX - oldX;
-          const deltaY = newY - oldY;
 
           const updatedElements = state.elements.map(el => {
             if (el.id === id) {
@@ -91,21 +81,20 @@ export const useEditorStore = create<EditorState>()(temporal(
       select: (id) => set({selectedIds: id ? [id] : []}),
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
-      addElementAt: (screenX: number, screenY: number, type: string) => {
-        if (type === "connection") return;
+      addElementAt: (screenX, screenY, type) => {
         const rect = get().canvasRect;
         if (!rect) return;
 
         const x = snap(screenX);
         const y = snap(screenY);
 
-        const newElement: BaseElement = {
+        const newElement: DiagramElement = {
           id: crypto.randomUUID(),
           type,
           x,
           y,
-          w: 80,
-          h: 60,
+          w: 120,
+          h: 80,
           label: "Element",
           bg: "transparent",
         };
@@ -129,13 +118,15 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // Копируем первый выделенный (самый простой вариант)
         const element = elements.find(el => el.id === selectedIds[0]);
-        if (!element || element.type === "connection") return;
+        if (!element) return;
 
         set({ clipboard: { ...element } });
+
       },
       pasteSelectedElement: () => {
-        const { clipboard, elements } = get();
-        if (!clipboard || clipboard.type === "connection") return;
+        const {clipboard} = get();
+
+        if (!clipboard) return;
 
         const newElement = {
           ...clipboard,
@@ -149,49 +140,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: [newElement.id],
         }));
       },
-      startConnection: (nodeId, portId) => {
-        set({
-          connecting: {
-            fromNode: nodeId,
-            fromPort: portId,
-            mouseX: 0,
-            mouseY: 0
-          }
-        })
-      },
-      updateConnectionPosition: (x, y) => set(state =>
-        state.connecting
-          ? {connecting: {...state.connecting, mouseX: x, mouseY: y}}
-          : {}
-      ),
-      finishConnection: (toNode, toPort) => {
-        const {connecting, elements} = get();
-
-        if (!connecting) return;
-
-        if (
-          connecting.fromNode === toNode &&
-          connecting.fromPort === toPort
-        ) {
-          set({connecting: null});
-          return;
-        }
-
-        const newConnection: ConnectionElement = {
-          id: crypto.randomUUID(),
-          type: "connection",
-          fromNode: connecting.fromNode,
-          fromPort: connecting.fromPort,
-          toNode,
-          toPort,
-        };
-
-        set({
-          elements: [...elements, newConnection],
-          connecting: null,
-        });
-      },
-      cancelConnection: () => set({connecting: null}),
       exportSchema: () => {
         const {elements} = get();
 
@@ -235,22 +183,24 @@ export const useEditorStore = create<EditorState>()(temporal(
         leafIds.forEach(id => {
           const el = elements.find(e => e.id === id);
           if (!el) return;
-          minX = Math.min(minX, el.x);
-          minY = Math.min(minY, el.y);
-          maxX = Math.max(maxX, el.x + el.w);
-          maxY = Math.max(maxY, el.y + el.h);
+
+          const abs = getAbsolutePosition(el, elements);
+
+          minX = Math.min(minX, abs.x);
+          minY = Math.min(minY, abs.y);
+          maxX = Math.max(maxX, abs.x + el.w);
+          maxY = Math.max(maxY, abs.y + el.h);
         });
 
         const updatedElements = elements.map(el => {
-          if (leafIds.includes(el.id)) {
-            return {
-              ...el,
-              x: el.x - minX, // теперь координаты относительно группы
-              y: el.y - minY,
-              parentId: newGroupId,
-            };
-          }
-          return el;
+          if (!leafIds.includes(el.id)) return el;
+          const abs = getAbsolutePosition(el, elements);
+          return {
+            ...el,
+            x: abs.x - minX,
+            y: abs.y - minY,
+            parentId: newGroupId,
+          };
         });
 
         const group: GroupElement = {
@@ -284,20 +234,21 @@ export const useEditorStore = create<EditorState>()(temporal(
         let newElements = [...elements];
 
         groups.forEach(group => {
-          // Возвращаем детям абсолютные координаты и убираем parentId
+          const groupAbs = getAbsolutePosition(group, elements);
+
           newElements = newElements.map(el => {
-            if (group.children.includes(el.id)) {
-              return {
-                ...el,
-                x: el.x + group.x, // превращаем относительные координаты в абсолютные
-                y: el.y + group.y,
-                parentId: undefined,
-              };
-            }
-            return el;
+            if (!group.children.includes(el.id)) return el;
+
+            const childAbs = getAbsolutePosition(el, elements);
+
+            return {
+              ...el,
+              x: childAbs.x,
+              y: childAbs.y,
+              parentId: undefined,
+            };
           });
 
-          // Удаляем саму группу
           newElements = newElements.filter(e => e.id !== group.id);
         });
 
@@ -312,7 +263,6 @@ export const useEditorStore = create<EditorState>()(temporal(
       partialize: (state) => ({
         elements: state.elements,
       }),
-      equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     }
   )
 );
