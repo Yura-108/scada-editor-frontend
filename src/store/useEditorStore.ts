@@ -3,6 +3,7 @@ import {create} from "zustand/react";
 import {GroupElement, CanvasSchema, DiagramElement, ElementType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
+import buildComponentTree from "@/lib/buildComponentTree";
 
 type EditorState = {
   elements: DiagramElement[];
@@ -46,37 +47,13 @@ export const useEditorStore = create<EditorState>()(temporal(
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
       updateElement: (id: string, updates: Partial<DiagramElement>) => {
-        const state = get();
-        const element = state.elements.find(el => el.id === id);
-
-        if (!element) return;
-
-        if (element.type === "group" && (updates.x !== undefined || updates.y !== undefined)) {
-
-          const updatedElements = state.elements.map(el => {
-            if (el.id === id) {
-              return { ...el, ...updates };
-            }
-
-            if (el.parentId === id) {
-              return {
-                ...el,
-                x: el.x, // координаты детей остаются относительными! не меняем их
-                y: el.y,
-              };
-            }
-
-            return el;
-          });
-
-          set({ elements: updatedElements });
-        } else {
-          set(state => ({
-            elements: state.elements.map(el =>
-              el.id === id ? { ...el, ...updates } : el
-            )
-          }));
-        }
+        set(state => ({
+          elements: state.elements.map(el =>
+            el.id === id
+              ? { ...el, ...updates } as DiagramElement
+              : el
+          )
+        }));
       },
       select: (id) => set({selectedIds: id ? [id] : []}),
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
@@ -95,6 +72,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           y,
           w: 120,
           h: 80,
+          parentId: null,
+          children: [],
           label: "Element",
           bg: "transparent",
         };
@@ -107,8 +86,14 @@ export const useEditorStore = create<EditorState>()(temporal(
         const { selectedIds, elements } = get();
         if (!selectedIds.length) return;
 
+        const selectedGroups = elements.filter(el => selectedIds.includes(el.id) && el.type === "group");
+
+        const childrenIds = selectedGroups.flatMap(group => "children" in group ? group.children : []);
+
+        const idsToDelete = new Set([...selectedIds, ...childrenIds]);
+
         set({
-          elements: elements.filter(el => !selectedIds.includes(el.id)),
+          elements: elements.filter(el => !idsToDelete.has(el.id)),
           selectedIds: [],
         });
       },
@@ -143,13 +128,17 @@ export const useEditorStore = create<EditorState>()(temporal(
       exportSchema: () => {
         const {elements} = get();
 
+        const payload = buildComponentTree(elements);
+
+        console.log(payload)
+
         const schema = {
-          id: crypto.randomUUID(),
-          name: "Mew Screen",
-          elements,
+          key: crypto.randomUUID(),
+          type: "",
+          label: "Mew Screen",
+          components: elements,
           version: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+
         }
 
         // console.log(JSON.stringify(schema));
@@ -169,18 +158,32 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         if (selectedIds.length < 2) return;
 
-        const leafIds = selectedIds.filter(id => {
-          const el = elements.find(e => e.id === id);
-          return el && el.type !== "group";
+        const topLevelSelectedIds = selectedIds.filter(id => {
+          let el = elements.find(el => el.id === id);
+          let parentId = el?.parentId;
+
+          while (parentId) {
+            if (selectedIds.includes(parentId)) return false;
+            const parentEl = elements.find(el => el.id === parentId);
+            parentId = parentEl?.parentId;
+          }
+          return true;
         });
 
-        if (leafIds.length < 2) return;
+        if (topLevelSelectedIds.length < 2) return;
+
+        // const leafIds = selectedIds.filter(id => {
+        //   const el = elements.find(e => e.id === id);
+        //   return el && el.type !== "group";
+        // });
+        //
+        // if (leafIds.length < 2) return;
 
         const newGroupId = crypto.randomUUID();
 
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-        leafIds.forEach(id => {
+        topLevelSelectedIds.forEach(id => {
           const el = elements.find(e => e.id === id);
           if (!el) return;
 
@@ -188,12 +191,13 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           minX = Math.min(minX, abs.x);
           minY = Math.min(minY, abs.y);
-          maxX = Math.max(maxX, abs.x + el.w);
-          maxY = Math.max(maxY, abs.y + el.h);
+          maxX = Math.max(maxX, abs.x + (el.w || 0));
+          maxY = Math.max(maxY, abs.y + (el.h || 0));
         });
 
         const updatedElements = elements.map(el => {
-          if (!leafIds.includes(el.id)) return el;
+          if (!topLevelSelectedIds.includes(el.id)) return el;
+
           const abs = getAbsolutePosition(el, elements);
           return {
             ...el,
@@ -210,8 +214,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           y: minY,
           w: maxX - minX,
           h: maxY - minY,
-          children: [...leafIds],
-          label: `Group (${leafIds.length})`,
+          children: [...topLevelSelectedIds],
+          parentId: null,
+          label: `Group (${topLevelSelectedIds.length})`,
           bg: "rgba(59, 130, 246, 0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
@@ -225,38 +230,81 @@ export const useEditorStore = create<EditorState>()(temporal(
       ungroupSelected: () => {
         const { elements, selectedIds } = get();
 
-        const groups = selectedIds
-          .map(id => elements.find(el => el.id === id && el.type === "group"))
-          .filter(Boolean) as GroupElement[];
+        // 1. Находим среди выделенных элементов только группы
+        const groupsToUngroup = elements.filter(
+          (el) => selectedIds.includes(el.id) && el.type === "group"
+        );
 
-        if (!groups.length) return;
+        // Если не выделено ни одной группы, ничего не делаем
+        if (groupsToUngroup.length === 0) return;
 
-        let newElements = [...elements];
+        const groupIdsToRemove = groupsToUngroup.map((g) => g.id);
 
-        groups.forEach(group => {
-          const groupAbs = getAbsolutePosition(group, elements);
+        // Здесь мы соберем ID элементов, которые освободятся из-под групп,
+        // чтобы автоматически сделать их выделенными после разгруппировки
+        let newlySelectedIds: string[] = [];
 
-          newElements = newElements.map(el => {
-            if (!group.children.includes(el.id)) return el;
+        // Работаем с копией массива элементов
+        let updatedElements = [...elements];
 
-            const childAbs = getAbsolutePosition(el, elements);
+        // Проходимся по каждой группе, которую нужно разбить
+        groupsToUngroup.forEach((group) => {
+          const {
+            id: groupId,
+            x: groupX,
+            y: groupY,
+            parentId: grandParentId,
+            children: groupChildrenIds
+          } = group;
 
-            return {
-              ...el,
-              x: childAbs.x,
-              y: childAbs.y,
-              parentId: undefined,
-            };
+          newlySelectedIds.push(...groupChildrenIds);
+
+          // Шаг А: Обновляем детей разбиваемой группы
+          updatedElements = updatedElements.map((el) => {
+            if (el.parentId === groupId) {
+              return {
+                ...el,
+                // Секрет плавности: прибавляем относительные координаты исчезающей группы
+                // к координатам её ребенка. Визуально он останется на том же пикселе.
+                x: el.x + groupX,
+                y: el.y + groupY,
+                // Ребенок переходит под крыло "дедушки" (если группа сама была внутри группы)
+                parentId: grandParentId,
+              };
+            }
+            return el;
           });
 
-          newElements = newElements.filter(e => e.id !== group.id);
+          // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки")
+          // Нам нужно обновить массив children у этого "дедушки"
+          if (grandParentId) {
+            updatedElements = updatedElements.map((el) => {
+              if (el.id === grandParentId && el.type === "group") {
+                return {
+                  ...el,
+                  children: [
+                    ...el.children.filter((id) => id !== groupId), // убираем ID удаленной группы
+                    ...groupChildrenIds,                           // добавляем ID её "выпавших" детей
+                  ],
+                };
+              }
+              return el;
+            });
+          }
         });
 
+        // 2. Окончательно удаляем сами разбитые группы из массива
+        updatedElements = updatedElements.filter((el) => !groupIdsToRemove.includes(el.id));
+
+        // 3. Сохраняем в выделении обычные фигуры, если они были выделены вместе с группами
+        const retainedSelectedIds = selectedIds.filter((id) => !groupIdsToRemove.includes(id));
+
+        // Обновляем стейт
         set({
-          elements: newElements,
-          selectedIds: groups.flatMap(g => g.children),
+          elements: updatedElements,
+          selectedIds: [...retainedSelectedIds, ...newlySelectedIds],
         });
-      },
+      }
     }),
     {
       limit: 50,

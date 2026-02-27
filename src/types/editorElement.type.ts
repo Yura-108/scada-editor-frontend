@@ -1,18 +1,27 @@
-// types/editorElement.type.ts
 
+export type ComponentCreateDto = {
+  key?: number;
+  name: string;
+  children: ComponentCreateDto[];
+  version?: number;
+  type: string;
+  parent_key?: number | null;
+  image?: any;
+};
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
   id: string;
+  dbId?: number;
   x: number;
   y: number;
   w: number;
   h: number;
-  parentId?: string;
+  children: string[];
+  parentId: string | null;
   rotation?: number;          // если планируешь поворот групп
   label?: string;
   visible?: boolean;
   bg?: string;
-  ports?: Port[];
 }
 
 export type ElementType =
@@ -28,8 +37,8 @@ export type ElementType =
   | "rectangle"     // ← новый
   | "circle"        // ← новый
   | "line"          // ← новый
-  | "svg"         // если есть кастомные SVG
-  | "input";
+  //| "svg"         // если есть кастомные SVG
+  //| "input";
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
@@ -81,7 +90,7 @@ export interface LeafElement extends BaseCanvasElement {
 // Группа / Faceplate / Container
 export interface GroupElement extends BaseCanvasElement {
   type: "group" | "faceplate";
-  children: string[];           // массив ID дочерних элементов (плоский список)
+           // массив ID дочерних элементов (плоский список)
   // children?: (LeafElement | GroupElement)[];   ← вложенные объекты (альтернатива, но тяжелее для zustand/undo)
 
   // Дополнительные свойства группы
@@ -105,3 +114,40 @@ export type CanvasSchema = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type PropertySchema =
+  | {
+  key: string;
+  label: string;
+  type: "number";
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValue?: number;
+}
+  | {
+  key: string;
+  label: string;
+  type: "text";
+  defaultValue?: string;
+  placeholder?: string;
+}
+  | {
+  key: string;
+  label: string;
+  type: "boolean";
+  defaultValue?: boolean;
+}
+| {
+  key: string;
+  label: string;
+  type: "color";
+  defaultValue?: string;
+}
+| {
+  key: string;
+  label: string;
+  type: "select";
+  options: {label: string; value: string}[];
+  defaultValue?: string;
+}

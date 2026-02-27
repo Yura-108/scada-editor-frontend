@@ -10,7 +10,7 @@ import { useEditorStore } from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
-import { Save, Upload } from "lucide-react"; // ← рекомендую добавить lucide-react
+import { Save, Upload } from "lucide-react";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);

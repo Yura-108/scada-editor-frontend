@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement, PropertySchema } from "@/types/editorElement.type";
 import { elementPropertyMap, basePropertySchema } from "@/constants/propertiesPanel";
 
 interface PropertiesPanelProps {
@@ -22,7 +22,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     );
   }
 
-  const schema = [
+  const schema: PropertySchema[] = [
     ...basePropertySchema,
     ...(elementPropertyMap[element.type] || []),
   ];

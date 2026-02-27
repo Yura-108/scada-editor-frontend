@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useEffect, useCallback } from "react";
+import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
 import { Rnd } from "react-rnd";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "@/store/useEditorStore";
@@ -10,6 +10,7 @@ import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.t
 import {cn} from "@/lib/utils"
 import getParentAbsolutePosition from "@/lib/getParentAbsolutePosition";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
+import isIntersecting from "@/lib/isIntersecting";
 
 export default function Canvas() {
   const {
@@ -22,6 +23,15 @@ export default function Canvas() {
     copySelectedElement,
     pasteSelectedElement,
   } = useEditorStore();
+
+  const [isSelecting, setIsSelecting] = useState<boolean>(false);
+  const [selectionStart, setSelectionStart] = useState<{x: number; y: number} | null>(null);
+  const [selectionRect, setSelectionRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const { setNodeRef } = useDroppable({ id: "canvas" });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +83,54 @@ export default function Canvas() {
     [elements]
   );
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".scada-element")) return;
+
+    const rect = containerRef.current!.getBoundingClientRect();
+
+    const startX = e.clientX - rect.left;
+    const startY = e.clientY - rect.top;
+
+    setIsSelecting(true);
+    setSelectionStart({x: startX, y: startY});
+    setSelectionRect({
+      x: startX,
+      y: startY,
+      width: 0,
+      height: 0,
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isSelecting || !selectionStart) return;
+
+    const rect = containerRef.current!.getBoundingClientRect();
+
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+
+    const x = Math.min(selectionStart.x, currentX);
+    const y = Math.min(selectionStart.y, currentY);
+    const width = Math.abs(currentX - selectionStart.x);
+    const height = Math.abs(currentY - selectionStart.y);
+
+    setSelectionRect({x, y, width, height});
+  }
+
+  const handleMouseUp = () => {
+    if (!selectionRect) return;
+
+    const selected = elements
+      .filter(el => isIntersecting(selectionRect, el))
+      .map(el => el.id);
+
+    selectMultiple(selected);
+
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionRect(null);
+  }
+
   const elementsMap = useMemo(() => {
     const map: Record<string, DiagramElement> = {};
     elements.forEach(el => map[el.id] = el);
@@ -92,8 +150,6 @@ export default function Canvas() {
 
   const renderElement = (el: DiagramElement) => {
     const isSelected = selectedIds.includes(el.id);
-    // const { x: absoluteX, y: absoluteY } =
-    //   getAbsolutePosition(el, elements);
 
     if (el.type === "group") {
       const group = el as GroupElement;
@@ -122,6 +178,8 @@ export default function Canvas() {
             })
           }
           onMouseDown={(e) => {
+            e.stopPropagation();
+
             const isChildClicked = (e.target as HTMLElement).closest('.child-element');
 
             if (!isChildClicked) {
@@ -210,13 +268,9 @@ export default function Canvas() {
         select-none
         touch-none
       `}
-      onMouseDown={(e) => {
-        if (e.button !== 0) return;
-
-        if (e.target === e.currentTarget) {
-          selectMultiple([]);
-        }
-      }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
     >
       {/* Фоновая сетка */}
       <div
@@ -230,7 +284,6 @@ export default function Canvas() {
         }}
       />
 
-
       {/* Узлы */}
       {rootElements.map(el => renderElement(el))}
 
@@ -239,6 +292,21 @@ export default function Canvas() {
         <div className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
           Перетащите элемент из палитры сюда
         </div>
+      )}
+
+      {/* Рамка выделения */}
+      {selectionRect && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: selectionRect.x,
+            top: selectionRect.y,
+            width: selectionRect.width,
+            height: selectionRect.height,
+            backgroundColor: "rgb(0, 150, 255, 0.2)",
+            border: "1px solid #0096ff",
+          }}
+        />
       )}
     </div>
   );
