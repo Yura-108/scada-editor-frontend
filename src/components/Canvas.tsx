@@ -77,7 +77,7 @@ export default function Canvas() {
   }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
 
   const rootElements = useMemo(
-    () => elements.filter(el => !el.parentId),
+    () => elements.filter(el => !el.parentKey),
     [elements]
   );
   

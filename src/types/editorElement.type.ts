@@ -1,11 +1,13 @@
-export type CompositionMode =
-  | "primitive"
-  | "composite"
-  | "container";
+export type SceneType = {
+  id: number;
+  name: string;
+  type: string;
+  parent_key: string | null;
+  image: string | null;
+  children: string[];
+  version: number;
+}
 
-export type ElementDefinition = {
-  composition: CompositionMode;
-};
 
 export type ComponentCreateDto = {
   key?: string;
@@ -25,7 +27,8 @@ export interface BaseCanvasElement {
   w: number;
   h: number;
   children: string[];
-  parentId: string | null;
+  parentId: number | null;
+  parentKey: string | null;
   rotation?: number;          // если планируешь поворот групп
   label?: string;
   visible?: boolean;
@@ -51,7 +54,7 @@ export type ElementType =
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
-  composition: CompositionMode;
+  composition: boolean;
   color?: string;
   size?: number | "small" | "medium" | "large";
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";

@@ -1,6 +1,6 @@
 import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
-import {GroupElement, CanvasSchema, DiagramElement, ElementType, ComponentCreateDto} from "@/types/editorElement.type";
+import {GroupElement, CanvasSchema, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import buildComponentTree from "@/lib/buildComponentTree";
@@ -8,6 +8,7 @@ import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 
 type EditorState = {
+  scene: SceneType | null;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
@@ -30,7 +31,7 @@ type EditorState = {
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportSchema: () => void;
-  loadSchema: (schema: CanvasSchema) => void;
+  loadSchema: () => void;
   createScene: () => void;
 
   groupSelected: () => void;
@@ -46,6 +47,7 @@ const isComplex = (el: DiagramElement) =>
 
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
+      scene: null,
       elements: [],
       selectedId: null,
       selectedIds: [],
@@ -67,6 +69,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
       addElementAt: (screenX, screenY, type) => {
+        const {scene} = get();
         const rect = get().canvasRect;
         if (!rect) return;
 
@@ -83,7 +86,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           y,
           w: 120,
           h: 80,
-          parentId: null,
+          parentId: scene?.id || null,
+          parentKey: null,
           children: [],
           label: "Element",
           bg: "transparent",
@@ -153,7 +157,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // распарсить data
       },
-      loadSchema: async (schema) => {
+      loadSchema: async () => {
         const data = await fetch("/api/editor/screen");
 
         const json = await data.json();
@@ -173,10 +177,12 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const newScene = await data.json();
 
-        console.log(newScene);
+        set({
+          scene: newScene
+        });
       },
       groupSelected: () => {
-        const { elements, selectedIds } = get();
+        const { elements, selectedIds, scene } = get();
         if (selectedIds.length < 2) return;
 
         // -----------------------------
@@ -186,11 +192,11 @@ export const useEditorStore = create<EditorState>()(temporal(
           .map(id => elements.find(e => e.id === id))
           .filter(Boolean)
           .filter(el => {
-            let parentId: string | null | undefined = el!.parentId;
+            let parentKey: string | null | undefined = el!.parentKey;
 
-            while (parentId) {
-              if (selectedIds.includes(parentId)) return false;
-              parentId = elements.find(e => e.id === parentId)?.parentId;
+            while (parentKey) {
+              if (selectedIds.includes(parentKey)) return false;
+              parentKey = elements.find(e => e.id === parentKey)?.parentKey;
             }
 
             return true;
@@ -212,7 +218,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         const groups = topLevelSelected.filter(isGroup);
 
         // -----------------------------
-        // 3. TRY ADD SIMPLE → EXISTING GROUP
+        // 3. TRY TO ADD SIMPLE → EXISTING GROUP
         // -----------------------------
         if (
           simple.length > 0 &&
@@ -251,14 +257,14 @@ export const useEditorStore = create<EditorState>()(temporal(
             if (newSimple) {
               return {
                 ...el,
-                parentId: targetGroup.id,
+                parentKey: targetGroup.id,
                 x: newSimple.abs.x - minX,
                 y: newSimple.abs.y - minY,
               };
             }
 
             // Если это старый ребенок этой же группы — корректируем его позицию из-за сдвига группы
-            if (el.parentId === targetGroup.id) {
+            if (el.parentKey === targetGroup.id) {
               return {
                 ...el,
                 x: (el.x || 0) + dx,
@@ -320,7 +326,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             ...el,
             x: abs.x - minX,
             y: abs.y - minY,
-            parentId: newGroupId,
+            parentKey: newGroupId,
           };
         });
 
@@ -333,7 +339,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           h: maxY - minY,
           composition: "container",
           children: topLevelSelected.map(el => el.id),
-          parentId: null,
+          parentId: scene?.id || null,
+          parentKey: null,
           label: `Group (${topLevelSelected.length})`,
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
@@ -371,7 +378,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             id: groupId,
             x: groupX,
             y: groupY,
-            parentId: grandParentId,
+            parentKey: grandParentKey,
             children: groupChildrenIds
           } = group;
 
@@ -379,7 +386,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           // Шаг А: Обновляем детей разбиваемой группы
           updatedElements = updatedElements.map((el) => {
-            if (el.parentId === groupId) {
+            if (el.parentKey === groupId) {
               return {
                 ...el,
                 // Секрет плавности: прибавляем относительные координаты исчезающей группы
@@ -387,7 +394,7 @@ export const useEditorStore = create<EditorState>()(temporal(
                 x: el.x + groupX,
                 y: el.y + groupY,
                 // Ребенок переходит под крыло "дедушки" (если группа сама была внутри группы)
-                parentId: grandParentId,
+                parentKey: grandParentKey,
               };
             }
             return el;
@@ -395,9 +402,9 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки")
           // Нам нужно обновить массив children у этого "дедушки"
-          if (grandParentId) {
+          if (grandParentKey) {
             updatedElements = updatedElements.map((el) => {
-              if (el.id === grandParentId && el.type === "group") {
+              if (el.id === grandParentKey && el.type === "group") {
                 return {
                   ...el,
                   children: [
