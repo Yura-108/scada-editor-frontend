@@ -130,16 +130,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const payload = buildComponentTree(elements);
 
-        console.log(payload)
-
-        const schema = {
-          key: crypto.randomUUID(),
-          type: "",
-          label: "Mew Screen",
-          components: elements,
-          version: 1,
-
-        }
+        console.log(payload);
 
         // console.log(JSON.stringify(schema));
         // await fetch("/api/screens", {

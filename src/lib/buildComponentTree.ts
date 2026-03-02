@@ -8,7 +8,7 @@ export default function buildComponentTree(
     .filter(el => el.parentId === parentId)
     .map(el => ({
       key: el.id,
-      name: el.label,
+      name: el.label ?? "",
       type: el.type,
       parent_key: el.parentId,
       version: 1,

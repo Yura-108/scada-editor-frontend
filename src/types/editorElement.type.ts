@@ -1,11 +1,11 @@
 
 export type ComponentCreateDto = {
-  key?: number;
+  key?: string;
   name: string;
   children: ComponentCreateDto[];
   version?: number;
   type: string;
-  parent_key?: number | null;
+  parent_key?: string | null;
   image?: any;
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
