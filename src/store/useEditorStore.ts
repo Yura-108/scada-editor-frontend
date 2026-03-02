@@ -140,13 +140,16 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const payload = buildComponentTree(elements);
 
-        console.log("PAYLOAD", payload);
 
         const data = await fetch("/api/editor/screen", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(JSON.stringify(payload)),
         });
+
+        const json = await data.json();
+
+        console.log("exportSchema", json);
 
         // распарсить data
       },
