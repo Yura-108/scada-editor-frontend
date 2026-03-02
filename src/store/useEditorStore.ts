@@ -4,6 +4,8 @@ import {GroupElement, CanvasSchema, DiagramElement, ElementType} from "@/types/e
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import buildComponentTree from "@/lib/buildComponentTree";
+import {getComposition} from "@/lib/getComposition";
+import {elementRegistry} from "@/constants/propertiesPanel";
 
 type EditorState = {
   elements: DiagramElement[];
@@ -36,6 +38,11 @@ type EditorState = {
   // removeElements: (ids: string[]) => void;
 }
 
+const isGroup = (el: DiagramElement) => el.type === "group";
+
+const isComplex = (el: DiagramElement) =>
+  elementRegistry[el.type as ElementType]?.complex ?? false;
+
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       elements: [],
@@ -62,12 +69,15 @@ export const useEditorStore = create<EditorState>()(temporal(
         const rect = get().canvasRect;
         if (!rect) return;
 
+        const composition = getComposition(type);
+
         const x = snap(screenX);
         const y = snap(screenY);
 
         const newElement: DiagramElement = {
           id: crypto.randomUUID(),
           type,
+          composition,
           x,
           y,
           w: 120,
@@ -125,59 +135,157 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: [newElement.id],
         }));
       },
-      exportSchema: () => {
+      exportSchema: async () => {
         const {elements} = get();
 
         const payload = buildComponentTree(elements);
 
-        console.log(payload);
+        console.log("PAYLOAD", payload);
 
-        // console.log(JSON.stringify(schema));
-        // await fetch("/api/screens", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify(schema),
-        // });
-      },
-      loadSchema: (schema) => {
-        set({
-          elements: schema.elements
+        const data = await fetch("/api/editor/screen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(JSON.stringify(payload)),
         });
+
+        // распарсить data
+      },
+      loadSchema: async (schema) => {
+        const data = await fetch("/api/editor/screen");
+
+        const json = await data.json();
+        // set({
+        //   elements: schema.elements
+        // });
       },
       groupSelected: () => {
         const { elements, selectedIds } = get();
-
         if (selectedIds.length < 2) return;
 
-        const topLevelSelectedIds = selectedIds.filter(id => {
-          let el = elements.find(el => el.id === id);
-          let parentId = el?.parentId;
+        // -----------------------------
+        // 1. TOP LEVEL SELECTION
+        // -----------------------------
+        const topLevelSelected = selectedIds
+          .map(id => elements.find(e => e.id === id))
+          .filter(Boolean)
+          .filter(el => {
+            let parentId: string | null | undefined = el!.parentId;
 
-          while (parentId) {
-            if (selectedIds.includes(parentId)) return false;
-            const parentEl = elements.find(el => el.id === parentId);
-            parentId = parentEl?.parentId;
-          }
-          return true;
-        });
+            while (parentId) {
+              if (selectedIds.includes(parentId)) return false;
+              parentId = elements.find(e => e.id === parentId)?.parentId;
+            }
 
-        if (topLevelSelectedIds.length < 2) return;
+            return true;
+          }) as DiagramElement[];
 
-        // const leafIds = selectedIds.filter(id => {
-        //   const el = elements.find(e => e.id === id);
-        //   return el && el.type !== "group";
-        // });
-        //
-        // if (leafIds.length < 2) return;
+        if (topLevelSelected.length < 2) return;
 
+        // -----------------------------
+        // 2. CLASSIFY ELEMENTS
+        // -----------------------------
+        const simple = topLevelSelected.filter(
+          el => !isGroup(el) && !isComplex(el)
+        );
+
+        const complex = topLevelSelected.filter(
+          el => isComplex(el)
+        );
+
+        const groups = topLevelSelected.filter(isGroup);
+
+        // -----------------------------
+        // 3. TRY ADD SIMPLE → EXISTING GROUP
+        // -----------------------------
+        if (
+          simple.length > 0 &&
+          complex.length === 0 &&
+          groups.length === 1
+        ) {
+          const targetGroup = groups[0] as GroupElement;
+          const otherElements = elements.filter(el => el.id !== targetGroup.id && !simple.find(s => s.id === el.id));
+
+          // 1. Считаем границы новых элементов (в абсолютных координатах)
+          let minX = targetGroup.x;
+          let minY = targetGroup.y;
+          let maxX = targetGroup.x + (targetGroup.w || 0);
+          let maxY = targetGroup.y + (targetGroup.h || 0);
+
+          const simpleWithAbs = simple.map(s => ({
+            el: s,
+            abs: getAbsolutePosition(s, elements)
+          }));
+
+          simpleWithAbs.forEach(({ el, abs }) => {
+            minX = Math.min(minX, abs.x);
+            minY = Math.min(minY, abs.y);
+            maxX = Math.max(maxX, abs.x + (el.w || 0));
+            maxY = Math.max(maxY, abs.y + (el.h || 0));
+          });
+
+          // 2. Рассчитываем смещение (если группа расширилась влево или вверх)
+          const dx = targetGroup.x - minX;
+          const dy = targetGroup.y - minY;
+
+          // 3. Обновляем все элементы
+          const updatedElements = elements.map(el => {
+            // Если это новый добавляемый элемент
+            const newSimple = simpleWithAbs.find(s => s.el.id === el.id);
+            if (newSimple) {
+              return {
+                ...el,
+                parentId: targetGroup.id,
+                x: newSimple.abs.x - minX,
+                y: newSimple.abs.y - minY,
+              };
+            }
+
+            // Если это старый ребенок этой же группы — корректируем его позицию из-за сдвига группы
+            if (el.parentId === targetGroup.id) {
+              return {
+                ...el,
+                x: (el.x || 0) + dx,
+                y: (el.y || 0) + dy,
+              };
+            }
+
+            // Если это сама группа — обновляем её размеры и позицию
+            if (el.id === targetGroup.id) {
+              return {
+                ...targetGroup,
+                x: minX,
+                y: minY,
+                w: maxX - minX,
+                h: maxY - minY,
+                children: [
+                  ...(targetGroup.children ?? []),
+                  ...simple.map(s => s.id),
+                ],
+              };
+            }
+
+            return el;
+          });
+
+          set({
+            elements: updatedElements,
+            selectedIds: [targetGroup.id],
+          });
+
+          return;
+        }
+
+        // -----------------------------
+        // 4. CREATE NEW GROUP
+        // -----------------------------
         const newGroupId = crypto.randomUUID();
 
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
 
-        topLevelSelectedIds.forEach(id => {
-          const el = elements.find(e => e.id === id);
-          if (!el) return;
-
+        topLevelSelected.forEach(el => {
           const abs = getAbsolutePosition(el, elements);
 
           minX = Math.min(minX, abs.x);
@@ -187,9 +295,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
 
         const updatedElements = elements.map(el => {
-          if (!topLevelSelectedIds.includes(el.id)) return el;
+          if (!topLevelSelected.find(t => t.id === el.id)) return el;
 
           const abs = getAbsolutePosition(el, elements);
+
           return {
             ...el,
             x: abs.x - minX,
@@ -205,10 +314,11 @@ export const useEditorStore = create<EditorState>()(temporal(
           y: minY,
           w: maxX - minX,
           h: maxY - minY,
-          children: [...topLevelSelectedIds],
+          composition: "container",
+          children: topLevelSelected.map(el => el.id),
           parentId: null,
-          label: `Group (${topLevelSelectedIds.length})`,
-          bg: "rgba(59, 130, 246, 0.08)",
+          label: `Group (${topLevelSelected.length})`,
+          bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
         };

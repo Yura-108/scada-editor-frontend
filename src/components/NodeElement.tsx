@@ -81,7 +81,11 @@ export default function NodeElement({
   };
 
   return (
-    <div className={containerClasses} style={{ background: "transparent" }}>
+    <div
+      className={containerClasses}
+      style={{ background: "transparent" }}
+      onDoubleClick={e => console.log(e)}
+    >
       {element.label && element.type !== "text" && (
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-neutral-900/90 text-neutral-200 text-xs rounded border border-neutral-700 shadow-sm whitespace-nowrap z-10">
           {element.label}

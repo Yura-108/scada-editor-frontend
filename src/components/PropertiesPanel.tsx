@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { DiagramElement, PropertySchema } from "@/types/editorElement.type";
+import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import { elementPropertyMap, basePropertySchema } from "@/constants/propertiesPanel";
 
 interface PropertiesPanelProps {
@@ -24,7 +24,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   const schema: PropertySchema[] = [
     ...basePropertySchema,
-    ...(elementPropertyMap[element.type] || []),
+    ...(elementPropertyMap[element.type as ElementType] || []),
   ];
 
   return (
@@ -86,7 +86,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     id={`prop-${property.key}`}
                     type="number"
                     className={baseInputClasses}
-                    value={value ?? 0}
+                    value={Number(value).toFixed(2) ?? 0}
                     min={property.min}
                     max={property.max}
                     step={property.step ?? 1}
@@ -105,14 +105,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   {label}
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-md border border-neutral-600 shadow-sm flex-shrink-0 ring-1 ring-neutral-700/50"
+                      className="w-8 h-8 rounded-md border border-neutral-600 shadow-sm shrink-0 ring-1 ring-neutral-700/50"
                       style={{ backgroundColor: value ?? "#ffffff" }}
                     />
                     <input
                       id={`prop-${property.key}`}
                       type="color"
                       className={cn(baseInputClasses, "h-9 p-1 cursor-pointer")}
-                      value={value ?? "#ffffff"}
+                      value={"#ffffff"}
                       onChange={(e) =>
                         updateElement(element.id, { [property.key]: e.target.value })
                       }

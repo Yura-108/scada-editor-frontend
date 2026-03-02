@@ -4,12 +4,10 @@ import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
 import { Rnd } from "react-rnd";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "@/store/useEditorStore";
-import { GRID, snap } from "@/lib/utils";
+import { GRID } from "@/lib/utils";
 import NodeElement from "@/components/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
-import getParentAbsolutePosition from "@/lib/getParentAbsolutePosition";
-import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import isIntersecting from "@/lib/isIntersecting";
 
 export default function Canvas() {
@@ -82,7 +80,7 @@ export default function Canvas() {
     () => elements.filter(el => !el.parentId),
     [elements]
   );
-
+  
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".scada-element")) return;
 
@@ -222,16 +220,12 @@ export default function Canvas() {
         resizeGrid={[GRID, GRID]}
         cancel=".port, input, textarea, button"
         onDragStop={(_, d) => {
-          // const parentAbs = getParentAbsolutePosition(el, elements);
-
           updateElement(el.id, {
             x: d.x ,
             y: d.y,
           });
         }}
         onResizeStop={(_, __, ref, ___, pos) => {
-          // const parentAbs = getParentAbsolutePosition(el, elements);
-
           updateElement(el.id, {
             w: parseFloat(ref.style.width),
             h: parseFloat(ref.style.height),

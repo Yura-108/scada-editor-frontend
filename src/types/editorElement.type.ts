@@ -1,3 +1,11 @@
+export type CompositionMode =
+  | "primitive"
+  | "composite"
+  | "container";
+
+export type ElementDefinition = {
+  composition: CompositionMode;
+};
 
 export type ComponentCreateDto = {
   key?: string;
@@ -34,26 +42,23 @@ export type ElementType =
   | "text"
   | "polygon"
   | "path"
-  | "rectangle"     // ← новый
-  | "circle"        // ← новый
-  | "line"          // ← новый
+  | "rectangle"
+  | "circle"
+  | "line"
   //| "svg"         // если есть кастомные SVG
   //| "input";
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
-
-  // Общие свойства (можно вынести в mixin, если много дублирования)
+  composition: CompositionMode;
   color?: string;
   size?: number | "small" | "medium" | "large";
-
-  // Специфичные свойства (по типу)
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";
   value?: number | string;
   unit?: string;
   precision?: number;
-  level?: number;                // tank
+  level?: number;
   fluidColor?: string;
   strokeColor?: string;
   backgroundColor?: string;
@@ -63,7 +68,6 @@ export interface LeafElement extends BaseCanvasElement {
   fontSize?: number;
   bold?: boolean;
   text?: string;
-  // Для rectangle
   rx?: number;                  // скругление углов (border-radius)
   ry?: number;
 
@@ -90,14 +94,11 @@ export interface LeafElement extends BaseCanvasElement {
 // Группа / Faceplate / Container
 export interface GroupElement extends BaseCanvasElement {
   type: "group" | "faceplate";
-           // массив ID дочерних элементов (плоский список)
-  // children?: (LeafElement | GroupElement)[];   ← вложенные объекты (альтернатива, но тяжелее для zustand/undo)
-
-  // Дополнительные свойства группы
-  collapsed?: boolean;          // свёрнута ли группа визуально
+  composition: CompositionMode;
+  collapsed?: boolean;
   borderStyle?: "solid" | "dashed" | "none";
   borderColor?: string;
-  backgroundOpacity?: number;   // прозрачность фона группы
+  backgroundOpacity?: number;
 }
 
 
