@@ -1,6 +1,6 @@
 import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
-import {GroupElement, CanvasSchema, DiagramElement, ElementType} from "@/types/editorElement.type";
+import {GroupElement, CanvasSchema, DiagramElement, ElementType, ComponentCreateDto} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import buildComponentTree from "@/lib/buildComponentTree";
@@ -31,6 +31,7 @@ type EditorState = {
   pasteSelectedElement: () => void;
   exportSchema: () => void;
   loadSchema: (schema: CanvasSchema) => void;
+  createScene: () => void;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
@@ -140,7 +141,6 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const payload = buildComponentTree(elements);
 
-
         const data = await fetch("/api/editor/screen", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -160,6 +160,20 @@ export const useEditorStore = create<EditorState>()(temporal(
         // set({
         //   elements: schema.elements
         // });
+      },
+      createScene: async () => {
+        const name = prompt('Название сцены');
+        if (!name) return;
+
+        const data = await fetch("api/editor/scene", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({name})
+        });
+
+        const newScene = await data.json();
+
+        console.log(newScene);
       },
       groupSelected: () => {
         const { elements, selectedIds } = get();

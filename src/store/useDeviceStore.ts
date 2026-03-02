@@ -186,7 +186,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
           const updated = await res.json(); // ожидаем { value: [ { key, value }, ... ] }
 
           const updatedList = updated.value;
-          console.log(updatedList);
+
           type paramFromServer = {
             key: string;
             value: string;

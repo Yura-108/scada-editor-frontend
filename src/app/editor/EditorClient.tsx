@@ -19,7 +19,7 @@ export default function EditorPage() {
   const updateElement = useEditorStore((s) => s.updateElement);
 
   const exportSchema = useEditorStore((s) => s.exportSchema);
-  // const importSchema = useEditorStore((s) => s.loadSchema); // предполагаем, что метод есть
+  const loadSchema = useEditorStore((s) => s.loadSchema);
 
   const selectedElementIds = useEditorStore((s) => s.selectedIds);
 
@@ -27,6 +27,7 @@ export default function EditorPage() {
 
   const temporal = useEditorStore.temporal;
   const selectedIds = useEditorStore((s) => s.selectedIds);
+  const createScene = useEditorStore((s) => s.createScene);
   const { undo, redo } = temporal.getState();
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function EditorPage() {
           </button>
 
           <button
-            // onClick={importSchema}
+            onClick={createScene}
             className={`
               flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium
               bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/40
@@ -103,92 +104,92 @@ export default function EditorPage() {
           </button>
         </div>
 
-        <div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">
-          <button
-            onClick={useEditorStore.getState().groupSelected}
-            disabled={selectedIds.length < 2}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-sm font-medium"
-          >
-            Сгруппировать
-          </button>
+        {/*<div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">*/}
+        {/*  <button*/}
+        {/*    onClick={useEditorStore.getState().groupSelected}*/}
+        {/*    disabled={selectedIds.length < 2}*/}
+        {/*    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-sm font-medium"*/}
+        {/*  >*/}
+        {/*    Сгруппировать*/}
+        {/*  </button>*/}
 
-          <button
-            onClick={useEditorStore.getState().ungroupSelected}
-            disabled={!selectedIds.some(id => {
-              const el = useEditorStore.getState().elements.find(e => e.id === id);
-              return el?.type === "group";
-            })}
-            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm font-medium"
-          >
-            Разгруппировать
-          </button>
-        </div>
+        {/*  <button*/}
+        {/*    onClick={useEditorStore.getState().ungroupSelected}*/}
+        {/*    disabled={!selectedIds.some(id => {*/}
+        {/*      const el = useEditorStore.getState().elements.find(e => e.id === id);*/}
+        {/*      return el?.type === "group";*/}
+        {/*    })}*/}
+        {/*    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm font-medium"*/}
+        {/*  >*/}
+        {/*    Разгруппировать*/}
+        {/*  </button>*/}
+        {/*</div>*/}
       </header>
 
       {/* Основная область */}
-      <DndContext
-        collisionDetection={closestCenter}
-        onDragStart={(e) => setActiveId(e.active.id as string)}
-        onDragEnd={(event) => {
-          const { over, active, activatorEvent } = event;
+      {/*<DndContext*/}
+      {/*  collisionDetection={closestCenter}*/}
+      {/*  onDragStart={(e) => setActiveId(e.active.id as string)}*/}
+      {/*  onDragEnd={(event) => {*/}
+      {/*    const { over, active, activatorEvent } = event;*/}
 
-          if (over?.id === "canvas") {
-            const mouseEvent = activatorEvent as MouseEvent | TouchEvent;
-            const rect = useEditorStore.getState().canvasRect;
-            if (!rect) return;
+      {/*    if (over?.id === "canvas") {*/}
+      {/*      const mouseEvent = activatorEvent as MouseEvent | TouchEvent;*/}
+      {/*      const rect = useEditorStore.getState().canvasRect;*/}
+      {/*      if (!rect) return;*/}
 
-            // лучше использовать координаты относительно canvas
-            const clientX =
-              "clientX" in mouseEvent ? mouseEvent.clientX : 0;
-            const clientY =
-              "clientY" in mouseEvent ? mouseEvent.clientY : 0;
+      {/*      // лучше использовать координаты относительно canvas*/}
+      {/*      const clientX =*/}
+      {/*        "clientX" in mouseEvent ? mouseEvent.clientX : 0;*/}
+      {/*      const clientY =*/}
+      {/*        "clientY" in mouseEvent ? mouseEvent.clientY : 0;*/}
 
-            const type = active.id;
-            useEditorStore.getState().addElementAt(clientX, clientY, type);
-          }
+      {/*      const type = active.id;*/}
+      {/*      useEditorStore.getState().addElementAt(clientX, clientY, type);*/}
+      {/*    }*/}
 
-          setActiveId(null);
-        }}
-      >
-        <div className="flex flex-1 overflow-hidden">
-          {/* Левая панель — палитра элементов */}
-          <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-            <Palette />
-          </aside>
+      {/*    setActiveId(null);*/}
+      {/*  }}*/}
+      {/*>*/}
+      {/*  <div className="flex flex-1 overflow-hidden">*/}
+      {/*    /!* Левая панель — палитра элементов *!/*/}
+      {/*    <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">*/}
+      {/*      <Palette />*/}
+      {/*    </aside>*/}
 
-          {/* Центральная область — холст */}
-          <main className="flex-1 bg-neutral-950 relative">
-            <Canvas />
-          </main>
+      {/*    /!* Центральная область — холст *!/*/}
+      {/*    <main className="flex-1 bg-neutral-950 relative">*/}
+      {/*      <Canvas />*/}
+      {/*    </main>*/}
 
-          {/* Правая панель — свойства */}
-          <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-            {selectedElement ? (
-              <PropertiesPanel
-                element={selectedElement}
-                updateElement={updateElement}
-              />
-            ) : (
-              <div className="h-full flex flex-col items-center text-center p-6">
-                <div className="text-neutral-500 text-sm font-medium tracking-tight">
-                  Выберите элемент
-                </div>
-                <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">
-                  Кликните на любой элемент на холсте, чтобы открыть его свойства
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
+      {/*    /!* Правая панель — свойства *!/*/}
+      {/*    <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">*/}
+      {/*      {selectedElement ? (*/}
+      {/*        <PropertiesPanel*/}
+      {/*          element={selectedElement}*/}
+      {/*          updateElement={updateElement}*/}
+      {/*        />*/}
+      {/*      ) : (*/}
+      {/*        <div className="h-full flex flex-col items-center text-center p-6">*/}
+      {/*          <div className="text-neutral-500 text-sm font-medium tracking-tight">*/}
+      {/*            Выберите элемент*/}
+      {/*          </div>*/}
+      {/*          <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">*/}
+      {/*            Кликните на любой элемент на холсте, чтобы открыть его свойства*/}
+      {/*          </div>*/}
+      {/*        </div>*/}
+      {/*      )}*/}
+      {/*    </aside>*/}
+      {/*  </div>*/}
 
-        <DragOverlay dropAnimation={null}>
-          {activeId ? (
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
-              {activeId}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      {/*  <DragOverlay dropAnimation={null}>*/}
+      {/*    {activeId ? (*/}
+      {/*      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">*/}
+      {/*        {activeId}*/}
+      {/*      </div>*/}
+      {/*    ) : null}*/}
+      {/*  </DragOverlay>*/}
+      {/*</DndContext>*/}
     </div>
   );
 }
