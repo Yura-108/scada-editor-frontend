@@ -145,8 +145,9 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       exportSchema: async () => {
         const {elements} = get();
-
+        console.log(elements);
         const payload = buildComponentTree(elements);
+        console.log(payload);
 
         const data = await fetch("/api/editor/screen", {
           method: "POST",

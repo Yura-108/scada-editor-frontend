@@ -164,18 +164,6 @@ export default function EditorPage() {
                 <Save size={16}/>
                 Сохранить
               </button>
-
-          {/*    <button*/}
-          {/*      onClick={loadSchema}*/}
-          {/*      className={`*/}
-          {/*  flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium*/}
-          {/*  bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/40*/}
-          {/*  transition-colors active:scale-[0.98] shadow-sm*/}
-          {/*`}*/}
-          {/*    >*/}
-          {/*      <Upload size={16}/>*/}
-          {/*      Загрузить*/}
-          {/*    </button>*/}
             </div>
 
             <div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">

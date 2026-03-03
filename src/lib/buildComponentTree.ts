@@ -2,18 +2,19 @@ import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
 
 export default function buildComponentTree(
   elements: DiagramElement[],
-  parentId: string | null = null,
+  parentKey: string | null = null,
 ): ComponentCreateDto[] {
   return elements
-    .filter(el => el.parentId === parentId)
+    .filter(el => el.parentKey === parentKey)
     .map(el => {
-      const {id, label, parentId, type, children, ...imageProps} = el;
+      const {id, label, parentId, type, children, parentKey, ...imageProps} = el;
 
       return {
         key: id,
         name: label ?? "",
         type,
-        parent_key: parentId,
+        parent_key: parentKey,
+        parent_id: parentId,
         version: 1,
         image: imageProps,
         children: buildComponentTree(elements, id),

@@ -10,13 +10,14 @@ export type SceneType = {
 
 
 export type ComponentCreateDto = {
-  key?: string;
+  key: string;
   name: string;
   children: ComponentCreateDto[];
-  version?: number;
+  version: number;
   type: string;
-  parent_key?: string | null;
-  image?: any;
+  parent_key: string | null;
+  parent_id: number | null;
+  image: any;
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
