@@ -107,10 +107,10 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
 
 export function openChooseSceneModal() {
   const {openModal} = useModalStore.getState();
-  const {loadSchema, sceneList} = useEditorStore.getState();
+  const {loadScene, sceneList} = useEditorStore.getState();
 
   if (sceneList.length > 0) {
-    openModal(<ChooseSceneContent onLoadAction={loadSchema} sceneList={sceneList} />);
+    openModal(<ChooseSceneContent onLoadAction={loadScene} sceneList={sceneList} />);
   }
 }
 

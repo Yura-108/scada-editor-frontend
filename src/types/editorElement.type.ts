@@ -27,6 +27,7 @@ export interface BaseCanvasElement {
   y: number;
   w: number;
   h: number;
+  composition: boolean;
   children: string[];
   parentId: number | null;
   parentKey: string | null;
@@ -55,7 +56,6 @@ export type ElementType =
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
-  composition: boolean;
   color?: string;
   size?: number | "small" | "medium" | "large";
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";
@@ -98,7 +98,6 @@ export interface LeafElement extends BaseCanvasElement {
 // Группа / Faceplate / Container
 export interface GroupElement extends BaseCanvasElement {
   type: "group" | "faceplate";
-  composition: CompositionMode;
   collapsed?: boolean;
   borderStyle?: "solid" | "dashed" | "none";
   borderColor?: string;

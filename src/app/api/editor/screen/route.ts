@@ -36,13 +36,13 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const response = await fetch(`${BACKEND_URL}/api/components`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`, // ← передаём токен
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(canvasScreen),
+    body: canvasScreen,
   });
 
-  const editorElementFromDB = await response.json().catch(() => null);
+  const editorElements = await response.json().catch(() => null);
 
-  return NextResponse.json(editorElementFromDB, {status: 201});
+  return NextResponse.json(editorElements, {status: 201});
 })

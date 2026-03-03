@@ -1,11 +1,12 @@
 import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
-import {GroupElement, CanvasSchema, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
+import {GroupElement, DiagramElement, ElementType, SceneType, ComponentCreateDto} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import buildComponentTree from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
+import transformElements from "@/lib/transformElements";
 
 type EditorState = {
   scene: SceneType | null;
@@ -32,8 +33,8 @@ type EditorState = {
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
-  exportSchema: () => void;
-  loadSchema: (id: number) => void;
+  exportScene: () => void;
+  loadScene: (id: number) => void;
   createScene: () => void;
 
   groupSelected: () => void;
@@ -110,6 +111,8 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const idsToDelete = new Set([...selectedIds, ...childrenIds]);
 
+        console.log([...idsToDelete]);
+        // ----------------
         set({
           elements: elements.filter(el => !idsToDelete.has(el.id)),
           selectedIds: [],
@@ -143,11 +146,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: [newElement.id],
         }));
       },
-      exportSchema: async () => {
+      exportScene: async () => {
         const {elements} = get();
-        console.log(elements);
         const payload = buildComponentTree(elements);
-        console.log(payload);
 
         const data = await fetch("/api/editor/screen", {
           method: "POST",
@@ -155,11 +156,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           body: JSON.stringify(JSON.stringify(payload)),
         });
 
-        const json = await data.json();
+        const oldData = await data.json();
 
-        console.log("exportSchema", json);
+        const newData = transformElements(oldData);
 
-        // распарсить data
+        set({
+          elements: newData,
+        })
       },
       loadSceneList: async () => {
         const data = await fetch("/api/editor/scene");
@@ -169,12 +172,15 @@ export const useEditorStore = create<EditorState>()(temporal(
           sceneList: json,
         })
       },
-      loadSchema: async (id) => {
+      loadScene: async (id) => {
         const data = await fetch(`/api/editor/scene/${id}`);
-        const json = await data.json();
+        const scene = await data.json();
+
+        const newElements = transformElements(scene.children);
 
         set({
-          scene: json
+          scene,
+          elements: newElements,
         });
       },
       createScene: async () => {
@@ -349,7 +355,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           y: minY,
           w: maxX - minX,
           h: maxY - minY,
-          composition: "container",
+          composition: true,
           children: topLevelSelected.map(el => el.id),
           parentId: scene?.id || null,
           parentKey: null,

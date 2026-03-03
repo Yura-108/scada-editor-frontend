@@ -10,7 +10,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
-import {Save, Upload} from "lucide-react";
+import {Save} from "lucide-react";
 import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 
@@ -19,18 +19,14 @@ export default function EditorPage() {
   const {
     elements,
     scene,
-    exportSchema,
-    loadSchema,
+    exportScene,
     selectedIds,
     createScene,
     updateElement,
     loadSceneList
   } = useEditorStore();
-
   const selectedElement = elements.find(el => el.id === selectedIds[0]);
-
   const temporal = useEditorStore.temporal;
-
   const {undo, redo} = temporal.getState();
 
   useEffect(() => {
@@ -67,11 +63,11 @@ export default function EditorPage() {
   // Автосохранение каждые 5 секунд при изменении элементов
   useEffect(() => {
     const timeout = setTimeout(() => {
-      exportSchema();
+      exportScene();
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [elements, exportSchema]);
+  }, [elements, exportScene]);
 
   const handleLoadSchema = async () => {
     loadSceneList();
@@ -146,45 +142,67 @@ export default function EditorPage() {
 
       {scene && (
         <>
-          <header
-            className="h-14 bg-neutral-900/80 border-b border-neutral-800 flex items-center justify-between px-4 shrink-0">
-            <div className="text-lg font-semibold tracking-tight">
-              Редактор схем
+          <header className="h-14 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800/80 flex items-center justify-between px-4 shrink-0 z-10">
+            {/* Левая часть — название */}
+            <div className="flex items-center gap-3">
+              <div className="text-lg font-semibold tracking-tight text-white">
+                Редактор схем
+              </div>
+
+              {/* Можно добавить иконку или лого позже */}
+              {/* <div className="text-xs text-neutral-500">v0.12.3</div> */}
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Правая часть — действия + группа инструментов */}
+            <div className="flex items-center gap-2.5">
+              {/* Кнопки группировки — как вторичная панелька */}
+              <div className="flex items-center gap-1.5 bg-neutral-800/70 rounded-lg px-1.5 py-1 border border-neutral-700/60">
+                <button
+                  onClick={() => useEditorStore.getState().groupSelected()}
+                  disabled={selectedIds.length < 2}
+                  className={`
+          px-3 py-1.5 text-sm font-medium rounded-md
+          bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500
+          disabled:opacity-40 disabled:pointer-events-none
+          transition-colors duration-150
+        `}
+                >
+                  Сгруппировать
+                </button>
+
+                <button
+                  onClick={() => useEditorStore.getState().ungroupSelected()}
+                  disabled={!selectedIds.some(id => {
+                    const el = useEditorStore.getState().elements.find(e => e.id === id);
+                    return el?.type === "group";
+                  })}
+                  className={`
+          px-3 py-1.5 text-sm font-medium rounded-md
+          bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500
+          disabled:opacity-40 disabled:pointer-events-none
+          transition-colors duration-150
+        `}
+                >
+                  Разгруппировать
+                </button>
+              </div>
+
+              {/* Основная кнопка сохранения — выделяется сильнее */}
               <button
-                onClick={exportSchema}
+                onClick={exportScene}
                 className={`
-            flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium
-            bg-neutral-800 hover:bg-neutral-700 border border-neutral-700
-            transition-colors active:scale-[0.98]
-          `}
+        flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium
+        bg-indigo-600/90 hover:bg-indigo-600 active:bg-indigo-700
+        text-white shadow-sm shadow-indigo-900/30
+        border border-indigo-500/40 hover:border-indigo-400/60
+        transition-all duration-150 active:scale-[0.98]
+      `}
               >
-                <Save size={16}/>
+                <Save size={16} strokeWidth={2.2} />
                 Сохранить
               </button>
-            </div>
 
-            <div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">
-              <button
-                onClick={useEditorStore.getState().groupSelected}
-                disabled={selectedIds.length < 2}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-sm font-medium"
-              >
-                Сгруппировать
-              </button>
-
-              <button
-                onClick={useEditorStore.getState().ungroupSelected}
-                disabled={!selectedIds.some(id => {
-                  const el = useEditorStore.getState().elements.find(e => e.id === id);
-                  return el?.type === "group";
-                })}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm font-medium"
-              >
-                Разгруппировать
-              </button>
+              {/* Можно добавить ещё: Undo / Redo, Export PNG/JSON и т.д. */}
             </div>
           </header>
 
