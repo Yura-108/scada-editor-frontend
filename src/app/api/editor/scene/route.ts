@@ -3,12 +3,12 @@ import {protectedRoute} from "@/lib/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export const GET = protectedRoute(async (req: NextRequest, {token}) => {
+export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
 
-  const response = await fetch(`${BACKEND_URL}/api/components/scene`, {
+  const response = await fetch(`${BACKEND_URL}/api/components/scenes`, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${token}`, // ← передаём токен
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
@@ -38,7 +38,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const response = await fetch(`${BACKEND_URL}/api/components/scene`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`, // ← передаём токен
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(sceneName),

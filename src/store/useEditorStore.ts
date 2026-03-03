@@ -9,6 +9,8 @@ import {elementRegistry} from "@/constants/propertiesPanel";
 
 type EditorState = {
   scene: SceneType | null;
+  sceneList: {id: number; name: string}[];
+  loadSceneList: () => void;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
@@ -31,7 +33,7 @@ type EditorState = {
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportSchema: () => void;
-  loadSchema: () => void;
+  loadSchema: (id: number) => void;
   createScene: () => void;
 
   groupSelected: () => void;
@@ -48,6 +50,7 @@ const isComplex = (el: DiagramElement) =>
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
+      sceneList: [],
       elements: [],
       selectedId: null,
       selectedIds: [],
@@ -157,13 +160,21 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // распарсить data
       },
-      loadSchema: async () => {
-        const data = await fetch("/api/editor/screen");
-
+      loadSceneList: async () => {
+        const data = await fetch("/api/editor/scene");
         const json = await data.json();
-        // set({
-        //   elements: schema.elements
-        // });
+
+        set({
+          sceneList: json,
+        })
+      },
+      loadSchema: async (id) => {
+        const data = await fetch(`/api/editor/scene/${id}`);
+        const json = await data.json();
+
+        set({
+          scene: json
+        });
       },
       createScene: async () => {
         const name = prompt('Название сцены');

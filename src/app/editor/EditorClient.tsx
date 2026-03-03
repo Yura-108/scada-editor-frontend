@@ -12,6 +12,7 @@ import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
 import {Save, Upload} from "lucide-react";
 import {ElementType} from "@/types/editorElement.type";
+import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -22,10 +23,10 @@ export default function EditorPage() {
     loadSchema,
     selectedIds,
     createScene,
-    updateElement
+    updateElement,
+    loadSceneList
   } = useEditorStore();
 
-  console.log("ELEMENTS", elements)
   const selectedElement = elements.find(el => el.id === selectedIds[0]);
 
   const temporal = useEditorStore.temporal;
@@ -72,6 +73,11 @@ export default function EditorPage() {
     return () => clearTimeout(timeout);
   }, [elements, exportSchema]);
 
+  const handleLoadSchema = async () => {
+    loadSceneList();
+    openChooseSceneModal();
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
       {!scene && (
@@ -115,7 +121,7 @@ export default function EditorPage() {
               </button>
 
               <button
-                onClick={loadSchema}
+                onClick={handleLoadSchema}
                 className="group relative px-12 py-8 rounded-2xl text-2xl md:text-3xl font-bold overflow-hidden transition-all duration-500 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-500/40">
                 <span
                   className="absolute inset-0 bg-linear-to-r from-purple-600 to-pink-600 group-hover:from-purple-500 group-hover:to-pink-500 transition-all duration-500"></span>
@@ -159,17 +165,17 @@ export default function EditorPage() {
                 Сохранить
               </button>
 
-              <button
-                onClick={loadSchema}
-                className={`
-            flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium
-            bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/40
-            transition-colors active:scale-[0.98] shadow-sm
-          `}
-              >
-                <Upload size={16}/>
-                Загрузить
-              </button>
+          {/*    <button*/}
+          {/*      onClick={loadSchema}*/}
+          {/*      className={`*/}
+          {/*  flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium*/}
+          {/*  bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/40*/}
+          {/*  transition-colors active:scale-[0.98] shadow-sm*/}
+          {/*`}*/}
+          {/*    >*/}
+          {/*      <Upload size={16}/>*/}
+          {/*      Загрузить*/}
+          {/*    </button>*/}
             </div>
 
             <div className="flex gap-3 p-2 bg-neutral-900 border-b border-neutral-800">
