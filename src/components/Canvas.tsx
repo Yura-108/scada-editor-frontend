@@ -123,7 +123,7 @@ export default function Canvas() {
 
     const selected = elements
       .filter(el => isIntersecting(selectionRect, el))
-      .map(el => el.id);
+      .map(el => el.key);
 
     selectMultiple(selected);
 
@@ -134,7 +134,7 @@ export default function Canvas() {
 
   const elementsMap = useMemo(() => {
     const map: Record<string, DiagramElement> = {};
-    elements.forEach(el => map[el.id] = el);
+    elements.forEach(el => map[el.key] = el);
     return map;
   }, [elements]);
 
@@ -150,14 +150,14 @@ export default function Canvas() {
   }, [selectedIds, selectMultiple]);
 
   const renderElement = (el: DiagramElement) => {
-    const isSelected = selectedIds.includes(el.id);
+    const isSelected = selectedIds.includes(el.key);
 
     if (el.type === "group") {
       const group = el as GroupElement;
 
       return (
         <Rnd
-          key={el.id}
+          key={el.key}
           size={{ width: el.w, height: el.h }}
           position={{ x: el.x, y: el.y }}
           bounds="parent"
@@ -165,13 +165,13 @@ export default function Canvas() {
           resizeGrid={[GRID, GRID]}
           cancel=".port, input, textarea, button, .child-element"
           onDragStop={(_, d) => {
-            updateElement(el.id, {
+            updateElement(el.key, {
               x: d.x,
               y: d.y
             });
           }}
           onResizeStop={(_, __, ref, ___, pos) =>
-            updateElement(el.id, {
+            updateElement(el.key, {
               w: parseFloat(ref.style.width),
               h: parseFloat(ref.style.height),
               x: pos.x,
@@ -184,7 +184,7 @@ export default function Canvas() {
             const isChildClicked = (e.target as HTMLElement).closest('.child-element');
 
             if (!isChildClicked) {
-              handleSelect(el.id, e);
+              handleSelect(el.key, e);
             }
           }}
         >
@@ -215,7 +215,7 @@ export default function Canvas() {
     // Обычный элемент (лист)
     return (
       <Rnd
-        key={el.id}
+        key={el.key}
         size={{ width: el.w, height: el.h }}
         position={{ x: el.x, y: el.y }}
         bounds={"parent"}
@@ -223,13 +223,13 @@ export default function Canvas() {
         resizeGrid={[GRID, GRID]}
         cancel=".port, input, textarea, button"
         onDragStop={(_, d) => {
-          updateElement(el.id, {
+          updateElement(el.key, {
             x: d.x ,
             y: d.y,
           });
         }}
         onResizeStop={(_, __, ref, ___, pos) => {
-          updateElement(el.id, {
+          updateElement(el.key, {
             w: parseFloat(ref.style.width),
             h: parseFloat(ref.style.height),
             x: pos.x ,
@@ -238,7 +238,7 @@ export default function Canvas() {
         }}
         onMouseDown={(e) => {
           e.stopPropagation();
-          handleSelect(el.id, e)
+          handleSelect(el.key, e)
         }}
         className={cn(
           "child-element z-10 transition-shadow duration-150",
@@ -302,7 +302,7 @@ export default function Canvas() {
         <button
           onClick={() => useEditorStore.getState().ungroupSelected()}
           disabled={!selectedIds.some(id => {
-            const el = useEditorStore.getState().elements.find(e => e.id === id);
+            const el = useEditorStore.getState().elements.find(e => e.key === id);
             return el?.type === "group";
           })}
           className="group relative px-4 py-2 text-sm font-medium rounded-xl

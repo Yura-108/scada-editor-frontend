@@ -7,17 +7,18 @@ export default function buildComponentTree(
   return elements
     .filter(el => el.parentKey === parentKey)
     .map(el => {
-      const {id, label, parentId, type, children, parentKey, ...imageProps} = el;
+      const {id,key, label, parentId, type, children, parentKey, ...imageProps} = el;
 
       return {
-        key: id,
+        id,
+        key,
         name: label ?? "",
         type,
         parent_key: parentKey,
         parent_id: parentId,
         version: 1,
         image: imageProps,
-        children: buildComponentTree(elements, id),
+        children: buildComponentTree(elements, key),
       };
     });
 }

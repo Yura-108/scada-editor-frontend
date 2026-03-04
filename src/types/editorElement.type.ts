@@ -21,8 +21,8 @@ export type ComponentCreateDto = {
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
-  id: string;
-  dbId?: number;
+  id: number | null;
+  key: string;
   x: number;
   y: number;
   w: number;

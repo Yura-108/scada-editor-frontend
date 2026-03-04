@@ -35,7 +35,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           {element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties
         </h3>
         <p className="text-xs text-neutral-500 mt-1 font-mono">
-          ID: {element.id.slice(0, 8)}...
+          ID: {element.key.slice(0, 8)}...
         </p>
       </div>
 
@@ -72,7 +72,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     value={value ?? ""}
                     placeholder={property.placeholder || ""}
                     onChange={(e) =>
-                      updateElement(element.id, { [property.key]: e.target.value })
+                      updateElement(element.key, { [property.key]: e.target.value })
                     }
                   />
                 </div>
@@ -91,7 +91,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     max={property.max}
                     step={property.step ?? 1}
                     onChange={(e) =>
-                      updateElement(element.id, {
+                      updateElement(element.key, {
                         [property.key]: Number(e.target.value) || 0,
                       })
                     }
@@ -114,7 +114,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       className={cn(baseInputClasses, "h-9 p-1 cursor-pointer")}
                       value={"#ffffff"}
                       onChange={(e) =>
-                        updateElement(element.id, { [property.key]: e.target.value })
+                        updateElement(element.key, { [property.key]: e.target.value })
                       }
                     />
                   </div>
@@ -130,7 +130,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     className={cn(baseInputClasses, "appearance-none pr-8")}
                     value={value ?? ""}
                     onChange={(e) =>
-                      updateElement(element.id, { [property.key]: e.target.value })
+                      updateElement(element.key, { [property.key]: e.target.value })
                     }
                   >
                     {property.options?.map((opt) => (
@@ -150,7 +150,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     type="checkbox"
                     checked={!!value}
                     onChange={(e) =>
-                      updateElement(element.id, { [property.key]: e.target.checked })
+                      updateElement(element.key, { [property.key]: e.target.checked })
                     }
                     className={cn(
                       "w-4 h-4 rounded border-neutral-600 bg-neutral-800",

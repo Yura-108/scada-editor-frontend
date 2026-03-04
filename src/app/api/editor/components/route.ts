@@ -39,10 +39,37 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: canvasScreen,
+    body: JSON.stringify(canvasScreen),
   });
 
   const editorElements = await response.json().catch(() => null);
+
+
+  return NextResponse.json(editorElements, {status: 201});
+})
+
+export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
+  const ids = await req.json();
+
+  if (!ids) {
+    return NextResponse.json(
+      {error: "ID не переданы!"},
+      {status: 400}
+    );
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/components`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: ids,
+  });
+
+  const editorElements = await response.json().catch(() => null);
+
+
 
   return NextResponse.json(editorElements, {status: 201});
 })

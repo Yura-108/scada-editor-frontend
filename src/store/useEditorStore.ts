@@ -7,11 +7,12 @@ import buildComponentTree from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
+import {toast} from "sonner";
 
 type EditorState = {
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
-  loadSceneList: () => void;
+  loadSceneList: () => any;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
@@ -60,10 +61,10 @@ export const useEditorStore = create<EditorState>()(temporal(
       connecting: null,
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
-      updateElement: (id: string, updates: Partial<DiagramElement>) => {
+      updateElement: (key: string, updates: Partial<DiagramElement>) => {
         set(state => ({
           elements: state.elements.map(el =>
-            el.id === id
+            el.key === key
               ? { ...el, ...updates } as DiagramElement
               : el
           )
@@ -83,7 +84,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         const y = snap(screenY);
 
         const newElement: DiagramElement = {
-          id: crypto.randomUUID(),
+          id: null,
+          key: crypto.randomUUID(),
           type,
           composition,
           x,
@@ -101,29 +103,39 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: [...state.elements, newElement]
         }))
       },
-      deleteSelectedElement: () => {
+      deleteSelectedElement: async () => {
         const { selectedIds, elements } = get();
         if (!selectedIds.length) return;
 
-        const selectedGroups = elements.filter(el => selectedIds.includes(el.id) && el.type === "group");
+        const selectedGroups = elements.filter(el => selectedIds.includes(el.key) && el.type === "group");
 
         const childrenIds = selectedGroups.flatMap(group => "children" in group ? group.children : []);
 
         const idsToDelete = new Set([...selectedIds, ...childrenIds]);
 
-        console.log([...idsToDelete]);
-        // ----------------
-        set({
-          elements: elements.filter(el => !idsToDelete.has(el.id)),
-          selectedIds: [],
-        });
+        try {
+          await fetch(`/api/editor`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([...selectedIds])
+          });
+
+          set({
+            elements: elements.filter(el => !idsToDelete.has(el.key)),
+            selectedIds: [],
+          });
+
+        } catch (err) {
+          console.error('Ошибка при удалении:', err);
+          toast.error('Не удалось удалить элементы. Попробуйте снова.');
+        }
       },
       copySelectedElement: () => {
         const { selectedIds, elements } = get();
         if (!selectedIds.length) return;
 
         // Копируем первый выделенный (самый простой вариант)
-        const element = elements.find(el => el.id === selectedIds[0]);
+        const element = elements.find(el => el.key === selectedIds[0]);
         if (!element) return;
 
         set({ clipboard: { ...element } });
@@ -136,68 +148,87 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const newElement = {
           ...clipboard,
-          id: crypto.randomUUID(),
+          id: null,
+          key: crypto.randomUUID(),
           x: clipboard.x + 20,
           y: clipboard.y + 20,
         };
 
         set(state => ({
           elements: [...state.elements, newElement],
-          selectedIds: [newElement.id],
+          selectedIds: [newElement.key],
         }));
       },
       exportScene: async () => {
-        const {elements} = get();
-        const payload = buildComponentTree(elements);
+        try {
+          const {elements} = get();
 
-        const data = await fetch("/api/editor/screen", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(JSON.stringify(payload)),
-        });
+          const payload = buildComponentTree(elements);
 
-        const oldData = await data.json();
+          const res = await fetch("/api/editor/components", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+          });
 
-        const newData = transformElements(oldData);
+          const oldData = await res.json();
+          const newData = transformElements(oldData);
 
-        set({
-          elements: newData,
-        })
+          set({elements: newData});
+          toast.success("Сохранено успешно!");
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || "Ошибка экспорта сцены");
+        }
       },
       loadSceneList: async () => {
-        const data = await fetch("/api/editor/scene");
-        const json = await data.json();
+        try {
+          const res = await fetch("/api/editor/scene");
 
-        set({
-          sceneList: json,
-        })
+          const json = await res.json();
+          set({sceneList: json});
+          toast.success("Список сцен загружен");
+          return json;
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || "Ошибка загрузки списка сцен");
+        }
       },
       loadScene: async (id) => {
-        const data = await fetch(`/api/editor/scene/${id}`);
-        const scene = await data.json();
+        try {
+          const res = await fetch(`/api/editor/scene/${id}`);
 
-        const newElements = transformElements(scene.children);
+          const scene = await res.json();
+          const newElements = transformElements(scene.children);
 
-        set({
-          scene,
-          elements: newElements,
-        });
+          set({scene, elements: newElements});
+
+
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || "Ошибка загрузки сцены");
+        }
       },
       createScene: async () => {
-        const name = prompt('Название сцены');
-        if (!name) return;
+        try {
+          const name = prompt("Название сцены");
+          if (!name) return;
 
-        const data = await fetch("api/editor/scene", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({name})
-        });
+          const res = await fetch("/api/editor/scene", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({name}),
+          });
 
-        const newScene = await data.json();
+          const newScene = await res.json();
 
-        set({
-          scene: newScene
-        });
+          set({scene: newScene});
+
+          toast.success("Сцена создана");
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || "Ошибка создания сцены");
+        }
       },
       groupSelected: () => {
         const { elements, selectedIds, scene } = get();
@@ -207,7 +238,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         // 1. TOP LEVEL SELECTION
         // -----------------------------
         const topLevelSelected = selectedIds
-          .map(id => elements.find(e => e.id === id))
+          .map(key => elements.find(e => e.key === key))
           .filter(Boolean)
           .filter(el => {
             let parentKey: string | null | undefined = el!.parentKey;
@@ -274,14 +305,14 @@ export const useEditorStore = create<EditorState>()(temporal(
             if (newSimple) {
               return {
                 ...el,
-                parentKey: targetGroup.id,
+                parentKey: targetGroup.key,
                 x: newSimple.abs.x - minX,
                 y: newSimple.abs.y - minY,
               };
             }
 
             // Если это старый ребенок этой же группы — корректируем его позицию из-за сдвига группы
-            if (el.parentKey === targetGroup.id) {
+            if (el.parentKey === targetGroup.key) {
               return {
                 ...el,
                 x: (el.x || 0) + dx,
@@ -290,7 +321,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             }
 
             // Если это сама группа — обновляем её размеры и позицию
-            if (el.id === targetGroup.id) {
+            if (el.key === targetGroup.key) {
               return {
                 ...targetGroup,
                 x: minX,
@@ -299,7 +330,7 @@ export const useEditorStore = create<EditorState>()(temporal(
                 h: maxY - minY,
                 children: [
                   ...(targetGroup.children ?? []),
-                  ...simple.map(s => s.id),
+                  ...simple.map(s => s.key),
                 ],
               };
             }
@@ -309,7 +340,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           set({
             elements: updatedElements,
-            selectedIds: [targetGroup.id],
+            selectedIds: [targetGroup.key],
           });
 
           return;
@@ -348,14 +379,15 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
 
         const group: GroupElement = {
-          id: newGroupId,
+          id: null,
+          key: newGroupId,
           type: "group",
           x: minX,
           y: minY,
           w: maxX - minX,
           h: maxY - minY,
           composition: true,
-          children: topLevelSelected.map(el => el.id),
+          children: topLevelSelected.map(el => el.key),
           parentId: scene?.id || null,
           parentKey: null,
           label: `Group (${topLevelSelected.length})`,
@@ -374,13 +406,13 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // 1. Находим среди выделенных элементов только группы
         const groupsToUngroup = elements.filter(
-          (el) => selectedIds.includes(el.id) && el.type === "group"
+          (el) => selectedIds.includes(el.key) && el.type === "group"
         );
 
         // Если не выделено ни одной группы, ничего не делаем
         if (groupsToUngroup.length === 0) return;
 
-        const groupIdsToRemove = groupsToUngroup.map((g) => g.id);
+        const groupIdsToRemove = groupsToUngroup.map((g) => g.key);
 
         // Здесь мы соберем ID элементов, которые освободятся из-под групп,
         // чтобы автоматически сделать их выделенными после разгруппировки
@@ -392,7 +424,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         // Проходимся по каждой группе, которую нужно разбить
         groupsToUngroup.forEach((group) => {
           const {
-            id: groupId,
+            key: groupId,
             x: groupX,
             y: groupY,
             parentKey: grandParentKey,
@@ -421,11 +453,11 @@ export const useEditorStore = create<EditorState>()(temporal(
           // Нам нужно обновить массив children у этого "дедушки"
           if (grandParentKey) {
             updatedElements = updatedElements.map((el) => {
-              if (el.id === grandParentKey && el.type === "group") {
+              if (el.key === grandParentKey && el.type === "group") {
                 return {
                   ...el,
                   children: [
-                    ...el.children.filter((id) => id !== groupId), // убираем ID удаленной группы
+                    ...el.children.filter((key) => key !== groupId), // убираем ID удаленной группы
                     ...groupChildrenIds,                           // добавляем ID её "выпавших" детей
                   ],
                 };
@@ -436,7 +468,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
 
         // 2. Окончательно удаляем сами разбитые группы из массива
-        updatedElements = updatedElements.filter((el) => !groupIdsToRemove.includes(el.id));
+        updatedElements = updatedElements.filter((el) => !groupIdsToRemove.includes(el.key));
 
         // 3. Сохраняем в выделении обычные фигуры, если они были выделены вместе с группами
         const retainedSelectedIds = selectedIds.filter((id) => !groupIdsToRemove.includes(id));

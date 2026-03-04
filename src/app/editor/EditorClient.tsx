@@ -18,15 +18,16 @@ export default function EditorPage() {
   const {
     elements,
     scene,
-    exportScene,
     selectedIds,
     createScene,
     updateElement,
     loadSceneList
   } = useEditorStore();
-  const selectedElement = elements.find(el => el.id === selectedIds[0]);
+  const selectedElement = elements.find(el => el.key === selectedIds[0]);
   const temporal = useEditorStore.temporal;
   const {undo, redo} = temporal.getState();
+
+  console.log(elements)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -60,16 +61,16 @@ export default function EditorPage() {
   }, [undo, redo]);
 
   // Автосохранение каждые 5 секунд при изменении элементов
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      exportScene();
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [elements, exportScene]);
+  // useEffect(() => {
+  //   const timeout = setTimeout(() => {
+  //     exportScene();
+  //   }, 5000);
+  //
+  //   return () => clearTimeout(timeout);
+  // }, [elements, exportScene]);
 
   const handleLoadSchema = async () => {
-    loadSceneList();
+    await loadSceneList();
     openChooseSceneModal();
   }
 
