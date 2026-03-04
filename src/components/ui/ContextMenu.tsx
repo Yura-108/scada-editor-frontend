@@ -13,8 +13,7 @@ const ContextMenu = <T extends string = string>({
   menu,
   items,
   onAction,
-  onClose,
-  selectElement
+  onClose
 }: ContextMenuProps<T>) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -82,11 +81,8 @@ const ContextMenu = <T extends string = string>({
       return item.key === 'edit';
     }
 
-    if (typeof menu.key !== 'number') {
-      return item.key === 'add';
-    }
+    return item.key === 'add';
 
-    return true;
   });
 
   if (visibleItems.length === 0) return null;

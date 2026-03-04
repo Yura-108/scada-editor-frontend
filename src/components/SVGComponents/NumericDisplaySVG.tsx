@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { BaseElement } from "@/types/editorElement.type"; // или DiagramElement
+import { LeafElement } from "@/types/editorElement.type"; // или DiagramElement
 
 interface NumericDisplayProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
@@ -25,9 +25,7 @@ export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
 
   // Форматирование значения
   const formattedValue =
-    typeof value === "number"
-      ? Number(value).toFixed(precision)
-      : String(value);
+    Number(value).toFixed(precision);
 
   // Размер шрифта значения — адаптивный, но не меньше 12px
   const valueFontSize = Math.max(12, height / 3);

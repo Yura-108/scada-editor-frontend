@@ -10,7 +10,6 @@ import {useEditorStore} from "@/store/useEditorStore";
 import Canvas from "@/components/Canvas";
 import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
-import {Save} from "lucide-react";
 import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 
@@ -75,7 +74,7 @@ export default function EditorPage() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
       {!scene && (
         <>
           <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -141,132 +140,66 @@ export default function EditorPage() {
       )}
 
       {scene && (
-        <>
-          <header className="h-14 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800/80 flex items-center justify-between px-4 shrink-0 z-10">
-            {/* Левая часть — название */}
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-semibold tracking-tight text-white">
-                Редактор схем
-              </div>
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragStart={(e) => setActiveId(e.active.id as string)}
+          onDragEnd={(event) => {
+            const {over, active, activatorEvent} = event;
 
-              {/* Можно добавить иконку или лого позже */}
-              {/* <div className="text-xs text-neutral-500">v0.12.3</div> */}
-            </div>
+            if (over?.id === "canvas") {
+              const mouseEvent = activatorEvent as MouseEvent | TouchEvent;
+              const rect = useEditorStore.getState().canvasRect;
+              if (!rect) return;
 
-            {/* Правая часть — действия + группа инструментов */}
-            <div className="flex items-center gap-2.5">
-              {/* Кнопки группировки — как вторичная панелька */}
-              <div className="flex items-center gap-1.5 bg-neutral-800/70 rounded-lg px-1.5 py-1 border border-neutral-700/60">
-                <button
-                  onClick={() => useEditorStore.getState().groupSelected()}
-                  disabled={selectedIds.length < 2}
-                  className={`
-          px-3 py-1.5 text-sm font-medium rounded-md
-          bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500
-          disabled:opacity-40 disabled:pointer-events-none
-          transition-colors duration-150
-        `}
-                >
-                  Сгруппировать
-                </button>
+              const clientX = "clientX" in mouseEvent ? mouseEvent.clientX : 0;
+              const clientY = "clientY" in mouseEvent ? mouseEvent.clientY : 0;
 
-                <button
-                  onClick={() => useEditorStore.getState().ungroupSelected()}
-                  disabled={!selectedIds.some(id => {
-                    const el = useEditorStore.getState().elements.find(e => e.id === id);
-                    return el?.type === "group";
-                  })}
-                  className={`
-          px-3 py-1.5 text-sm font-medium rounded-md
-          bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500
-          disabled:opacity-40 disabled:pointer-events-none
-          transition-colors duration-150
-        `}
-                >
-                  Разгруппировать
-                </button>
-              </div>
+              const type = active.id;
+              useEditorStore.getState().addElementAt(clientX, clientY, type as ElementType);
+            }
 
-              {/* Основная кнопка сохранения — выделяется сильнее */}
-              <button
-                onClick={exportScene}
-                className={`
-        flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium
-        bg-indigo-600/90 hover:bg-indigo-600 active:bg-indigo-700
-        text-white shadow-sm shadow-indigo-900/30
-        border border-indigo-500/40 hover:border-indigo-400/60
-        transition-all duration-150 active:scale-[0.98]
-      `}
-              >
-                <Save size={16} strokeWidth={2.2} />
-                Сохранить
-              </button>
+            setActiveId(null);
+          }}
+        >
+          <div className="flex flex-1 overflow-hidden">
+            {/* Левая панель — палитра элементов */}
+            <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">
+              <Palette/>
+            </aside>
 
-              {/* Можно добавить ещё: Undo / Redo, Export PNG/JSON и т.д. */}
-            </div>
-          </header>
+            {/* Центральная область — холст */}
+            <main className="flex-1 bg-neutral-950 relative">
+              <Canvas/>
+            </main>
 
-          <DndContext
-            collisionDetection={closestCenter}
-            onDragStart={(e) => setActiveId(e.active.id as string)}
-            onDragEnd={(event) => {
-              const {over, active, activatorEvent} = event;
-
-              if (over?.id === "canvas") {
-                const mouseEvent = activatorEvent as MouseEvent | TouchEvent;
-                const rect = useEditorStore.getState().canvasRect;
-                if (!rect) return;
-
-                const clientX = "clientX" in mouseEvent ? mouseEvent.clientX : 0;
-                const clientY = "clientY" in mouseEvent ? mouseEvent.clientY : 0;
-
-                const type = active.id;
-                useEditorStore.getState().addElementAt(clientX, clientY, type as ElementType);
-              }
-
-              setActiveId(null);
-            }}
-          >
-            <div className="flex flex-1 overflow-hidden">
-              {/* Левая панель — палитра элементов */}
-              <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-                <Palette/>
-              </aside>
-
-              {/* Центральная область — холст */}
-              <main className="flex-1 bg-neutral-950 relative">
-                <Canvas/>
-              </main>
-
-              {/* Правая панель — свойства */}
-              <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-                {selectedElement ? (
-                  <PropertiesPanel
-                    element={selectedElement}
-                    updateElement={updateElement}/>
-                ) : (
-                  <div className="h-full flex flex-col items-center text-center p-6">
-                    <div className="text-neutral-500 text-sm font-medium tracking-tight">
-                      Выберите элемент
-                    </div>
-                    <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">
-                      Кликните на любой элемент на холсте, чтобы открыть его свойства
-                    </div>
+            {/* Правая панель — свойства */}
+            <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
+              {selectedElement ? (
+                <PropertiesPanel
+                  element={selectedElement}
+                  updateElement={updateElement}/>
+              ) : (
+                <div className="h-full flex flex-col items-center text-center p-6">
+                  <div className="text-neutral-500 text-sm font-medium tracking-tight">
+                    Выберите элемент
                   </div>
-                )}
-              </aside>
-            </div>
-
-            <DragOverlay dropAnimation={null}>
-              {activeId ? (
-                <div
-                  className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
-                  {activeId}
+                  <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">
+                    Кликните на любой элемент на холсте, чтобы открыть его свойства
+                  </div>
                 </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </>
+              )}
+            </aside>
+          </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activeId ? (
+              <div
+                className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
+                {activeId}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );

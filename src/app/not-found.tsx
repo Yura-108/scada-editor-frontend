@@ -1,6 +1,6 @@
 'use client';
 
-// app/not-found.tsx
+
 import Link from 'next/link';
 import { Home, ArrowLeft, Sparkles } from 'lucide-react';
 
@@ -34,7 +34,7 @@ export default function NotFound() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link
                 href="/app"
-                className="group flex items-center gap-3 px-8 py-5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xl font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-300 shadow-lg"
+                className="group flex items-center gap-3 px-8 py-5 bg-linear-to-r from-purple-600 to-pink-600 text-white text-xl font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-300 shadow-lg"
               >
                 <Home className="w-6 h-6 group-hover:animate-pulse" />
                 На главную

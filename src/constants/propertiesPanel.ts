@@ -1,4 +1,4 @@
-import {ElementType, PropertySchema, ElementDefinition} from "@/types/editorElement.type";
+import {ElementType, PropertySchema} from "@/types/editorElement.type";
 
 export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   lamp: { complex: true },

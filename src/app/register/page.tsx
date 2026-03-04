@@ -14,7 +14,6 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [serverError, setServerError] = useState('');
 
   const {
     register,
@@ -28,7 +27,6 @@ export default function RegisterForm() {
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
-    setServerError(''); // если у тебя есть состояние для ошибки
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -43,18 +41,13 @@ export default function RegisterForm() {
         credentials: 'include',
       });
 
-      const result = await response.json();
+      await response.json();
 
-      if (!response.ok) {
-        setServerError(result.message || 'Ошибка регистрации');
-      }
-
-      router.push('/app');
+      router.push('/channels');
       router.refresh();
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error('Ошибка регистрации:', err);
-        setServerError(err.message || 'Что-то пошло не так. Попробуйте позже.');
       }
     } finally {
       setIsLoading(false);
@@ -63,7 +56,7 @@ export default function RegisterForm() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-xl bg-opacity-95">
             <div className="text-center mb-8">
@@ -160,7 +153,7 @@ export default function RegisterForm() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xl font-bold hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full py-5 rounded-2xl bg-linear-to-r from-purple-600 to-pink-600 text-white text-xl font-bold hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">

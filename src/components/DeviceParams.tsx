@@ -8,7 +8,6 @@ import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
-// @ts-ignore
 import debounce from 'lodash/debounce';
 import { AddParamModal } from "./AddParamModal";
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
@@ -33,7 +32,6 @@ const DeviceParams = () => {
   const optionItems = rawParams.filter(param => param.type === 'option');
   const normalParams = rawParams.filter(param => param.type !== 'option');
 
-  // Локальное состояние для редактирования
   const [editedParams, setEditedParams] = useState<Map<string, string>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -43,7 +41,7 @@ const DeviceParams = () => {
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
   const debouncedSaveDraft = useCallback(
-    debounce((key: string, data: Record<string, string>) => {
+    debounce((key: string, data: { key: number; value: string; }[]) => {
       localStorage.setItem(key, JSON.stringify(data));
     }, 400),
     []
@@ -63,8 +61,6 @@ const DeviceParams = () => {
       })();
     };
   }, []);
-
-
 
   useEffect(() => {
     if (!draftKey || !selectedDevice) {
@@ -221,9 +217,9 @@ const DeviceParams = () => {
     );
   }
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white rounded-2xl shadow-xl">
+    <div className="min-h-screen flex flex-col bg-linear-to-b from-gray-50 to-white rounded-2xl shadow-xl">
       {/* Заголовок */}
-      <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
+      <div className="px-6 py-4 border-b bg-linear-to-r from-purple-50 to-indigo-50 rounded-2xl">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <Settings className="w-6 h-6 text-purple-600"/>
           Параметры
@@ -237,7 +233,7 @@ const DeviceParams = () => {
         <div className="flex items-center gap-2">
           <button
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
             onClick={() => toggleEditing(selectedDevice)}
           >
@@ -251,7 +247,7 @@ const DeviceParams = () => {
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
 
               // активная кнопка
-              'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
+              'bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
 
               // disabled стили
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:from-purple-600 disabled:hover:to-indigo-600'
@@ -270,7 +266,7 @@ const DeviceParams = () => {
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
 
               // базовый стиль (как у первой кнопки)
-              'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-xl',
+              'bg-linear-to-r from-purple-600 to-indigo-600 shadow-xl',
 
               // hover только когда не disabled
               'hover:from-purple-700 hover:to-indigo-700 hover:scale-105',

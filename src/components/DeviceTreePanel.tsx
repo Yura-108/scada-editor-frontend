@@ -22,10 +22,6 @@ const DeviceTreePanel = () => {
     handleContextAction
   } = useDeviceStore();
 
-  const editingDevices = useDeviceStore(
-    s => s.editingDevices
-  );
-
 
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;

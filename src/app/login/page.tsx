@@ -42,7 +42,7 @@ export default function LoginPage() {
       }
 
       // Успешный вход → редирект в рабочую область
-      router.push('/app');
+      router.push('/channels');
       router.refresh(); // обновляем серверные данные (если используешь Server Components)
     } catch (err: unknown) {
       if (err instanceof Error) {

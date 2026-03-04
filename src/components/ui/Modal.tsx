@@ -19,7 +19,6 @@ const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
-  width = '500px',
   closeOnOverlay = true
 }) => {
   useEffect(() => {
@@ -37,7 +36,7 @@ const Modal: React.FC<ModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-lg"
         onClick={closeOnOverlay ? onClose : undefined}

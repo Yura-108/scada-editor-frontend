@@ -91,6 +91,9 @@ export interface LeafElement extends BaseCanvasElement {
   opacity?: number;     // 0-1
   zIndex?: number;
   points?: string;
+  unitColor?: string;
+  fontFamily?: string;
+  letterSpacing?: number;
   d?: string; // SVG path data
   // ... добавляй по мере необходимости
 }

@@ -9,6 +9,7 @@ import NodeElement from "@/components/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
+import {Save} from "lucide-react";
 
 export default function Canvas() {
   const {
@@ -20,6 +21,7 @@ export default function Canvas() {
     deleteSelectedElement,
     copySelectedElement,
     pasteSelectedElement,
+    exportScene
   } = useEditorStore();
 
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
@@ -83,6 +85,7 @@ export default function Canvas() {
   
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".scada-element")) return;
+    if ((e.target as HTMLElement).closest("button")) return;
 
     const rect = containerRef.current!.getBoundingClientRect();
 
@@ -277,6 +280,55 @@ export default function Canvas() {
           backgroundSize: `${GRID}px ${GRID}px`,
         }}
       />
+
+      {/* Кнопки */}
+      <div className="absolute top-4 right-4 flex flex-col gap-3">
+        {/* Группа кнопок (для удобства вынес общие стили в переменную ниже) */}
+
+        <button
+          onClick={() => useEditorStore.getState().groupSelected()}
+          disabled={selectedIds.length < 2}
+          className="group relative px-4 py-2 text-sm font-medium rounded-xl
+               bg-white/10 backdrop-blur-md border border-white/20
+               text-white
+               hover:bg-white/20 hover:border-white/30
+               active:shadow-none active:translate-y-0.5
+               disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0
+               transition-all duration-150 ease-out"
+        >
+          Сгруппировать
+        </button>
+
+        <button
+          onClick={() => useEditorStore.getState().ungroupSelected()}
+          disabled={!selectedIds.some(id => {
+            const el = useEditorStore.getState().elements.find(e => e.id === id);
+            return el?.type === "group";
+          })}
+          className="group relative px-4 py-2 text-sm font-medium rounded-xl
+               bg-white/10 backdrop-blur-md border border-white/20
+               text-white
+               hover:bg-white/20 hover:border-white/30
+               active:shadow-none active:translate-y-0.5
+               disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0
+               transition-all duration-150 ease-out"
+        >
+          Разгруппировать
+        </button>
+
+        <button
+          onClick={exportScene}
+          className="group relative flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl
+               bg-indigo-500/30 backdrop-blur-lg border border-indigo-400/40
+               text-indigo-100
+               hover:bg-indigo-500/40 hover:border-indigo-400/60
+               active:shadow-none active:translate-y-0.5
+               transition-all duration-150 ease-out"
+        >
+          <Save size={16} strokeWidth={2.5} />
+          Сохранить
+        </button>
+      </div>
 
       {/* Узлы */}
       {rootElements.map(el => renderElement(el))}

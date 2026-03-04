@@ -1,6 +1,6 @@
 import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
-import {GroupElement, DiagramElement, ElementType, SceneType, ComponentCreateDto} from "@/types/editorElement.type";
+import {GroupElement, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
 import buildComponentTree from "@/lib/buildComponentTree";
@@ -244,7 +244,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           groups.length === 1
         ) {
           const targetGroup = groups[0] as GroupElement;
-          const otherElements = elements.filter(el => el.id !== targetGroup.id && !simple.find(s => s.id === el.id));
 
           // 1. Считаем границы новых элементов (в абсолютных координатах)
           let minX = targetGroup.x;

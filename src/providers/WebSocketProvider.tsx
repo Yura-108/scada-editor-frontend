@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { wsClient } from "@/shared/websocket/wsClient";
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
