@@ -12,22 +12,18 @@ import {PropertiesPanel} from "@/components/PropertiesPanel";
 import Palette from "@/components/Palette";
 import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
+import WorkSpace from "@/components/WorkSpace";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const {
-    elements,
     scene,
-    selectedIds,
     createScene,
-    updateElement,
     loadSceneList
   } = useEditorStore();
-  const selectedElement = elements.find(el => el.key === selectedIds[0]);
+
   const temporal = useEditorStore.temporal;
   const {undo, redo} = temporal.getState();
-
-  console.log(elements)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -162,35 +158,8 @@ export default function EditorPage() {
             setActiveId(null);
           }}
         >
-          <div className="flex flex-1 overflow-hidden">
-            {/* Левая панель — палитра элементов */}
-            <aside className="w-72 border-r border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-              <Palette/>
-            </aside>
 
-            {/* Центральная область — холст */}
-            <main className="flex-1 bg-neutral-950 relative">
-              <Canvas/>
-            </main>
-
-            {/* Правая панель — свойства */}
-            <aside className="w-80 border-l border-neutral-800 bg-neutral-900/60 overflow-y-auto">
-              {selectedElement ? (
-                <PropertiesPanel
-                  element={selectedElement}
-                  updateElement={updateElement}/>
-              ) : (
-                <div className="h-full flex flex-col items-center text-center p-6">
-                  <div className="text-neutral-500 text-sm font-medium tracking-tight">
-                    Выберите элемент
-                  </div>
-                  <div className="mt-2 text-neutral-600 text-xs max-w-[220px]">
-                    Кликните на любой элемент на холсте, чтобы открыть его свойства
-                  </div>
-                </div>
-              )}
-            </aside>
-          </div>
+          <WorkSpace />
 
           <DragOverlay dropAnimation={null}>
             {activeId ? (

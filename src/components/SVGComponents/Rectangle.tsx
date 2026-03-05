@@ -1,7 +1,8 @@
 import getTransform from "@/lib/getTransform";
+import {LeafElement} from "@/types/editorElement.type";
 
 interface RectangleProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export default function Rectangle({ element }: RectangleProps) {

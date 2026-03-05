@@ -78,6 +78,25 @@ export default function Canvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
 
+  // useEffect(() => {
+  //   const selectedElements = elements.filter(el => selectedIds.includes(el.key));
+  //
+  //   if (selectedElements.length > 0) {
+  //     selectedElements.forEach(el => {
+  //       if (el.type === "line") {
+  //         setSelectionRect(getLineBoundingBox(el));
+  //       } else {
+  //         setSelectionRect({
+  //           x: el.x,
+  //           y: el.y,
+  //           width: el.w,
+  //           height: el.h
+  //         })
+  //       }
+  //     })
+  //   }
+  //}, [selectedIds, elements]);
+
   const rootElements = useMemo(
     () => elements.filter(el => !el.parentKey),
     [elements]
@@ -163,7 +182,7 @@ export default function Canvas() {
           bounds="parent"
           dragGrid={[GRID, GRID]}
           resizeGrid={[GRID, GRID]}
-          cancel=".port, input, textarea, button, .child-element"
+          cancel=".no-drag, input, textarea, button, .child-element"
           onDragStop={(_, d) => {
             updateElement(el.key, {
               x: d.x,
@@ -221,7 +240,7 @@ export default function Canvas() {
         bounds={"parent"}
         dragGrid={[GRID, GRID]}
         resizeGrid={[GRID, GRID]}
-        cancel=".port, input, textarea, button"
+        cancel=".no-drag, input, textarea, button"
         onDragStop={(_, d) => {
           updateElement(el.key, {
             x: d.x ,
@@ -282,9 +301,7 @@ export default function Canvas() {
       />
 
       {/* Кнопки */}
-      <div className="absolute top-4 right-4 flex flex-col gap-3">
-        {/* Группа кнопок (для удобства вынес общие стили в переменную ниже) */}
-
+      <div className="absolute top-16 right-8 flex flex-col gap-3">
         <button
           onClick={() => useEditorStore.getState().groupSelected()}
           disabled={selectedIds.length < 2}

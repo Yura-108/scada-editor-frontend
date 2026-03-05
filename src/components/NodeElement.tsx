@@ -93,7 +93,7 @@ export default function NodeElement({
       )}
 
       {/* Основное содержимое */}
-      <div className="w-full h-full flex items-center justify-center p-1 sm:p-2">
+      <div className="w-full h-full flex items-center justify-center p-1">
         {renderContent()}
       </div>
     </div>

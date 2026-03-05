@@ -76,6 +76,8 @@ export interface LeafElement extends BaseCanvasElement {
   ry?: number;
 
   // Для line
+  x1?: number;
+  y1?: number;
   x2?: number;                  // конечная точка X
   y2?: number;                  // конечная точка Y
   strokeWidth?: number;

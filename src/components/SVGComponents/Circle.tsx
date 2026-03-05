@@ -7,7 +7,7 @@ interface CircleProps {
 
 export default function Circle({ element }: CircleProps) {
   return (
-    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <g
         transform={getTransform(element)}
         opacity={element.opacity ?? 1}

@@ -90,8 +90,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           composition,
           x,
           y,
-          w: 120,
-          h: 80,
+          w: type === 'line' ? 10 : 80,
+          h: type === 'line' ? 10 : 80,
           parentId: scene?.id || null,
           parentKey: null,
           children: [],
@@ -375,6 +375,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             x: abs.x - minX,
             y: abs.y - minY,
             parentKey: newGroupId,
+            parentId: null,
           };
         });
 
