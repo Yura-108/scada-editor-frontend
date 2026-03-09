@@ -23,17 +23,27 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
       const deltaX = e.movementX;
       const deltaY = e.movementY;
 
+      let newX1 = element.x1 ?? 100;
+      let newY1 = element.y1 ?? 100;
+      let newX2 = element.x2 ?? 100;
+      let newY2 = element.y2 ?? 100;
+
       if (dragging === "start") {
-        updateElement(element.key, {
-          x1: (element.x1 ?? 100) + deltaX,
-          y1: (element.y1 ?? 100) + deltaY,
-        });
+        newX1 += deltaX;
+        newY1 += deltaY;
       } else {
-        updateElement(element.key, {
-          x2: (element.x2 ?? 100) + deltaX,
-          y2: (element.y2 ?? 100) + deltaY,
-        });
+        newX2 += deltaX;
+        newY2 += deltaY;
       }
+
+      updateElement(element.key, {
+        x1: newX1,
+        y1: newY1,
+        x2: newX2,
+        y2: newY2,
+        x: (newX1 + newX2) / 2,
+        y: (newY1 + newY2) / 2,
+      })
     };
 
     const handlePointerUp = () => {

@@ -1,10 +1,10 @@
 "use client";
 
 import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
-import { Rnd } from "react-rnd";
-import { useDroppable } from "@dnd-kit/core";
-import { useEditorStore } from "@/store/useEditorStore";
-import { GRID } from "@/lib/utils";
+import {Rnd} from "react-rnd";
+import {useDroppable} from "@dnd-kit/core";
+import {useEditorStore} from "@/store/useEditorStore";
+import {GRID} from "@/lib/utils";
 import NodeElement from "@/components/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
@@ -23,12 +23,13 @@ export default function Canvas() {
     copySelectedElement,
     pasteSelectedElement,
     exportScene,
-    camera
+    camera,
+    setCameraPan
   } = useEditorStore();
 
 
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
-  const [selectionStart, setSelectionStart] = useState<{x: number; y: number} | null>(null);
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionRect, setSelectionRect] = useState<{
     x: number;
     y: number;
@@ -36,7 +37,7 @@ export default function Canvas() {
     height: number;
   } | null>(null);
 
-  const { setNodeRef } = useDroppable({ id: "canvas" });
+  const {setNodeRef} = useDroppable({id: "canvas"});
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Обновление размеров и позиции canvas
@@ -87,27 +88,58 @@ export default function Canvas() {
 
     const handler = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
-
       e.preventDefault();
 
-      const { camera, setCameraZoom } = useEditorStore.getState();
+      const {camera, setCameraZoom} = useEditorStore.getState();
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+
       const zoomSensitivity = 0.001;
       const delta = -e.deltaY * zoomSensitivity;
+
+      const oldZoom = camera.zoom;
       const newZoom = Math.min(Math.max(camera.zoom + delta, 0.2), 3);
+
+      if (newZoom === oldZoom) return;
+      const scaleRatio = newZoom / oldZoom;
+
+      const newX = mouseX - (mouseX - camera.x) * scaleRatio;
+      const newY = mouseY - (mouseY - camera.y) * scaleRatio;
+
       setCameraZoom(newZoom);
+      //setCameraPan(newX, newY);
     };
 
-    el.addEventListener("wheel", handler, { passive: false });
+    el.addEventListener("wheel", handler, {passive: false});
 
     return () => el.removeEventListener("wheel", handler);
   }, []);
 
+  // useEffect(() => {
+  //   const CANVAS_WIDTH = 5000;
+  //   const CANVAS_HEIGHT = 5000;
+  //
+  //   const viewportWidth = window.innerWidth;
+  //   const viewportHeight = window.innerHeight;
+  //
+  //   const zoom = useEditorStore.getState().camera.zoom;
+  //
+  //   const centerX = (viewportWidth / 2) - (CANVAS_WIDTH / 2 * zoom);
+  //   const centerY = (viewportHeight / 2) - (CANVAS_HEIGHT / 2 * zoom);
+  //   useEditorStore.setState((state) => ({
+  //     camera: {
+  //       ...state.camera,
+  //       x: centerX,
+  //       y: centerY
+  //     }
+  //   }));
+  // }, [])
 
   const rootElements = useMemo(
     () => elements.filter(el => !el.parentKey),
     [elements]
   );
-  
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".scada-element")) return;
     if ((e.target as HTMLElement).closest("button")) return;
@@ -163,7 +195,7 @@ export default function Canvas() {
       // Проверяем, зажато ли колесико мыши (button 1 или buttons 4)
       // Либо можно проверять зажатый пробел + левую кнопку
       if (e.buttons === 4) {
-        const { setCameraPan } = useEditorStore.getState();
+        const {setCameraPan} = useEditorStore.getState();
         // Двигаем камеру на столько же, на сколько сдвинулась мышь
         setCameraPan(e.movementX, e.movementY);
       }
@@ -207,8 +239,8 @@ export default function Canvas() {
       return (
         <Rnd
           key={el.key}
-          size={{ width: el.w, height: el.h }}
-          position={{ x: el.x, y: el.y }}
+          size={{width: el.w, height: el.h}}
+          position={{x: el.x, y: el.y}}
           bounds="parent"
           dragGrid={[GRID, GRID]}
           resizeGrid={[GRID, GRID]}
@@ -265,15 +297,15 @@ export default function Canvas() {
     return (
       <Rnd
         key={el.key}
-        size={{ width: el.w, height: el.h }}
-        position={{ x: el.x, y: el.y }}
+        size={{width: el.w, height: el.h}}
+        position={{x: el.x, y: el.y}}
         bounds={"parent"}
         dragGrid={[GRID, GRID]}
         resizeGrid={[GRID, GRID]}
         cancel=".no-drag, input, textarea, button"
         onDragStop={(_, d) => {
           updateElement(el.key, {
-            x: d.x ,
+            x: d.x,
             y: d.y,
           });
         }}
@@ -281,8 +313,8 @@ export default function Canvas() {
           updateElement(el.key, {
             w: parseFloat(ref.style.width),
             h: parseFloat(ref.style.height),
-            x: pos.x ,
-            y: pos.y ,
+            x: pos.x,
+            y: pos.y,
           });
         }}
         onMouseDown={(e) => {
@@ -296,7 +328,7 @@ export default function Canvas() {
         )}
       >
         <NodeElement
-          element={el as LeafElement} isSelected={isSelected} />
+          element={el as LeafElement} isSelected={isSelected}/>
       </Rnd>
     );
   };
@@ -304,29 +336,24 @@ export default function Canvas() {
   return (
     <div
       id="canvas-viewport"
-      style={{width: '100%', height: '100%', overflow: 'hidden'}}
-      className="touch-none"
+      className="relative w-full h-full overflow-hidden touch-none bg-neutral-950"
       {...panZoomHandlers}
     >
+      {/* Сцена (Мир) — прозрачная пленка, которая двигается и масштабируется */}
       <div
         id="canvas-scene"
         style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
-          transformOrigin: '0 0', // Важно! Трансформация от левого верхнего угла
+          transformOrigin: '0 0',
           width: '100%',
-          height: '100%'
+          height: '100%',
+          overflow: 'visible',
         }}
         ref={(node) => {
           setNodeRef(node);
           containerRef.current = node;
         }}
-        className={`
-        relative flex-1
-        bg-neutral-950
-        overflow-hidden
-        select-none
-        touch-none
-      `}
+        className="select-none touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -391,7 +418,7 @@ export default function Canvas() {
         {/*</div>*/}
 
         {/* 1 слой — линии */}
-        <LinesLayer onSelect={handleSelect} />
+        <LinesLayer onSelect={handleSelect}/>
 
         {/* 2 слой — элементы */}
         {rootElements.map(el => renderElement(el))}
@@ -399,7 +426,8 @@ export default function Canvas() {
 
         {/* Подсказка, если canvas пустой */}
         {rootElements.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
+          <div
+            className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
             Перетащите элемент из палитры сюда
           </div>
         )}

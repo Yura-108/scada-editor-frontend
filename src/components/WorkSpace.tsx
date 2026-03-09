@@ -14,53 +14,53 @@ export default function WorkSpace() {
   const [rightVisible, setRightVisible] = useState(true);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-200">
+    // 1. Главный контейнер фиксируем на весь экран. Он блокирует любой внешний скролл.
+    <div className="fixed inset-0 overflow-hidden bg-neutral-950 text-neutral-200">
 
-      {/* Левая панель */}
-      <aside
-        className={`relative border-r border-neutral-800 bg-neutral-900/60 transition-all duration-300 ease-in-out z-20 ${
-          leftVisible ? 'w-72' : 'w-0'
-        }`}
-      >
-        {/* Обертка для контента с прокруткой */}
-        <div className={`h-full w-72 overflow-y-auto transition-opacity duration-300 ${
-          leftVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}>
-          <Palette />
-
-          {/* Кнопка СВЕРНУТЬ (внутри контента) */}
-          <button
-            onClick={() => setLeftVisible(false)}
-            className="absolute top-4 -right-8 p-2 hover:text-white rounded text-neutral-400"
-          >
-            <ChevronLeft size={24} />
-          </button>
-        </div>
-
-        {!leftVisible && (
-          <button
-            onClick={() => setLeftVisible(true)}
-            className="absolute top-4 -right-12 z-50 p-2 bg-neutral-900 border border-neutral-800 rounded-r-md hover:bg-neutral-800 text-neutral-400 shadow-xl"
-          >
-            <PanelLeft size={20} />
-          </button>
-        )}
-      </aside>
-
-
-      {/* Центральная область */}
-      <main className="flex flex-col flex-1 relative bg-neutral-950 transition-all">
-        <ToolsPanel />
+      {/* Центральная область (Холст). Занимает 100% места, находится под панелями (z-0) */}
+      <main className="absolute inset-0 flex flex-col z-0">
+        <ToolsPanel leftVisible={leftVisible} rightVisible={rightVisible} />
         <Canvas />
       </main>
 
-      {/* Правая панель */}
+      {/* Левая панель - Абсолютная, прилипшая к левому краю */}
       <aside
-        className={`relative border-l border-neutral-800 bg-neutral-900/60 transition-all duration-300 ease-in-out ${
-          rightVisible ? 'w-80' : 'w-0 translate-x-full'
+        className={`absolute left-0 top-16 bottom-0 z-40 w-72 border-r border-neutral-800 bg-neutral-900/80 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+          leftVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className={`${!rightVisible && 'invisible'} h-full w-80`}>
+        <div className="h-full w-full overflow-y-auto">
+          <Palette />
+        </div>
+
+        {/* Кнопка СВЕРНУТЬ левую панель */}
+        <button
+          onClick={() => setLeftVisible(false)}
+          className={`absolute top-[50%] -right-8 p-2 text-neutral-400 hover:text-white transition-opacity ${
+            leftVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <ChevronLeft size={24} />
+        </button>
+
+        {/* Кнопка РАЗВЕРНУТЬ левую панель (висит снаружи) */}
+        <button
+          onClick={() => setLeftVisible(true)}
+          className={`absolute top-4 -right-12 p-2 bg-neutral-900 border border-neutral-800 rounded-r-md text-neutral-400 hover:bg-neutral-800 shadow-xl transition-opacity ${
+            !leftVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <PanelLeft size={20} />
+        </button>
+      </aside>
+
+      {/* Правая панель - Абсолютная, прилипшая к правому краю */}
+      <aside
+        className={`absolute right-0 top-16 bottom-0 z-40 w-80 border-l border-neutral-800 bg-neutral-900/80 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+          rightVisible ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="h-full w-full overflow-y-auto">
           {selectedElement ? (
             <PropertiesPanel element={selectedElement} updateElement={updateElement}/>
           ) : (
@@ -70,26 +70,27 @@ export default function WorkSpace() {
           )}
         </div>
 
-        {/* Кнопка раскрытия правой панели */}
-        {!rightVisible && (
-          <button
-            onClick={() => setRightVisible(true)}
-            className="absolute top-4 -left-12 z-50 p-2 bg-neutral-900 border border-neutral-800 rounded-l-md hover:bg-neutral-800 text-neutral-400 shadow-xl"
-          >
-            <PanelRight size={18} />
-          </button>
-        )}
+        {/* Кнопка СВЕРНУТЬ правую панель */}
+        <button
+          onClick={() => setRightVisible(false)}
+          className={`absolute top-[50%] -left-8 p-1 text-neutral-400 hover:text-white transition-opacity ${
+            rightVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <ChevronRight size={24} />
+        </button>
 
-        {/* Кнопка скрытия */}
-        {rightVisible && (
-          <button
-            onClick={() => setRightVisible(false)}
-            className="absolute top-4 -left-8 z-50 p-1 hover:text-white rounded"
-          >
-            <ChevronRight size={24} />
-          </button>
-        )}
+        {/* Кнопка РАЗВЕРНУТЬ правую панель */}
+        <button
+          onClick={() => setRightVisible(true)}
+          className={`absolute top-4 -left-12 p-2 bg-neutral-900 border border-neutral-800 rounded-l-md text-neutral-400 hover:bg-neutral-800 shadow-xl transition-opacity ${
+            !rightVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <PanelRight size={18} />
+        </button>
       </aside>
+
     </div>
   );
 }
