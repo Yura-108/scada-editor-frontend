@@ -138,26 +138,29 @@ export default function EditorPage() {
           collisionDetection={closestCenter}
           onDragStart={(e) => setActiveId(e.active.id as string)}
           onDragEnd={(event) => {
-            const {over, active} = event;
+            const { over, active } = event;
 
             if (over?.id === "canvas") {
               const { camera, canvasRect } = useEditorStore.getState();
               const translatedRect = active.rect.current.translated;
 
               if (translatedRect && canvasRect) {
-                const mouseX = translatedRect.left - canvasRect.left / 2;
-                const mouseY = translatedRect.top - canvasRect.top / 2;
+                // 1. Находим координаты относительно верхнего левого угла ВЬЮПОРТА (без всяких / 2)
+                const localX = translatedRect.left - canvasRect.left;
+                const localY = translatedRect.top - canvasRect.top;
 
-                const worldX = (mouseX - camera.x) / camera.zoom;
-                const worldY = (mouseY - camera.y) / camera.zoom;
+                // 2. Переводим локальные координаты в координаты МИРА (с учетом зума и камеры)
+                // Формула: World = (Local - CameraOffset) / Zoom
+                const worldX = (localX - camera.x) / camera.zoom;
+                const worldY = (localY - camera.y) / camera.zoom;
 
-                if (worldX < 0 || worldY < 0) return;
+                // Теперь проверка на выход за границы (если холст 5000x5000)
+                if (worldX < 0 || worldY < 0 || worldX > 5000 || worldY > 5000) return;
 
                 const type = active.id as ElementType;
                 useEditorStore.getState().addElementAt(worldX, worldY, type);
               }
             }
-
             setActiveId(null);
           }}
         >

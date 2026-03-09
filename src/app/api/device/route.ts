@@ -12,7 +12,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
      return NextResponse.json({message: 'Bad request'}, {status: 400});
    }
 
-   const response = await fetch(`${BACKEND_URL}/api/node/all?site=${site}&project=${project}`, {
+   const response = await fetch(`${BACKEND_URL}/api/channel/node/all?site=${site}&project=${project}`, {
      method: 'GET',
      headers: {
       Authorization: `Bearer ${token}`, // ← передаём токен
@@ -40,7 +40,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
      );
    }
 
-   const response = await fetch(`${BACKEND_URL}/api/node`, {
+   const response = await fetch(`${BACKEND_URL}/api/channel/node`, {
      method: 'POST',
      headers: {
        Authorization: `Bearer ${token}`, // ← передаём токен

@@ -57,8 +57,8 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
       {status: 400}
     );
   }
-
-  const response = await fetch(`${BACKEND_URL}/api/components`, {
+  console.log(ids)
+  const response = await fetch(`${BACKEND_URL}/api/editor/components`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -68,8 +68,6 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
   });
 
   const editorElements = await response.json().catch(() => null);
-
-
 
   return NextResponse.json(editorElements, {status: 201});
 })

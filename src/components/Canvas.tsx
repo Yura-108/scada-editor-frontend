@@ -9,7 +9,6 @@ import NodeElement from "@/components/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
-import {Save} from "lucide-react";
 import {LinesLayer} from "@/components/LinesLayer";
 
 export default function Canvas() {
@@ -27,6 +26,8 @@ export default function Canvas() {
     setCameraPan
   } = useEditorStore();
 
+  const CANVAS_WIDTH = 5000;
+  const CANVAS_HEIGHT = 5000;
 
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
@@ -116,9 +117,6 @@ export default function Canvas() {
   }, []);
 
   // useEffect(() => {
-  //   const CANVAS_WIDTH = 5000;
-  //   const CANVAS_HEIGHT = 5000;
-  //
   //   const viewportWidth = window.innerWidth;
   //   const viewportHeight = window.innerHeight;
   //
@@ -133,7 +131,7 @@ export default function Canvas() {
   //       y: centerY
   //     }
   //   }));
-  // }, [])
+  // }, []);
 
   const rootElements = useMemo(
     () => elements.filter(el => !el.parentKey),
@@ -345,8 +343,8 @@ export default function Canvas() {
         style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
           transformOrigin: '0 0',
-          width: '100%',
-          height: '100%',
+          width: `${CANVAS_WIDTH}px`,
+          height: `${CANVAS_HEIGHT}px`,
           overflow: 'visible',
         }}
         ref={(node) => {

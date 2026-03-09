@@ -96,7 +96,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const composition = getComposition(type);
 
-        const x = snap(screenX);
+        const x = snap(screenX + 150);
         const y = snap(screenY);
 
         if (type === 'line') {
@@ -157,11 +157,16 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const idsToDelete = new Set([...selectedIds, ...childrenIds]);
 
+        const ids = elements
+          .filter(el => [...idsToDelete].includes(el.key))
+          .map(el => el.id)
+          .filter(Boolean);
+
         try {
-          await fetch(`/api/editor`, {
+          await fetch(`/api/editor/components`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify([...selectedIds])
+            body: JSON.stringify(ids),
           });
 
           set({

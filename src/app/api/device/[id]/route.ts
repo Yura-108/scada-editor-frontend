@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 export const DELETE = protectedRoute(async (_request, { token, params }) => {
   const { id } = params;
 
-  const response = await fetch(`${BACKEND_URL}/api/node/${id}`, {
+  const response = await fetch(`${BACKEND_URL}/api/channel/node/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
     });

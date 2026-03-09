@@ -24,7 +24,7 @@ export const PATCH = protectedRoute(async (request: NextRequest, {token})=> {
   }
   const changes = body.value as { key: string; value: string }[];
   try {
-    const backendResponse = await fetch(`${BACKEND_URL}/api/param/update`, {
+    const backendResponse = await fetch(`${BACKEND_URL}/api/channel/param/update`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -59,7 +59,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/param`, {
+  const response = await fetch(`${BACKEND_URL}/api/channel/param`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
