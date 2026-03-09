@@ -13,7 +13,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/lock`, {
+  const response = await fetch(`${BACKEND_URL}/api/channel/lock`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`, // ← передаём токен

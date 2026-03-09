@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "Bad request" }, { status: 400 });
   }
 
-  const backendUrl = `${process.env.BACKEND_URL}/api/node/all?site=${site}&project=${project}`;
+  const backendUrl = `${process.env.BACKEND_URL}/api/channel/node/all?site=${site}&project=${project}`;
 
   const res = await fetch(backendUrl);
 
