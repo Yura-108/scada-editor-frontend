@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import {cn} from "@/lib/utils";
-import {HashIcon, Layout} from "lucide-react";
+import {HashIcon, Layout, Scroll} from "lucide-react";
 import {usePathname} from "next/navigation";
 
 const navItems = [
@@ -17,6 +17,11 @@ const navItems = [
     href: "/channels",
     icon: HashIcon,
   },
+  {
+    name: "Логирование",
+    href: "/log",
+    icon: Scroll,
+  }
 ];
 
 export default function HeaderNav() {

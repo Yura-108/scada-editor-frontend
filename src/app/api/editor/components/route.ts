@@ -57,7 +57,7 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
       {status: 400}
     );
   }
-  console.log(ids)
+  
   const response = await fetch(`${BACKEND_URL}/api/editor/components`, {
     method: 'DELETE',
     headers: {

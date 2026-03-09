@@ -56,7 +56,7 @@ export default function StartMenu() {
 
       await loadTree(s, p);
       await getParamsTypes();
-      await safeSubscribeDeviceTree(s, p);
+      // await safeSubscribeDeviceTree(s, p);
 
       setActiveSubscription({ site: site, project: p });
     } catch (err) {
@@ -164,7 +164,7 @@ export default function StartMenu() {
             <button
               type="submit"
               disabled={isLoading || !site.trim() || !project.trim()}
-              className="w-full py-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+              className="w-full py-6 rounded-2xl bg-linear-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
             >
               {isLoading ? (
                 <>Загрузка...</>
