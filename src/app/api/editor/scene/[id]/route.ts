@@ -1,12 +1,12 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {protectedRoute} from "@/lib/protected";
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
 export const GET = protectedRoute(async (_req: NextRequest, {token, params}) => {
   const {id} = params;
 
-  const response = await fetch(`${BACKEND_URL}/api/components/${id}`, {
+  const response = await fetch(`${BACKEND_URL}/api/editor/components/${id}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,

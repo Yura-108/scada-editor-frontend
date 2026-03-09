@@ -1,7 +1,8 @@
 import getTransform from "@/lib/getTransform";
+import {LeafElement} from "@/types/editorElement.type";
 
 interface PolygonProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export default function Polygon({ element }: PolygonProps) {

@@ -1,11 +1,11 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {protectedRoute} from "@/lib/protected";
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
 export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
 
-  const response = await fetch(`${BACKEND_URL}/api/components/scenes`, {
+  const response = await fetch(`${BACKEND_URL}/api/editor/components/scenes`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -35,7 +35,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   console.log(sceneName);
 
-  const response = await fetch(`${BACKEND_URL}/api/components/scene`, {
+  const response = await fetch(`${BACKEND_URL}/api/editor/components/scene`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

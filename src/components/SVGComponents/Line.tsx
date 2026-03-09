@@ -55,7 +55,7 @@ export default function Line({ element }: LineProps) {
   };
 
   return (
-    <svg width="100%" height="100%" style={{overflow: "visible", position: "absolute", top: 0, left: 0}}>
+    <svg width={element.h} height={element.h} viewBox={`0 0 ${element.w} ${element.h}`}>
       <g
         transform={getTransform(element)}
         opacity={element.opacity ?? 1}

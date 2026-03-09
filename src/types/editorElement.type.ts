@@ -84,6 +84,8 @@ export interface LeafElement extends BaseCanvasElement {
   strokeDasharray?: string;     // "5 5" для пунктира и т.д.
   arrowStart?: boolean;
   arrowEnd?: boolean;
+  background?: boolean;
+  align?: string;
 
   rotate?: number;      // градусы
   scaleX?: number;      // 1 = норм
@@ -96,6 +98,7 @@ export interface LeafElement extends BaseCanvasElement {
   unitColor?: string;
   fontFamily?: string;
   letterSpacing?: number;
+  pressed? : boolean;
   d?: string; // SVG path data
   // ... добавляй по мере необходимости
 }

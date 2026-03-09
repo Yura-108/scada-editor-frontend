@@ -25,6 +25,10 @@ type EditorState = {
     mouseY: number;
   } | null;
 
+  camera: {x: number, y: number, zoom: number};
+  setCameraPan: (dx: number, dy: number) => void;
+  setCameraZoom: (newZoom: number) => void;
+
   setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
   select: (id: string | null) => void;
@@ -60,6 +64,18 @@ export const useEditorStore = create<EditorState>()(temporal(
       canvasRect: null,
       connecting: null,
 
+      camera: {x: 0, y: 0, zoom: 1},
+      setCameraPan: (dx, dy) => {
+        set(state => ({
+          camera: {...state.camera, x: state.camera.x + dx, y: state.camera.y + dy}
+        }))
+      },
+      setCameraZoom: (newZoom) => {
+        set(state => ({
+          camera: {...state.camera, zoom: newZoom}
+        }))
+      },
+
       setCanvasRect: (rect) => set({canvasRect: rect}),
       updateElement: (key: string, updates: Partial<DiagramElement>) => {
         set(state => ({
@@ -83,6 +99,34 @@ export const useEditorStore = create<EditorState>()(temporal(
         const x = snap(screenX);
         const y = snap(screenY);
 
+        if (type === 'line') {
+          const newElement: DiagramElement = {
+            id: null,
+            key: crypto.randomUUID(),
+            type,
+            composition,
+            x,
+            y,
+            x1: x - 50,
+            x2: x + 50,
+            y1: y,
+            y2: y,
+            w: 80,
+            h: 80,
+            parentId: scene?.id || null,
+            parentKey: null,
+            children: [],
+            label: "Element",
+            bg: "transparent",
+          };
+
+          set(state => ({
+            elements: [...state.elements, newElement]
+          }))
+
+          return;
+        }
+
         const newElement: DiagramElement = {
           id: null,
           key: crypto.randomUUID(),
@@ -90,8 +134,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           composition,
           x,
           y,
-          w: type === 'line' ? 10 : 80,
-          h: type === 'line' ? 10 : 80,
+          w: 80,
+          h: 80,
           parentId: scene?.id || null,
           parentKey: null,
           children: [],

@@ -10,6 +10,7 @@ import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.t
 import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
 import {Save} from "lucide-react";
+import {LinesLayer} from "@/components/LinesLayer";
 
 export default function Canvas() {
   const {
@@ -21,8 +22,10 @@ export default function Canvas() {
     deleteSelectedElement,
     copySelectedElement,
     pasteSelectedElement,
-    exportScene
+    exportScene,
+    camera
   } = useEditorStore();
+
 
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectionStart, setSelectionStart] = useState<{x: number; y: number} | null>(null);
@@ -78,24 +81,27 @@ export default function Canvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
 
-  // useEffect(() => {
-  //   const selectedElements = elements.filter(el => selectedIds.includes(el.key));
-  //
-  //   if (selectedElements.length > 0) {
-  //     selectedElements.forEach(el => {
-  //       if (el.type === "line") {
-  //         setSelectionRect(getLineBoundingBox(el));
-  //       } else {
-  //         setSelectionRect({
-  //           x: el.x,
-  //           y: el.y,
-  //           width: el.w,
-  //           height: el.h
-  //         })
-  //       }
-  //     })
-  //   }
-  //}, [selectedIds, elements]);
+  useEffect(() => {
+    const el = document.getElementById("canvas-viewport");
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+
+      e.preventDefault();
+
+      const { camera, setCameraZoom } = useEditorStore.getState();
+      const zoomSensitivity = 0.001;
+      const delta = -e.deltaY * zoomSensitivity;
+      const newZoom = Math.min(Math.max(camera.zoom + delta, 0.2), 3);
+      setCameraZoom(newZoom);
+    };
+
+    el.addEventListener("wheel", handler, { passive: false });
+
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
+
 
   const rootElements = useMemo(
     () => elements.filter(el => !el.parentKey),
@@ -151,13 +157,36 @@ export default function Canvas() {
     setSelectionRect(null);
   }
 
+  const panZoomHandlers = {
+    // 1. ПЕРЕМЕЩЕНИЕ (PAN)
+    onPointerMove: (e: React.PointerEvent) => {
+      // Проверяем, зажато ли колесико мыши (button 1 или buttons 4)
+      // Либо можно проверять зажатый пробел + левую кнопку
+      if (e.buttons === 4) {
+        const { setCameraPan } = useEditorStore.getState();
+        // Двигаем камеру на столько же, на сколько сдвинулась мышь
+        setCameraPan(e.movementX, e.movementY);
+      }
+    },
+    // Чтобы курсор менялся на «руку» при зажатом колесике
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.button === 1) { // 1 — это колесико
+        (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
+      }
+    },
+
+    onPointerUp: (e: React.PointerEvent) => {
+      (e.currentTarget as HTMLElement).style.cursor = 'crosshair';
+    }
+  };
+
   const elementsMap = useMemo(() => {
     const map: Record<string, DiagramElement> = {};
     elements.forEach(el => map[el.key] = el);
     return map;
   }, [elements]);
 
-  const handleSelect = useCallback((id: string, e: MouseEvent) => {
+  const handleSelect = useCallback((id: string, e: React.MouseEvent | MouseEvent) => {
     if (e.shiftKey) {
       const newSelection = selectedIds.includes(id)
         ? selectedIds.filter(i => i !== id)
@@ -169,6 +198,7 @@ export default function Canvas() {
   }, [selectedIds, selectMultiple]);
 
   const renderElement = (el: DiagramElement) => {
+    if (el.type === 'line') return null;
     const isSelected = selectedIds.includes(el.key);
 
     if (el.type === "group") {
@@ -273,105 +303,123 @@ export default function Canvas() {
 
   return (
     <div
-      ref={(node) => {
-        setNodeRef(node);
-        containerRef.current = node;
-      }}
-      className={`
-        relative flex-1 min-w-[640px] min-h-[680px]
+      id="canvas-viewport"
+      style={{width: '100%', height: '100%', overflow: 'hidden'}}
+      className="touch-none"
+      {...panZoomHandlers}
+    >
+      <div
+        id="canvas-scene"
+        style={{
+          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
+          transformOrigin: '0 0', // Важно! Трансформация от левого верхнего угла
+          width: '100%',
+          height: '100%'
+        }}
+        ref={(node) => {
+          setNodeRef(node);
+          containerRef.current = node;
+        }}
+        className={`
+        relative flex-1
         bg-neutral-950
         overflow-hidden
         select-none
         touch-none
       `}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
-      {/* Фоновая сетка */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
+        {/* Фоновая сетка */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `
             linear-gradient(to right, rgba(60,60,70,0.4) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(60,60,70,0.4) 1px, transparent 1px)
           `,
-          backgroundSize: `${GRID}px ${GRID}px`,
-        }}
-      />
-
-      {/* Кнопки */}
-      <div className="absolute top-16 right-8 flex flex-col gap-3">
-        <button
-          onClick={() => useEditorStore.getState().groupSelected()}
-          disabled={selectedIds.length < 2}
-          className="group relative px-4 py-2 text-sm font-medium rounded-xl
-               bg-white/10 backdrop-blur-md border border-white/20
-               text-white
-               hover:bg-white/20 hover:border-white/30
-               active:shadow-none active:translate-y-0.5
-               disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0
-               transition-all duration-150 ease-out"
-        >
-          Сгруппировать
-        </button>
-
-        <button
-          onClick={() => useEditorStore.getState().ungroupSelected()}
-          disabled={!selectedIds.some(id => {
-            const el = useEditorStore.getState().elements.find(e => e.key === id);
-            return el?.type === "group";
-          })}
-          className="group relative px-4 py-2 text-sm font-medium rounded-xl
-               bg-white/10 backdrop-blur-md border border-white/20
-               text-white
-               hover:bg-white/20 hover:border-white/30
-               active:shadow-none active:translate-y-0.5
-               disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0
-               transition-all duration-150 ease-out"
-        >
-          Разгруппировать
-        </button>
-
-        <button
-          onClick={exportScene}
-          className="group relative flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl
-               bg-indigo-500/30 backdrop-blur-lg border border-indigo-400/40
-               text-indigo-100
-               hover:bg-indigo-500/40 hover:border-indigo-400/60
-               active:shadow-none active:translate-y-0.5
-               transition-all duration-150 ease-out"
-        >
-          <Save size={16} strokeWidth={2.5} />
-          Сохранить
-        </button>
-      </div>
-
-      {/* Узлы */}
-      {rootElements.map(el => renderElement(el))}
-
-      {/* Подсказка, если canvas пустой */}
-      {rootElements.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
-          Перетащите элемент из палитры сюда
-        </div>
-      )}
-
-      {/* Рамка выделения */}
-      {selectionRect && (
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left: selectionRect.x,
-            top: selectionRect.y,
-            width: selectionRect.width,
-            height: selectionRect.height,
-            backgroundColor: "rgb(0, 150, 255, 0.2)",
-            border: "1px solid #0096ff",
+            backgroundSize: `${GRID}px ${GRID}px`,
           }}
         />
-      )}
+
+        {/* Кнопки */}
+        {/*<div className="absolute top-16 right-8 flex flex-col gap-3">*/}
+        {/*  <button*/}
+        {/*    onClick={() => useEditorStore.getState().groupSelected()}*/}
+        {/*    disabled={selectedIds.length < 2}*/}
+        {/*    className="group relative px-4 py-2 text-sm font-medium rounded-xl*/}
+        {/*       bg-white/10 backdrop-blur-md border border-white/20*/}
+        {/*       text-white*/}
+        {/*       hover:bg-white/20 hover:border-white/30*/}
+        {/*       active:shadow-none active:translate-y-0.5*/}
+        {/*       disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0*/}
+        {/*       transition-all duration-150 ease-out"*/}
+        {/*  >*/}
+        {/*    Сгруппировать*/}
+        {/*  </button>*/}
+
+        {/*  <button*/}
+        {/*    onClick={() => useEditorStore.getState().ungroupSelected()}*/}
+        {/*    disabled={!selectedIds.some(id => {*/}
+        {/*      const el = useEditorStore.getState().elements.find(e => e.key === id);*/}
+        {/*      return el?.type === "group";*/}
+        {/*    })}*/}
+        {/*    className="group relative px-4 py-2 text-sm font-medium rounded-xl*/}
+        {/*       bg-white/10 backdrop-blur-md border border-white/20*/}
+        {/*       text-white*/}
+        {/*       hover:bg-white/20 hover:border-white/30*/}
+        {/*       active:shadow-none active:translate-y-0.5*/}
+        {/*       disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0*/}
+        {/*       transition-all duration-150 ease-out"*/}
+        {/*  >*/}
+        {/*    Разгруппировать*/}
+        {/*  </button>*/}
+
+        {/*  <button*/}
+        {/*    onClick={exportScene}*/}
+        {/*    className="group relative flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl*/}
+        {/*       bg-indigo-500/30 backdrop-blur-lg border border-indigo-400/40*/}
+        {/*       text-indigo-100*/}
+        {/*       hover:bg-indigo-500/40 hover:border-indigo-400/60*/}
+        {/*       active:shadow-none active:translate-y-0.5*/}
+        {/*       transition-all duration-150 ease-out"*/}
+        {/*  >*/}
+        {/*    <Save size={16} strokeWidth={2.5} />*/}
+        {/*    Сохранить*/}
+        {/*  </button>*/}
+        {/*</div>*/}
+
+        {/* 1 слой — линии */}
+        <LinesLayer onSelect={handleSelect} />
+
+        {/* 2 слой — элементы */}
+        {rootElements.map(el => renderElement(el))}
+
+
+        {/* Подсказка, если canvas пустой */}
+        {rootElements.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
+            Перетащите элемент из палитры сюда
+          </div>
+        )}
+
+        {/* Рамка выделения */}
+        {selectionRect && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: selectionRect.x,
+              top: selectionRect.y,
+              width: selectionRect.width,
+              height: selectionRect.height,
+              backgroundColor: "rgb(0, 150, 255, 0.2)",
+              border: "1px solid #0096ff",
+            }}
+          />
+        )}
+      </div>
     </div>
-  );
+  )
 }
 

@@ -1,85 +1,97 @@
 "use client";
 
-import React from "react";
-import { BaseElement } from "@/types/editorElement.type"; // или DiagramElement, как у тебя называется
+import React, { useState } from "react";
+import { LeafElement } from "@/types/editorElement.type";
 
 type ButtonProps = {
-  element: BaseElement;
+  element: LeafElement;
 };
 
 export function Button({ element }: ButtonProps) {
-  // Деструктуризация с дефолтными значениями
   const {
-    color = "#FF4D4F",           // основной цвет кнопки
-    label = "Btn",               // текст на кнопке
-    textColor = "#ffffff",       // цвет текста
-    size = 50,                   // размер в пикселях (квадратный)
-    pressed = false,             // состояние нажатия (можно использовать для визуального отклика)
-    // disabled = false,         // если добавишь в будущем
+    color = "#FF4D4F",
+    label = "Button",
+    textColor = "#ffffff",
+    pressed = false,
+    id,
+    w,
+    h,
   } = element;
 
-  // Можно сделать размер чуть меньше при "нажатии" (опционально)
-  const effectiveSize = pressed ? size * 0.95 : size;
+  const [hovered, setHovered] = useState(false);
+
+  // Внутренние отступы
+  const padding = 6;
+  const radius = 6;
 
   return (
     <svg
-      width={effectiveSize}
-      height={effectiveSize}
-      viewBox="0 0 50 50"
-      className="max-w-full max-h-full" // чтобы не вылезало за границы контейнера
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ display: "block" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      {/* Основа кнопки */}
+      <defs>
+        {/* Лёгкий градиент сверху */}
+        <linearGradient id={`btn-grad-${id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.05" />
+        </linearGradient>
+
+        {/* Подсветка при наведении */}
+        <filter id={`btn-glow-${id}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow
+            dx="0"
+            dy="0"
+            stdDeviation="4"
+            floodColor={color}
+            floodOpacity="0.6"
+          />
+        </filter>
+      </defs>
+
+      {/* Основная форма кнопки */}
       <rect
-        x="5"
-        y={pressed ? 22 : 20}           // сдвиг вниз при нажатии
-        width="40"
-        height="15"
-        rx="3"
+        x={padding}
+        y={pressed ? padding + 2 : padding}
+        width={w - padding * 2}
+        height={h - padding * 2}
+        rx={radius}
         fill={color}
-        stroke="#333"
-        strokeWidth="2"
+        stroke={hovered ? "#ffffff" : "#222"}
+        strokeWidth={2}
+        filter={hovered ? `url(#btn-glow-${id})` : "none"}
+        style={{ transition: "all 0.15s ease" }}
       />
 
-      {/* Тень / эффект нажатия */}
+      {/* Градиентный блик */}
       <rect
-        x="5"
-        y={pressed ? 24 : 22}
-        width="40"
-        height={pressed ? 1 : 2}
-        fill="#222"
-        opacity={pressed ? 0.5 : 0.3}
+        x={padding}
+        y={pressed ? padding + 2 : padding}
+        width={w - padding * 2}
+        height={(h - padding * 2) * 0.45}
+        rx={radius}
+        fill={`url(#btn-grad-${id})`}
+        pointerEvents="none"
       />
 
-      {/* Метка / текст */}
+      {/* Текст */}
       <text
-        x="25"
-        y={pressed ? 34 : 32}           // текст тоже чуть сдвигается
+        x={w / 2}
+        y={h / 2 + (pressed ? 2 : 0)}
         textAnchor="middle"
         dominantBaseline="middle"
         fill={textColor}
-        fontSize="10"
+        fontSize={Math.min(w, h) * 0.22}
         fontFamily="Arial, sans-serif"
-        fontWeight={pressed ? "bold" : "normal"}
+        fontWeight="600"
+        style={{ pointerEvents: "none", userSelect: "none" }}
       >
         {label}
       </text>
-
-      {/* Опционально: небольшой блик/градиент для объёма */}
-      <defs>
-        <linearGradient id={`buttonGrad-${element.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#000000" stopOpacity="0.05" />
-        </linearGradient>
-      </defs>
-      <rect
-        x="5"
-        y={pressed ? 22 : 20}
-        width="40"
-        height="15"
-        rx="3"
-        fill={`url(#buttonGrad-${element.id})`}
-        pointerEvents="none"
-      />
     </svg>
   );
 }

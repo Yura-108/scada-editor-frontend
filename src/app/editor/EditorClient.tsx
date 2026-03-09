@@ -7,9 +7,6 @@ import {
 } from "@dnd-kit/core";
 import {useEffect, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import Canvas from "@/components/Canvas";
-import {PropertiesPanel} from "@/components/PropertiesPanel";
-import Palette from "@/components/Palette";
 import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import WorkSpace from "@/components/WorkSpace";
@@ -141,18 +138,24 @@ export default function EditorPage() {
           collisionDetection={closestCenter}
           onDragStart={(e) => setActiveId(e.active.id as string)}
           onDragEnd={(event) => {
-            const {over, active, activatorEvent} = event;
+            const {over, active} = event;
 
             if (over?.id === "canvas") {
-              const mouseEvent = activatorEvent as MouseEvent | TouchEvent;
-              const rect = useEditorStore.getState().canvasRect;
-              if (!rect) return;
+              const { camera, canvasRect } = useEditorStore.getState();
+              const translatedRect = active.rect.current.translated;
 
-              const clientX = "clientX" in mouseEvent ? mouseEvent.clientX : 0;
-              const clientY = "clientY" in mouseEvent ? mouseEvent.clientY : 0;
+              if (translatedRect && canvasRect) {
+                const mouseX = translatedRect.left - canvasRect.left / 2;
+                const mouseY = translatedRect.top - canvasRect.top / 2;
 
-              const type = active.id;
-              useEditorStore.getState().addElementAt(clientX, clientY, type as ElementType);
+                const worldX = (mouseX - camera.x) / camera.zoom;
+                const worldY = (mouseY - camera.y) / camera.zoom;
+
+                if (worldX < 0 || worldY < 0) return;
+
+                const type = active.id as ElementType;
+                useEditorStore.getState().addElementAt(worldX, worldY, type);
+              }
             }
 
             setActiveId(null);

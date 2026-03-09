@@ -1,14 +1,13 @@
 "use client";
 
 import React from "react";
-import { BaseElement } from "@/types/editorElement.type"; // или DiagramElement — как у тебя называется тип
+import { LeafElement } from "@/types/editorElement.type";
 
 interface TextProps {
-  element: BaseElement;
+  element: LeafElement;
 }
 
 export const Text: React.FC<TextProps> = ({ element }) => {
-  // Деструктуризация с дефолтными значениями
   const {
     text = "Text",
     fontSize = 16,
@@ -17,16 +16,12 @@ export const Text: React.FC<TextProps> = ({ element }) => {
     backgroundColor = "#0f172a",
     align = "center",
     bold = false,
-    // Если в будущем захочешь задавать размер через свойства элемента
-    width: customWidth,
-    height: customHeight,
+    letterSpacing = 0,
+    strokeColor = "#334155",
+    strokeWidth = 1,
+    w,
+    h,
   } = element;
-
-  // console.log(fontSize)
-
-  // Размеры — берём из element.w / element.h, если они есть (от Rnd), иначе дефолт
-  const width = customWidth ?? element.w ?? 160;
-  const height = customHeight ?? element.h ?? 50;
 
   const lines = text.split("\n");
 
@@ -46,50 +41,52 @@ export const Text: React.FC<TextProps> = ({ element }) => {
       case "left":
         return 8;
       case "right":
-        return width - 8;
+        return w - 8;
       default:
-        return width / 2;
+        return w / 2;
     }
   };
 
-  const lineHeight = fontSize * 1.2;
-  const totalTextHeight = lines.length * lineHeight;
-  const startY = height / 2 - (totalTextHeight - lineHeight) / 2;
+  const lineHeight = fontSize * 1.25;
+  const totalHeight = lines.length * lineHeight;
+  const startY = h / 2 - (totalHeight - lineHeight) / 2;
 
   return (
     <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className="max-w-full max-h-full"
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ display: "block" }}
     >
-      {/* Фон (если включён) */}
+      {/* Фон */}
       {background && (
         <rect
-          x="0"
-          y="0"
-          width={width}
-          height={height}
-          rx="6"
+          x={0}
+          y={0}
+          width={w}
+          height={h}
+          rx={6}
           fill={backgroundColor}
-          stroke={element.strokeColor || "#334155"}
-          strokeWidth={element.strokeWidth || 1}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
         />
       )}
 
-      {/* Текст с переносами строк */}
-      {lines.map((line, index) => (
+      {/* Текст */}
+      {lines.map((line, i) => (
         <text
-          key={index}
+          key={i}
           x={getX()}
-          y={startY + index * lineHeight}
+          y={startY + i * lineHeight}
           textAnchor={getTextAnchor()}
           dominantBaseline="middle"
           fontSize={fontSize}
           fill={color}
           fontWeight={bold ? 600 : 400}
           fontFamily="Inter, system-ui, sans-serif"
-          letterSpacing={element.letterSpacing || 0}
+          letterSpacing={letterSpacing}
+          style={{ userSelect: "none", pointerEvents: "none" }}
         >
           {line}
         </text>

@@ -1,12 +1,13 @@
-import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
+import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, Save} from "lucide-react";
 import Canvas from "@/components/Canvas";
 import {PropertiesPanel} from "@/components/PropertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";
-import {useState} from "react";
+import React, {useState} from "react";
 import Palette from "./Palette";
+import ToolsPanel from "@/components/ToolsPanel";
 
 export default function WorkSpace() {
-  const {elements, selectedIds, updateElement} = useEditorStore();
+  const {elements, selectedIds, updateElement, exportScene} = useEditorStore();
   const selectedElement = elements.find(el => el.key === selectedIds[0]);
 
   const [leftVisible, setLeftVisible] = useState(true);
@@ -46,8 +47,10 @@ export default function WorkSpace() {
         )}
       </aside>
 
+
       {/* Центральная область */}
-      <main className="flex-1 relative bg-neutral-950 transition-all">
+      <main className="flex flex-col flex-1 relative bg-neutral-950 transition-all">
+        <ToolsPanel />
         <Canvas />
       </main>
 
@@ -71,7 +74,7 @@ export default function WorkSpace() {
         {!rightVisible && (
           <button
             onClick={() => setRightVisible(true)}
-            className="absolute top-4 -left-12 z-50 p-2 bg-neutral-800 border border-neutral-700 rounded-md hover:bg-neutral-700 transition-colors"
+            className="absolute top-4 -left-12 z-50 p-2 bg-neutral-900 border border-neutral-800 rounded-l-md hover:bg-neutral-800 text-neutral-400 shadow-xl"
           >
             <PanelRight size={18} />
           </button>

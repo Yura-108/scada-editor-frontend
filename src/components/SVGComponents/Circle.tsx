@@ -6,17 +6,23 @@ interface CircleProps {
 }
 
 export default function Circle({ element }: CircleProps) {
+  const padding = 2;
   return (
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+    <svg
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${element.w} ${element.h}`}
+      preserveAspectRatio="none"
+    >
       <g
         transform={getTransform(element)}
         opacity={element.opacity ?? 1}
       >
         <ellipse
-          cx="50"
-          cy="50"
-          rx={element.rx ?? 40}
-          ry={element.ry ?? 40}
+          cx={element.w / 2}
+          cy={element.h / 2}
+          rx={element.w / 2 - padding}
+          ry={element.h / 2 - padding}
           fill={element.bg ?? "#4b5563"}
           stroke={element.strokeColor ?? "#9ca3af"}
           strokeWidth={element.strokeWidth ?? 2}

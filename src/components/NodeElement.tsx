@@ -35,8 +35,8 @@ export default function NodeElement({
 
   const renderContent = () => {
     switch (element.type) {
-      case "line":
-        return <Line element={element} />
+      // case "line":
+      //   return <Line element={element} />
 
       case "rectangle":
         return <Rectangle element={element} />

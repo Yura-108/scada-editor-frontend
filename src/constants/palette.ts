@@ -71,7 +71,6 @@ export const paletteItems: PaletteItemType[] = [
     type: "valve",
     label: "Valve",
     category: "Process",
-    iconComponent: ValveIcon,
     defaultProps: {},
   },
   {
