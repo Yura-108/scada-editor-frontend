@@ -35,6 +35,7 @@ type EditorState = {
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
   addElementAt: (x: number, y: number, type: ElementType) => void;
+  addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
@@ -89,6 +90,48 @@ export const useEditorStore = create<EditorState>()(temporal(
       select: (id) => set({selectedIds: id ? [id] : []}),
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
+      addTemplate: (screenX, screenY, template) => {
+        const x = snap(screenX);
+        const y = snap(screenY);
+
+        const keyMap: Record<string, string> = {};
+        template.forEach(el => {
+          keyMap[el.key] = crypto.randomUUID();
+        });
+
+        const root = template.find(el => el.type === "group") || template[0];
+
+        // const dx = x - root.x;
+        // const dy = y - root.y;
+
+
+        const newElements = template.map(el => {
+          if (el.type === "group") {
+            return {
+              ...el,
+              id: null,
+              key: keyMap[el.key],
+              parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
+              children: el.children.map(childKey => keyMap[childKey] || childKey),
+              x,
+              y
+            }
+          } else {
+            return {
+              ...el,
+              id: null,
+              key: keyMap[el.key],
+              parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
+              children: el.children.map(childKey => keyMap[childKey] || childKey),
+            }
+          }
+
+        })
+
+        set(state => ({
+          elements: [...state.elements, ...newElements],
+        }));
+      },
       addElementAt: (screenX, screenY, type) => {
         const {scene} = get();
         const rect = get().canvasRect;
@@ -286,15 +329,14 @@ export const useEditorStore = create<EditorState>()(temporal(
         // -----------------------------
         // 1. TOP LEVEL SELECTION
         // -----------------------------
-        const topLevelSelected = selectedIds
-          .map(key => elements.find(e => e.key === key))
-          .filter(Boolean)
+        const topLevelSelected = elements
+          .filter(el => selectedIds.includes(el.key))
           .filter(el => {
             let parentKey: string | null | undefined = el!.parentKey;
 
             while (parentKey) {
               if (selectedIds.includes(parentKey)) return false;
-              parentKey = elements.find(e => e.id === parentKey)?.parentKey;
+              parentKey = elements.find(e => e.key === parentKey)?.parentKey;
             }
 
             return true;
@@ -350,7 +392,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           // 3. Обновляем все элементы
           const updatedElements = elements.map(el => {
             // Если это новый добавляемый элемент
-            const newSimple = simpleWithAbs.find(s => s.el.id === el.id);
+            const newSimple = simpleWithAbs.find(s => s.el.key === el.key);
             if (newSimple) {
               return {
                 ...el,
@@ -415,7 +457,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
 
         const updatedElements = elements.map(el => {
-          if (!topLevelSelected.find(t => t.id === el.id)) return el;
+          const isTopLevelSelected = topLevelSelected.some(t => t.key === el.key);
+          if (!isTopLevelSelected) return el;
 
           const abs = getAbsolutePosition(el, elements);
 

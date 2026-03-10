@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/core";
 import {useEffect, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {ElementType} from "@/types/editorElement.type";
+import {DiagramElement, ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import WorkSpace from "@/components/WorkSpace";
 
@@ -158,7 +158,12 @@ export default function EditorPage() {
                 if (worldX < 0 || worldY < 0 || worldX > 5000 || worldY > 5000) return;
 
                 const type = active.id as ElementType;
-                useEditorStore.getState().addElementAt(worldX, worldY, type);
+                const template = active.data.current as DiagramElement[];
+                if (type === 'custom') {
+                  useEditorStore.getState().addTemplate(worldX, worldY, template);
+                } else {
+                  useEditorStore.getState().addElementAt(worldX, worldY, type);
+                }
               }
             }
             setActiveId(null);

@@ -45,27 +45,15 @@ body {
   display: none !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
-}
-
 .rc-tree .rc-tree-indent-unit {
   width: 16px; /* ширина одного уровня вложенности */
   display: inline-block;
 }
 
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
+  scrollbar-gutter: stable;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
@@ -77,5 +65,4 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
-
 

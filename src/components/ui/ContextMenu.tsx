@@ -116,7 +116,7 @@ const ContextMenu = <T extends string = string>({
                   item.disabled && 'opacity-50 cursor-not-allowed',
                 )}
               >
-                {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
+                {item.icon && <span className="shrink-0">{item.icon}</span>}
                 <span>{item.label}</span>
               </button>
               {item.dividerAfter && <hr className="border-gray-200 mx-2"/>}

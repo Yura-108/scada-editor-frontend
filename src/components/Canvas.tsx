@@ -10,6 +10,12 @@ import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.t
 import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
 import {LinesLayer} from "@/components/LinesLayer";
+import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
+import {editorElementMenuItems, editorGroupMenuItems} from "@/constants/contextMenuItems";
+import buildComponentTree from "@/lib/buildComponentTree";
+import {PaletteItemType} from "@/types/palette.types";
+import {usePaletteStore} from "@/store/usePaletteStore";
+import {getDescendants} from "@/lib/getDescendants";
 
 export default function Canvas() {
   const {
@@ -21,10 +27,11 @@ export default function Canvas() {
     deleteSelectedElement,
     copySelectedElement,
     pasteSelectedElement,
-    exportScene,
     camera,
-    setCameraPan
   } = useEditorStore();
+  const {addPaletteItem} = usePaletteStore();
+
+  //console.log(elements);
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -137,7 +144,6 @@ export default function Canvas() {
     () => elements.filter(el => !el.parentKey),
     [elements]
   );
-
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".scada-element")) return;
     if ((e.target as HTMLElement).closest("button")) return;
@@ -185,7 +191,24 @@ export default function Canvas() {
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionRect(null);
-  }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, elId: string) => {
+    if (!selectedIds.includes(elId)) {
+      handleSelect(elId, e);
+    }
+  };
+
+  const handleSelect = useCallback((id: string, e: React.MouseEvent | MouseEvent) => {
+    if (e.shiftKey) {
+      const newSelection = selectedIds.includes(id)
+        ? selectedIds.filter(i => i !== id)
+        : [...selectedIds, id];
+      selectMultiple(newSelection);
+    } else {
+      selectMultiple([id]);
+    }
+  }, [selectedIds, selectMultiple]);
 
   const panZoomHandlers = {
     // 1. ПЕРЕМЕЩЕНИЕ (PAN)
@@ -216,118 +239,117 @@ export default function Canvas() {
     return map;
   }, [elements]);
 
-  const handleSelect = useCallback((id: string, e: React.MouseEvent | MouseEvent) => {
-    if (e.shiftKey) {
-      const newSelection = selectedIds.includes(id)
-        ? selectedIds.filter(i => i !== id)
-        : [...selectedIds, id];
-      selectMultiple(newSelection);
-    } else {
-      selectMultiple([id]);
-    }
-  }, [selectedIds, selectMultiple]);
-
-  const renderElement = (el: DiagramElement) => {
+  const renderElement = (el: DiagramElement, isInsideGroup = false) => {
     if (el.type === 'line') return null;
     const isSelected = selectedIds.includes(el.key);
+
+    const handleFaceplate = () => {
+      const rootElement = elements.find(element => element.key === el.key);
+      if (!rootElement) return;
+
+      const allDescendants = getDescendants(rootElement.key, elements);
+
+      const faceplate = [rootElement, ...allDescendants];
+
+      console.log('faceplate', faceplate);
+
+      const label = prompt("Название нового шаблона:");
+
+      if (!label) return;
+
+      const newPaletteItem: PaletteItemType = {
+        type: 'custom',
+        label,
+        category: 'custom',
+        defaultProps: {},
+        template: faceplate
+      };
+
+      addPaletteItem(newPaletteItem);
+    }
+
+    // Общие пропсы для Rnd
+    const rndProps = {
+      size: { width: el.w, height: el.h },
+      position: { x: el.x, y: el.y },
+      dragGrid: [GRID, GRID] as [number, number],
+      resizeGrid: [GRID, GRID] as [number, number],
+      bounds: "parent",
+      onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, el.key),
+      onDragStop: (_: any, d: any) => updateElement(el.key, { x: d.x, y: d.y }),
+      onResizeStop: (_: any, __: any, ref: any, ___: any, pos: any) =>
+        updateElement(el.key, {
+          w: parseFloat(ref.style.width),
+          h: parseFloat(ref.style.height),
+          x: pos.x,
+          y: pos.y,
+        }),
+    };
 
     if (el.type === "group") {
       const group = el as GroupElement;
 
       return (
-        <Rnd
+        <DynamicContextMenu
           key={el.key}
-          size={{width: el.w, height: el.h}}
-          position={{x: el.x, y: el.y}}
-          bounds="parent"
-          dragGrid={[GRID, GRID]}
-          resizeGrid={[GRID, GRID]}
-          cancel=".no-drag, input, textarea, button, .child-element"
-          onDragStop={(_, d) => {
-            updateElement(el.key, {
-              x: d.x,
-              y: d.y
-            });
-          }}
-          onResizeStop={(_, __, ref, ___, pos) =>
-            updateElement(el.key, {
-              w: parseFloat(ref.style.width),
-              h: parseFloat(ref.style.height),
-              x: pos.x,
-              y: pos.y,
-            })
-          }
-          onMouseDown={(e) => {
-            e.stopPropagation();
-
-            const isChildClicked = (e.target as HTMLElement).closest('.child-element');
-
-            if (!isChildClicked) {
-              handleSelect(el.key, e);
-            }
-          }}
+          items={[
+            { label: 'Сохранить в палитру', onClick: handleFaceplate},
+            { label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger' }
+          ]}
         >
-          <div
-            className={cn(
-              "w-full h-full relative rounded-lg border-2",
-              isSelected
-                ? "border-blue-500 bg-blue-900/30 ring-2 ring-blue-400/60"
-                : "border-blue-700/50 bg-blue-950/20 hover:bg-blue-950/30",
-              "transition-all duration-150 overflow-hidden"
-            )}
-            style={{
-              borderStyle: group.borderStyle || "dashed",
-              borderColor: group.borderColor || "#60a5fa",
-              backgroundColor: el.bg || "rgba(59,130,246,0.08)",
+          <Rnd
+            {...rndProps}
+            key={el.key}
+            cancel=".no-drag, .child-element"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              if (!(e.target as HTMLElement).closest('.child-element')) {
+                handleSelect(el.key, e);
+              }
             }}
           >
-            {group.children.map((childId) => {
-              const child = elementsMap[childId];
-              if (!child) return null;
-              return renderElement(child);
-            })}
-          </div>
-        </Rnd>
+            <div
+              className={cn(
+                "w-full h-full relative rounded-lg border-2",
+                isSelected ? "border-blue-500 bg-blue-900/30" : "border-blue-700/50 bg-blue-950/20"
+              )}
+              style={{ borderStyle: group.borderStyle || "dashed" }}
+            >
+              {group.children.map((childId) => {
+                const child = elementsMap[childId];
+                if (!child) return null;
+                // Передаем флаг, что элемент внутри группы
+                return renderElement(child, true);
+              })}
+            </div>
+          </Rnd>
+        </DynamicContextMenu>
       );
     }
 
     // Обычный элемент (лист)
-    return (
+    const nodeContent = (
       <Rnd
+        {...rndProps}
         key={el.key}
-        size={{width: el.w, height: el.h}}
-        position={{x: el.x, y: el.y}}
-        bounds={"parent"}
-        dragGrid={[GRID, GRID]}
-        resizeGrid={[GRID, GRID]}
-        cancel=".no-drag, input, textarea, button"
-        onDragStop={(_, d) => {
-          updateElement(el.key, {
-            x: d.x,
-            y: d.y,
-          });
-        }}
-        onResizeStop={(_, __, ref, ___, pos) => {
-          updateElement(el.key, {
-            w: parseFloat(ref.style.width),
-            h: parseFloat(ref.style.height),
-            x: pos.x,
-            y: pos.y,
-          });
-        }}
+        className={cn("child-element z-10", isSelected ? "shadow-lg" : "shadow-sm")}
         onMouseDown={(e) => {
           e.stopPropagation();
-          handleSelect(el.key, e)
+          handleSelect(el.key, e);
         }}
-        className={cn(
-          "child-element z-10 transition-shadow duration-150",
-          isSelected ? "shadow-lg" : "shadow-sm",
-          "hover:shadow-[0_0_0_2px_#60a5fa80]"
-        )}
       >
-        <NodeElement
-          element={el as LeafElement} isSelected={isSelected}/>
+        <NodeElement element={el as LeafElement} isSelected={isSelected} />
       </Rnd>
+    );
+
+    if (isInsideGroup) {
+      return nodeContent;
+    }
+
+    return (
+      <DynamicContextMenu key={el.key} items={editorElementMenuItems}>
+        {nodeContent}
+      </DynamicContextMenu>
     );
   };
 
@@ -337,114 +359,71 @@ export default function Canvas() {
       className="relative w-full h-full overflow-hidden touch-none bg-neutral-950"
       {...panZoomHandlers}
     >
-      {/* Сцена (Мир) — прозрачная пленка, которая двигается и масштабируется */}
-      <div
-        id="canvas-scene"
-        style={{
-          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
-          transformOrigin: '0 0',
-          width: `${CANVAS_WIDTH}px`,
-          height: `${CANVAS_HEIGHT}px`,
-          overflow: 'visible',
-        }}
-        ref={(node) => {
-          setNodeRef(node);
-          containerRef.current = node;
-        }}
-        className="select-none touch-none"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-      >
-        {/* Фоновая сетка */}
+      <DynamicContextMenu items={[
+        { label: 'Вставить элемент', onClick: () => console.log('Paste') },
+        { label: 'Очистить холст', onClick: () => console.log('Clear'), variant: 'danger' }
+      ]}>
         <div
-          className="absolute inset-0 pointer-events-none"
+          id="canvas-scene"
           style={{
-            backgroundImage: `
+            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
+            transformOrigin: '0 0',
+            width: `${CANVAS_WIDTH}px`,
+            height: `${CANVAS_HEIGHT}px`,
+            overflow: 'visible',
+          }}
+          ref={(node) => {
+            setNodeRef(node);
+            containerRef.current = node;
+          }}
+          className="select-none touch-none"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        >
+          {/* Фоновая сетка */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
             linear-gradient(to right, rgba(60,60,70,0.4) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(60,60,70,0.4) 1px, transparent 1px)
           `,
-            backgroundSize: `${GRID}px ${GRID}px`,
-          }}
-        />
-
-        {/* Кнопки */}
-        {/*<div className="absolute top-16 right-8 flex flex-col gap-3">*/}
-        {/*  <button*/}
-        {/*    onClick={() => useEditorStore.getState().groupSelected()}*/}
-        {/*    disabled={selectedIds.length < 2}*/}
-        {/*    className="group relative px-4 py-2 text-sm font-medium rounded-xl*/}
-        {/*       bg-white/10 backdrop-blur-md border border-white/20*/}
-        {/*       text-white*/}
-        {/*       hover:bg-white/20 hover:border-white/30*/}
-        {/*       active:shadow-none active:translate-y-0.5*/}
-        {/*       disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0*/}
-        {/*       transition-all duration-150 ease-out"*/}
-        {/*  >*/}
-        {/*    Сгруппировать*/}
-        {/*  </button>*/}
-
-        {/*  <button*/}
-        {/*    onClick={() => useEditorStore.getState().ungroupSelected()}*/}
-        {/*    disabled={!selectedIds.some(id => {*/}
-        {/*      const el = useEditorStore.getState().elements.find(e => e.key === id);*/}
-        {/*      return el?.type === "group";*/}
-        {/*    })}*/}
-        {/*    className="group relative px-4 py-2 text-sm font-medium rounded-xl*/}
-        {/*       bg-white/10 backdrop-blur-md border border-white/20*/}
-        {/*       text-white*/}
-        {/*       hover:bg-white/20 hover:border-white/30*/}
-        {/*       active:shadow-none active:translate-y-0.5*/}
-        {/*       disabled:opacity-30 disabled:pointer-events-none disabled:translate-y-0*/}
-        {/*       transition-all duration-150 ease-out"*/}
-        {/*  >*/}
-        {/*    Разгруппировать*/}
-        {/*  </button>*/}
-
-        {/*  <button*/}
-        {/*    onClick={exportScene}*/}
-        {/*    className="group relative flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl*/}
-        {/*       bg-indigo-500/30 backdrop-blur-lg border border-indigo-400/40*/}
-        {/*       text-indigo-100*/}
-        {/*       hover:bg-indigo-500/40 hover:border-indigo-400/60*/}
-        {/*       active:shadow-none active:translate-y-0.5*/}
-        {/*       transition-all duration-150 ease-out"*/}
-        {/*  >*/}
-        {/*    <Save size={16} strokeWidth={2.5} />*/}
-        {/*    Сохранить*/}
-        {/*  </button>*/}
-        {/*</div>*/}
-
-        {/* 1 слой — линии */}
-        <LinesLayer onSelect={handleSelect}/>
-
-        {/* 2 слой — элементы */}
-        {rootElements.map(el => renderElement(el))}
-
-
-        {/* Подсказка, если canvas пустой */}
-        {rootElements.length === 0 && (
-          <div
-            className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
-            Перетащите элемент из палитры сюда
-          </div>
-        )}
-
-        {/* Рамка выделения */}
-        {selectionRect && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left: selectionRect.x,
-              top: selectionRect.y,
-              width: selectionRect.width,
-              height: selectionRect.height,
-              backgroundColor: "rgb(0, 150, 255, 0.2)",
-              border: "1px solid #0096ff",
+              backgroundSize: `${GRID}px ${GRID}px`,
             }}
           />
-        )}
-      </div>
+
+          {/* 1 слой — линии */}
+          <LinesLayer onSelect={handleSelect}/>
+
+          {/* 2 слой — элементы */}
+          {rootElements.map(el => renderElement(el))}
+
+
+          {/* Подсказка, если canvas пустой */}
+          {rootElements.length === 0 && (
+            <div
+              className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
+              Перетащите элемент из палитры сюда
+            </div>
+          )}
+
+          {/* Рамка выделения */}
+          {selectionRect && (
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: selectionRect.x,
+                top: selectionRect.y,
+                width: selectionRect.width,
+                height: selectionRect.height,
+                backgroundColor: "rgb(0, 150, 255, 0.2)",
+                border: "1px solid #0096ff",
+              }}
+            />
+          )}
+        </div>
+      </DynamicContextMenu>
     </div>
   )
 }

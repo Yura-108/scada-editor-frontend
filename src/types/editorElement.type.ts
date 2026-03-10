@@ -50,6 +50,7 @@ export type ElementType =
   | "rectangle"
   | "circle"
   | "line"
+  | "custom"
   //| "svg"         // если есть кастомные SVG
   //| "input";
 

@@ -42,8 +42,6 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           Разгруппировать
         </button>
 
-        <div className="w-px h-6 bg-white/10 mx-1" /> {/* Разделитель */}
-
         <button
           onClick={exportScene}
           className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl

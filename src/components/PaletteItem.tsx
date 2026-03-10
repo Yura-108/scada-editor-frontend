@@ -12,9 +12,7 @@ export default function PaletteItem({item}: PaletteItemProps) {
     attributes,
     listeners,
     setNodeRef,
-  } = useDraggable({id: item.type});
-
-  const Icon = item.iconComponent;
+  } = useDraggable({id: item.type, data: item.template});
 
   return (
     <div
@@ -23,7 +21,6 @@ export default function PaletteItem({item}: PaletteItemProps) {
       {...attributes}
       className="bg-[#1b1b1b] hover:bg-[#262626] px-3 py-2 rounded cursor-grab flex items-center gap-3"
     >
-      {Icon && <Icon size={28} />}
       <span className="text-sm">{item.label}</span>
     </div>
   );

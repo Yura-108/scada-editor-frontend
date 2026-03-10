@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { paletteItems } from "@/constants/palette";
 import PaletteItem from "./PaletteItem";
 import {Search, X} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 import {PaletteItemType} from "@/types/palette.types";
+import {usePaletteStore} from "@/store/usePaletteStore";
 
 export default function Palette() {
+  const {paletteItems} = usePaletteStore();
   const [search, setSearch] = useState("");
 
   const filtered = filterPalette(paletteItems, search);
@@ -60,8 +61,8 @@ export default function Palette() {
               </h3>
 
               <div className="grid gap-1.5">
-                {grouped[category].map((item: PaletteItemType) => (
-                  <PaletteItem key={item.type} item={item} />
+                {grouped[category].map((item: PaletteItemType, index: number) => (
+                  <PaletteItem key={item.label + index} item={item} />
                 ))}
               </div>
             </div>
