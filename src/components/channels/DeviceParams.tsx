@@ -9,8 +9,8 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
-import { AddParamModal } from "./AddParamModal";
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
+import {openChooseParamTypeModal} from "@/components/ui/openChooseParamTypeModal";
 
 const DeviceParams = () => {
   const {
@@ -22,7 +22,7 @@ const DeviceParams = () => {
     params,
     removeParam,
     toggleEditing,
-    addParam,
+    getParamsTypes,
   } = useDeviceStore();
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
@@ -36,7 +36,7 @@ const DeviceParams = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [isModalOpen, setIsModalOpen] = useState(false);
 
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
@@ -184,15 +184,9 @@ const DeviceParams = () => {
       key: key,
     });
   }
-  const handleAddParam = async (type: string, value: string) => {
-    if (!selectedDevice) return;
-    const newParam = {
-      id: Number(type),
-      value,
-      parentKey: selectedDevice
-    };
-
-    await addParam(newParam);
+  const handleLoadParamsTypes = async () => {
+    await getParamsTypes();
+    openChooseParamTypeModal();
   }
 
   if (!selectedDevice) {
@@ -252,7 +246,7 @@ const DeviceParams = () => {
               // disabled стили
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:from-purple-600 disabled:hover:to-indigo-600'
             )}
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleLoadParamsTypes}
           >
             <Plus size={20} />
             {isSaving ? 'Сохранение...' : 'Добавить параметр'}
@@ -404,12 +398,12 @@ const DeviceParams = () => {
         </div>
 
       </div>
-      {/* Модалка добавления параметра */}
-      <AddParamModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onAdd={(type, name) => handleAddParam(type, name)}
-      />
+      {/* Модальное окно добавления параметра */}
+      {/*<AddParamModal*/}
+      {/*  open={isModalOpen}*/}
+      {/*  onClose={() => setIsModalOpen(false)}*/}
+      {/*  onAdd={(type, name) => handleAddParam(type, name)}*/}
+      {/*/>*/}
     </div>
   );
 };

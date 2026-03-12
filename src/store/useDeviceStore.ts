@@ -6,10 +6,11 @@ import {devtools} from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
-
+import {NodeParamType, NodeType} from "@/types/channelsTypes";
 interface DeviceStoreState {
-  params: DeviceParamsType[];
-  nodes: DeviceNodeType[];
+  nodes: NodeType[];
+  params: NodeParamType[];
+
   contextMenu: ContextMenuType | null;
   editingDevices: Array<string>;
   startEditing: (keys: string[]) => Promise<void>;
@@ -20,7 +21,7 @@ interface DeviceStoreState {
 
   getParams(deviceKey: string | null): DeviceParamsType[];
 
-  loadTree: (site: string, project: string) => Promise<void>;
+  loadNodes: (rootPath: string[]) => Promise<void>;
   getParamsTypes: () => Promise<void>;
   paramsTypes: DeviceParamsLayoutType[];
   addDevice: (node: { type: string; title: string; isLeaf: boolean; parentKey: string | null }) => Promise<void>;
@@ -53,16 +54,50 @@ export const useDeviceStore = create<DeviceStoreState>()(
         if (!deviceKey) return [];
         return get().params.filter((param) => param.parentKey === deviceKey);
       },
-      loadTree: async (site: string, project: string) => {
-        const res = await fetch(
-          `/api/device?site=${encodeURIComponent(site)}&project=${encodeURIComponent(project)}`,
-        );
-        const json: DeviceTreeResponse = await res.json();
+      loadNodes: async (rootPath) => {
+        try {
+          const promises = rootPath.map(async (project) => {
+            const res = await fetch(`/api/device/fullHierarchy?project=${project}`);
 
-        set({
-          nodes: json.nodes,
-          params: json.params,
-        });
+            if (!res.ok) {
+              throw new Error(`Ошибка загрузки: ${project}`);
+            }
+
+            const json: {nodes: {key: string}[], params: NodeParamType[]} = await res.json();
+            return json;
+          });
+
+          const results = await Promise.all(promises);
+
+          const allRawNodes: { key: string }[] = [];
+          const allParams: NodeParamType[] = [];
+
+          results.forEach(res => {
+            allRawNodes.push(...res.nodes);
+            allParams.push(...res.params);
+          });
+
+          const processedNodes = allRawNodes.map(n => {
+            const parts = n.key.split('.');
+            const title = parts.pop() || '';
+            const parentKey = parts.join('.');
+
+            return {
+              ...n,
+              title,
+              parentKey
+            };
+          });
+
+          const uniqueParams = Array.from(new Map(allParams.map(p => [p.key, p])).values());
+
+          set({
+            nodes: processedNodes,
+            params: uniqueParams,
+          });
+        } catch (error) {
+          throw error;
+        }
       },
       startEditing: async (keys: string[]) => {
         const {editingDevices} = get();

@@ -101,36 +101,29 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const root = template.find(el => el.type === "group") || template[0];
 
-        // const dx = x - root.x;
-        // const dy = y - root.y;
-
-
         const newElements = template.map(el => {
-          if (el.type === "group") {
-            return {
-              ...el,
-              id: null,
-              key: keyMap[el.key],
-              parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
-              children: el.children.map(childKey => keyMap[childKey] || childKey),
-              x,
-              y
-            }
-          } else {
-            return {
-              ...el,
-              id: null,
-              key: keyMap[el.key],
-              parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
-              children: el.children.map(childKey => keyMap[childKey] || childKey),
-            }
+          // 1. Формируем базовый обновленный элемент (меняем только ключи и связи)
+          const updatedElement = {
+            ...el,
+            id: null,
+            key: keyMap[el.key],
+            parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
+            children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
+          };
+
+          // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
+          if (el.key === root.key) {
+            updatedElement.x = x;
+            updatedElement.y = y;
           }
 
-        })
+          return updatedElement as DiagramElement;
+        });
 
         set(state => ({
           elements: [...state.elements, ...newElements],
         }));
+
       },
       addElementAt: (screenX, screenY, type) => {
         const {scene} = get();

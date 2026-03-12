@@ -1,10 +1,10 @@
 import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, Save} from "lucide-react";
-import Canvas from "@/components/Canvas";
-import {PropertiesPanel} from "@/components/PropertiesPanel";
+import Canvas from "@/components/editor/Canvas";
+import {PropertiesPanel} from "@/components/channels/PropertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import React, {useState} from "react";
 import Palette from "./Palette";
-import ToolsPanel from "@/components/ToolsPanel";
+import ToolsPanel from "@/components/editor/ToolsPanel";
 
 export default function WorkSpace() {
   const {elements, selectedIds, updateElement, exportScene} = useEditorStore();

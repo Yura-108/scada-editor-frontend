@@ -7,7 +7,7 @@ import {ModalRoot} from "@/components/ui/ModalRoot";
 import {Cpu, Settings} from "lucide-react";
 import LogoutButton from "@/components/ui/LogoutButton";
 import {getUser} from "@/lib/getUser";
-import HeaderNav from "@/components/HeaderNav";
+import HeaderNav from "@/components/editor/HeaderNav";
 
 const inter = Inter({subsets: ['latin']});
 

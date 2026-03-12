@@ -15,7 +15,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
    const response = await fetch(`${BACKEND_URL}/api/channel/node/all?site=${site}&project=${project}`, {
      method: 'GET',
      headers: {
-      Authorization: `Bearer ${token}`, // ← передаём токен
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
    });
@@ -43,7 +43,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
    const response = await fetch(`${BACKEND_URL}/api/channel/node`, {
      method: 'POST',
      headers: {
-       Authorization: `Bearer ${token}`, // ← передаём токен
+       Authorization: `Bearer ${token}`,
        'Content-Type': 'application/json',
      },
      body: JSON.stringify(node),

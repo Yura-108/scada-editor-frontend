@@ -1,4 +1,4 @@
-import { Line } from "./Line";
+import { Line } from "../SVGComponents/Line";
 import {useEditorStore} from "@/store/useEditorStore";
 import {LeafElement} from "@/types/editorElement.type";
 import React from "react";

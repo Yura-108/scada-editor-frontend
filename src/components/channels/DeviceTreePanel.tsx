@@ -21,8 +21,6 @@ const DeviceTreePanel = () => {
     selectedDevice,
     handleContextAction
   } = useDeviceStore();
-
-
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
     if (key) useDeviceStore.setState({selectedDevice: key});
@@ -65,34 +63,68 @@ const DeviceTreePanel = () => {
 
   const treeData = useMemo(() => {
     const map = new Map<string, DataNode>();
-
-    nodes.forEach((n) => {
-      map.set(n.key, {
-        key: n.key,
-        title: () => (
-          <TitleRenderer
-            node={n}
-            onClick={() => handleNodeClick(n.key)}
-            onContextMenu={handleContextMenu}
-          />
-        ),
-        children: [],
-        isLeaf: n.isLeaf,
-      });
-    });
-
     const roots: DataNode[] = [];
+
     nodes.forEach((n) => {
-      if (n.parentKey) {
-        const parent = map.get(n.parentKey);
-        if (parent) parent.children!.push(map.get(n.key)!);
-      } else {
-        roots.push(map.get(n.key)!);
-      }
+      const parts = n.key.split('.');
+      let currentKey = '';
+
+      parts.forEach((part, index) => {
+        const isLast = index === parts.length - 1;
+        const parentKey = currentKey;
+
+        currentKey = currentKey ? `${currentKey}.${part}` : part;
+
+        if (!map.has(currentKey)) {
+          const nodeData = isLast ? n : { key: currentKey, title: part };
+
+          // 1. Создаем объект узла без title, чтобы зафиксировать на него ссылку
+          const newNode = {
+            key: currentKey,
+            children: [],
+            isLeaf: true,
+          } as DataNode;
+
+          // 2. Добавляем title. При рендере эта функция прочитает финальный newNode.isLeaf
+          newNode.title = () => (
+            <TitleRenderer
+              node={{ ...nodeData, isLeaf: newNode.isLeaf }}
+              onClick={() => handleNodeClick(currentKey)}
+              onContextMenu={handleContextMenu}
+            />
+          );
+
+          map.set(currentKey, newNode);
+
+          if (parentKey) {
+            const parent = map.get(parentKey);
+            if (parent) {
+              parent.children!.push(newNode);
+              parent.isLeaf = false; // Раз добавили ребенка, родитель перестает быть листом
+            }
+          } else {
+            // Если родителя нет, значит это корень (например, site1)
+            roots.push(newNode);
+          }
+        } else if (isLast) {
+          // Если дошли до реального узла, который уже был создан как родительский
+          const existingNode = map.get(currentKey)!;
+          existingNode.title = () => (
+            <TitleRenderer
+              // Прокидываем данные n, но сохраняем актуальный isLeaf из existingNode
+              node={{ ...n, isLeaf: existingNode.isLeaf }}
+              onClick={() => handleNodeClick(currentKey)}
+              onContextMenu={handleContextMenu}
+            />
+          );
+        }
+      });
     });
 
     return roots;
   }, [handleContextMenu, nodes]);
+
+
 
   return (
     <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">

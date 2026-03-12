@@ -5,11 +5,11 @@ import {Rnd} from "react-rnd";
 import {useDroppable} from "@dnd-kit/core";
 import {useEditorStore} from "@/store/useEditorStore";
 import {GRID} from "@/lib/utils";
-import NodeElement from "@/components/NodeElement";
+import NodeElement from "@/components/editor/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
-import {LinesLayer} from "@/components/LinesLayer";
+import {LinesLayer} from "@/components/editor/LinesLayer";
 import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems, editorGroupMenuItems} from "@/constants/contextMenuItems";
 import buildComponentTree from "@/lib/buildComponentTree";
@@ -29,9 +29,7 @@ export default function Canvas() {
     pasteSelectedElement,
     camera,
   } = useEditorStore();
-  const {addPaletteItem} = usePaletteStore();
-
-  //console.log(elements);
+  const {addPaletteItem, paletteItems} = usePaletteStore();
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -250,8 +248,6 @@ export default function Canvas() {
       const allDescendants = getDescendants(rootElement.key, elements);
 
       const faceplate = [rootElement, ...allDescendants];
-
-      console.log('faceplate', faceplate);
 
       const label = prompt("Название нового шаблона:");
 

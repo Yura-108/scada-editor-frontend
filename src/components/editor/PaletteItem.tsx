@@ -12,7 +12,11 @@ export default function PaletteItem({item}: PaletteItemProps) {
     attributes,
     listeners,
     setNodeRef,
-  } = useDraggable({id: item.type, data: item.template});
+  } = useDraggable({id: item.label, data: {
+      type: item.type,
+      template: item.template,
+      isTemplate: true
+    }});
 
   return (
     <div

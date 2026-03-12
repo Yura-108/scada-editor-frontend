@@ -7,9 +7,9 @@ import {
 } from "@dnd-kit/core";
 import {useEffect, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {DiagramElement, ElementType} from "@/types/editorElement.type";
+import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
-import WorkSpace from "@/components/WorkSpace";
+import WorkSpace from "@/components/editor/WorkSpace";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -139,6 +139,7 @@ export default function EditorPage() {
           onDragStart={(e) => setActiveId(e.active.id as string)}
           onDragEnd={(event) => {
             const { over, active } = event;
+            if (!over) return;
 
             if (over?.id === "canvas") {
               const { camera, canvasRect } = useEditorStore.getState();
@@ -157,10 +158,11 @@ export default function EditorPage() {
                 // Теперь проверка на выход за границы (если холст 5000x5000)
                 if (worldX < 0 || worldY < 0 || worldX > 5000 || worldY > 5000) return;
 
-                const type = active.id as ElementType;
-                const template = active.data.current as DiagramElement[];
+                const type = active.data.current?.type as ElementType;
+                const templateData = active.data.current?.template;
+
                 if (type === 'custom') {
-                  useEditorStore.getState().addTemplate(worldX, worldY, template);
+                  useEditorStore.getState().addTemplate(worldX, worldY, templateData);
                 } else {
                   useEditorStore.getState().addElementAt(worldX, worldY, type);
                 }

@@ -1,9 +1,9 @@
 'use client';
 
-import StartMenu from '@/components/StartMenu';
-import DeviceTreePanel from '@/components/DeviceTreePanel';
+import StartMenu from '@/components/channels/StartMenu';
+import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
 import { useDeviceStore } from '@/store/useDeviceStore';
-import DeviceParams from '@/components/DeviceParams';
+import DeviceParams from '@/components/channels/DeviceParams';
 
 export default function Workspace() {
   const { nodes } = useDeviceStore();
