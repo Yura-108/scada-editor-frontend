@@ -124,8 +124,6 @@ const DeviceTreePanel = () => {
     return roots;
   }, [handleContextMenu, nodes]);
 
-
-
   return (
     <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
       <div className="px-6 py-4 border-b bg-linear-to-r from-purple-50 to-indigo-50">

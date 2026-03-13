@@ -90,7 +90,7 @@ const ContextMenu = <T extends string = string>({
   return (
     <div
       ref={menuRef}
-      className="fixed z-[9999]"
+      className="fixed z-9999"
       style={{top: menu.y, left: menu.x}}
       onContextMenu={(e) => e.preventDefault()}
     >

@@ -7,6 +7,7 @@ import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
+import {openCreateDeviveModal} from "@/components/ui/openCreateDeviceModal";
 interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];
@@ -24,7 +25,9 @@ interface DeviceStoreState {
   loadNodes: (rootPath: string[]) => Promise<void>;
   getParamsTypes: () => Promise<void>;
   paramsTypes: DeviceParamsLayoutType[];
-  addDevice: (node: { type: string; title: string; isLeaf: boolean; parentKey: string | null }) => Promise<void>;
+  deviceTemplateList: {templates: {key: number; value: string}[]};
+  loadDeviceTemplateList: () => Promise<void>;
+  addDevice: (node: {type: number; idNode: string; parentKey: string}) => Promise<void>;
   removeDevice: (Key: string) => Promise<void>;
   deleteOptionParam: (key: string) => Promise<void>;
   removeParam: (key: string) => Promise<void>;
@@ -41,6 +44,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
       params: [],
       contextMenu: null,
       paramsTypes: [],
+      deviceTemplateList: [],
       editingDevices: [],
       setContextMenu: (menu) => set({contextMenu: menu}),
       selectedDevice: null,
@@ -99,6 +103,12 @@ export const useDeviceStore = create<DeviceStoreState>()(
           throw error;
         }
       },
+      loadDeviceTemplateList: async () => {
+        const res = await fetch('/api/device/template');
+        const data = await res.json();
+
+        set({deviceTemplateList: data});
+      },
       startEditing: async (keys: string[]) => {
         const {editingDevices} = get();
         const filteredKeys = keys.filter((key: string) => !editingDevices.includes(key));
@@ -151,10 +161,25 @@ export const useDeviceStore = create<DeviceStoreState>()(
           body: JSON.stringify(node),
         });
 
-        const {nodeDTO, params} = await res.json();
+        type ResponseType = {
+          nodeDTO: NodeType;
+          params: NodeParamType[];
+        };
+
+        const { nodeDTO, params } = await res.json() as ResponseType;
+
+        const parts = nodeDTO.key.split('.');
+        const title = parts.pop() || '';
+        const parentKey = parts.join('.');
+
+        const newNode = {
+          key: nodeDTO.key,
+          title: title,
+          parentKey: parentKey,
+        }
 
         set((state) => ({
-          nodes: [...state.nodes, nodeDTO],
+          nodes: [...state.nodes, newNode],
           params: [...state.params, ...params],
         }));
       },
@@ -251,30 +276,9 @@ export const useDeviceStore = create<DeviceStoreState>()(
           }
         }
         if (action === 'add') {
-          const title = prompt('Название нового узла:');
-          if (title) {
-            if (nodeKey) {
-              const type = nodeKey.startsWith('dev') ? 'sub' : 'cha';
-              const tempNode = {
-                type,
-                title,
-                isLeaf: type !== 'sub',
-                parentKey: nodeKey,
-              };
-
-              await get().addDevice(tempNode);
-            } else {
-              const tempNode = {
-                type: 'dev',
-                title,
-                isLeaf: false,
-                parentKey: null,
-              };
-
-              await get().addDevice(tempNode);
-            }
-
-          }
+          await get().loadDeviceTemplateList();
+          if (!nodeKey) return;
+          openCreateDeviveModal(nodeKey);
         }
         if (action === 'edit') {
           await get().toggleEditing(get().selectedDevice ?? '');
