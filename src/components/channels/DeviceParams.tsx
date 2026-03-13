@@ -24,6 +24,7 @@ const DeviceParams = () => {
     toggleEditing,
     getParamsTypes,
   } = useDeviceStore();
+
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
   }, [selectedDevice, params, getParams]);
@@ -107,6 +108,7 @@ const DeviceParams = () => {
   const hasChanges = useMemo(() => {
     return editedParams.size > 0;
   }, [editedParams]);
+
   const handleRemoveParam = (key: string) => {
     if (confirm('Вы уверены, что хотите удалить этот параметр?')) {
       removeParam(key)

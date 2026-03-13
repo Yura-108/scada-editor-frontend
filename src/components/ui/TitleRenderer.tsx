@@ -45,10 +45,10 @@ const NodeIcon = ({ depth, isLeaf }: { depth: number; isLeaf?: boolean }) => {
 };
 
 const TitleRenderer: React.FC<TitleRendererProps> = memo(({
-                                                            node,
-                                                            onClick,
-                                                            onContextMenu,
-                                                          }) => {
+  node,
+  onClick,
+  onContextMenu,
+}) => {
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
   const editingDevices = useDeviceStore((s) => s.editingDevices);
 
@@ -69,7 +69,9 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
           : 'hover:bg-gray-50 text-gray-700 border-transparent',
 
         // Стиль при редактировании (подсветка рамкой)
-        isEditing && 'ring-2 ring-teal-400 ring-offset-1 bg-teal-50/30'
+        isEditing
+          ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900'
+          : 'hover:bg-gray-50 text-gray-700 border-transparent',
       )}
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(e, node)}

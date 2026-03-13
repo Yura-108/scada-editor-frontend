@@ -136,7 +136,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
       },
       toggleEditing: (key: string) => {
         const editingTree = treeSearch(key, get().nodes) ?? [];
-
+        console.log(editingTree);
         const {editingDevices} = get();
 
         if (editingDevices.includes(key)) {
