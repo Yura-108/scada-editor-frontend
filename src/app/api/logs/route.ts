@@ -46,3 +46,34 @@ export const GET = protectedRoute(async (req: NextRequest, { token }) => {
     );
   }
 });
+
+export const POST = protectedRoute(async (req: NextRequest, { token }) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/channel/undo`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return NextResponse.json(
+        { error: `Backend error: ${text}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json().catch(() => ({}));
+    return NextResponse.json(data);
+
+  } catch (error: any) {
+    console.error('Route Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+});
