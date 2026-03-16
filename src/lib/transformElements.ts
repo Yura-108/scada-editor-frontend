@@ -5,6 +5,11 @@ type ComponentDto = Omit<ComponentCreateDto, 'children'> & {
   children: ComponentDto[];
 }
 
+type CreateComponentsDTO = {
+  id: number;
+  children: ComponentDto[];
+}
+
 export default function transformElements(apiElements: ComponentDto[]) {
   const result: any[] = [];
 
@@ -38,4 +43,8 @@ export default function transformElements(apiElements: ComponentDto[]) {
   apiElements.forEach(el => processElement(el));
 
   return result;
+}
+
+export const transformCreateComponentsDTO = (apiElements) => {
+
 }

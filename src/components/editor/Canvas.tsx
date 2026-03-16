@@ -11,8 +11,7 @@ import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
 import {LinesLayer} from "@/components/editor/LinesLayer";
 import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
-import {editorElementMenuItems, editorGroupMenuItems} from "@/constants/contextMenuItems";
-import buildComponentTree from "@/lib/buildComponentTree";
+import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {getDescendants} from "@/lib/getDescendants";
@@ -29,7 +28,7 @@ export default function Canvas() {
     pasteSelectedElement,
     camera,
   } = useEditorStore();
-  const {addPaletteItem, paletteItems} = usePaletteStore();
+  const {addPaletteItem, createPaletteItem} = usePaletteStore();
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -241,7 +240,7 @@ export default function Canvas() {
     if (el.type === 'line') return null;
     const isSelected = selectedIds.includes(el.key);
 
-    const handleFaceplate = () => {
+    const handleFaceplate = async () => {
       const rootElement = elements.find(element => element.key === el.key);
       if (!rootElement) return;
 
@@ -260,8 +259,8 @@ export default function Canvas() {
         defaultProps: {},
         template: faceplate
       };
-
-      addPaletteItem(newPaletteItem);
+      await createPaletteItem(newPaletteItem);
+      // addPaletteItem(newPaletteItem);
     }
 
     // Общие пропсы для Rnd

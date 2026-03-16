@@ -3,7 +3,7 @@ import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import getAbsolutePosition from "@/lib/getAbsolutePosition";
-import buildComponentTree from "@/lib/buildComponentTree";
+import {buildComponentTree} from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";

@@ -3,7 +3,8 @@
 import { useLogsStore } from '@/store/useLogsStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
-import { cn } from '@/lib/utils'; // ← предполагаю, что у тебя есть clsx/tailwind-merge утилита
+import { cn } from '@/lib/utils';
+import {toast} from "sonner"; // ← предполагаю, что у тебя есть clsx/tailwind-merge утилита
 
 export default function LogsList() {
   const { logs, isLoading, getFilteredLogs } = useLogsStore();
@@ -38,13 +39,16 @@ export default function LogsList() {
         body: JSON.stringify(id),
       });
 
-      if (!res.ok) throw new Error('Ошибка отмены');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Ошибка при попытке отката');
+      }
 
-      // можно добавить toast / optimistic update / refetch
-      console.log('Отменено успешно:', id);
-    } catch (err) {
+      toast.success(`Действие #${id} успешно отменено!`);
+
+    } catch (err: any) {
+      toast.error(err.message || 'Не удалось выполнить отмену');
       console.error('Ошибка при отмене:', err);
-      // здесь желательно показать уведомление пользователю
     }
   };
 
