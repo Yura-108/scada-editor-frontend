@@ -35,7 +35,7 @@ export default function LogsList() {
       const res = await fetch('/api/logs/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([id]),
+        body: JSON.stringify(id),
       });
 
       if (!res.ok) throw new Error('Ошибка отмены');

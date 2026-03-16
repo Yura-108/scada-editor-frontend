@@ -1,5 +1,6 @@
 import { protectedRoute } from "@/lib/protected";
 import { NextRequest, NextResponse } from "next/server";
+import {param} from "framer-motion/m";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -49,19 +50,27 @@ export const GET = protectedRoute(async (req: NextRequest, { token }) => {
 
 export const POST = protectedRoute(async (req: NextRequest, { token }) => {
   try {
+    const id: number = await req.json();
+
     const response = await fetch(`${BACKEND_URL}/api/channel/undo`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify([id]),
     });
 
+
     if (!response.ok) {
-      const text = await response.text();
+      const errorText = await response.text();
+      console.log('--- BACKEND ERROR REPORT ---');
+      console.log('Status:', response.status);
+      console.log('Message from Backend:', errorText);
+      console.log('----------------------------');
+
       return NextResponse.json(
-        { error: `Backend error: ${text}` },
+        { error: `Backend error: ${errorText}` },
         { status: response.status }
       );
     }
