@@ -61,8 +61,8 @@ export default function Palette() {
               </h3>
 
               <div className="grid gap-1.5">
-                {grouped[category].map((item: PaletteItemType, index: number) => (
-                  <PaletteItem key={item.label + index} item={item} />
+                {grouped[category].map((item: PaletteItemType) => (
+                  <PaletteItem key={item.id} item={item} />
                 ))}
               </div>
             </div>

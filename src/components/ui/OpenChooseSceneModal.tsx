@@ -8,6 +8,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import SelectItem from "./SelectItem";
 import {useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
+import {usePaletteStore} from "@/store/usePaletteStore";
 
 interface Props {
   onLoadAction: (value: number) => void;
@@ -105,9 +106,15 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
 export function openChooseSceneModal() {
   const {openModal} = useModalStore.getState();
   const {loadScene, sceneList} = useEditorStore.getState();
+  const {loadPaletteItems} = usePaletteStore.getState();
+
+  const handleLoadScene = async (id: number) => {
+    await loadScene(id);
+    await loadPaletteItems();
+  }
 
   if (sceneList.length > 0) {
-    openModal(<ChooseSceneContent onLoadAction={loadScene} sceneList={sceneList} />);
+    openModal(<ChooseSceneContent onLoadAction={handleLoadScene} sceneList={sceneList} />);
   }
 }
 

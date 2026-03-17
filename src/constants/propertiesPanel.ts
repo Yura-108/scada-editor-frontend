@@ -14,6 +14,7 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   rectangle: { complex: false },
   circle: { complex: false },
   line: { complex: false },
+  custom: {complex: true},
 };
 
 
@@ -606,4 +607,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       defaultValue: "medium",
     },
   ],
+  custom: [
+
+  ]
 };

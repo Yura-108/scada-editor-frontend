@@ -3,7 +3,7 @@ import {DiagramElement} from "@/types/editorElement.type";
 export interface PaletteItemType {
   id: number;
   type: string;
-  label: string;
+  name: string;
   category: string;
   defaultProps: Record<string, any>;
   template?: DiagramElement[];
@@ -13,7 +13,7 @@ export interface PaletteItemResponseDTO {
   id: number;
   name: string;
   type: string;
-  components: ComponentsResponseDTO[];
+  rootComponent: ComponentsResponseDTO;
 }
 
 export interface ComponentCreateDTO {

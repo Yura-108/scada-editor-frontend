@@ -3,99 +3,91 @@ import { PaletteItemType } from "@/types/palette.types";
 export const paletteItems: PaletteItemType[] = [
   // BASIC
   {
-    id: 0,
+    id: 10 ** 5,
     type: "line",
-    label: "Line",
+    name: "Line",
     category: "Basic",
-    defaultProps: {label: "Line"}
+    defaultProps: {name: "Line"}
   },
   {
-    id: 1,
+    id: 10 ** 5 + 1,
     type: "circle",
-    label: "Circle",
+    name: "Circle",
     category: "Basic",
-    defaultProps: {label: "Circle"}
+    defaultProps: {name: "Circle"}
   },
   {
-    id: 2,
+    id: 10 ** 5 + 2,
     type: "rectangle",
-    label: "Rectangle",
+    name: "Rectangle",
     category: "Basic",
-    defaultProps: {label: "Rectangle"}
+    defaultProps: {name: "Rectangle"}
   },
   {
-    id: 3,
+    id: 10 ** 5 + 3,
     type: "polygon",
-    label: "Polygon",
+    name: "Polygon",
     category: "Basic",
-    defaultProps: {label: "Polygon"}
+    defaultProps: {name: "Polygon"}
   },
   {
-    id: 4,
+    id: 10 ** 5 + 4,
     type: "path",
-    label: "Path",
+    name: "Path",
     category: "Basic",
-    defaultProps: {label: "Path"}
+    defaultProps: {name: "Path"}
   },
   {
-    id: 5,
+    id: 10 ** 5 + 5,
     type: "button",
-    label: "Button",
+    name: "Button",
     category: "Basic",
-    defaultProps: { label: "Button" },
+    defaultProps: { name: "Button" },
   },
   {
-    id: 6,
+    id: 10 ** 5 + 6,
     type: "text",
-    label: "Text",
+    name: "Text",
     category: "Basic",
     defaultProps: { text: "Text" },
   },
 
   // INDICATORS
   {
-    id: 7,
+    id: 10 ** 5 + 7,
     type: "lamp",
-    label: "Lamp",
+    name: "Lamp",
     category: "Indicators",
     defaultProps: { value: false },
   },
   {
-    id: 8,
+    id: 10 ** 5 + 8,
     type: "numeric",
-    label: "Numeric Display",
+    name: "Numeric Display",
     category: "Indicators",
     defaultProps: { value: 0 },
   },
   {
-    id: 9,
+    id: 10 ** 5 + 9,
     type: "indicator",
-    label: "Indicator",
+    name: "Indicator",
     category: "Indicators",
     defaultProps: {value: 0}
   },
 
   // PROCESS
   {
-    id: 10,
+    id: 10 ** 5 + 10,
     type: "valve",
-    label: "Valve",
+    name: "Valve",
     category: "Process",
     defaultProps: {},
   },
   {
-    id: 11,
+    id: 10 ** 5 + 11,
     type: "tank",
-    label: "Tank",
+    name: "Tank",
     category: "Process",
     defaultProps: { level: 50 },
   },
-
-  // SHAPES
-  // {
-  //   type: "line",
-  //   label: "Line",
-  //   category: "Shapes",
-  //   defaultProps: {},
-  // },
 ];

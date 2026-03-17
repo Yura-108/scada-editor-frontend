@@ -12,9 +12,8 @@ import isIntersecting from "@/lib/isIntersecting";
 import {LinesLayer} from "@/components/editor/LinesLayer";
 import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
-import {PaletteItemType} from "@/types/palette.types";
-import {usePaletteStore} from "@/store/usePaletteStore";
 import {getDescendants} from "@/lib/getDescendants";
+import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
 
 export default function Canvas() {
   const {
@@ -27,8 +26,8 @@ export default function Canvas() {
     copySelectedElement,
     pasteSelectedElement,
     camera,
+    scene
   } = useEditorStore();
-  const {addPaletteItem, createPaletteItem} = usePaletteStore();
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -96,8 +95,6 @@ export default function Canvas() {
       e.preventDefault();
 
       const {camera, setCameraZoom} = useEditorStore.getState();
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
 
       const zoomSensitivity = 0.001;
       const delta = -e.deltaY * zoomSensitivity;
@@ -106,13 +103,8 @@ export default function Canvas() {
       const newZoom = Math.min(Math.max(camera.zoom + delta, 0.2), 3);
 
       if (newZoom === oldZoom) return;
-      const scaleRatio = newZoom / oldZoom;
-
-      const newX = mouseX - (mouseX - camera.x) * scaleRatio;
-      const newY = mouseY - (mouseY - camera.y) * scaleRatio;
 
       setCameraZoom(newZoom);
-      //setCameraPan(newX, newY);
     };
 
     el.addEventListener("wheel", handler, {passive: false});
@@ -138,9 +130,10 @@ export default function Canvas() {
   // }, []);
 
   const rootElements = useMemo(
-    () => elements.filter(el => !el.parentKey),
+    () => elements.filter(el => el.parentKey === String(scene?.id)),
     [elements]
   );
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".scada-element")) return;
     if ((e.target as HTMLElement).closest("button")) return;
@@ -248,19 +241,7 @@ export default function Canvas() {
 
       const faceplate = [rootElement, ...allDescendants];
 
-      const label = prompt("Название нового шаблона:");
-
-      if (!label) return;
-
-      const newPaletteItem: PaletteItemType = {
-        type: 'custom',
-        label,
-        category: 'custom',
-        defaultProps: {},
-        template: faceplate
-      };
-      await createPaletteItem(newPaletteItem);
-      // addPaletteItem(newPaletteItem);
+      OpenCreateFaceplateModal(faceplate)
     }
 
     // Общие пропсы для Rnd

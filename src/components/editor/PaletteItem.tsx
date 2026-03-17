@@ -12,7 +12,7 @@ export default function PaletteItem({item}: PaletteItemProps) {
     attributes,
     listeners,
     setNodeRef,
-  } = useDraggable({id: item.label, data: {
+  } = useDraggable({id: item.id, data: {
       type: item.type,
       template: item.template,
       isTemplate: true
@@ -25,7 +25,7 @@ export default function PaletteItem({item}: PaletteItemProps) {
       {...attributes}
       className="bg-[#1b1b1b] hover:bg-[#262626] px-3 py-2 rounded cursor-grab flex items-center gap-3"
     >
-      <span className="text-sm">{item.label}</span>
+      <span className="text-sm">{item.name}</span>
     </div>
   );
 }

@@ -2,15 +2,14 @@ import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
 import {paletteItems} from "@/constants/palette";
 import {toast} from "sonner";
-import {buildComponentCreateDTO, buildComponentTree} from "@/lib/buildComponentTree";
+import {buildComponentCreateDTO} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
-
 
 type PaletteState = {
   paletteItems: PaletteItemType[];
   addPaletteItem: (paletteItem: PaletteItemType) => void;
   loadPaletteItems: () => Promise<void>;
-  createPaletteItem: (paletteItem: PaletteItemType) => Promise<void>;
+  createPaletteItem: (paletteItem: Omit<PaletteItemType, 'id'>) => Promise<void>;
 }
 
 export const usePaletteStore = create<PaletteState>((set, get) => ({
@@ -24,14 +23,24 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       const res = await fetch("/api/editor/palette/");
 
-      if (!res.ok) throw new Error("Ошибка при получении данных с сервера");
+      const json: PaletteItemResponseDTO[] = await res.json();
 
-      const json: PaletteItemType[] = await res.json();
+      const paletteItems: PaletteItemType[] = json.map(item => {
+        const components = transformElements([item.rootComponent]);
 
-      set({
-        paletteItems: [...get().paletteItems, ...json]
+        return {
+          id: item.id,
+          type: 'custom',
+          name: item.name,
+          category: item.type,
+          defaultProps: {},
+          template: components,
+        }
       });
 
+      set({
+        paletteItems: [...get().paletteItems, ...paletteItems]
+      });
       toast.success("Список элементов загружен");
     } catch (err: any) {
       console.error(err);
@@ -43,12 +52,10 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
       if (!paletteItem.template) return;
 
       const paletteItemCreateDTO = {
-        name: paletteItem.label,
-        type: paletteItem.type,
-        components: buildComponentCreateDTO(paletteItem.template)
+        name: paletteItem.name,
+        type: paletteItem.category,
+        rootComponent: buildComponentCreateDTO(paletteItem.template)[0]
       };
-
-      console.log(paletteItemCreateDTO);
 
       const res = await fetch("/api/editor/palette/", {
         method: "POST",
@@ -56,17 +63,15 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         body: JSON.stringify(paletteItemCreateDTO),
       });
 
-      if (!res.ok) throw new Error("Ошибка при получении данных с сервера");
-
       const paletteItemResponse: PaletteItemResponseDTO = await res.json();
-
-      console.log(paletteItemResponse)
 
       const newPaletteItem: PaletteItemType = {
         id: paletteItemResponse.id,
-        label: paletteItemResponse.name,
-        type: paletteItemResponse.type,
-        template: transformElements(paletteItemResponse.components)
+        name: paletteItemResponse.name,
+        type: 'custom',
+        category: paletteItemResponse.type,
+        defaultProps: paletteItem.defaultProps,
+        template: transformElements([paletteItemResponse.rootComponent])
       }
       set({
         paletteItems: [...get().paletteItems, newPaletteItem]

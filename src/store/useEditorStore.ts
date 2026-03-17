@@ -40,7 +40,7 @@ type EditorState = {
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportScene: () => void;
-  loadScene: (id: number) => void;
+  loadScene: (id: number) => Promise<void>;
   createScene: () => void;
 
   groupSelected: () => void;
@@ -91,6 +91,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
       addTemplate: (screenX, screenY, template) => {
+        const {scene} = get();
         const x = snap(screenX);
         const y = snap(screenY);
 
@@ -115,6 +116,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           if (el.key === root.key) {
             updatedElement.x = x;
             updatedElement.y = y;
+            updatedElement.parentKey = String(scene?.id);
           }
 
           return updatedElement as DiagramElement;
@@ -150,7 +152,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             w: 80,
             h: 80,
             parentId: scene?.id || null,
-            parentKey: null,
+            parentKey: String(scene?.id) || null,
             children: [],
             label: "Element",
             bg: "transparent",
@@ -173,7 +175,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           w: 80,
           h: 80,
           parentId: scene?.id || null,
-          parentKey: null,
+          parentKey: String(scene?.id) || null,
           children: [],
           label: "Element",
           bg: "transparent",
@@ -257,7 +259,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           });
 
           const oldData = await res.json();
+          console.log(oldData, 'oldDta')
           const newData = transformElements(oldData);
+          console.log(newData)
 
           set({elements: newData});
           toast.success("Сохранено успешно!");
@@ -272,7 +276,6 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const json = await res.json();
           set({sceneList: json});
-          toast.success("Список сцен загружен");
           return json;
         } catch (err: any) {
           console.error(err);
@@ -287,7 +290,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           const newElements = transformElements(scene.children);
 
           set({scene, elements: newElements});
-
 
         } catch (err: any) {
           console.error(err);
@@ -475,7 +477,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           composition: true,
           children: topLevelSelected.map(el => el.key),
           parentId: scene?.id || null,
-          parentKey: null,
+          parentKey: String(scene?.id) || null,
           label: `Group (${topLevelSelected.length})`,
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
