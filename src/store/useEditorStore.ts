@@ -248,9 +248,9 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       exportScene: async () => {
         try {
-          const {elements} = get();
+          const {elements, scene} = get();
 
-          const payload = buildComponentTree(elements);
+          const payload = buildComponentTree(elements, String(scene?.id));
 
           const res = await fetch("/api/editor/components", {
             method: "POST",
@@ -259,9 +259,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           });
 
           const oldData = await res.json();
-          console.log(oldData, 'oldDta')
+
           const newData = transformElements(oldData);
-          console.log(newData)
 
           set({elements: newData});
           toast.success("Сохранено успешно!");

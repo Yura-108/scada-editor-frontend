@@ -29,6 +29,7 @@ export default function Canvas() {
     scene
   } = useEditorStore();
 
+
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
 

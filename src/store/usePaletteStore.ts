@@ -2,8 +2,9 @@ import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
 import {paletteItems} from "@/constants/palette";
 import {toast} from "sonner";
-import {buildComponentCreateDTO} from "@/lib/buildComponentTree";
+import {buildSingleComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
+import js from "@eslint/js";
 
 type PaletteState = {
   paletteItems: PaletteItemType[];
@@ -25,9 +26,10 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
 
       const json: PaletteItemResponseDTO[] = await res.json();
 
+      console.log(json)
+
       const paletteItems: PaletteItemType[] = json.map(item => {
         const components = transformElements([item.rootComponent]);
-
         return {
           id: item.id,
           type: 'custom',
@@ -50,12 +52,15 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
   createPaletteItem: async (paletteItem) => {
     try {
       if (!paletteItem.template) return;
+      const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
 
       const paletteItemCreateDTO = {
         name: paletteItem.name,
         type: paletteItem.category,
-        rootComponent: buildComponentCreateDTO(paletteItem.template)[0]
+        rootComponent: buildSingleComponentTree(paletteItem.template, rootElementKey)
       };
+
+      console.log(paletteItemCreateDTO, 'paletteItemCreateDTO')
 
       const res = await fetch("/api/editor/palette/", {
         method: "POST",
@@ -63,7 +68,10 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         body: JSON.stringify(paletteItemCreateDTO),
       });
 
+
       const paletteItemResponse: PaletteItemResponseDTO = await res.json();
+
+      console.log(paletteItemResponse, 'paletteItemResponse')
 
       const newPaletteItem: PaletteItemType = {
         id: paletteItemResponse.id,

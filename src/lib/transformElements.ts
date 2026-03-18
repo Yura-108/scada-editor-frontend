@@ -24,6 +24,8 @@ export default function transformElements(apiElements: ComponentDto[]) {
     const el = queue.shift();
     if (!el) continue;
 
+    console.log(el)
+
     const currentKey = String(el.id);
     const currentParentKey = el.parent_id !== null ? String(el.parent_id) : null;
 
