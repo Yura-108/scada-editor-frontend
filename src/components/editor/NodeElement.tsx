@@ -28,7 +28,7 @@ export default function NodeElement({
   isSelected,
 }: Props) {
   const containerClasses = cn(
-    "w-full h-full relative flex items-center justify-center rounded overflow-hidden",
+    "relative flex items-center justify-center rounded overflow-hidden",
     isSelected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950",
   );
 
@@ -92,7 +92,7 @@ export default function NodeElement({
       )}
 
       {/* Основное содержимое */}
-      <div className="w-full h-full flex items-center justify-center p-1">
+      <div className="w-full h-full flex items-center justify-center p-1 box-border">
         {renderContent()}
       </div>
     </div>

@@ -295,7 +295,7 @@ export default function Canvas() {
           >
             <div
               className={cn(
-                "w-full h-full relative rounded-lg border-2",
+                "w-full h-full relative rounded-lg border-2 p-4 box-border",
                 isSelected ? "border-blue-500 bg-blue-900/30" : "border-blue-700/50 bg-blue-950/20"
               )}
               style={{ borderStyle: group.borderStyle || "dashed" }}
@@ -317,7 +317,7 @@ export default function Canvas() {
       <Rnd
         {...rndProps}
         key={el.key}
-        className={cn("child-element z-10", isSelected ? "shadow-lg" : "shadow-sm")}
+        className={cn("child-element z-10 box-border", isSelected ? "shadow-lg" : "shadow-sm")}
         onMouseDown={(e) => {
           e.stopPropagation();
           handleSelect(el.key, e);
