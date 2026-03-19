@@ -12,7 +12,6 @@ import Tank from "@/components/SVGComponents/TankSVG";          // ← тепе�
 import { Valve } from "@/components/SVGComponents/ValveSvg";
 import { Text } from "@/components/SVGComponents/TextSvg";
 import { NumericDisplay } from "@/components/SVGComponents/NumericDisplaySVG";
-import Line from "@/components/SVGComponents/Line";
 import Circle from "@/components/SVGComponents/Circle";
 import Rectangle from "@/components/SVGComponents/Rectangle";
 import Polygon from "@/components/SVGComponents/Polygon";

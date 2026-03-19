@@ -10,6 +10,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {ElementType} from "@/types/editorElement.type";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import WorkSpace from "@/components/editor/WorkSpace";
+import {usePaletteStore} from "@/store/usePaletteStore";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -18,6 +19,8 @@ export default function EditorPage() {
     createScene,
     loadSceneList
   } = useEditorStore();
+
+  const {loadPaletteItems} = usePaletteStore();
 
   const temporal = useEditorStore.temporal;
   const {undo, redo} = temporal.getState();
@@ -67,6 +70,11 @@ export default function EditorPage() {
     openChooseSceneModal();
   }
 
+  const handleCreateSchema = async () => {
+    await createScene();
+    await loadPaletteItems();
+  }
+
   return (
     <div className="h-screen w-full flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
       {!scene && (
@@ -95,7 +103,7 @@ export default function EditorPage() {
             <div className="flex flex-col sm:flex-row gap-8 md:gap-12">
 
               <button
-                onClick={createScene}
+                onClick={handleCreateSchema}
                 className="group relative px-12 py-8 rounded-2xl text-2xl md:text-3xl font-bold overflow-hidden transition-all duration-500 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-indigo-500/40">
                 <span
                   className="absolute inset-0 bg-linear-to-r from-indigo-600 to-purple-600 group-hover:from-indigo-500 group-hover:to-purple-500 transition-all duration-500"></span>

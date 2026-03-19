@@ -8,6 +8,7 @@ import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
+import {PropertyCreateDto} from "@/types/tags.types";
 
 type EditorState = {
   scene: SceneType | null;
@@ -36,12 +37,13 @@ type EditorState = {
   clearSelection: () => void;
   addElementAt: (x: number, y: number, type: ElementType) => void;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
+  addTags: (component_id: number, tag_id: string) => Promise<void>;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportScene: () => void;
   loadScene: (id: number) => Promise<void>;
-  createScene: () => void;
+  createScene: () => Promise<void>;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
@@ -156,6 +158,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [],
             label: "Element",
             bg: "transparent",
+            tags: []
           };
 
           set(state => ({
@@ -179,11 +182,31 @@ export const useEditorStore = create<EditorState>()(temporal(
           children: [],
           label: "Element",
           bg: "transparent",
+          tags: [],
         };
 
         set(state => ({
           elements: [...state.elements, newElement]
         }))
+      },
+      addTags: async (component_id, tag_id) => {
+        const data: PropertyCreateDto = {
+          component_id,
+          tag_id,
+          property_type: '',
+          description: '',
+          value_type: '',
+          default_value: '',
+          logging: false,
+          onChange: '',
+        }
+        console.log(data);
+
+        // const res = await fetch("api/editor/tag", {
+        //   method: "POST",
+        //
+        //   body: JSON.stringify({})
+        // })
       },
       deleteSelectedElement: async () => {
         const { selectedIds, elements } = get();
@@ -261,6 +284,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           const oldData = await res.json();
 
           const newData = transformElements(oldData);
+
+          console.log(newData)
 
           set({elements: newData});
           toast.success("Сохранено успешно!");
@@ -481,6 +506,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
+          tags: []
         };
 
         set({

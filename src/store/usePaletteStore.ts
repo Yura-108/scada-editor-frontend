@@ -26,8 +26,6 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
 
       const json: PaletteItemResponseDTO[] = await res.json();
 
-      console.log(json)
-
       const paletteItems: PaletteItemType[] = json.map(item => {
         const components = transformElements([item.rootComponent]);
         return {
@@ -60,8 +58,6 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         rootComponent: buildSingleComponentTree(paletteItem.template, rootElementKey)
       };
 
-      console.log(paletteItemCreateDTO, 'paletteItemCreateDTO')
-
       const res = await fetch("/api/editor/palette/", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -70,8 +66,6 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
 
 
       const paletteItemResponse: PaletteItemResponseDTO = await res.json();
-
-      console.log(paletteItemResponse, 'paletteItemResponse')
 
       const newPaletteItem: PaletteItemType = {
         id: paletteItemResponse.id,

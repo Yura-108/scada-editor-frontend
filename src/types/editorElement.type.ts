@@ -31,6 +31,7 @@ export interface BaseCanvasElement {
   children: string[];
   parentId: number | null;
   parentKey: string | null;
+  tags: string[];
   rotation?: number;          // если планируешь поворот групп
   label?: string;
   visible?: boolean;

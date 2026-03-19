@@ -14,6 +14,7 @@ import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
+import {OpenChooseTagModal} from "@/components/ui/OpenChooseTagModal";
 
 export default function Canvas() {
   const {
@@ -26,9 +27,8 @@ export default function Canvas() {
     copySelectedElement,
     pasteSelectedElement,
     camera,
-    scene
+    scene,
   } = useEditorStore();
-
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -242,7 +242,12 @@ export default function Canvas() {
 
       const faceplate = [rootElement, ...allDescendants];
 
-      OpenCreateFaceplateModal(faceplate)
+      OpenCreateFaceplateModal(faceplate);
+    }
+
+    const handleBindTag = () => {
+      if (!el.id) return;
+      OpenChooseTagModal(el.id);
     }
 
     // Общие пропсы для Rnd
@@ -270,8 +275,9 @@ export default function Canvas() {
         <DynamicContextMenu
           key={el.key}
           items={[
-            { label: 'Сохранить в палитру', onClick: handleFaceplate},
-            { label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger' }
+            {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
+            {label: 'Сохранить в палитру', onClick: handleFaceplate},
+            {label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger'}
           ]}
         >
           <Rnd
@@ -337,6 +343,7 @@ export default function Canvas() {
       {...panZoomHandlers}
     >
       <DynamicContextMenu items={[
+        // {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
         { label: 'Вставить элемент', onClick: () => console.log('Paste') },
         { label: 'Очистить холст', onClick: () => console.log('Clear'), variant: 'danger' }
       ]}>

@@ -11,8 +11,6 @@ import SwitcherIcon from '@/components/ui/SwitcherIcon';
 import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuType} from "@/types/contextMenu.type";
-import clsx from "clsx";
-
 
 const DeviceTreePanel = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
@@ -57,9 +55,9 @@ const DeviceTreePanel = () => {
     [handleSelect, setContextMenu] // зависимости
   );
 
-  const handleAddDevice = async () => {
-    await handleContextAction('add', null);
-  }
+  // const handleAddDevice = async () => {
+  //   await handleContextAction('add', null);
+  // }
 
   const treeData = useMemo(() => {
     const map = new Map<string, DataNode>();
@@ -151,20 +149,21 @@ const DeviceTreePanel = () => {
           defaultExpandAll={false}
           className="custom-tree"
         />
-        <button
-          className={clsx(
-            "flex items-center gap-2 px-4 py-2 mt-2",
-            "hover:bg-gray-200",
-            "rounded-xl",
-            "text-sm text-gray-800 font-medium",
-            "transition-all duration-200",
-            "active:scale-95"
-          )}
-          onClick={handleAddDevice}
-        >
-          <Plus size={18} />
-          Добавить устройство
-        </button>
+
+        {/*<button*/}
+        {/*  className={clsx(*/}
+        {/*    "flex items-center gap-2 px-4 py-2 mt-2",*/}
+        {/*    "hover:bg-gray-200",*/}
+        {/*    "rounded-xl",*/}
+        {/*    "text-sm text-gray-800 font-medium",*/}
+        {/*    "transition-all duration-200",*/}
+        {/*    "active:scale-95"*/}
+        {/*  )}*/}
+        {/*  onClick={handleAddDevice}*/}
+        {/*>*/}
+        {/*  <Plus size={18} />*/}
+        {/*  Добавить устройство*/}
+        {/*</button>*/}
 
 
         {/* Контекстное меню */}
