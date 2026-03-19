@@ -7,7 +7,7 @@ import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
-import {openCreateDeviveModal} from "@/components/ui/openCreateDeviceModal";
+import {openCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
 interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];

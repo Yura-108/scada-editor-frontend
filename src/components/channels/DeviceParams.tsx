@@ -10,7 +10,7 @@ import {ContextMenuType} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
-import {openChooseParamTypeModal} from "@/components/ui/openChooseParamTypeModal";
+import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
 
 const DeviceParams = () => {
   const {

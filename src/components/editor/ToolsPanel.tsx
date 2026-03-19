@@ -8,14 +8,12 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
   return (
     <nav
       style={{
-        // Динамические отступы, чтобы панель всегда была МЕЖДУ асайдами
         left: leftVisible ? '288px' : '0px', // 288px = w-72
         right: rightVisible ? '320px' : '0px', // 320px = w-80
       }}
       className="fixed top-18 z-30 flex gap-3 justify-center items-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      {/* Обертка с pointer-events-auto, чтобы кнопки нажимались, но пространство вокруг — нет */}
       <div className="flex gap-2 p-1.5 bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
 
         <button

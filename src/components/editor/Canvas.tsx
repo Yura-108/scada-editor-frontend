@@ -30,6 +30,8 @@ export default function Canvas() {
     scene,
   } = useEditorStore();
 
+  console.log(elements);
+
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
 
@@ -330,7 +332,10 @@ export default function Canvas() {
     }
 
     return (
-      <DynamicContextMenu key={el.key} items={editorElementMenuItems}>
+      <DynamicContextMenu key={el.key} items={[
+        {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
+        ...editorElementMenuItems,
+      ]}>
         {nodeContent}
       </DynamicContextMenu>
     );
@@ -343,7 +348,6 @@ export default function Canvas() {
       {...panZoomHandlers}
     >
       <DynamicContextMenu items={[
-        // {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
         { label: 'Вставить элемент', onClick: () => console.log('Paste') },
         { label: 'Очистить холст', onClick: () => console.log('Clear'), variant: 'danger' }
       ]}>

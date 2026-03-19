@@ -158,7 +158,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [],
             label: "Element",
             bg: "transparent",
-            tags: []
+            properties: []
           };
 
           set(state => ({
@@ -182,7 +182,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           children: [],
           label: "Element",
           bg: "transparent",
-          tags: [],
+          properties: [],
         };
 
         set(state => ({
@@ -190,7 +190,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       addTags: async (component_id, tag_id) => {
-        const data: PropertyCreateDto = {
+        const data: Omit<PropertyCreateDto, 'id'> = {
           component_id,
           tag_id,
           property_type: '',
@@ -200,13 +200,22 @@ export const useEditorStore = create<EditorState>()(temporal(
           logging: false,
           onChange: '',
         }
-        console.log(data);
 
-        // const res = await fetch("api/editor/tag", {
-        //   method: "POST",
-        //
-        //   body: JSON.stringify({})
-        // })
+        const res = await fetch("/api/editor/tags/", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(data)
+        });
+
+        const newProperty: PropertyCreateDto = await res.json();
+
+        set(state => ({
+          elements: state.elements.map(el =>
+            el.id === component_id
+              ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+              : el
+          )
+        }));
       },
       deleteSelectedElement: async () => {
         const { selectedIds, elements } = get();
@@ -506,7 +515,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
-          tags: []
+          properties: []
         };
 
         set({

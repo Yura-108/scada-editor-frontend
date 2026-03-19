@@ -1,3 +1,5 @@
+import {PropertyCreateDto} from "@/types/tags.types";
+
 export type SceneType = {
   id: number;
   name: string;
@@ -31,8 +33,8 @@ export interface BaseCanvasElement {
   children: string[];
   parentId: number | null;
   parentKey: string | null;
-  tags: string[];
-  rotation?: number;          // если планируешь поворот групп
+  properties: PropertyCreateDto[];
+  rotation?: number;
   label?: string;
   visible?: boolean;
   bg?: string;
