@@ -193,12 +193,12 @@ export const useEditorStore = create<EditorState>()(temporal(
         const data: Omit<PropertyCreateDto, 'id'> = {
           component_id,
           tag_id,
-          property_type: '',
-          description: '',
-          value_type: '',
-          default_value: '',
+          property_type: null,
+          description: null,
+          value_type: null,
+          default_value: null,
           logging: false,
-          onChange: '',
+          onChange: null,
         }
 
         const res = await fetch("/api/editor/tags/", {

@@ -26,7 +26,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     ...basePropertySchema,
     ...(elementPropertyMap[element.type as ElementType] || []),
   ];
-
+  console.log(element)
   return (
     <div className="h-full flex flex-col bg-neutral-950/70 backdrop-blur-sm border-l border-neutral-800 overflow-hidden">
       {/* Header */}
@@ -172,6 +172,35 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               return null;
           }
         })}
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-300">
+            Привязанные теги
+          </h4>
+
+          {element.properties.length === 0 ? (
+            <div className="text-sm text-gray-500 italic py-1">
+              Нет привязанных тегов
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {element.properties.map(property => (
+                <span
+                  key={property.id}
+                  className={`
+            inline-flex items-center px-2.5 py-1 
+            text-xs font-medium rounded-full
+            bg-indigo-950/60 text-indigo-300
+            border border-indigo-800/40
+            hover:bg-indigo-900/70 transition-colors
+          `}
+                >
+          #{property.tag_id}
+        </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
