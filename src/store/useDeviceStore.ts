@@ -1,13 +1,13 @@
 'use client';
 
 import {create} from 'zustand/react';
-import {DeviceNodeType, DeviceParamsType, DeviceTreeResponse, DeviceParamsLayoutType} from '@/types/nodeTypes';
+import {DeviceParamsType, DeviceParamsLayoutType} from '@/types/nodeTypes';
 import {devtools} from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
-import {openCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
+import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
 interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];
@@ -278,7 +278,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
         if (action === 'add') {
           await get().loadDeviceTemplateList();
           if (!nodeKey) return;
-          openCreateDeviveModal(nodeKey);
+          OpenCreateDeviveModal(nodeKey);
         }
         if (action === 'edit') {
           await get().toggleEditing(get().selectedDevice ?? '');

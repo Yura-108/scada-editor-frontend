@@ -8,7 +8,7 @@ export const buildComponentTree = (
   return elements
     .filter(el => el.parentKey === parentKey)
     .map(el => {
-      const {id,key, label, parentId, type, children, parentKey, ...imageProps} = el;
+      const {id,key, label, parentId, type, parentKey, ...imageProps} = el;
 
       return {
         id,

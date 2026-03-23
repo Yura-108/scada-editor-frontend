@@ -52,7 +52,7 @@ export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) 
             Тип схемы
           </label>
           <Select.Root
-            defaultValue={paramTypesList[0].id}
+            defaultValue={selectedValue}
             onValueChange={setSelectedValue}
           >
             <Select.Trigger

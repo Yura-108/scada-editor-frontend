@@ -12,10 +12,6 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
   const selected = selectedIds.includes(element.key);
   const [dragging, setDragging] = useState<"start" | "end" | null>(null);
 
-  const onStartDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "start"), []);
-  const onEndDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "end"), []);
-
-
   useEffect(() => {
     if (!dragging) return;
 
@@ -59,7 +55,6 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
     };
   }, [dragging, element.x1, element.x2, element.y1, element.y2]);
 
-
   const handlePointerDown = (e: React.PointerEvent, point: 'start' | 'end') => {
     e.stopPropagation();
     e.preventDefault();
@@ -67,10 +62,12 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
     setDragging(point);
   };
 
-
+  const onStartDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "start"), []);
+  const onEndDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "end"), []);
 
   return (
     <g
+      className="pointer-events-auto"
       onMouseDown={(e) => {
         e.stopPropagation();
         onSelect(element.key, e)

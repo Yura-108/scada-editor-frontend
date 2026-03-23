@@ -1,13 +1,14 @@
-import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, Save} from "lucide-react";
+import {ChevronLeft, ChevronRight, PanelLeft, PanelRight,} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
-import {PropertiesPanel} from "@/components/channels/PropertiesPanel";
+import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import React, {useState} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
+import {getRenderedElement} from "@/lib/getRenderedElement";
 
 export default function WorkSpace() {
-  const {elements, selectedIds, updateElement, exportScene} = useEditorStore();
+  const {elements, selectedIds, updateElement} = useEditorStore();
   const selectedElement = elements.find(el => el.key === selectedIds[0]);
 
   const [leftVisible, setLeftVisible] = useState(true);
@@ -61,11 +62,11 @@ export default function WorkSpace() {
         }`}
       >
         <div className="h-full w-full overflow-y-auto">
-          {selectedElement ? (
-            <PropertiesPanel element={selectedElement} updateElement={updateElement}/>
+          {selectedElement && selectedIds.length === 1 ? (
+            <PropertiesPanel element={selectedElement} />
           ) : (
             <div className="h-full flex flex-col items-center text-center p-6">
-              <div className="text-neutral-500 text-sm font-medium">Выберите элемент</div>
+              <div className="text-neutral-500 text-sm font-medium">Выберите один элемент</div>
             </div>
           )}
         </div>

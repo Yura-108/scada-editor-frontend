@@ -9,6 +9,7 @@ import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto} from "@/types/tags.types";
+import {getElementBounds} from "@/lib/getElementBounds";
 
 type EditorState = {
   scene: SceneType | null;
@@ -17,6 +18,8 @@ type EditorState = {
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
+  currentComponentStateId: string | null;
+  setCurrentComponentStateId: (componentState: string) => void;
   clipboard: DiagramElement | null;
   canvasRect: DOMRect | null;
   connecting: {
@@ -32,6 +35,7 @@ type EditorState = {
 
   setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
+  updateElementVisual: (id: string, data: Partial<DiagramElement>) => void;
   select: (id: string | null) => void;
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
@@ -63,6 +67,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       elements: [],
       selectedId: null,
       selectedIds: [],
+      currentComponentStateId: null,
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -80,7 +85,39 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
-      updateElement: (key: string, updates: Partial<DiagramElement>) => {
+      setCurrentComponentStateId: (componentState) => set({currentComponentStateId: componentState}),
+      updateElementVisual: (key, updates) => {
+        const { currentComponentStateId } = get();
+
+        set(state => ({
+          elements: state.elements.map(el => {
+            if (el.key !== key) return el;
+
+            if (!currentComponentStateId) {
+              return {
+                ...el,
+                ...updates,
+              } as DiagramElement;
+            }
+
+            return {
+              ...el,
+              states: el.states.map(s =>
+                s.id === currentComponentStateId
+                  ? {
+                    ...s,
+                    overrides: {
+                      ...s.overrides,
+                      ...updates,
+                    },
+                  }
+                  : s
+              ),
+            } as DiagramElement;
+          }),
+        }));
+      },
+      updateElement: (key, updates) => {
         set(state => ({
           elements: state.elements.map(el =>
             el.key === key
@@ -158,7 +195,12 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [],
             label: "Element",
             bg: "transparent",
-            properties: []
+            properties: [],
+            states: [{
+              id: crypto.randomUUID(),
+              name: "Нормальное",
+              overrides: {}
+            }],
           };
 
           set(state => ({
@@ -183,6 +225,11 @@ export const useEditorStore = create<EditorState>()(temporal(
           label: "Element",
           bg: "transparent",
           properties: [],
+          states: [{
+            id: crypto.randomUUID(),
+            name: "Нормальное",
+            overrides: {}
+          }],
         };
 
         set(state => ({
@@ -354,6 +401,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         const { elements, selectedIds, scene } = get();
         if (selectedIds.length < 2) return;
 
+        const padding = 60;
+
         // -----------------------------
         // 1. TOP LEVEL SELECTION
         // -----------------------------
@@ -476,24 +525,43 @@ export const useEditorStore = create<EditorState>()(temporal(
           maxY = -Infinity;
 
         topLevelSelected.forEach(el => {
-          const abs = getAbsolutePosition(el, elements);
+          const bounds = getElementBounds(el, elements);
 
-          minX = Math.min(minX, abs.x);
-          minY = Math.min(minY, abs.y);
-          maxX = Math.max(maxX, abs.x + (el.w || 0));
-          maxY = Math.max(maxY, abs.y + (el.h || 0));
+          minX = Math.min(minX, bounds.minX);
+          minY = Math.min(minY, bounds.minY);
+          maxX = Math.max(maxX, bounds.maxX);
+          maxY = Math.max(maxY, bounds.maxY);
         });
 
         const updatedElements = elements.map(el => {
           const isTopLevelSelected = topLevelSelected.some(t => t.key === el.key);
           if (!isTopLevelSelected) return el;
 
-          const abs = getAbsolutePosition(el, elements);
+          const bounds = getElementBounds(el, elements);
+
+          // Базовые новые координаты (для левого верхнего угла ИЛИ центра линии)
+          const newX = bounds.absX - minX + padding / 2;
+          const newY = bounds.absY - minY + padding / 2;
+
+          if (el.type === "line") {
+            return {
+              ...el,
+              x: newX,
+              y: newY,
+              // Обязательно переводим концы линии в локальную систему координат группы!
+              x1: bounds.absX1! - minX + padding / 2,
+              y1: bounds.absY1! - minY + padding / 2,
+              x2: bounds.absX2! - minX + padding / 2,
+              y2: bounds.absY2! - minY + padding / 2,
+              parentKey: newGroupId,
+              parentId: null,
+            };
+          }
 
           return {
             ...el,
-            x: abs.x - minX,
-            y: abs.y - minY,
+            x: newX,
+            y: newY,
             parentKey: newGroupId,
             parentId: null,
           };
@@ -505,8 +573,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           type: "group",
           x: minX,
           y: minY,
-          w: maxX - minX,
-          h: maxY - minY,
+          w: maxX - minX + padding, // Ширина теперь рассчитана идеально
+          h: maxY - minY + padding, // Высота тоже
           composition: true,
           children: topLevelSelected.map(el => el.key),
           parentId: scene?.id || null,
@@ -515,7 +583,12 @@ export const useEditorStore = create<EditorState>()(temporal(
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
-          properties: []
+          properties: [],
+          states: [{
+            id: crypto.randomUUID(),
+            name: "Нормальное",
+            overrides: {}
+          }],
         };
 
         set({
@@ -538,7 +611,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // Здесь мы соберем ID элементов, которые освободятся из-под групп,
         // чтобы автоматически сделать их выделенными после разгруппировки
-        let newlySelectedIds: string[] = [];
+        const newlySelectedIds: string[] = [];
 
         // Работаем с копией массива элементов
         let updatedElements = [...elements];

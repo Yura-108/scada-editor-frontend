@@ -1,5 +1,6 @@
 import getTransform from "@/lib/getTransform";
 import {LeafElement} from "@/types/editorElement.type";
+import {useEditorStore} from "@/store/useEditorStore";
 
 interface CircleProps {
   element: LeafElement;

@@ -16,6 +16,7 @@ import Circle from "@/components/SVGComponents/Circle";
 import Rectangle from "@/components/SVGComponents/Rectangle";
 import Polygon from "@/components/SVGComponents/Polygon";
 import Path from "@/components/SVGComponents/Path";
+import {getRenderedElement} from "@/lib/getRenderedElement";
 
 
 type Props = {
@@ -32,43 +33,42 @@ export default function NodeElement({
     isSelected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950",
   );
 
-  const renderContent = () => {
-    switch (element.type) {
-      // case "line":
-      //   return <Line element={element} />
+  const renderedElement = getRenderedElement(element);
 
+  const renderContent = () => {
+    switch (renderedElement.type) {
       case "rectangle":
-        return <Rectangle element={element} />
+        return <Rectangle element={renderedElement} />
 
       case "circle":
-        return <Circle element={element} />
+        return <Circle element={renderedElement} />
 
       case "lamp":
-        return <Lamp element={element} />
+        return <Lamp element={renderedElement} />
 
       case "polygon":
-        return <Polygon element={element} />
+        return <Polygon element={renderedElement} />
 
       case "path":
-        return <Path element={element} />
+        return <Path element={renderedElement} />
 
       case "button":
-        return <Button element={element} />
+        return <Button element={renderedElement} />
 
       case "indicator":
-        return <Indicator element={element} />
+        return <Indicator element={renderedElement} />
 
       case "tank":
-        return <Tank element={element} />;  // ← теперь передаём весь element
+        return <Tank element={renderedElement} />
 
       case "valve":
-        return <Valve element={element} />;
+        return <Valve element={renderedElement} />;
 
       case "text":
-        return <Text element={element} />;
+        return <Text element={renderedElement} />;
 
       case "numeric":
-        return <NumericDisplay element={element} />;
+        return <NumericDisplay element={renderedElement} />;
 
       default:
         return (

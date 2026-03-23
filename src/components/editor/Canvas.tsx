@@ -15,10 +15,11 @@ import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
 import {OpenChooseTagModal} from "@/components/ui/OpenChooseTagModal";
+import {Line} from "@/components/SVGComponents/Line";
+import {handleBindTag} from "@/lib/handleBindTag";
 
 export default function Canvas() {
-  const {
-    elements,
+  const {elements,
     updateElement,
     selectedIds,
     selectMultiple,
@@ -29,8 +30,6 @@ export default function Canvas() {
     camera,
     scene,
   } = useEditorStore();
-
-  console.log(elements);
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -247,11 +246,6 @@ export default function Canvas() {
       OpenCreateFaceplateModal(faceplate);
     }
 
-    const handleBindTag = () => {
-      if (!el.id) return;
-      OpenChooseTagModal(el.id);
-    }
-
     // Общие пропсы для Rnd
     const rndProps = {
       size: { width: el.w, height: el.h },
@@ -260,7 +254,31 @@ export default function Canvas() {
       resizeGrid: [GRID, GRID] as [number, number],
       bounds: "parent",
       onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, el.key),
-      onDragStop: (_: any, d: any) => updateElement(el.key, { x: d.x, y: d.y }),
+      onResize: (_e: any, _dir: any, ref: any, _delta: any, pos: any) => {
+        updateElement(el.key, {
+          w: parseFloat(ref.style.width),
+          h: parseFloat(ref.style.height),
+          x: pos.x,
+          y: pos.y,
+        });
+      },
+      onDragStop: (_: any, d: any) => {
+        const padding = 16;
+        const parent = d.node.parentElement;
+
+        if (parent && isInsideGroup) {
+          // Ограничиваем X
+          const maxX = parent.offsetWidth - d.node.offsetWidth - padding;
+          const x = Math.max(padding, Math.min(d.x, maxX));
+
+          // Ограничиваем Y
+          const maxY = parent.offsetHeight - d.node.offsetHeight - padding;
+          const y = Math.max(padding, Math.min(d.y, maxY));
+          updateElement(el.key, {x, y})
+        } else {
+          updateElement(el.key, {x: d.x, y: d.y})
+        }
+      },
       onResizeStop: (_: any, __: any, ref: any, ___: any, pos: any) =>
         updateElement(el.key, {
           w: parseFloat(ref.style.width),
@@ -273,11 +291,15 @@ export default function Canvas() {
     if (el.type === "group") {
       const group = el as GroupElement;
 
+      const groupLines = group.children
+        .map(childId => elementsMap[childId])
+        .filter(child => child.type === 'line');
+
       return (
         <DynamicContextMenu
           key={el.key}
           items={[
-            {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
+            {label: 'Добавить свойство', onClick: () => handleBindTag(el.id), disabled: !el.id},
             {label: 'Сохранить в палитру', onClick: handleFaceplate},
             {label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger'}
           ]}
@@ -295,7 +317,7 @@ export default function Canvas() {
           >
             <div
               className={cn(
-                "w-full h-full relative rounded-lg border-2 p-4 box-border",
+                "w-full h-full relative rounded-lg border-2 box-border",
                 isSelected ? "border-blue-500 bg-blue-900/30" : "border-blue-700/50 bg-blue-950/20"
               )}
               style={{ borderStyle: group.borderStyle || "dashed" }}
@@ -303,9 +325,16 @@ export default function Canvas() {
               {group.children.map((childId) => {
                 const child = elementsMap[childId];
                 if (!child) return null;
-                // Передаем флаг, что элемент внутри группы
                 return renderElement(child, true);
               })}
+
+              {groupLines.length > 0 && (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
+                  {groupLines.map(line => (
+                    <Line key={line.key} element={line as LeafElement} onSelect={handleSelect} />
+                  ))}
+                </svg>
+              )}
             </div>
           </Rnd>
         </DynamicContextMenu>
@@ -317,7 +346,7 @@ export default function Canvas() {
       <Rnd
         {...rndProps}
         key={el.key}
-        className={cn("child-element z-10 box-border", isSelected ? "shadow-lg" : "shadow-sm")}
+        className={cn("child-element z-10", isSelected ? "shadow-lg" : "shadow-sm")}
         onMouseDown={(e) => {
           e.stopPropagation();
           handleSelect(el.key, e);
@@ -333,7 +362,7 @@ export default function Canvas() {
 
     return (
       <DynamicContextMenu key={el.key} items={[
-        {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
+        {label: 'Добавить свойство', onClick: () => handleBindTag(el.id), disabled: !el.id},
         ...editorElementMenuItems,
       ]}>
         {nodeContent}

@@ -1,4 +1,3 @@
-import { DeviceParamsLayoutType } from "@/types/nodeTypes";
 import { useModalStore } from "@/store/modalStore";
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -144,7 +143,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
   )
 }
 
-export function openCreateDeviveModal(nodeKey: string) {
+export function OpenCreateDeviveModal(nodeKey: string) {
   const {openModal} = useModalStore.getState();
   const {addDevice, deviceTemplateList} = useDeviceStore.getState();
 

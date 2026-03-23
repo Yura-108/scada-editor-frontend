@@ -10,6 +10,24 @@ export type SceneType = {
   version: number;
 }
 
+// export type Overrides = {
+//   x?: number;
+//   y?: number;
+//   w?: number;
+//   h?: number;
+//   bg?: string;
+//   rotation?: number;
+//   visible?: boolean;
+//   strokeColor?: string;
+//   strokeWidth?: string;
+//   opacity?: number;
+// }
+
+export type ComponentState = {
+  id: string;
+  name: string;
+  overrides: {};
+}
 
 export type ComponentCreateDto = {
   key: string;
@@ -34,6 +52,9 @@ export interface BaseCanvasElement {
   parentId: number | null;
   parentKey: string | null;
   properties: PropertyCreateDto[];
+  states: ComponentState[];
+
+
   rotation?: number;
   label?: string;
   visible?: boolean;
@@ -54,8 +75,6 @@ export type ElementType =
   | "circle"
   | "line"
   | "custom"
-  //| "svg"         // если есть кастомные SVG
-  //| "input";
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {

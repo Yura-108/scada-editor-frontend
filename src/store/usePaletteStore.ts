@@ -4,7 +4,6 @@ import {paletteItems} from "@/constants/palette";
 import {toast} from "sonner";
 import {buildSingleComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
-import js from "@eslint/js";
 
 type PaletteState = {
   paletteItems: PaletteItemType[];

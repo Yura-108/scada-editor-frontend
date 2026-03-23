@@ -9,18 +9,14 @@ import {
   Pencil
 } from 'lucide-react';
 import { useDeviceStore } from '@/store/useDeviceStore';
-import { DeviceNodeType } from '@/types/nodeTypes';
 
-// Обновленный интерфейс. Обрати внимание, добавился isLeaf
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
   onClick: () => void;
   onContextMenu: (e: React.MouseEvent, node: any) => void;
 }
 
-// Умный компонент иконок, который опирается на глубину и наличие детей
 const NodeIcon = ({ depth, isLeaf }: { depth: number; isLeaf?: boolean }) => {
-  // Если это не конечный элемент и мы глубоко в дереве — это группа/папка
   if (!isLeaf && depth > 2) {
     return <FolderOpen className="w-5 h-5 text-indigo-500" />;
   }
@@ -62,16 +58,12 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
     <div
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium text-sm select-none cursor-pointer border',
-
-        // Базовые стили выбора (теперь единые, аккуратные и не зависят от жестких типов)
         isSelected
-          ? 'bg-indigo-50 text-indigo-900 border-indigo-200 shadow-xs'
-          : 'hover:bg-gray-50 text-gray-700 border-transparent',
-
-        // Стиль при редактировании (подсветка рамкой)
+          ? 'bg-indigo-200 text-indigo-900 border-indigo-200 shadow-xs'
+          : 'hover:bg-gray-300 text-gray-700 border-transparent',
         isEditing
           ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900'
-          : 'hover:bg-gray-50 text-gray-700 border-transparent',
+          : 'text-gray-700 border-transparent',
       )}
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(e, node)}

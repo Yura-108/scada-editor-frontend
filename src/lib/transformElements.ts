@@ -1,5 +1,4 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {usePaletteStore} from "@/store/usePaletteStore";
 import {useEditorStore} from "@/store/useEditorStore";
 
 type ComponentDto = {

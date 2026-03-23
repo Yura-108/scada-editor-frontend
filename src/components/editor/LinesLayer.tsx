@@ -8,9 +8,11 @@ interface Props {
 }
 
 export function LinesLayer({onSelect}: Props) {
-  const { elements } = useEditorStore();
+  const { elements, scene } = useEditorStore();
 
-  const lines = elements.filter(el => el.type === "line");
+  const lines = elements
+      .filter(el => el.type === "line")
+      .filter(el => el.parentKey === String(scene?.id));
 
   return (
     <svg className="absolute inset-0 w-full h-full">

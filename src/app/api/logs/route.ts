@@ -1,6 +1,5 @@
 import { protectedRoute } from "@/lib/protected";
 import { NextRequest, NextResponse } from "next/server";
-import {param} from "framer-motion/m";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 

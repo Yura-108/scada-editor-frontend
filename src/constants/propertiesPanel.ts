@@ -21,27 +21,27 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
 export const basePropertySchema: PropertySchema[] = [
   {
     key: "x",
-    label: "Position X",
+    label: "Координата X",
     type: "number",
   },
   {
     key: "y",
-    label: "Position Y",
+    label: "Координата Y",
     type: "number",
   },
   {
     key: "w",
-    label: "Width",
+    label: "Ширина",
     type: "number",
   },
   {
     key: "h",
-    label: "Height",
+    label: "Высота",
     type: "number",
   },
   {
     key: "label",
-    label: "Label",
+    label: "Название",
     type: "text",
   },
   {

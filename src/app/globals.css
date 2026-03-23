@@ -5,6 +5,14 @@
   --foreground: #171717;
 }
 
+@layer base {
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    margin-left: 0 !important;   /* на всякий случай для RTL */
+    overflow: visible !important;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -65,4 +73,6 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
+
+
 
