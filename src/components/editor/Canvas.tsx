@@ -247,9 +247,27 @@ export default function Canvas() {
     }
 
     // Общие пропсы для Rnd
+    const getClampedPosition = (d: { x: number; y: number; node: HTMLElement }) => {
+      const padding = 16;
+      const parent = d.node.parentElement;
+
+      if (!parent || !isInsideGroup) {
+        return {x: d.x, y: d.y};
+      }
+
+      const maxX = parent.offsetWidth - d.node.offsetWidth - padding;
+      const maxY = parent.offsetHeight - d.node.offsetHeight - padding;
+
+      return {
+        x: Math.max(padding, Math.min(d.x, maxX)),
+        y: Math.max(padding, Math.min(d.y, maxY)),
+      };
+    };
+
     const rndProps = {
       size: { width: el.w, height: el.h },
       position: { x: el.x, y: el.y },
+      scale: camera.zoom,
       dragGrid: [GRID, GRID] as [number, number],
       resizeGrid: [GRID, GRID] as [number, number],
       bounds: "parent",
@@ -262,22 +280,13 @@ export default function Canvas() {
           y: pos.y,
         });
       },
+      onDrag: (_: any, d: any) => {
+        const {x, y} = getClampedPosition(d);
+        updateElement(el.key, {x, y});
+      },
       onDragStop: (_: any, d: any) => {
-        const padding = 16;
-        const parent = d.node.parentElement;
-
-        if (parent && isInsideGroup) {
-          // Ограничиваем X
-          const maxX = parent.offsetWidth - d.node.offsetWidth - padding;
-          const x = Math.max(padding, Math.min(d.x, maxX));
-
-          // Ограничиваем Y
-          const maxY = parent.offsetHeight - d.node.offsetHeight - padding;
-          const y = Math.max(padding, Math.min(d.y, maxY));
-          updateElement(el.key, {x, y})
-        } else {
-          updateElement(el.key, {x: d.x, y: d.y})
-        }
+        const {x, y} = getClampedPosition(d);
+        updateElement(el.key, {x, y});
       },
       onResizeStop: (_: any, __: any, ref: any, ___: any, pos: any) =>
         updateElement(el.key, {

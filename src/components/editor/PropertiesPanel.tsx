@@ -26,6 +26,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   }
 
   const renderedElement = getRenderedElement(element);
+  const renderedElementValues = renderedElement as Record<string, unknown>;
+  const elementProperties = element.properties ?? [];
 
   const schema: PropertySchema[] = [
     ...basePropertySchema,
@@ -54,7 +56,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {
         id: crypto.randomUUID(),
         name: value,
-        overrides: {}
+        overrides: {},
+        isDefault: false,
       }]
     })
   }
@@ -75,7 +78,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       {/* Список свойств */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
         {schema.map((property, index) => {
-          const value = (renderedElement as any)[property.key] ?? property.defaultValue;
+          const value = renderedElementValues[property.key] ?? property.defaultValue;
           const uniqueKey = `${element.id}-${property.key}-${index}`;
 
           const label = (
@@ -208,13 +211,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
             Привязанные теги
           </h4>
 
-          {element.properties.length === 0 ? (
+          {elementProperties.length === 0 ? (
             <div className="text-sm text-gray-500 italic py-1">
               Нет привязанных тегов
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {element.properties.map(property => (
+              {elementProperties.map(property => (
                 <span
                   key={property.id}
                   className={`

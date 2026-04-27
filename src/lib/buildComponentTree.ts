@@ -1,25 +1,48 @@
 import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
 import {ComponentCreateDTO} from "@/types/palette.types";
 
+const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
+  const visualProps = {...el} as Record<string, unknown>;
+
+  delete visualProps.id;
+  delete visualProps.key;
+  delete visualProps.label;
+  delete visualProps.parentId;
+  delete visualProps.parentKey;
+  delete visualProps.type;
+  delete visualProps.children;
+  delete visualProps.properties;
+  delete visualProps.states;
+
+  return visualProps;
+};
+
 export const buildComponentTree = (
   elements: DiagramElement[],
   parentKey: string | null = null,
 ): ComponentCreateDto[] => {
+  void parentKey;
+
   return elements
-    .filter(el => el.parentKey === parentKey)
     .map(el => {
-      const {id,key, label, parentId, type, parentKey, ...imageProps} = el;
+      const baseImage = buildBaseImage(el);
+      const states = (el.states.length ? el.states : [{id: "default", name: "Нормальное", overrides: {}, isDefault: true}])
+        .map((state, index) => ({
+          name: state.name,
+          image: JSON.stringify({...baseImage, ...(state.overrides ?? {})}),
+          isDefault: state.isDefault ?? index === 0,
+        }));
 
       return {
-        id,
-        key,
-        name: label ?? "",
-        type,
-        parent_key: parentKey,
-        parent_id: parentId,
+        id: el.id,
+        key: el.key,
+        name: el.label ?? "",
+        children: (el.children ?? []).map(String),
         version: 1,
-        image: imageProps,
-        children: buildComponentTree(elements, key),
+        type: el.type,
+        parent_key: el.parentKey,
+        parent_id: el.parentId,
+        states,
       };
     });
 }
@@ -42,7 +65,8 @@ export const buildSingleComponentTree = (
     return elements
       .filter(el => String(el.parentKey) === String(currentKey))
       .map(el => {
-        const { key, label, type, children, parentKey, ...imageProps } = el;
+        const { key, label, type, parentKey, ...imageProps } = el;
+        delete (imageProps as Record<string, unknown>).children;
         return {
           key,
           type,

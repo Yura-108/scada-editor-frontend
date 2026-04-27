@@ -4,35 +4,35 @@ import React, {useEffect, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 
 interface Props {
-  states: {id: string; name: string}[];
+  states: {id: string; name: string; isDefault?: boolean}[];
 }
 
 export function StateSelect({states}: Props) {
-  const [selectedValue, setSelectedValue] = useState(states[0]?.id ?? "");
-  const {selectedIds, updateElement, elements, setCurrentComponentStateId} = useEditorStore();
+  const defaultStateId = states.find(state => state.isDefault)?.id ?? states[0]?.id ?? "";
+  const [selectedValue, setSelectedValue] = useState(defaultStateId);
+  const {selectedIds, setCurrentComponentStateId} = useEditorStore();
+  const normalizedSelectedValue = states.some(state => state.id === selectedValue)
+    ? selectedValue
+    : defaultStateId;
 
   useEffect(() => {
-    if (states.length > 0) {
-      setSelectedValue(states[0].id);
-    }
-  }, [selectedIds]);
+    const selectedElementId = selectedIds[0];
+    if (!selectedElementId || !normalizedSelectedValue) return;
 
-  useEffect(() => {
-    const selectedElement = elements.find(el => el.key === selectedIds[0]);
+    const {elements} = useEditorStore.getState();
+    const selectedElement = elements.find(el => el.key === selectedElementId);
 
     if (!selectedElement) return;
 
-    const currentState = selectedElement.states.find(state => state.id === selectedValue);
+    const currentState = selectedElement.states.find(state => state.id === normalizedSelectedValue);
 
     if (!currentState) return;
 
-    setCurrentComponentStateId(selectedValue);
-
-    updateElement(selectedIds[0], currentState.overrides)
-  }, [selectedValue]);
+    setCurrentComponentStateId(normalizedSelectedValue);
+  }, [normalizedSelectedValue, selectedIds, setCurrentComponentStateId]);
 
   return (
-    <Select.Root value={selectedValue} onValueChange={setSelectedValue}>
+    <Select.Root value={normalizedSelectedValue} onValueChange={setSelectedValue}>
       <Select.Trigger
         className={`
           group

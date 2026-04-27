@@ -26,18 +26,24 @@ export type SceneType = {
 export type ComponentState = {
   id: string;
   name: string;
-  overrides: {};
+  overrides: Record<string, unknown>;
+  isDefault?: boolean;
 }
 
 export type ComponentCreateDto = {
   key: string;
+  id: number | null;
   name: string;
-  children: ComponentCreateDto[];
+  children: string[];
   version: number;
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  image: any;
+  states: {
+    name: string;
+    image: string;
+    isDefault: boolean;
+  }[];
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {

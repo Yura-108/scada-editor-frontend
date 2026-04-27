@@ -1,49 +1,101 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
 
+type BackendStateDto = {
+  id?: number | string;
+  componentId?: number;
+  name: string;
+  image: string;
+  isDefault?: boolean;
+};
+
+type BackendPropertyDto = {
+  id: number;
+  component_id: number;
+  property_type: string | null;
+  tag_id: string;
+  description: string | null;
+  value_type: string | null;
+  default_value: string | null;
+  logging: boolean;
+  onChange: string | null;
+};
+
 type ComponentDto = {
   id: number;
+  key?: string;
   name: string;
   type: string;
-  parent_id: number;
-  image: any;
-  children: ComponentDto[];
-}
+  version?: number;
+  parent_id: number | null;
+  states?: BackendStateDto[];
+  children?: Array<string | number>;
+  properties?: BackendPropertyDto[];
+};
 
-export default function transformElements(apiElements: ComponentDto[]) {
-  const result: DiagramElement[] = [];
-  const queue: ComponentDto[] = [...apiElements];
+const parseStateImage = (rawImage: string): Record<string, unknown> => {
+  if (!rawImage) return {};
+
+  try {
+    const parsed = JSON.parse(rawImage);
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const toFiniteNumber = (value: unknown, fallback: number) => {
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+export default function transformElements(apiElements: ComponentDto[] = []) {
   const {scene} = useEditorStore.getState();
 
-  while (queue.length > 0) {
-    const el = queue.shift();
-    if (!el) continue;
+  if (!Array.isArray(apiElements)) {
+    return [];
+  }
 
-    const currentKey = String(el.id);
-    const currentParentKey = el.parent_id !== null ? String(el.parent_id) : String(scene?.id);
+  return apiElements.map((el) => {
+    const normalizedStates = (el.states ?? []).map((state, index) => ({
+      id: state.id != null ? String(state.id) : crypto.randomUUID(),
+      name: state.name,
+      overrides: parseStateImage(state.image),
+      isDefault: state.isDefault ?? index === 0,
+    }));
 
-    const childKeys: string[] = [];
+    const defaultState =
+      normalizedStates.find(state => state.isDefault) ??
+      normalizedStates[0] ??
+      {
+        id: crypto.randomUUID(),
+        name: "Нормальное",
+        overrides: {},
+        isDefault: true,
+      };
 
-    if (el.children && el.children.length > 0) {
-      el.children.forEach((child: any) => {
-        childKeys.push(String(child.id));
-        queue.push(child);
-      });
-    }
+    const image = defaultState.overrides;
 
     const flattenedElement = {
       id: el.id,
-      key: currentKey,
+      key: el.key ?? String(el.id),
       type: el.type,
-      ...(el.image || {}),
-      parentId: el.parent_id ?? scene?.id,
-      parentKey: currentParentKey,
-      children: childKeys,
-      label: el.name
+      x: toFiniteNumber(image.x, 0),
+      y: toFiniteNumber(image.y, 0),
+      w: toFiniteNumber(image.w, 80),
+      h: toFiniteNumber(image.h, 80),
+      composition: Boolean(image.composition),
+      ...(image || {}),
+      states: normalizedStates,
+      parentId: el.parent_id ?? scene?.id ?? null,
+      parentKey: el.parent_id != null ? String(el.parent_id) : String(scene?.id ?? ""),
+      children: (el.children ?? []).map(String),
+      properties: Array.isArray(el.properties) ? el.properties : [],
+      label: el.name,
     };
 
-    result.push(flattenedElement);
-  }
-
-  return result;
+    return flattenedElement as DiagramElement;
+  });
 }

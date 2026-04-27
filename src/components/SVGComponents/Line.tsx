@@ -8,7 +8,7 @@ interface Props {
 }
 
 export const Line = React.memo(function Line({ element, onSelect}: Props) {
-  const { selectedIds, updateElement } = useEditorStore();
+  const { selectedIds, updateElement, camera } = useEditorStore();
   const selected = selectedIds.includes(element.key);
   const [dragging, setDragging] = useState<"start" | "end" | null>(null);
 
@@ -16,8 +16,9 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
     if (!dragging) return;
 
     const handlePointerMove = (e: PointerEvent) => {
-      const deltaX = e.movementX;
-      const deltaY = e.movementY;
+      const zoom = camera.zoom || 1;
+      const deltaX = e.movementX / zoom;
+      const deltaY = e.movementY / zoom;
 
       let newX1 = element.x1 ?? 100;
       let newY1 = element.y1 ?? 100;
@@ -53,7 +54,7 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [dragging, element.x1, element.x2, element.y1, element.y2]);
+  }, [camera.zoom, dragging, element.x1, element.x2, element.y1, element.y2, element.key, updateElement]);
 
   const handlePointerDown = (e: React.PointerEvent, point: 'start' | 'end') => {
     e.stopPropagation();

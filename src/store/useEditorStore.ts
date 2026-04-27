@@ -199,7 +199,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             states: [{
               id: crypto.randomUUID(),
               name: "Нормальное",
-              overrides: {}
+              overrides: {},
+              isDefault: true,
             }],
           };
 
@@ -228,7 +229,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           states: [{
             id: crypto.randomUUID(),
             name: "Нормальное",
-            overrides: {}
+            overrides: {},
+            isDefault: true,
           }],
         };
 
@@ -587,7 +589,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           states: [{
             id: crypto.randomUUID(),
             name: "Нормальное",
-            overrides: {}
+            overrides: {},
+            isDefault: true,
           }],
         };
 
