@@ -1,38 +1,37 @@
 import * as Select from "@radix-ui/react-select";
 import { ChevronDownIcon, ChevronUpIcon, CheckIcon } from "lucide-react";
-import React, {useEffect, useState} from "react";
+import React, {useEffect} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 
 interface Props {
+  elementKey: string;
   states: {id: string; name: string; isDefault?: boolean}[];
 }
 
-export function StateSelect({states}: Props) {
+export function StateSelect({elementKey, states}: Props) {
   const defaultStateId = states.find(state => state.isDefault)?.id ?? states[0]?.id ?? "";
-  const [selectedValue, setSelectedValue] = useState(defaultStateId);
-  const {selectedIds, setCurrentComponentStateId} = useEditorStore();
-  const normalizedSelectedValue = states.some(state => state.id === selectedValue)
-    ? selectedValue
+  const activeStateId = useEditorStore(
+    state => state.currentComponentStateByElementKey[elementKey] ?? ""
+  );
+  const {setCurrentComponentStateId} = useEditorStore();
+
+  const normalizedSelectedValue = states.some(state => state.id === activeStateId)
+    ? activeStateId
     : defaultStateId;
 
   useEffect(() => {
-    const selectedElementId = selectedIds[0];
-    if (!selectedElementId || !normalizedSelectedValue) return;
+    if (!normalizedSelectedValue) return;
 
-    const {elements} = useEditorStore.getState();
-    const selectedElement = elements.find(el => el.key === selectedElementId);
-
-    if (!selectedElement) return;
-
-    const currentState = selectedElement.states.find(state => state.id === normalizedSelectedValue);
-
-    if (!currentState) return;
-
-    setCurrentComponentStateId(normalizedSelectedValue);
-  }, [normalizedSelectedValue, selectedIds, setCurrentComponentStateId]);
+    if (activeStateId !== normalizedSelectedValue) {
+      setCurrentComponentStateId(elementKey, normalizedSelectedValue);
+    }
+  }, [activeStateId, elementKey, normalizedSelectedValue, setCurrentComponentStateId]);
 
   return (
-    <Select.Root value={normalizedSelectedValue} onValueChange={setSelectedValue}>
+    <Select.Root
+      value={normalizedSelectedValue}
+      onValueChange={(value) => setCurrentComponentStateId(elementKey, value)}
+    >
       <Select.Trigger
         className={`
           group

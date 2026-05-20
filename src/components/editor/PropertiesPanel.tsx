@@ -16,7 +16,7 @@ interface PropertiesPanelProps {
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
-  const {updateElement, updateElementVisual} = useEditorStore.getState();
+  const {updateElementVisual, addComponentStateToSubtree, setCurrentComponentStateId} = useEditorStore.getState();
   if (!element) {
     return (
       <div className="h-full flex items-center justify-center text-neutral-500 text-sm italic">
@@ -26,7 +26,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   }
 
   const renderedElement = getRenderedElement(element);
-  const renderedElementValues = renderedElement as Record<string, unknown>;
+  const renderedElementValues = renderedElement as unknown as Record<string, unknown>;
   const elementProperties = element.properties ?? [];
 
   const schema: PropertySchema[] = [
@@ -51,16 +51,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   );
 
   const addComponentState = (value: string) => {
-    updateElement(element.key, {
-      states: [...element.states,
-        {
-        id: crypto.randomUUID(),
-        name: value,
-        overrides: {},
-        isDefault: false,
-      }]
-    })
+    const createdStateId = addComponentStateToSubtree(element.key, value);
+    if (createdStateId) {
+      setCurrentComponentStateId(element.key, createdStateId);
+    }
   }
+
+  const getNumberValue = (rawValue: unknown, fallback = 0) => {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
 
   return (
     <div
@@ -78,8 +78,31 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       {/* Список свойств */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
         {schema.map((property, index) => {
-          const value = renderedElementValues[property.key] ?? property.defaultValue;
+          const rawValue = renderedElementValues[property.key];
           const uniqueKey = `${element.id}-${property.key}-${index}`;
+
+          const textValue = typeof rawValue === "string"
+            ? rawValue
+            : (typeof property.defaultValue === "string" ? property.defaultValue : "");
+
+          const numberValue = getNumberValue(
+            rawValue,
+            typeof property.defaultValue === "number" ? property.defaultValue : 0
+          );
+
+          const colorValue = typeof rawValue === "string" && rawValue
+            ? rawValue
+            : (typeof property.defaultValue === "string" && property.defaultValue
+              ? property.defaultValue
+              : "#ffffff");
+
+          const selectValue = typeof rawValue === "string"
+            ? rawValue
+            : (typeof property.defaultValue === "string" ? property.defaultValue : "");
+
+          const booleanValue = typeof rawValue === "boolean"
+            ? rawValue
+            : Boolean(property.defaultValue);
 
           const label = (
             <label
@@ -98,10 +121,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <input
                     id={`prop-${property.key}`}
                     className={baseInputClasses}
-                    value={value ?? ""}
+                    value={textValue}
                     placeholder={property.placeholder || ""}
                     onChange={(e) =>
-                      updateElement(element.key, {[property.key]: e.target.value})
+                      updateElementVisual(element.key, {[property.key]: e.target.value})
                     }
                   />
                 </div>
@@ -115,7 +138,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     id={`prop-${property.key}`}
                     type="number"
                     className={baseInputClasses}
-                    value={Number(value).toFixed(2) ?? 0}
+                    value={numberValue}
                     min={property.min}
                     max={property.max}
                     step={property.step ?? 1}
@@ -135,13 +158,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <div className="flex items-center gap-3">
                     <div
                       className="w-8 h-8 rounded-md border border-neutral-600 shadow-sm shrink-0 ring-1 ring-neutral-700/50"
-                      style={{backgroundColor: value ?? "#ffffff"}}
+                      style={{backgroundColor: colorValue}}
                     />
                     <input
                       id={`prop-${property.key}`}
                       type="color"
                       className={cn(baseInputClasses, "h-9 p-1 cursor-pointer")}
-                      value={"#ffffff"}
+                      value={colorValue}
                       onChange={(e) =>
                         updateElementVisual(element.key, {[property.key]: e.target.value})
                       }
@@ -157,9 +180,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <select
                     id={`prop-${property.key}`}
                     className={cn(baseInputClasses, "appearance-none pr-8")}
-                    value={value ?? ""}
+                    value={selectValue}
                     onChange={(e) =>
-                      updateElement(element.key, {[property.key]: e.target.value})
+                      updateElementVisual(element.key, {[property.key]: e.target.value})
                     }
                   >
                     {property.options?.map((opt) => (
@@ -177,9 +200,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <input
                     id={`prop-${property.key}`}
                     type="checkbox"
-                    checked={!!value}
+                    checked={booleanValue}
                     onChange={(e) =>
-                      updateElement(element.key, {[property.key]: e.target.checked})
+                      updateElementVisual(element.key, {[property.key]: e.target.checked})
                     }
                     className={cn(
                       "w-4 h-4 rounded border-neutral-600 bg-neutral-800",
@@ -252,7 +275,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
             Состояние:
           </h4>
 
-          <StateSelect states={element.states}/>
+          <StateSelect elementKey={element.key} states={element.states}/>
 
           <button
             className={baseAddButtonClasses}

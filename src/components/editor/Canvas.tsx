@@ -14,13 +14,12 @@ import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
-import {OpenChooseTagModal} from "@/components/ui/OpenChooseTagModal";
 import {Line} from "@/components/ui/SVGComponents/Line";
 import {handleBindTag} from "@/lib/handleBindTag";
+import {getRenderedElement} from "@/lib/getRenderedElement";
 
 export default function Canvas() {
   const {elements,
-    updateElement,
     selectedIds,
     selectMultiple,
     setCanvasRect,
@@ -202,27 +201,21 @@ export default function Canvas() {
     }
   }, [selectedIds, selectMultiple]);
 
-  const panZoomHandlers = {
-    // 1. ПЕРЕМЕЩЕНИЕ (PAN)
-    onPointerMove: (e: React.PointerEvent) => {
-      // Проверяем, зажато ли колесико мыши (button 1 или buttons 4)
-      // Либо можно проверять зажатый пробел + левую кнопку
-      if (e.buttons === 4) {
-        const {setCameraPan} = useEditorStore.getState();
-        // Двигаем камеру на столько же, на сколько сдвинулась мышь
-        setCameraPan(e.movementX, e.movementY);
-      }
-    },
-    // Чтобы курсор менялся на «руку» при зажатом колесике
-    onPointerDown: (e: React.PointerEvent) => {
-      if (e.button === 1) { // 1 — это колесико
-        (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
-      }
-    },
-
-    onPointerUp: (e: React.PointerEvent) => {
-      (e.currentTarget as HTMLElement).style.cursor = 'crosshair';
+  const handlePanZoomPointerMove = (e: React.PointerEvent) => {
+    if (e.buttons === 4) {
+      const {setCameraPan} = useEditorStore.getState();
+      setCameraPan(e.movementX, e.movementY);
     }
+  };
+
+  const handlePanZoomPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 1) {
+      (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
+    }
+  };
+
+  const handlePanZoomPointerUp = (e: React.PointerEvent) => {
+    (e.currentTarget as HTMLElement).style.cursor = 'crosshair';
   };
 
   const elementsMap = useMemo(() => {
@@ -234,6 +227,35 @@ export default function Canvas() {
   const renderElement = (el: DiagramElement, isInsideGroup = false) => {
     if (el.type === 'line') return null;
     const isSelected = selectedIds.includes(el.key);
+    const renderedElement = getRenderedElement(el);
+    const rndSize = { width: renderedElement.w, height: renderedElement.h };
+    const rndPosition = { x: renderedElement.x, y: renderedElement.y };
+    const handleResize = (_e: any, _dir: any, ref: any, _delta: any, pos: any) => {
+      useEditorStore.getState().updateElementVisual(el.key, {
+        w: parseFloat(ref.style.width),
+        h: parseFloat(ref.style.height),
+        x: pos.x,
+        y: pos.y,
+      });
+    };
+
+    const handleDrag = (_: any, d: any) => {
+      const {x, y} = getClampedPosition(d);
+      useEditorStore.getState().updateElementVisual(el.key, {x, y});
+    };
+
+    const handleDragStop = (_: any, d: any) => {
+      const {x, y} = getClampedPosition(d);
+      useEditorStore.getState().updateElementVisual(el.key, {x, y});
+    };
+
+    const handleResizeStop = (_: any, __: any, ref: any, ___: any, pos: any) =>
+      useEditorStore.getState().updateElementVisual(el.key, {
+        w: parseFloat(ref.style.width),
+        h: parseFloat(ref.style.height),
+        x: pos.x,
+        y: pos.y,
+      });
 
     const handleFaceplate = async () => {
       const rootElement = elements.find(element => element.key === el.key);
@@ -264,39 +286,6 @@ export default function Canvas() {
       };
     };
 
-    const rndProps = {
-      size: { width: el.w, height: el.h },
-      position: { x: el.x, y: el.y },
-      scale: camera.zoom,
-      dragGrid: [GRID, GRID] as [number, number],
-      resizeGrid: [GRID, GRID] as [number, number],
-      bounds: "parent",
-      onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, el.key),
-      onResize: (_e: any, _dir: any, ref: any, _delta: any, pos: any) => {
-        updateElement(el.key, {
-          w: parseFloat(ref.style.width),
-          h: parseFloat(ref.style.height),
-          x: pos.x,
-          y: pos.y,
-        });
-      },
-      onDrag: (_: any, d: any) => {
-        const {x, y} = getClampedPosition(d);
-        updateElement(el.key, {x, y});
-      },
-      onDragStop: (_: any, d: any) => {
-        const {x, y} = getClampedPosition(d);
-        updateElement(el.key, {x, y});
-      },
-      onResizeStop: (_: any, __: any, ref: any, ___: any, pos: any) =>
-        updateElement(el.key, {
-          w: parseFloat(ref.style.width),
-          h: parseFloat(ref.style.height),
-          x: pos.x,
-          y: pos.y,
-        }),
-    };
-
     if (el.type === "group") {
       const group = el as GroupElement;
 
@@ -314,8 +303,18 @@ export default function Canvas() {
           ]}
         >
           <Rnd
-            {...rndProps}
             key={el.key}
+            size={rndSize}
+            position={rndPosition}
+            scale={camera.zoom}
+            dragGrid={[GRID, GRID] as [number, number]}
+            resizeGrid={[GRID, GRID] as [number, number]}
+            bounds="parent"
+            onContextMenu={(e) => handleContextMenu(e, el.key)}
+            onResize={handleResize}
+            onDrag={handleDrag}
+            onDragStop={handleDragStop}
+            onResizeStop={handleResizeStop}
             cancel=".no-drag, .child-element"
             onMouseDown={(e) => {
               e.stopPropagation();
@@ -353,8 +352,18 @@ export default function Canvas() {
     // Обычный элемент (лист)
     const nodeContent = (
       <Rnd
-        {...rndProps}
         key={el.key}
+        size={rndSize}
+        position={rndPosition}
+        scale={camera.zoom}
+        dragGrid={[GRID, GRID] as [number, number]}
+        resizeGrid={[GRID, GRID] as [number, number]}
+        bounds="parent"
+        onContextMenu={(e) => handleContextMenu(e, el.key)}
+        onResize={handleResize}
+        onDrag={handleDrag}
+        onDragStop={handleDragStop}
+        onResizeStop={handleResizeStop}
         className={cn("child-element z-10", isSelected ? "shadow-lg" : "shadow-sm")}
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -383,7 +392,9 @@ export default function Canvas() {
     <div
       id="canvas-viewport"
       className="relative w-full h-full overflow-hidden touch-none bg-neutral-950"
-      {...panZoomHandlers}
+      onPointerMove={handlePanZoomPointerMove}
+      onPointerDown={handlePanZoomPointerDown}
+      onPointerUp={handlePanZoomPointerUp}
     >
       <DynamicContextMenu items={[
         { label: 'Вставить элемент', onClick: () => console.log('Paste') },

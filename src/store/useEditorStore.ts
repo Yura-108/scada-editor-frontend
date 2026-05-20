@@ -18,8 +18,9 @@ type EditorState = {
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
-  currentComponentStateId: string | null;
-  setCurrentComponentStateId: (componentState: string) => void;
+  currentComponentStateByElementKey: Record<string, string>;
+  setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
+  clearCurrentComponentStateId: (elementKey: string) => void;
   clipboard: DiagramElement | null;
   canvasRect: DOMRect | null;
   connecting: {
@@ -39,6 +40,7 @@ type EditorState = {
   select: (id: string | null) => void;
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
+  addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
   addElementAt: (x: number, y: number, type: ElementType) => void;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
   addTags: (component_id: number, tag_id: string) => Promise<void>;
@@ -60,6 +62,47 @@ const isGroup = (el: DiagramElement) => el.type === "group";
 const isComplex = (el: DiagramElement) =>
   elementRegistry[el.type as ElementType]?.complex ?? false;
 
+const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
+  const result = new Set<string>();
+  const queue = [rootKey];
+
+  while (queue.length) {
+    const currentKey = queue.shift()!;
+    const current = elements.find(el => el.key === currentKey);
+
+    if (!current) continue;
+
+    for (const childKey of current.children ?? []) {
+      if (result.has(childKey)) continue;
+
+      result.add(childKey);
+      queue.push(childKey);
+    }
+  }
+
+  result.delete(rootKey);
+  return [...result];
+};
+
+const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?: string) => {
+  if (element.states.some(state => state.name === stateName)) {
+    return element;
+  }
+
+  return {
+    ...element,
+    states: [
+      ...element.states,
+      {
+        id: forcedId ?? crypto.randomUUID(),
+        name: stateName,
+        overrides: {},
+        isDefault: false,
+      },
+    ],
+  } as DiagramElement;
+};
+
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
@@ -67,7 +110,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       elements: [],
       selectedId: null,
       selectedIds: [],
-      currentComponentStateId: null,
+      currentComponentStateByElementKey: {},
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -85,13 +128,89 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
-      setCurrentComponentStateId: (componentState) => set({currentComponentStateId: componentState}),
+      addComponentStateToSubtree: (elementKey, stateName) => {
+        let rootStateId: string | null = null;
+
+        set(state => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root) return {};
+
+          const existingRootState = root.states.find(s => s.name === stateName);
+          rootStateId = existingRootState?.id ?? crypto.randomUUID();
+
+          const keysToUpdate = root.type === "group"
+            ? [elementKey, ...getDescendantKeys(elementKey, state.elements)]
+            : [elementKey];
+
+          return {
+            elements: state.elements.map(el => keysToUpdate.includes(el.key)
+              ? ensureStateByName(el, stateName, el.key === elementKey ? rootStateId : undefined)
+              : el
+            ),
+          };
+        });
+
+        return rootStateId;
+      },
+      setCurrentComponentStateId: (elementKey, componentState) => set(state => ({
+        currentComponentStateByElementKey: (() => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root) {
+            return {
+              ...state.currentComponentStateByElementKey,
+              [elementKey]: componentState,
+            };
+          }
+
+          const nextMap = {
+            ...state.currentComponentStateByElementKey,
+            [elementKey]: componentState,
+          };
+
+          const rootStateName = root.states.find(s => s.id === componentState)?.name;
+          if (!rootStateName) {
+            return nextMap;
+          }
+
+          if (root.type !== "group") {
+            return nextMap;
+          }
+
+          const descendantKeys = getDescendantKeys(elementKey, state.elements);
+
+          for (const childKey of descendantKeys) {
+            const child = state.elements.find(el => el.key === childKey);
+            if (!child) continue;
+
+            const matchedState = child.states.find(s => s.name === rootStateName);
+            if (matchedState) {
+              nextMap[childKey] = matchedState.id;
+              continue;
+            }
+
+            const defaultState = child.states.find(s => s.isDefault) ?? child.states[0];
+            nextMap[childKey] = defaultState?.id ?? componentState;
+          }
+
+          return nextMap;
+        })(),
+      })),
+      clearCurrentComponentStateId: (elementKey) => set(state => {
+        const next = {...state.currentComponentStateByElementKey};
+        delete next[elementKey];
+
+        return {currentComponentStateByElementKey: next};
+      }),
       updateElementVisual: (key, updates) => {
-        const { currentComponentStateId } = get();
+        const { currentComponentStateByElementKey } = get();
 
         set(state => ({
           elements: state.elements.map(el => {
             if (el.key !== key) return el;
+
+            const currentComponentStateId = currentComponentStateByElementKey[key]
+              ?? el.states.find(s => s.isDefault)?.id
+              ?? el.states[0]?.id;
 
             if (!currentComponentStateId) {
               return {
@@ -291,6 +410,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           set({
             elements: elements.filter(el => !idsToDelete.has(el.key)),
             selectedIds: [],
+            currentComponentStateByElementKey: Object.fromEntries(
+              Object.entries(get().currentComponentStateByElementKey).filter(([elementKey]) => !idsToDelete.has(elementKey))
+            ),
           });
 
         } catch (err) {
@@ -371,7 +493,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const scene = await res.json();
           const newElements = transformElements(scene.children);
 
-          set({scene, elements: newElements});
+          set({scene, elements: newElements, selectedIds: [], currentComponentStateByElementKey: {}});
 
         } catch (err: any) {
           console.error(err);
@@ -391,7 +513,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const newScene = await res.json();
 
-          set({scene: newScene});
+          set({scene: newScene, selectedIds: [], currentComponentStateByElementKey: {}});
 
           toast.success("Сцена создана");
         } catch (err: any) {

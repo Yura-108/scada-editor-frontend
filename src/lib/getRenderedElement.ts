@@ -2,7 +2,9 @@ import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
 
 export function getRenderedElement(el: DiagramElement): DiagramElement {
-  const {currentComponentStateId} = useEditorStore();
+  const {currentComponentStateByElementKey} = useEditorStore.getState();
+  const currentComponentStateId = currentComponentStateByElementKey[el.key];
+
   if (!currentComponentStateId) return el;
 
   const state = el.states.find(s => s.id === currentComponentStateId);
