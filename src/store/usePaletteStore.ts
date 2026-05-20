@@ -50,11 +50,17 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       if (!paletteItem.template) return;
       const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
+      const rootComponent = buildSingleComponentTree(paletteItem.template, rootElementKey);
+
+      if (!rootComponent) {
+        toast.error("Не удалось собрать корневой компонент шаблона");
+        return;
+      }
 
       const paletteItemCreateDTO = {
         name: paletteItem.name,
         type: paletteItem.category,
-        rootComponent: buildSingleComponentTree(paletteItem.template, rootElementKey)
+        rootComponent,
       };
 
       const res = await fetch("/api/editor/palette/", {

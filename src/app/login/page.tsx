@@ -68,65 +68,82 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-purple-500" />
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-purple-500" />
+                </div>
+                <input
+                  {...register('login')}
+                  id="login"
+                  type="text"
+                  placeholder="Логин"
+                  aria-invalid={!!errors.login}
+                  aria-describedby={errors.login ? 'login-error' : undefined}
+                  className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
+                    ${
+                      errors.login
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-200 focus:border-purple-500'
+                    } outline-none text-gray-800 placeholder-gray-400`}
+                />
               </div>
-              <input
-                {...register('login')}
-                type="text"
-                placeholder="Login"
-                className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                  ${
-                    errors.login
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-200 focus:border-purple-500'
-                  } outline-none text-gray-800 placeholder-gray-400`}
-              />
               {errors.login && (
-                <p className="mt-2 text-sm text-red-600 font-medium">{errors.login.message}</p>
+                <p id="login-error" className="text-sm text-red-600 font-medium leading-5">
+                  {errors.login.message}
+                </p>
               )}
             </div>
 
             {/* Пароль */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg
-                  className="h-5 w-5 text-purple-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg
+                    className="h-5 w-5 text-purple-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  {...register('password')}
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Пароль"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  className={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
+                    ${
+                      errors.password
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-200 focus:border-purple-500'
+                    } outline-none text-gray-800 placeholder-gray-400`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"
-                  />
-                </svg>
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-500 hover:text-purple-600 transition-colors" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-500 hover:text-purple-600 transition-colors" />
+                  )}
+                </button>
               </div>
-              <input
-                {...register('password')}
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Пароль"
-                className={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                  ${
-                    errors.password
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-200 focus:border-purple-500'
-                  } outline-none text-gray-800 placeholder-gray-400`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-500 hover:text-purple-600 transition-colors" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-500 hover:text-purple-600 transition-colors" />
-                )}
-              </button>
+              {errors.password && (
+                <p id="password-error" className="text-sm text-red-600 font-medium leading-5">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             {/* Ошибка от сервера */}

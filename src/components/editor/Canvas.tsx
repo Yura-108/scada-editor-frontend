@@ -15,7 +15,7 @@ import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
 import {OpenChooseTagModal} from "@/components/ui/OpenChooseTagModal";
-import {Line} from "@/components/SVGComponents/Line";
+import {Line} from "@/components/ui/SVGComponents/Line";
 import {handleBindTag} from "@/lib/handleBindTag";
 
 export default function Canvas() {

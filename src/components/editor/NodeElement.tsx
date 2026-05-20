@@ -5,17 +5,17 @@ import { cn } from "@/lib/utils";
 import {LeafElement} from "@/types/editorElement.type";
 
 // SVG-компоненты, которые ожидают { element }
-import { Lamp } from "@/components/SVGComponents/LampSVG";
-import { Button } from "@/components/SVGComponents/ButtonSVG";
-import { Indicator } from "@/components/SVGComponents/IndicatorSVG";
-import Tank from "@/components/SVGComponents/TankSVG";          // ← теперь с element
-import { Valve } from "@/components/SVGComponents/ValveSvg";
-import { Text } from "@/components/SVGComponents/TextSvg";
-import { NumericDisplay } from "@/components/SVGComponents/NumericDisplaySVG";
-import Circle from "@/components/SVGComponents/Circle";
-import Rectangle from "@/components/SVGComponents/Rectangle";
-import Polygon from "@/components/SVGComponents/Polygon";
-import Path from "@/components/SVGComponents/Path";
+import { Lamp } from "@/components/ui/SVGComponents/LampSVG";
+import { Button } from "@/components/ui/SVGComponents/ButtonSVG";
+import { Indicator } from "@/components/ui/SVGComponents/IndicatorSVG";
+import Tank from "@/components/ui/SVGComponents/TankSVG";          // ← теперь с element
+import { Valve } from "@/components/ui/SVGComponents/ValveSvg";
+import { Text } from "@/components/ui/SVGComponents/TextSvg";
+import { NumericDisplay } from "@/components/ui/SVGComponents/NumericDisplaySVG";
+import Circle from "@/components/ui/SVGComponents/Circle";
+import Rectangle from "@/components/ui/SVGComponents/Rectangle";
+import Polygon from "@/components/ui/SVGComponents/Polygon";
+import Path from "@/components/ui/SVGComponents/Path";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 
 

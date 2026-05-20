@@ -29,7 +29,7 @@ type ComponentDto = {
   version?: number;
   parent_id: number | null;
   states?: BackendStateDto[];
-  children?: Array<string | number>;
+  children?: Array<ComponentDto | string | number>;
   properties?: BackendPropertyDto[];
 };
 
@@ -58,7 +58,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
     return [];
   }
 
-  return apiElements.map((el) => {
+  const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
     const normalizedStates = (el.states ?? []).map((state, index) => ({
       id: state.id != null ? String(state.id) : crypto.randomUUID(),
       name: state.name,
@@ -77,6 +77,19 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       };
 
     const image = defaultState.overrides;
+    const objectChildren = (el.children ?? []).filter((child): child is ComponentDto => typeof child === "object" && child !== null);
+    const childrenKeys = (el.children ?? []).map(child => {
+      if (typeof child === "object" && child !== null) {
+        return String(child.key ?? child.id);
+      }
+
+      return String(child);
+    });
+
+    const resolvedParentId = el.parent_id ?? fallbackParentId ?? scene?.id ?? null;
+    const resolvedParentKey = fallbackParentKey ?? (resolvedParentId != null
+      ? String(resolvedParentId)
+      : String(scene?.id ?? ""));
 
     const flattenedElement = {
       id: el.id,
@@ -89,13 +102,18 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       composition: Boolean(image.composition),
       ...(image || {}),
       states: normalizedStates,
-      parentId: el.parent_id ?? scene?.id ?? null,
-      parentKey: el.parent_id != null ? String(el.parent_id) : String(scene?.id ?? ""),
-      children: (el.children ?? []).map(String),
+      parentId: resolvedParentId,
+      parentKey: resolvedParentKey,
+      children: childrenKeys,
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
     };
 
-    return flattenedElement as DiagramElement;
-  });
+    return [
+      flattenedElement as DiagramElement,
+      ...objectChildren.flatMap(child => flattenNode(child, el.id, String(el.key ?? el.id))),
+    ];
+  };
+
+  return apiElements.flatMap((el) => flattenNode(el));
 }
