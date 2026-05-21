@@ -28,6 +28,8 @@ type ComponentDto = {
   type: string;
   version?: number;
   parent_id: number | null;
+  scripts?: unknown[];
+  bindings?: unknown[];
   states?: BackendStateDto[];
   children?: Array<ComponentDto | string | number>;
   properties?: BackendPropertyDto[];
@@ -50,6 +52,8 @@ const toFiniteNumber = (value: unknown, fallback: number) => {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
+
+const normalizeArray = <T,>(value: T[] | undefined | null) => Array.isArray(value) ? value : [];
 
 export default function transformElements(apiElements: ComponentDto[] = []) {
   const {scene} = useEditorStore.getState();
@@ -105,6 +109,8 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
       children: childrenKeys,
+      scripts: normalizeArray(el.scripts),
+      bindings: normalizeArray(el.bindings),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
     };

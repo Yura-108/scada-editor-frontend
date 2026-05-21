@@ -39,6 +39,8 @@ export type ComponentCreateDto = {
   type: string;
   parent_key: string | null;
   parent_id: number | null;
+  scripts: unknown[];
+  bindings: unknown[];
   states: {
     name: string;
     image: string;
@@ -57,6 +59,8 @@ export interface BaseCanvasElement {
   children: string[];
   parentId: number | null;
   parentKey: string | null;
+  scripts: unknown[];
+  bindings: unknown[];
   properties: PropertyCreateDto[];
   states: ComponentState[];
 

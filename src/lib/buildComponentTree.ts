@@ -10,6 +10,8 @@ const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
   delete visualProps.parentKey;
   delete visualProps.type;
   delete visualProps.children;
+  delete visualProps.scripts;
+  delete visualProps.bindings;
   delete visualProps.properties;
   delete visualProps.states;
 
@@ -50,6 +52,8 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     type: element.type,
     parent_key: element.parentKey,
     parent_id: element.parentId,
+    scripts: Array.isArray(element.scripts) ? element.scripts : [],
+    bindings: Array.isArray(element.bindings) ? element.bindings : [],
     states,
   };
 };

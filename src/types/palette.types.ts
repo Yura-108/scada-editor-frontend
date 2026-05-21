@@ -26,6 +26,8 @@ export type ComponentCreateDTO = {
   parent_key: string | null;
   parent_id: number | null;
   children: ComponentCreateDTO[];
+  scripts: unknown[];
+  bindings: unknown[];
   states: {
     name: string;
     image: string;
@@ -54,6 +56,8 @@ export interface ComponentsResponseDTO {
   type: string;
   version: number;
   parent_id: number | null;
+  scripts?: unknown[];
+  bindings?: unknown[];
   states: ComponentStateResponseDTO[];
   children: ComponentsResponseDTO[];
   properties: PropertyCreateDto[];

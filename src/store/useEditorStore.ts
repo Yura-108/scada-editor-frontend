@@ -271,6 +271,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             key: keyMap[el.key],
             parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
             children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
+            scripts: Array.isArray((el as DiagramElement).scripts) ? (el as DiagramElement).scripts : [],
+            bindings: Array.isArray((el as DiagramElement).bindings) ? (el as DiagramElement).bindings : [],
           };
 
           // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
@@ -317,6 +319,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [],
             label: "Element",
             bg: "transparent",
+            scripts: [],
+            bindings: [],
             properties: [],
             states: [{
               id: crypto.randomUUID(),
@@ -347,6 +351,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           children: [],
           label: "Element",
           bg: "transparent",
+            scripts: [],
+            bindings: [],
           properties: [],
           states: [{
             id: crypto.randomUUID(),
@@ -361,12 +367,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       addTags: async (payload: PropertyCreateRequestDto) => {
-        const data: PropertyCreateRequestDto = payload;
-
         const res = await fetch("/api/editor/tags/", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(data)
+          body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
@@ -441,6 +445,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           key: crypto.randomUUID(),
           x: clipboard.x + 20,
           y: clipboard.y + 20,
+          scripts: Array.isArray(clipboard.scripts) ? clipboard.scripts : [],
+          bindings: Array.isArray(clipboard.bindings) ? clipboard.bindings : [],
         };
 
         set(state => ({
@@ -706,6 +712,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
+          scripts: [],
+          bindings: [],
           properties: [],
           states: [{
             id: crypto.randomUUID(),

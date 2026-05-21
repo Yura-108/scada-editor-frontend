@@ -4,7 +4,7 @@ import { useLogsStore } from '@/store/useLogsStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
 import { cn } from '@/lib/utils';
-import {toast} from "sonner"; // ← предполагаю, что у тебя есть clsx/tailwind-merge утилита
+import {toast} from "sonner";
 
 export default function LogsList() {
   const { logs, isLoading, getFilteredLogs } = useLogsStore();
