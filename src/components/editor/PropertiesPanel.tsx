@@ -5,7 +5,7 @@ import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
 import {Plus} from "lucide-react";
-import {handleBindTag} from "@/lib/handleBindTag";
+import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
 import {useEditorStore} from "@/store/useEditorStore";
@@ -227,16 +227,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
 
         <div className="h-px bg-linear-to-r from-gray-700 via-gray-500 to-gray-700"/>
 
-        {/* Теги */}
+        {/* Свойства */}
 
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-gray-300">
-            Привязанные теги
+            Добавленные свойства
           </h4>
 
           {elementProperties.length === 0 ? (
             <div className="text-sm text-gray-500 italic py-1">
-              Нет привязанных тегов
+              Нет добавленных свойств
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
@@ -251,18 +251,19 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     hover:bg-indigo-900/70 transition-colors
                   `}
                 >
-                #{property.tag_id}
-              </span>
+                  {property.property_type || "Свойство"}
+                  {property.tag_id ? ` • #${property.tag_id}` : ""}
+                </span>
               ))}
             </div>
           )}
 
           <button
             className={baseAddButtonClasses}
-            onClick={() => handleBindTag(element?.id)}
+            onClick={() => handleAddProperty(element?.id)}
           >
             <Plus size={18}/>
-            Привязать тег
+            Добавить свойство
           </button>
         </div>
 

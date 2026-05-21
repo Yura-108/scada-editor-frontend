@@ -8,13 +8,13 @@ import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
-import {PropertyCreateDto} from "@/types/tags.types";
+import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {getElementBounds} from "@/lib/getElementBounds";
 
 type EditorState = {
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
-  loadSceneList: () => any;
+  loadSceneList: () => Promise<{id: number; name: string}[] | void>;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
@@ -43,7 +43,7 @@ type EditorState = {
   addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
   addElementAt: (x: number, y: number, type: ElementType) => void;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
-  addTags: (component_id: number, tag_id: string) => Promise<void>;
+  addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
@@ -103,6 +103,9 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
   } as DiagramElement;
 };
 
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
+
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
@@ -144,7 +147,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           return {
             elements: state.elements.map(el => keysToUpdate.includes(el.key)
-              ? ensureStateByName(el, stateName, el.key === elementKey ? rootStateId : undefined)
+              ? ensureStateByName(el, stateName, el.key === elementKey ? rootStateId ?? undefined : undefined)
               : el
             ),
           };
@@ -357,17 +360,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: [...state.elements, newElement]
         }))
       },
-      addTags: async (component_id, tag_id) => {
-        const data: Omit<PropertyCreateDto, 'id'> = {
-          component_id,
-          tag_id,
-          property_type: null,
-          description: null,
-          value_type: null,
-          default_value: null,
-          logging: false,
-          onChange: null,
-        }
+      addTags: async (payload: PropertyCreateRequestDto) => {
+        const data: PropertyCreateRequestDto = payload;
 
         const res = await fetch("/api/editor/tags/", {
           method: "POST",
@@ -375,11 +369,16 @@ export const useEditorStore = create<EditorState>()(temporal(
           body: JSON.stringify(data)
         });
 
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Неизвестная ошибка");
+          throw new Error(`Не удалось добавить свойство: ${errorText}`);
+        }
+
         const newProperty: PropertyCreateDto = await res.json();
 
         set(state => ({
           elements: state.elements.map(el =>
-            el.id === component_id
+            el.id === payload.component_id
               ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
               : el
           )
@@ -469,9 +468,9 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           set({elements: newData});
           toast.success("Сохранено успешно!");
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка экспорта сцены");
+          toast.error(getErrorMessage(err, "Ошибка экспорта сцены"));
         }
       },
       loadSceneList: async () => {
@@ -481,9 +480,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           const json = await res.json();
           set({sceneList: json});
           return json;
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка загрузки списка сцен");
+          toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
         }
       },
       loadScene: async (id) => {
@@ -495,9 +494,9 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           set({scene, elements: newElements, selectedIds: [], currentComponentStateByElementKey: {}});
 
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка загрузки сцены");
+          toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
         }
       },
       createScene: async () => {
@@ -516,9 +515,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           set({scene: newScene, selectedIds: [], currentComponentStateByElementKey: {}});
 
           toast.success("Сцена создана");
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка создания сцены");
+          toast.error(getErrorMessage(err, "Ошибка создания сцены"));
         }
       },
       groupSelected: () => {

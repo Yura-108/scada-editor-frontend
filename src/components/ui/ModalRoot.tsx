@@ -23,9 +23,9 @@ export function ModalRoot() {
         <Dialog.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "w-[95vw] max-w-lg rounded-2xl bg-[#0f0f1a] text-white",
+            "w-[95vw] max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl bg-[#0f0f1a] text-white",
             "border border-gray-800/70 shadow-2xl shadow-black/50",
-            "p-6 sm:p-7",
+            "p-6 sm:p-8",
             // анимация (можно оставить framer-motion, но Radix тоже хорошо анимирует)
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

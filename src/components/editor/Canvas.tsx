@@ -15,7 +15,7 @@ import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
 import {Line} from "@/components/ui/SVGComponents/Line";
-import {handleBindTag} from "@/lib/handleBindTag";
+import {handleAddProperty} from "@/lib/handleAddProperty";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 
 export default function Canvas() {
@@ -297,7 +297,7 @@ export default function Canvas() {
         <DynamicContextMenu
           key={el.key}
           items={[
-            {label: 'Добавить свойство', onClick: () => handleBindTag(el.id), disabled: !el.id},
+            {label: 'Добавить свойство', onClick: () => handleAddProperty(el.id), disabled: !el.id},
             {label: 'Сохранить в палитру', onClick: handleFaceplate},
             {label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger'}
           ]}
@@ -310,7 +310,7 @@ export default function Canvas() {
             dragGrid={[GRID, GRID] as [number, number]}
             resizeGrid={[GRID, GRID] as [number, number]}
             bounds="parent"
-            onContextMenu={(e) => handleContextMenu(e, el.key)}
+            onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, el.key)}
             onResize={handleResize}
             onDrag={handleDrag}
             onDragStop={handleDragStop}
@@ -359,7 +359,7 @@ export default function Canvas() {
         dragGrid={[GRID, GRID] as [number, number]}
         resizeGrid={[GRID, GRID] as [number, number]}
         bounds="parent"
-        onContextMenu={(e) => handleContextMenu(e, el.key)}
+        onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, el.key)}
         onResize={handleResize}
         onDrag={handleDrag}
         onDragStop={handleDragStop}
@@ -380,7 +380,7 @@ export default function Canvas() {
 
     return (
       <DynamicContextMenu key={el.key} items={[
-        {label: 'Добавить свойство', onClick: () => handleBindTag(el.id), disabled: !el.id},
+        {label: 'Добавить свойство', onClick: () => handleAddProperty(el.id), disabled: !el.id},
         ...editorElementMenuItems,
       ]}>
         {nodeContent}
