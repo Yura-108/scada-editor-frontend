@@ -22,27 +22,29 @@ export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
   // Размеры — приоритетно из react-rnd (w/h), иначе дефолт
   const width = element.w ?? 120;
   const height = element.h ?? 60;
+  const safeWidth = Math.max(1, width);
+  const safeHeight = Math.max(1, height);
 
   // Форматирование значения
   const formattedValue =
     Number(value).toFixed(precision);
 
   // Размер шрифта значения — адаптивный, но не меньше 12px
-  const valueFontSize = Math.max(12, height / 3);
+  const valueFontSize = Math.max(12, safeHeight / 3);
 
   return (
     <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={safeWidth}
+      height={safeHeight}
+      viewBox={`0 0 ${safeWidth} ${safeHeight}`}
       className="max-w-full max-h-full"
     >
       {/* Фон дисплея */}
       <rect
         x="0"
         y="0"
-        width={width}
-        height={height}
+        width={safeWidth}
+        height={safeHeight}
         rx="8"
         fill={backgroundColor}
         stroke={element.strokeColor || "#334155"}
@@ -51,8 +53,8 @@ export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
 
       {/* Основное значение */}
       <text
-        x={width / 2}
-        y={height / 2 - (unit ? 4 : 0)} // чуть выше, если есть единица
+        x={safeWidth / 2}
+        y={safeHeight / 2 - (unit ? 4 : 0)} // чуть выше, если есть единица
         textAnchor="middle"
         dominantBaseline="middle"
         fontSize={valueFontSize}
@@ -67,8 +69,8 @@ export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
       {/* Единица измерения (в правом нижнем углу) */}
       {unit && (
         <text
-          x={width - 8}
-          y={height - 8}
+          x={safeWidth - 8}
+          y={safeHeight - 8}
           textAnchor="end"
           dominantBaseline="auto"
           fontSize={Math.max(10, valueFontSize * 0.45)}

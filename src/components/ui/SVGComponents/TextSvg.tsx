@@ -23,6 +23,9 @@ export const Text: React.FC<TextProps> = ({ element }) => {
     h,
   } = element;
 
+  const safeWidth = Math.max(1, w || 0);
+  const safeHeight = Math.max(1, h || 0);
+
   const lines = text.split("\n");
 
   const getTextAnchor = () => {
@@ -41,21 +44,21 @@ export const Text: React.FC<TextProps> = ({ element }) => {
       case "left":
         return 8;
       case "right":
-        return w - 8;
+        return safeWidth - 8;
       default:
-        return w / 2;
+        return safeWidth / 2;
     }
   };
 
   const lineHeight = fontSize * 1.25;
   const totalHeight = lines.length * lineHeight;
-  const startY = h / 2 - (totalHeight - lineHeight) / 2;
+  const startY = safeHeight / 2 - (totalHeight - lineHeight) / 2;
 
   return (
     <svg
       width="100%"
       height="100%"
-      viewBox={`0 0 ${w} ${h}`}
+      viewBox={`0 0 ${safeWidth} ${safeHeight}`}
       preserveAspectRatio="none"
       style={{ display: "block" }}
     >
@@ -64,8 +67,8 @@ export const Text: React.FC<TextProps> = ({ element }) => {
         <rect
           x={0}
           y={0}
-          width={w}
-          height={h}
+          width={safeWidth}
+          height={safeHeight}
           rx={6}
           fill={backgroundColor}
           stroke={strokeColor}

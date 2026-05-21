@@ -10,6 +10,7 @@ import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {getElementBounds} from "@/lib/getElementBounds";
+import {createUuid} from "@/lib/createUuid";
 
 type EditorState = {
   scene: SceneType | null;
@@ -94,7 +95,7 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
     states: [
       ...element.states,
       {
-        id: forcedId ?? crypto.randomUUID(),
+        id: forcedId ?? createUuid(),
         name: stateName,
         overrides: {},
         isDefault: false,
@@ -139,7 +140,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           if (!root) return {};
 
           const existingRootState = root.states.find(s => s.name === stateName);
-          rootStateId = existingRootState?.id ?? crypto.randomUUID();
+          rootStateId = existingRootState?.id ?? createUuid();
 
           const keysToUpdate = root.type === "group"
             ? [elementKey, ...getDescendantKeys(elementKey, state.elements)]
@@ -258,7 +259,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const keyMap: Record<string, string> = {};
         template.forEach(el => {
-          keyMap[el.key] = crypto.randomUUID();
+          keyMap[el.key] = createUuid();
         });
 
         const root = template.find(el => el.type === "group") || template[0];
@@ -303,7 +304,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (type === 'line') {
           const newElement: DiagramElement = {
             id: null,
-            key: crypto.randomUUID(),
+            key: createUuid(),
             type,
             composition,
             x,
@@ -323,7 +324,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             bindings: [],
             properties: [],
             states: [{
-              id: crypto.randomUUID(),
+              id: createUuid(),
               name: "Нормальное",
               overrides: {},
               isDefault: true,
@@ -339,7 +340,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const newElement: DiagramElement = {
           id: null,
-          key: crypto.randomUUID(),
+          key: createUuid(),
           type,
           composition,
           x,
@@ -355,7 +356,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             bindings: [],
           properties: [],
           states: [{
-            id: crypto.randomUUID(),
+            id: createUuid(),
             name: "Нормальное",
             overrides: {},
             isDefault: true,
@@ -442,7 +443,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         const newElement = {
           ...clipboard,
           id: null,
-          key: crypto.randomUUID(),
+          key: createUuid(),
           x: clipboard.x + 20,
           y: clipboard.y + 20,
           scripts: Array.isArray(clipboard.scripts) ? clipboard.scripts : [],
@@ -572,12 +573,14 @@ export const useEditorStore = create<EditorState>()(temporal(
           groups.length === 1
         ) {
           const targetGroup = groups[0] as GroupElement;
+          const baseGroupWidth = Math.max(0, targetGroup.w || 0);
+          const baseGroupHeight = Math.max(0, targetGroup.h || 0);
 
           // 1. Считаем границы новых элементов (в абсолютных координатах)
           let minX = targetGroup.x;
           let minY = targetGroup.y;
-          let maxX = targetGroup.x + (targetGroup.w || 0);
-          let maxY = targetGroup.y + (targetGroup.h || 0);
+          let maxX = targetGroup.x + baseGroupWidth;
+          let maxY = targetGroup.y + baseGroupHeight;
 
           const simpleWithAbs = simple.map(s => ({
             el: s,
@@ -619,12 +622,15 @@ export const useEditorStore = create<EditorState>()(temporal(
 
             // Если это сама группа — обновляем её размеры и позицию
             if (el.key === targetGroup.key) {
+              const nextWidth = Math.max(1, maxX - minX);
+              const nextHeight = Math.max(1, maxY - minY);
+
               return {
                 ...targetGroup,
                 x: minX,
                 y: minY,
-                w: maxX - minX,
-                h: maxY - minY,
+                w: nextWidth,
+                h: nextHeight,
                 children: [
                   ...(targetGroup.children ?? []),
                   ...simple.map(s => s.key),
@@ -646,7 +652,16 @@ export const useEditorStore = create<EditorState>()(temporal(
         // -----------------------------
         // 4. CREATE NEW GROUP
         // -----------------------------
-        const newGroupId = crypto.randomUUID();
+        const newGroupId = createUuid();
+        const selectedKeys = topLevelSelected.map(el => el.key);
+        const parentKeys = [...new Set(topLevelSelected.map(el => el.parentKey).filter(Boolean))];
+        const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : String(scene?.id) || null;
+        const commonParentElement = commonParentKey
+          ? elements.find(el => el.key === commonParentKey && el.type === "group") as GroupElement | undefined
+          : undefined;
+        const newGroupParentId = commonParentKey === String(scene?.id)
+          ? scene?.id || null
+          : commonParentElement?.id ?? null;
 
         let minX = Infinity,
           minY = Infinity,
@@ -696,18 +711,38 @@ export const useEditorStore = create<EditorState>()(temporal(
           };
         });
 
+        const elementsWithParentUpdated = commonParentElement
+          ? updatedElements.map(el => {
+              if (el.key !== commonParentElement.key) return el;
+
+              const nextChildren = el.children.filter(childKey => !selectedKeys.includes(childKey));
+              const insertIndex = el.children.findIndex(childKey => selectedKeys.includes(childKey));
+
+              if (insertIndex >= 0) {
+                nextChildren.splice(insertIndex, 0, newGroupId);
+              } else {
+                nextChildren.push(newGroupId);
+              }
+
+              return {
+                ...el,
+                children: nextChildren,
+              };
+            })
+          : updatedElements;
+
         const group: GroupElement = {
           id: null,
           key: newGroupId,
           type: "group",
           x: minX,
           y: minY,
-          w: maxX - minX + padding, // Ширина теперь рассчитана идеально
-          h: maxY - minY + padding, // Высота тоже
+          w: Math.max(1, maxX - minX + padding),
+          h: Math.max(1, maxY - minY + padding),
           composition: true,
           children: topLevelSelected.map(el => el.key),
-          parentId: scene?.id || null,
-          parentKey: String(scene?.id) || null,
+          parentId: newGroupParentId,
+          parentKey: commonParentKey,
           label: `Group (${topLevelSelected.length})`,
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
@@ -716,7 +751,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           bindings: [],
           properties: [],
           states: [{
-            id: crypto.randomUUID(),
+            id: createUuid(),
             name: "Нормальное",
             overrides: {},
             isDefault: true,
@@ -724,7 +759,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         };
 
         set({
-          elements: [...updatedElements, group],
+          elements: [...elementsWithParentUpdated, group],
           selectedIds: [newGroupId],
         });
       },

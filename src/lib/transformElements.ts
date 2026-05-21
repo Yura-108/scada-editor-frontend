@@ -1,5 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
+import {createUuid} from "@/lib/createUuid";
 
 type BackendStateDto = {
   id?: number | string;
@@ -64,7 +65,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
 
   const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
     const normalizedStates = (el.states ?? []).map((state, index) => ({
-      id: state.id != null ? String(state.id) : crypto.randomUUID(),
+      id: state.id != null ? String(state.id) : createUuid(),
       name: state.name,
       overrides: parseStateImage(state.image),
       isDefault: state.isDefault ?? index === 0,
@@ -74,7 +75,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       normalizedStates.find(state => state.isDefault) ??
       normalizedStates[0] ??
       {
-        id: crypto.randomUUID(),
+        id: createUuid(),
         name: "Нормальное",
         overrides: {},
         isDefault: true,

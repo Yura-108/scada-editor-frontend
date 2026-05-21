@@ -6,11 +6,14 @@ interface RectangleProps {
 }
 
 export default function Rectangle({ element }: RectangleProps) {
+  const safeWidth = Math.max(1, element.w || 0);
+  const safeHeight = Math.max(1, element.h || 0);
+
   return (
     <svg
       width="100%"
       height="100%"
-      viewBox={`0 0 ${element.w} ${element.h}`}
+      viewBox={`0 0 ${safeWidth} ${safeHeight}`}
       preserveAspectRatio="none"
     >
       <g
@@ -20,10 +23,10 @@ export default function Rectangle({ element }: RectangleProps) {
         <rect
           x="0"
           y="0"
-          width={element.w}
-          height={element.h}
-          rx={element.rx ?? 0}
-          ry={element.ry ?? 0}
+          width={safeWidth}
+          height={safeHeight}
+          rx={Math.max(0, element.rx ?? 0)}
+          ry={Math.max(0, element.ry ?? 0)}
           fill={element.bg ?? "#4b5563"}
           stroke={element.strokeColor ?? "#9ca3af"}
           strokeWidth={element.strokeWidth ?? 2}
