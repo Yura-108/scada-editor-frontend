@@ -11,11 +11,20 @@ import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {getElementBounds} from "@/lib/getElementBounds";
 import {createUuid} from "@/lib/createUuid";
+import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
+
+export type {EditorProject};
 
 type EditorState = {
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
-  loadSceneList: () => Promise<{id: number; name: string}[] | void>;
+  currentProject: EditorProject | null;
+  projectList: EditorProject[];
+  loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
+  loadScenesForProject: (projectId: number) => Promise<{id: number; name: string}[] | void>;
+  loadProjectList: () => Promise<EditorProject[] | void>;
+  createProject: (name: string) => Promise<EditorProject | void>;
+  setCurrentProject: (project: EditorProject | null) => void;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
@@ -112,6 +121,8 @@ export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
       sceneList: [],
+      currentProject: null,
+      projectList: [],
       elements: [],
       selectedId: null,
       selectedIds: [],
@@ -516,9 +527,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error(getErrorMessage(err, "Ошибка экспорта сцены"));
         }
       },
-      loadSceneList: async () => {
+      loadSceneList: async (projectId: number) => {
         try {
-          const res = await fetch("/api/editor/scene");
+          const res = await fetch(`/api/editor/scene?projectId=${projectId}`);
+
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
+          }
 
           const json = await res.json();
           set({sceneList: json});
@@ -528,6 +543,52 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
         }
       },
+      loadScenesForProject: async (projectId: number) => {
+        return get().loadSceneList(projectId);
+      },
+      loadProjectList: async () => {
+        try {
+          const res = await fetch("/api/editor/projects");
+
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка загрузки списка проектов"));
+          }
+
+          const json = await res.json();
+          const projects = normalizeProjectList(json);
+          set({projectList: projects});
+          return projects;
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка загрузки списка проектов"));
+        }
+      },
+      createProject: async (name: string) => {
+        try {
+          const res = await fetch("/api/editor/project", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({name}),
+          });
+
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка создания проекта"));
+          }
+
+          const created = await res.json();
+          const newProject = toEditorProject(created);
+          if (!newProject) {
+            throw new Error("Некорректный ответ при создании проекта");
+          }
+          set(state => ({projectList: [...state.projectList, newProject]}));
+          toast.success("Проект создан");
+          return newProject;
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка создания проекта"));
+        }
+      },
+      setCurrentProject: (project) => set({currentProject: project}),
       loadScene: async (id) => {
         try {
           const res = await fetch(`/api/editor/scene/${id}`);
@@ -544,13 +605,21 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       createScene: async () => {
         try {
+          const {currentProject} = get();
+          if (!currentProject) {
+            toast.error("Сначала выберите проект");
+            return;
+          }
+
           const name = prompt("Название сцены");
           if (!name) return;
+
+          const payload = {name, projectId: currentProject.id};
 
           const res = await fetch("/api/editor/scene", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({name}),
+            body: JSON.stringify(payload),
           });
 
           const newScene = await res.json();

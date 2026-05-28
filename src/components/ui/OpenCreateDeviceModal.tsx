@@ -5,6 +5,11 @@ import * as Select from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Type } from "lucide-react";
 import SelectItem from "@/components/ui/SelectItem";
+import {
+  selectContentClassName,
+  selectIconClassName,
+  selectTriggerClassName,
+} from "@/components/ui/selectStyles";
 import { useDeviceStore } from "@/store/useDeviceStore";
 
 interface Props {
@@ -56,30 +61,15 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
             defaultValue={String(templateList[0].key)}
             onValueChange={setSelectedValue}
           >
-            <Select.Trigger
-              className={cn(
-                "flex w-full items-center justify-between rounded-xl border border-gray-300 dark:border-gray-700/80",
-                "bg-white dark:bg-gray-900/60 px-4 py-3.5 text-left text-gray-100",
-                "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-                "transition-all shadow-sm outline-hidden"
-              )}
-            >
+            <Select.Trigger className={selectTriggerClassName}>
               <Select.Value placeholder="Выберите тип..." />
               <Select.Icon>
-                <ChevronDown className="h-5 w-5 opacity-70" />
+                <ChevronDown className={selectIconClassName} />
               </Select.Icon>
             </Select.Trigger>
 
             <Select.Portal>
-              <Select.Content
-                position="popper"
-                sideOffset={6}
-                className={cn(
-                  "z-100 min-w-(--radix-select-trigger-width) max-h-64 overflow-hidden",
-                  "rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60",
-                  "data-[state=open]:animate-in data-[state=closed]:animate-out"
-                )}
-              >
+              <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
                 <Select.Viewport className="p-1.5">
                   <Select.Group>
                     {templateList.map((template) => (

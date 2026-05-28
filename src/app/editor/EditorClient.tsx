@@ -8,17 +8,11 @@ import {
 import {useEffect, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {ElementType} from "@/types/editorElement.type";
-import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const {
-    scene,
-    createScene,
-    loadSceneList
-  } = useEditorStore();
 
   const {loadPaletteItems} = usePaletteStore();
 
@@ -64,16 +58,6 @@ export default function EditorPage() {
   //
   //   return () => clearTimeout(timeout);
   // }, [elements, exportScene]);
-
-  const handleLoadSchema = async () => {
-    await loadSceneList();
-    openChooseSceneModal();
-  }
-
-  const handleCreateSchema = async () => {
-    await createScene();
-    await loadPaletteItems();
-  }
 
   useEffect(() => {
     // Automatically load palette items on mount if they haven't been loaded

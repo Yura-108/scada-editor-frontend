@@ -6,6 +6,7 @@ import * as Select from "@radix-ui/react-select";
 import {ChevronDown, List, TextCursorInput, Type, Waypoints} from "lucide-react";
 import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import SelectItem from "@/components/ui/SelectItem";
+import {selectContentClassName, selectIconClassName, selectTriggerClassName} from "@/components/ui/selectStyles";
 import {cn} from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
@@ -125,21 +126,14 @@ export function AddPropertyContent({component_id, property}: Props) {
             Тип свойства
           </label>
           <Select.Root value={propertyType} onValueChange={(value) => setPropertyType(value as PropertyType)}>
-            <Select.Trigger className={cn(inputClass, "flex items-center justify-between gap-2")}>
+            <Select.Trigger className={cn(selectTriggerClassName, inputClass)}>
               <Select.Value placeholder="Выберите тип свойства" />
               <Select.Icon>
-                <ChevronDown className="h-5 w-5 opacity-70" />
+                <ChevronDown className={selectIconClassName} />
               </Select.Icon>
             </Select.Trigger>
             <Select.Portal>
-              <Select.Content
-                position="popper"
-                sideOffset={6}
-                className={cn(
-                  "z-100 min-w-(--radix-select-trigger-width) max-h-64 overflow-hidden",
-                  "rounded-xl border border-gray-700 bg-gray-900 shadow-2xl shadow-black/60"
-                )}
-              >
+              <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
                 <Select.Viewport className="p-1.5">
                   <Select.Group>
                     {propertyTypeOptions.map((item) => (

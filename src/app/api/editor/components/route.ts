@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {protectedRoute} from "@/lib/protected";
+import { log } from 'console';
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
