@@ -34,9 +34,10 @@ export const NumericDisplay: React.FC<NumericDisplayProps> = ({ element }) => {
 
   return (
     <svg
-      width={safeWidth}
-      height={safeHeight}
+      width="100%"
+      height="100%"
       viewBox={`0 0 ${safeWidth} ${safeHeight}`}
+      preserveAspectRatio="none"
       className="max-w-full max-h-full"
     >
       {/* Фон дисплея */}

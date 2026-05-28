@@ -10,7 +10,7 @@ export default function NotFound() {
       <div className="max-w-4xl w-full text-center">
         {/* Большая анимированная 404 */}
         <div className="relative mb-12">
-          <h1 className="text-9xl md:text-[12rem] font-black text-white opacity-20 selecture-20 tracking-tighter select-none">
+          <h1 className="text-9xl md:text-[12rem] font-black text-gray-900 dark:text-white opacity-20 selecture-20 tracking-tighter select-none">
             404
           </h1>
           <div className="absolute inset-0 flex items-center justify-center">
@@ -22,10 +22,10 @@ export default function NotFound() {
 
         {/* Текст */}
         <div className="relative z-10">
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+          <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 drop-shadow-lg">
             Ой-ой! Страница пропала в космосе
           </h2>
-          <p className="text-xl md:text-2xl text-white/90 mb-10 max-w-2xl mx-auto drop-shadow">
+          <p className="text-xl md:text-2xl text-gray-900 dark:text-white/90 mb-10 max-w-2xl mx-auto drop-shadow">
             Кажется, вы зашли туда, куда даже наши разработчики боятся ходить...
           </p>
 
@@ -34,7 +34,7 @@ export default function NotFound() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link
                 href="/app"
-                className="group flex items-center gap-3 px-8 py-5 bg-linear-to-r from-purple-600 to-pink-600 text-white text-xl font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-300 shadow-lg"
+                className="group flex items-center gap-3 px-8 py-5 bg-linear-to-r from-purple-600 to-pink-600 text-gray-900 dark:text-white text-xl font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-300 shadow-lg"
               >
                 <Home className="w-6 h-6 group-hover:animate-pulse" />
                 На главную
@@ -42,7 +42,7 @@ export default function NotFound() {
 
               <button
                 onClick={() => window.history.back()}
-                className="group flex items-center gap-3 px-8 py-5 bg-white/20 backdrop-blur border-2 border-white/30 text-white text-xl font-bold rounded-2xl hover:bg-white/30 transition-all duration-300"
+                className="group flex items-center gap-3 px-8 py-5 bg-white/20 backdrop-blur border-2 border-white/30 text-gray-900 dark:text-white text-xl font-bold rounded-2xl hover:bg-white/30 transition-all duration-300"
               >
                 <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                 Вернуться назад
@@ -71,3 +71,4 @@ export default function NotFound() {
     </div>
   );
 }
+

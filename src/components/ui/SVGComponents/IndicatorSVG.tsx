@@ -15,7 +15,6 @@ export function Indicator({ element }: IndicatorProps) {
     colorOff = "#444444",        // серый — выключено
     colorError = "#FF0000",      // красный — ошибка
     colorWarning = "#FFB800",    // жёлтый/оранжевый — предупреждение
-    size = 30,                   // размер индикатора
     glowIntensity = 0.4,         // сила внутреннего свечения (0–1)
   } = element;
 
@@ -47,9 +46,10 @@ export function Indicator({ element }: IndicatorProps) {
 
   return (
     <svg
-      width={size}
-      height={size}
+      width="100%"
+      height="100%"
       viewBox="0 0 30 30"
+      preserveAspectRatio="none"
       className="max-w-full max-h-full"
     >
       {/* Корпус индикатора (тёмный фон) */}

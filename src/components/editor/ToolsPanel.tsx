@@ -14,13 +14,13 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
       className="fixed top-18 z-30 flex gap-3 justify-center items-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      <div className="flex gap-2 p-1.5 bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
+      <div className="flex gap-2 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
 
         <button
           onClick={() => useEditorStore.getState().groupSelected()}
           disabled={selectedIds.length < 2}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-white
+                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
                  hover:bg-white/10 hover:border-white/20
                  active:translate-y-0.5 disabled:opacity-20 transition-all"
         >
@@ -32,7 +32,7 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           onClick={() => useEditorStore.getState().ungroupSelected()}
           disabled={!selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-white
+                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
                  hover:bg-white/10 hover:border-white/20
                  active:translate-y-0.5 disabled:opacity-20 transition-all"
         >
@@ -54,3 +54,4 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
     </nav>
   );
 }
+

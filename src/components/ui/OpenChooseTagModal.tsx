@@ -73,16 +73,18 @@ export function AddPropertyContent({component_id}: Props) {
   );
 
   return (
-    <>
-      <Dialog.Title className="text-xl font-semibold mb-1">
-        Добавление свойства
-      </Dialog.Title>
+    <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
+      <div className="shrink-0 mb-4">
+        <Dialog.Title className="text-xl font-semibold mb-1">
+          Добавление свойства
+        </Dialog.Title>
 
-      <Dialog.Description className="text-gray-400 mb-6 text-sm">
-        Выберите тип свойства и заполните данные для сохранения.
-      </Dialog.Description>
+        <Dialog.Description className="text-gray-400 text-sm">
+          Выберите тип свойства и заполните данные для сохранения.
+        </Dialog.Description>
+      </div>
 
-      <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 space-y-5">
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
             Тип свойства
@@ -148,7 +150,7 @@ export function AddPropertyContent({component_id}: Props) {
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
-              Значение по умолчанию
+              Значение по ум��лчанию
             </label>
             <div className="relative">
               <input
@@ -221,7 +223,7 @@ export function AddPropertyContent({component_id}: Props) {
         )}
       </div>
 
-      <div className="mt-8 flex gap-3 justify-end">
+      <div className="shrink-0 mt-6 pt-4 flex gap-3 justify-end border-t border-gray-800/80">
         <button
           onClick={closeModal}
           className="px-5 py-2.5 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-gray-300"
@@ -236,7 +238,7 @@ export function AddPropertyContent({component_id}: Props) {
           {isLoading ? "Сохранение..." : "Добавить свойство"}
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -245,4 +247,3 @@ export default function OpenAddPropertyModal(component_id: number) {
 
   openModal(<AddPropertyContent component_id={component_id} />);
 }
-

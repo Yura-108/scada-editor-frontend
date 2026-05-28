@@ -48,7 +48,7 @@ export function InputModalContent({
         {title}
       </Dialog.Title>
 
-      <Dialog.Description className="text-gray-400 mb-6 text-sm">
+      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         {description}
       </Dialog.Description>
 
@@ -65,7 +65,7 @@ export function InputModalContent({
               onChange={(e) => setValue(e.target.value)}
               placeholder={placeholder}
               className={cn(
-                "w-full rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3.5",
+                "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3.5",
                 "text-gray-100 placeholder:text-gray-600 outline-hidden",
                 "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
                 "transition-all shadow-sm"
@@ -78,9 +78,9 @@ export function InputModalContent({
       <div className="mt-8 flex gap-3 justify-end">
         <button
           onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-800
-          hover:bg-gray-700 border border-gray-700 hover:border-gray-600
-            transition-colors text-gray-300"
+          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800
+          hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600
+            transition-colors text-gray-700 dark:text-gray-300"
         >
           Отмена
         </button>
@@ -91,7 +91,7 @@ export function InputModalContent({
           bg-linear-to-r from-indigo-600 to-blue-600
           hover:from-indigo-500 hover:to-blue-500
           disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500
-          text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
+          text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
         >
           {isLoading ? "Загрузка..." : confirmLabel}
         </button>
@@ -105,6 +105,8 @@ export function openInputModal(props: InputModalProps) {
 
   openModal(<InputModalContent {...props} />)
 }
+
+
 
 
 

@@ -39,8 +39,8 @@ export default function HeaderNav() {
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
                 "active:scale-95",
                 isActive
-                  ? "text-white bg-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
-                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                  ? "text-gray-900 dark:text-white bg-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-white/5"
               )}
             >
               <item.icon className={cn(
@@ -51,7 +51,7 @@ export default function HeaderNav() {
             </Link>
 
             {index < navItems.length - 1 && (
-              <div className="w-px h-4 bg-gray-800 mx-2" />
+              <div className="w-px h-4 bg-gray-100 dark:bg-gray-800 mx-2" />
             )}
           </React.Fragment>
         )
@@ -59,3 +59,4 @@ export default function HeaderNav() {
     </nav>
   )
 }
+

@@ -76,7 +76,7 @@ export default function EditorPage() {
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-100 overflow-hidden">
       {!scene && (
         <>
           <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -89,13 +89,13 @@ export default function EditorPage() {
           <div className="relative z-10 flex flex-col items-center gap-16 px-6 text-center p-10">
 
             <div className="mb-4">
-              <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight">
+              <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                <span
                  className="bg-clip-text text-transparent bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 animate-gradient-x">
                  Редактор схем
                 </span>
               </h1>
-              <p className="mt-4 text-xl md:text-2xl text-gray-300 font-light">
+              <p className="mt-4 text-xl md:text-2xl text-gray-700 dark:text-gray-300 font-light">
                 Начните создавать прямо сейчас
               </p>
             </div>
@@ -112,7 +112,7 @@ export default function EditorPage() {
                 <span
                   className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-700"></span>
                 <span
-                  className="relative text-white drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-500">
+                  className="relative text-gray-900 dark:text-white drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-500">
                     Создать новую схему
                 </span>
               </button>
@@ -130,7 +130,7 @@ export default function EditorPage() {
                   className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-700"></span>
 
                 <span
-                  className="relative text-white drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-500">
+                  className="relative text-gray-900 dark:text-white drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-500">
                     Загрузить схему
                 </span>
               </button>
@@ -185,7 +185,7 @@ export default function EditorPage() {
           <DragOverlay dropAnimation={null}>
             {activeId ? (
               <div
-                className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
+                className="bg-linear-to-r from-blue-600 to-indigo-600 text-gray-900 dark:text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
                 {activeId}
               </div>
             ) : null}
@@ -195,3 +195,4 @@ export default function EditorPage() {
     </div>
   );
 }
+

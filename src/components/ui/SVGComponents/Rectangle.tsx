@@ -26,7 +26,7 @@ export default function Rectangle({ element }: RectangleProps) {
           width={safeWidth}
           height={safeHeight}
           rx={Math.max(0, element.rx ?? 0)}
-          ry={Math.max(0, element.ry ?? 0)}
+          ry={Math.max(0, element.ry ?? element.rx ?? 0)}
           fill={element.bg ?? "#4b5563"}
           stroke={element.strokeColor ?? "#9ca3af"}
           strokeWidth={element.strokeWidth ?? 2}

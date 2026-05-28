@@ -7,8 +7,8 @@ export default function SelectItem({ children, ...props }: React.ComponentProps<
   return (
     <Select.Item
       className={cn(
-        "relative flex cursor-default select-none items-center rounded-lg px-4 py-2.5 text-sm text-gray-200 outline-none",
-        "data-highlighted:bg-gray-800 data-[state=checked]:bg-gray-800/60"
+        "relative flex cursor-default select-none items-center rounded-lg px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 outline-none",
+        "data-highlighted:bg-gray-100 dark:bg-gray-800 data-[state=checked]:bg-gray-100 dark:bg-gray-800/60"
       )}
       {...props}
     >
@@ -19,3 +19,4 @@ export default function SelectItem({ children, ...props }: React.ComponentProps<
     </Select.Item>
   );
 }
+

@@ -23,8 +23,8 @@ export function ModalRoot() {
         <Dialog.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "w-[95vw] max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl bg-[#0f0f1a] text-white",
-            "border border-gray-800/70 shadow-2xl shadow-black/50",
+            "w-[95vw] max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white",
+            "border border-gray-200 dark:border-gray-800/70 shadow-2xl shadow-black/50",
             "p-6 sm:p-8",
             // анимация (можно оставить framer-motion, но Radix тоже хорошо анимирует)
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -37,7 +37,7 @@ export function ModalRoot() {
           {/* Кнопка закрытия */}
           <Dialog.Close asChild>
             <button
-              className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:bg-gray-800/60 hover:text-white transition-colors"
+              className="absolute right-4 top-4 rounded-full p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-800/60 hover:text-gray-900 dark:text-white transition-colors"
               aria-label="Закрыть"
             >
               <X size={20} />
@@ -50,3 +50,4 @@ export function ModalRoot() {
     </Dialog.Root>
   );
 }
+

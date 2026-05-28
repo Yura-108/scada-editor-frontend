@@ -73,7 +73,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       <span className="flex-1 truncate">{node.title}</span>
 
       {/* Опционально: бейджик глубины. Очень помогает ориентироваться при бесконечной вложенности */}
-      <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
+      <span className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
         L{depth}
       </span>
 
@@ -89,3 +89,4 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
 });
 
 export default TitleRenderer;
+

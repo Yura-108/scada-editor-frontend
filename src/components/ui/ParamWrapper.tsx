@@ -26,7 +26,7 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
       {/* Метка изменения */}
       {hasChanged && (
         <div
-          className="absolute -top-3 -right-3 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+          className="absolute -top-3 -right-3 bg-purple-600 text-gray-900 dark:text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
           Изменено
         </div>
       )}

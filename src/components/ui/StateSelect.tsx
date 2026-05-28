@@ -37,8 +37,8 @@ export function StateSelect({elementKey, states}: Props) {
           group
           w-full inline-flex items-center justify-between gap-2
           rounded-lg px-3 py-2
-          bg-neutral-900/80 border border-neutral-700
-          text-gray-200 text-sm font-medium
+          bg-white dark:bg-neutral-900/80 border border-neutral-300 dark:border-neutral-700
+          text-gray-800 dark:text-gray-200 text-sm font-medium
           shadow-sm
           hover:bg-gray-750 hover:border-gray-600
           focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/30
@@ -49,7 +49,7 @@ export function StateSelect({elementKey, states}: Props) {
         <Select.Value placeholder="Выберите состояние..." />
         <Select.Icon asChild>
           <ChevronDownIcon
-            className="text-gray-400 group-hover:text-gray-300 transition-colors"
+            className="text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:text-gray-300 transition-colors"
             size={18}
           />
         </Select.Icon>
@@ -65,8 +65,8 @@ export function StateSelect({elementKey, states}: Props) {
             z-50
             min-w-[180px]
             overflow-hidden
-            rounded-lg border border-gray-900
-            bg-[#0d0d0d] text-gray-200
+            rounded-lg border border-gray-200 dark:border-gray-900
+            bg-white dark:bg-[#0d0d0d] text-gray-800 dark:text-gray-200
             shadow-2xl shadow-black/50
             animate-in fade-in-60 zoom-in-95 duration-150
             data-[state=open]:animate-in
@@ -75,7 +75,7 @@ export function StateSelect({elementKey, states}: Props) {
             data-[state=closed]:zoom-out-95
           `}
         >
-          <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-gray-800/70 text-gray-400 hover:bg-gray-700/70 transition-colors">
+          <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-gray-100 dark:bg-gray-800/70 text-gray-600 dark:text-gray-400 hover:bg-gray-700/70 transition-colors">
             <ChevronUpIcon size={18} />
           </Select.ScrollUpButton>
 
@@ -90,7 +90,7 @@ export function StateSelect({elementKey, states}: Props) {
             </Select.Group>
           </Select.Viewport>
 
-          <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-gray-800/70 text-gray-400 hover:bg-gray-700/70 transition-colors">
+          <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-gray-100 dark:bg-gray-800/70 text-gray-600 dark:text-gray-400 hover:bg-gray-700/70 transition-colors">
             <ChevronDownIcon size={18} />
           </Select.ScrollDownButton>
         </Select.Content>
@@ -109,7 +109,7 @@ export default function SelectItem({
       className={`
         relative flex items-center px-4 py-2.5
         text-sm rounded-md cursor-default select-none outline-none
-        data-highlighted:bg-gray-700/80 data-highlighted:text-white
+        data-highlighted:bg-gray-700/80 data-highlighted:text-gray-900 dark:text-white
         data-[state=checked]:bg-violet-900/30 data-[state=checked]:text-violet-300
         transition-colors duration-150
         ${className}
@@ -123,3 +123,4 @@ export default function SelectItem({
     </Select.Item>
   );
 }
+

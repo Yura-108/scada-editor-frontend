@@ -23,7 +23,7 @@ export default function PaletteItem({item}: PaletteItemProps) {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className="bg-[#1b1b1b] hover:bg-[#262626] px-3 py-2 rounded cursor-grab flex items-center gap-3"
+      className="bg-gray-100 hover:bg-gray-200 dark:bg-[#1b1b1b] dark:hover:bg-[#262626] text-gray-900 dark:text-gray-100 px-3 py-2 rounded cursor-grab flex items-center gap-3 transition-colors"
     >
       <span className="text-sm">{item.name}</span>
     </div>

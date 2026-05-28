@@ -29,7 +29,7 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
         Выберите схему для загрузки
       </Dialog.Title>
       
-      <Dialog.Description className="text-gray-400 mb-6 text-sm">
+      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         Загрузите одну из сохранённых сцен.
       </Dialog.Description>
 
@@ -39,8 +39,8 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
       >
       <Select.Trigger
           className={cn(
-            "flex w-full items-center justify-between rounded-xl border border-gray-700/80",
-            "bg-gray-900/60 px-4 py-3.5 text-left text-gray-100",
+            "flex w-full items-center justify-between rounded-xl border border-gray-300 dark:border-gray-700/80",
+            "bg-white dark:bg-gray-900/60 px-4 py-3.5 text-left text-gray-100",
             "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
             "transition-all shadow-sm"
           )}
@@ -57,13 +57,13 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
             sideOffset={6}
             className={cn(
               "z-100 min-w-(--radix-select-trigger-width) max-h-64 overflow-hidden",
-              "rounded-xl border border-gray-700 bg-gray-900 shadow-2xl shadow-black/60",
+              "rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60",
               "data-[state=open]:animate-in data-[state=closed]:animate-out",
               "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
               "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
             )}
           >
-            <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-gray-900/80 text-gray-400">
+            <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900/80 text-gray-600 dark:text-gray-400">
               <ChevronDown className="h-5 w-5 rotate-180" />
             </Select.ScrollUpButton>
 
@@ -77,7 +77,7 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
               </Select.Group>
             </Select.Viewport>
 
-            <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-gray-900/80 text-gray-400">
+            <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900/80 text-gray-600 dark:text-gray-400">
               <ChevronDown className="h-5 w-5" />
             </Select.ScrollDownButton>
           </Select.Content>
@@ -88,13 +88,13 @@ export function ChooseSceneContent({onLoadAction, sceneList}: Props) {
       <div className="mt-8 flex gap-3 justify-end">
         <button
           onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors"
+          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600 transition-colors"
         >
           Отмена
         </button>
         <button
           onClick={handleConfirm}
-          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-900/30 transition-all"
+          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all"
         >
           Выбрать
         </button>
@@ -117,4 +117,6 @@ export function openChooseSceneModal() {
     openModal(<ChooseSceneContent onLoadAction={handleLoadScene} sceneList={sceneList} />);
   }
 }
+
+
 

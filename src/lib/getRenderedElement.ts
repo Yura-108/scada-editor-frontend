@@ -3,7 +3,9 @@ import {useEditorStore} from "@/store/useEditorStore";
 
 export function getRenderedElement(el: DiagramElement): DiagramElement {
   const {currentComponentStateByElementKey} = useEditorStore.getState();
-  const currentComponentStateId = currentComponentStateByElementKey[el.key];
+  const currentComponentStateId = currentComponentStateByElementKey[el.key]
+    ?? el.states.find(s => s.isDefault)?.id
+    ?? el.states[0]?.id;
 
   if (!currentComponentStateId) return el;
 

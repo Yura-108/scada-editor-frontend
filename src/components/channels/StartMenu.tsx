@@ -168,10 +168,10 @@ export default function StartMenu() {
       <div className="w-full max-w-2xl">
         <div className="text-center mb-10 animate-fade-in">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur rounded-full mb-6 shadow-xl">
-            <Search className="w-10 h-10 text-white" />
+            <Search className="w-10 h-10 text-gray-900 dark:text-white" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-3 drop-shadow-lg tracking-tight">Поиск проектов</h1>
-          <p className="text-xl text-white/90 font-medium">Выберите площадки и проекты для работы</p>
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-3 drop-shadow-lg tracking-tight">Поиск проектов</h1>
+          <p className="text-xl text-gray-900 dark:text-white/90 font-medium">Выберите площадки и проекты для работы</p>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-4xl shadow-2xl p-10 border border-white/20">
@@ -235,7 +235,7 @@ export default function StartMenu() {
             <button
               type="submit"
               disabled={isSubmitting || selectedSites.length === 0 || selectedProjects.length === 0}
-              className="w-full py-5 rounded-2xl bg-linear-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-300 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+              className="w-full py-5 rounded-2xl bg-linear-to-r from-indigo-600 to-purple-600 text-gray-900 dark:text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-300 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
             >
               {isSubmitting ? 'Подключение...' : (
                 <>
@@ -251,7 +251,7 @@ export default function StartMenu() {
         {hasData && !isSubmitting && !error && (
           <div className="text-center mt-8 animate-fade-in">
             <div className="bg-white/10 backdrop-blur-md rounded-2xl py-4 px-8 inline-block border border-white/20">
-              <p className="text-white text-lg font-bold flex items-center gap-2">
+              <p className="text-gray-900 dark:text-white text-lg font-bold flex items-center gap-2">
                 <Check className="w-5 h-5" /> Данные успешно загружены!
               </p>
             </div>

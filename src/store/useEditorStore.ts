@@ -205,41 +205,49 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         return {currentComponentStateByElementKey: next};
       }),
-      updateElementVisual: (key, updates) => {
-        const { currentComponentStateByElementKey } = get();
+       updateElementVisual: (key, updates) => {
+         const { currentComponentStateByElementKey } = get();
 
-        set(state => ({
-          elements: state.elements.map(el => {
-            if (el.key !== key) return el;
+         set(state => ({
+           elements: state.elements.map(el => {
+             if (el.key !== key) return el;
 
-            const currentComponentStateId = currentComponentStateByElementKey[key]
-              ?? el.states.find(s => s.isDefault)?.id
-              ?? el.states[0]?.id;
+             // Валидация: гарантируем минимальные размеры для групп и элементов
+             const MIN_SIZE = 20;
+             const validatedUpdates = {
+               ...updates,
+               ...(updates.w !== undefined && { w: Math.max(MIN_SIZE, updates.w) }),
+               ...(updates.h !== undefined && { h: Math.max(MIN_SIZE, updates.h) }),
+             };
 
-            if (!currentComponentStateId) {
-              return {
-                ...el,
-                ...updates,
-              } as DiagramElement;
-            }
+             const currentComponentStateId = currentComponentStateByElementKey[key]
+               ?? el.states.find(s => s.isDefault)?.id
+               ?? el.states[0]?.id;
 
-            return {
-              ...el,
-              states: el.states.map(s =>
-                s.id === currentComponentStateId
-                  ? {
-                    ...s,
-                    overrides: {
-                      ...s.overrides,
-                      ...updates,
-                    },
-                  }
-                  : s
-              ),
-            } as DiagramElement;
-          }),
-        }));
-      },
+             if (!currentComponentStateId) {
+               return {
+                 ...el,
+                 ...validatedUpdates,
+               } as DiagramElement;
+             }
+
+             return {
+               ...el,
+               states: el.states.map(s =>
+                 s.id === currentComponentStateId
+                   ? {
+                     ...s,
+                     overrides: {
+                       ...s.overrides,
+                       ...validatedUpdates,
+                     },
+                   }
+                   : s
+               ),
+             } as DiagramElement;
+           }),
+         }));
+       },
       updateElement: (key, updates) => {
         set(state => ({
           elements: state.elements.map(el =>
@@ -676,6 +684,17 @@ export const useEditorStore = create<EditorState>()(temporal(
           maxX = Math.max(maxX, bounds.maxX);
           maxY = Math.max(maxY, bounds.maxY);
         });
+        
+        let parentAbsX = 0;
+        let parentAbsY = 0;
+        if (commonParentElement) {
+          const parentAbs = getAbsolutePosition(commonParentElement, elements);
+          parentAbsX = parentAbs.x;
+          parentAbsY = parentAbs.y;
+        }
+
+        const groupAbsX = minX - padding / 2;
+        const groupAbsY = minY - padding / 2;
 
         const updatedElements = elements.map(el => {
           const isTopLevelSelected = topLevelSelected.some(t => t.key === el.key);
@@ -683,20 +702,18 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const bounds = getElementBounds(el, elements);
 
-          // Базовые новые координаты (для левого верхнего угла ИЛИ центра линии)
-          const newX = bounds.absX - minX + padding / 2;
-          const newY = bounds.absY - minY + padding / 2;
+          const newX = bounds.absX - groupAbsX;
+          const newY = bounds.absY - groupAbsY;
 
           if (el.type === "line") {
             return {
               ...el,
               x: newX,
               y: newY,
-              // Обязательно переводим концы линии в локальную систему координат группы!
-              x1: bounds.absX1! - minX + padding / 2,
-              y1: bounds.absY1! - minY + padding / 2,
-              x2: bounds.absX2! - minX + padding / 2,
-              y2: bounds.absY2! - minY + padding / 2,
+              x1: bounds.absX1! - groupAbsX,
+              y1: bounds.absY1! - groupAbsY,
+              x2: bounds.absX2! - groupAbsX,
+              y2: bounds.absY2! - groupAbsY,
               parentKey: newGroupId,
               parentId: null,
             };
@@ -735,8 +752,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           id: null,
           key: newGroupId,
           type: "group",
-          x: minX,
-          y: minY,
+          x: groupAbsX - parentAbsX,
+          y: groupAbsY - parentAbsY,
           w: Math.max(1, maxX - minX + padding),
           h: Math.max(1, maxY - minY + padding),
           composition: true,

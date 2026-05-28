@@ -60,7 +60,7 @@ export default function LoginPage() {
           {/* Заголовок */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-indigo-500 to-purple-600 rounded-full mb-4">
-              <LogIn className="w-8 h-8 text-white" />
+              <LogIn className="w-8 h-8 text-gray-900 dark:text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-800">С возвращением!</h1>
             <p className="text-gray-600 mt-2">Войдите в свой аккаунт</p>
@@ -157,7 +157,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-5 rounded-2xl bg-linear-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+              className="w-full py-5 rounded-2xl bg-linear-to-r from-indigo-600 to-purple-600 text-gray-900 dark:text-white text-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
             >
               {isLoading ? (
                 <>
@@ -202,3 +202,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
