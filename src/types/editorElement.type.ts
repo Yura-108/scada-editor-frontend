@@ -40,7 +40,7 @@ export type ComponentCreateDto = {
   key: string;
   id: number | null;
   name: string;
-  children: string[];
+  children: ComponentCreateDto[];
   version: number;
   type: string;
   parent_key: string | null;

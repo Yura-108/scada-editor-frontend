@@ -53,38 +53,30 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     parent_key: element.parentKey,
     parent_id: element.parentId,
     scripts: Array.isArray(element.scripts)
-      ? element.scripts.map((s: any) => ({ name: s.name, script: s.content }))
+      ? element.scripts.map((s) => ({name: s.name, script: s.content}))
       : [],
     bindings: Array.isArray(element.bindings)
-      ? element.bindings.map((b: any) => ({
-          component_property_id: b.component_property_id || 0,
-          name: b.name || "",
-          script: b.script || ""
+      ? element.bindings.map((b) => ({
+          component_property_id:
+            typeof b === "object" && b !== null && "component_property_id" in b
+              ? Number((b as {component_property_id: number}).component_property_id) || 0
+              : 0,
+          name: typeof b === "object" && b !== null && "name" in b ? String((b as {name: string}).name) : "",
+          script: typeof b === "object" && b !== null && "script" in b ? String((b as {script: string}).script) : "",
         }))
       : [],
     states,
   };
 };
 
+/** Корневые компоненты сцены; в `children` — полные вложенные объекты (рекурсивно). */
 export const buildComponentTree = (
   elements: DiagramElement[],
   parentKey: string | null = null,
 ): ComponentCreateDto[] => {
-  // If the backend expects a flat array of nodes for the whole tree
-  // We can gather all elements that belong to this tree root
-  const result: ComponentCreateDto[] = [];
-
-  const processNode = (el: DiagramElement) => {
-    result.push(buildComponentNode(el, elements));
-    const children = getOrderedChildren(el, elements);
-    children.forEach(child => processNode(child));
-  };
-
   const rootElements = elements.filter(el => String(el.parentKey) === String(parentKey));
-  rootElements.forEach(el => processNode(el));
-
-  return result;
-}
+  return rootElements.map(el => buildComponentNode(el, elements));
+};
 
 export const buildPaletteComponentTree = (
   elements: DiagramElement[],
