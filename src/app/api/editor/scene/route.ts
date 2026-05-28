@@ -13,6 +13,8 @@ export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
     },
   });
 
+  console.log(response)
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Ошибка ${response.status}: ${text}`);

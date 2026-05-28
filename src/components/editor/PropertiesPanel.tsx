@@ -8,18 +8,21 @@ import {Plus} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
+import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
+import {createUuid} from "@/lib/createUuid";
 
 interface PropertiesPanelProps {
   element: DiagramElement | null;
 }
 
-type TabType = "visual" | "states" | "properties";
+type TabType = "visual" | "states" | "properties" | "scripts";
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const [activeTab, setActiveTab] = useState<TabType>("visual");
   const {
+    updateElement,
     updateElementVisual,
     addComponentStateToSubtree,
     setCurrentComponentStateId,
@@ -36,6 +39,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     [renderedElement]
   );
   const elementProperties = useMemo(() => element?.properties ?? [], [element?.properties]);
+  const elementScripts = useMemo(() => element?.scripts ?? [], [element?.scripts]);
 
   const schema: PropertySchema[] = useMemo(() => element ? [
     ...basePropertySchema,
@@ -80,6 +84,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     if (createdStateId) {
       setCurrentComponentStateId(element.key, createdStateId);
     }
+  }
+
+  const handleAddScript = () => {
+    if (!element) return;
+    openScriptEditorModal({
+      title: "Добавление скрипта",
+      description: "Напишите Java-код для обработки событий компонента",
+      onConfirm: (name, content) => {
+        const newScript = { id: createUuid(), name, content };
+        updateElement(element.key, {
+          scripts: [...(element.scripts || []), newScript]
+        });
+      }
+    });
   }
 
   const getNumberValue = (rawValue: unknown, fallback = 0) => {
@@ -249,7 +267,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
 
       {/* Tabs */}
       <div className="shrink-0 px-4 pt-3 pb-2 border-b border-gray-200 dark:border-neutral-800">
-        <div className="flex gap-2">
+        <div className="grid grid-rows-2 grid-cols-2 gap-2">
           <button
             onClick={() => setActiveTab("visual")}
             className={tabButtonClasses(activeTab === "visual")}
@@ -267,6 +285,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
             className={tabButtonClasses(activeTab === "properties")}
           >
             Свойства
+          </button>
+          <button
+            onClick={() => setActiveTab("scripts")}
+            className={tabButtonClasses(activeTab === "scripts")}
+          >
+            Скрипты
           </button>
         </div>
       </div>
@@ -344,15 +368,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                 {elementProperties.map(property => (
                   <span
                     key={property.id}
+                    onClick={() => handleAddProperty(element?.id, property)}
                     className={`
                       inline-flex items-center px-2.5 py-1.5
                       text-xs font-medium rounded-full
                       bg-indigo-950/60 text-indigo-300
                       border border-indigo-800/40
-                      hover:bg-indigo-900/70 transition-colors
+                      hover:bg-indigo-900/70 transition-colors cursor-pointer
                     `}
                   >
-                    {property.property_type || "Свойство"}
+                    {property.name || property.property_type || "Свойство"}
                     {property.tag_id ? ` • #${property.tag_id}` : ""}
                   </span>
                 ))}
@@ -368,6 +393,61 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
             </button>
           </div>
         )}
+
+        {/* Скрипты */}
+        {activeTab === "scripts" && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-gray-300">
+              Добавленные скрипты
+            </h4>
+
+            {elementScripts.length === 0 ? (
+              <div className="text-sm text-gray-500 italic py-3">
+                Нет добавленных скриптов
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {elementScripts.map(script => (
+                  <span
+                    key={script.id}
+                    className={`
+                      inline-flex items-center px-2.5 py-1.5
+                      text-xs font-medium rounded-full
+                      bg-blue-950/60 text-blue-300
+                      border border-blue-800/40
+                      hover:bg-blue-900/70 transition-colors cursor-pointer
+                    `}
+                    onClick={() => {
+                        openScriptEditorModal({
+                          title: "Редактирование скрипта",
+                          description: "Отредактируйте JS-код скрипта",
+                          defaultName: script.name,
+                          defaultContent: script.content,
+                          onConfirm: (name, content) => {
+                            const updatedScripts = elementScripts.map(s =>
+                              s.id === script.id ? { ...s, name, content } : s
+                            );
+                            updateElement(element.key, { scripts: updatedScripts });
+                          }
+                        });
+                    }}
+                  >
+                    {script.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <button
+              className={baseAddButtonClasses}
+              onClick={handleAddScript}
+            >
+              <Plus size={18}/>
+              Добавить скрипт
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );

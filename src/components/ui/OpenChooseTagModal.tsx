@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useMemo, useState} from "react";
+import React, {useMemo, useState, useEffect} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import {ChevronDown, List, TextCursorInput, Type, Waypoints} from "lucide-react";
@@ -10,9 +10,11 @@ import {cn} from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {useEditorStore} from "@/store/useEditorStore";
+import {PropertyCreateDto} from "@/types/tags.types";
 
 interface Props {
   component_id: number;
+  property?: PropertyCreateDto;
 }
 
 type PropertyType = "Тег" | "Глобальный" | "Локальный";
@@ -23,23 +25,35 @@ const propertyTypeOptions: Array<{ value: PropertyType; label: string }> = [
   {value: "Локальный", label: "Локальный"},
 ];
 
-export function AddPropertyContent({component_id}: Props) {
+export function AddPropertyContent({component_id, property}: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
   const addTags = useEditorStore((s) => s.addTags);
+  const editProperty = useEditorStore((s) => s.editProperty);
 
-  const [propertyType, setPropertyType] = useState<PropertyType>("Тег");
-  const [description, setDescription] = useState("");
-  const [valueType, setValueType] = useState("");
-  const [defaultValue, setDefaultValue] = useState("");
-  const [logging, setLogging] = useState(false);
-  const [onChange, setOnChange] = useState("");
+  const [name, setName] = useState(property?.name || "");
+  const [propertyType, setPropertyType] = useState<PropertyType>((property?.property_type as PropertyType) || "Тег");
+  const [description, setDescription] = useState(property?.description || "");
+  const [valueType, setValueType] = useState(property?.value_type || "");
+  const [defaultValue, setDefaultValue] = useState(property?.default_value || "");
+  const [logging, setLogging] = useState(property?.logging || false);
+  const [onChange, setOnChange] = useState(property?.onChange || "");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setName(property?.name || "");
+    setPropertyType((property?.property_type as PropertyType) || "Тег");
+    setDescription(property?.description || "");
+    setValueType(property?.value_type || "");
+    setDefaultValue(property?.default_value || "");
+    setLogging(property?.logging || false);
+    setOnChange(property?.onChange || "");
+  }, [property]);
 
   const isTagType = propertyType === "Тег";
   const canConfirm = useMemo(
-    () => !isLoading && (!isTagType || Boolean(selectedDevice)),
-    [isLoading, isTagType, selectedDevice]
+    () => !isLoading && (!isTagType || Boolean(selectedDevice) || Boolean(property?.tag_id)),
+    [isLoading, isTagType, selectedDevice, property?.tag_id]
   );
 
   const handleConfirm = async () => {
@@ -47,16 +61,24 @@ export function AddPropertyContent({component_id}: Props) {
 
     setIsLoading(true);
     try {
-      await addTags({
+      const payload = {
+        name: name.trim(),
         component_id,
         property_type: propertyType,
-        tag_id: isTagType ? (selectedDevice ?? "") : "",
+        tag_id: isTagType ? (selectedDevice ?? property?.tag_id ?? "") : "",
         description: description.trim(),
         value_type: valueType.trim(),
         default_value: defaultValue,
         logging,
         onChange: onChange.trim(),
-      });
+      };
+
+      if (property?.id) {
+        await editProperty(property.id, payload);
+      } else {
+        await addTags(payload);
+      }
+
       closeModal();
     } catch (error) {
       console.error("Failed to add property:", error);
@@ -76,7 +98,7 @@ export function AddPropertyContent({component_id}: Props) {
     <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
       <div className="shrink-0 mb-4">
         <Dialog.Title className="text-xl font-semibold mb-1">
-          Добавление свойства
+          {property ? "Редактирование свойства" : "Добавление свойства"}
         </Dialog.Title>
 
         <Dialog.Description className="text-gray-400 text-sm">
@@ -85,6 +107,19 @@ export function AddPropertyContent({component_id}: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 space-y-5">
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
+            Название
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="SystemName"
+            className={inputClass}
+          />
+        </div>
+
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
             Тип свойства
@@ -150,7 +185,7 @@ export function AddPropertyContent({component_id}: Props) {
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
-              Значение по ум��лчанию
+              Значение по умолчанию
             </label>
             <div className="relative">
               <input
@@ -235,15 +270,15 @@ export function AddPropertyContent({component_id}: Props) {
           disabled={!canConfirm}
           className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500 text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
         >
-          {isLoading ? "Сохранение..." : "Добавить свойство"}
+          {isLoading ? "Сохранение..." : (property ? "Сохранить" : "Добавить свойство")}
         </button>
       </div>
     </div>
   );
 }
 
-export default function OpenAddPropertyModal(component_id: number) {
+export default function OpenAddPropertyModal(props: Props) {
   const {openModal} = useModalStore.getState();
 
-  openModal(<AddPropertyContent component_id={component_id} />);
+  openModal(<AddPropertyContent {...props} />);
 }

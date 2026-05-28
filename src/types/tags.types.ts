@@ -1,4 +1,5 @@
 export interface PropertyCreateRequestDto {
+  name: string;
   component_id: number;
   property_type: string;
   tag_id: string;

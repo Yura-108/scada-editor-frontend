@@ -30,6 +30,12 @@ export type ComponentState = {
   isDefault?: boolean;
 }
 
+export interface ElementScript {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export type ComponentCreateDto = {
   key: string;
   id: number | null;
@@ -39,7 +45,7 @@ export type ComponentCreateDto = {
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  scripts: unknown[];
+  scripts: ElementScript[];
   bindings: unknown[];
   states: {
     name: string;
@@ -59,7 +65,7 @@ export interface BaseCanvasElement {
   children: string[];
   parentId: number | null;
   parentKey: string | null;
-  scripts: unknown[];
+  scripts: ElementScript[];
   bindings: unknown[];
   properties: PropertyCreateDto[];
   states: ComponentState[];

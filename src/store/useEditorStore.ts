@@ -43,8 +43,9 @@ type EditorState = {
   clearSelection: () => void;
   addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
   addElementAt: (x: number, y: number, type: ElementType) => void;
-  addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
   addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
+  editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
+  addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
@@ -393,6 +394,33 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: state.elements.map(el =>
             el.id === payload.component_id
               ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+              : el
+          )
+        }));
+      },
+      editProperty: async (propertyId: number, payload: PropertyCreateRequestDto) => {
+        const res = await fetch(`/api/editor/tags/${propertyId}`, {
+          method: "PUT",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Неизвестная ошибка");
+          throw new Error(`Не удалось обновить свойство: ${errorText}`);
+        }
+
+        const updatedProperty: PropertyCreateDto = await res.json();
+
+        set(state => ({
+          elements: state.elements.map(el =>
+            el.id === payload.component_id
+              ? {
+                  ...el,
+                  properties: (el.properties || []).map(p =>
+                    p.id === propertyId ? updatedProperty : p
+                  )
+                } as DiagramElement
               : el
           )
         }));
