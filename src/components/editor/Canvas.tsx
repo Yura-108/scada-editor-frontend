@@ -577,7 +577,11 @@ export default function Canvas() {
               {group.children.map((childId) => {
                 const child = elementsMap[childId];
                 if (!child) return null;
-                return renderElement(child, true);
+                return (
+                  <React.Fragment key={child.key}>
+                    {renderElement(child, true)}
+                  </React.Fragment>
+                );
               })}
 
               {groupLines.length > 0 && (
@@ -675,7 +679,11 @@ export default function Canvas() {
           <LinesLayer onSelect={handleSelect}/>
 
           {/* 2 слой — элементы */}
-          {rootElements.map(el => renderElement(el))}
+          {rootElements.map(el => (
+            <React.Fragment key={el.key}>
+              {renderElement(el)}
+            </React.Fragment>
+          ))}
 
 
           {/* Подсказка, если canvas пустой */}

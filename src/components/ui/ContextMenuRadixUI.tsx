@@ -24,7 +24,7 @@ export const DynamicContextMenu = ({ items, children }: DynamicContextMenuProps)
 
       <ContextMenu.Portal>
         <ContextMenu.Content
-          className="min-w-40 bg-white rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 z-[100]"
+          className="min-w-40 bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 z-100"
           //sideOffset={5}
         >
           {items.map((item, index) => (

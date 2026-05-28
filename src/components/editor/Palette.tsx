@@ -94,8 +94,8 @@ export default function Palette() {
 
                 {isExpanded && (
                   <div className="grid gap-1.5 pl-1">
-                    {grouped[category].map((item: PaletteItemType) => (
-                      <PaletteItem key={item.id} item={item} />
+                    {grouped[category].map((item: PaletteItemType, index) => (
+                      <PaletteItem key={`${category}-${item.id}-${index}`} item={item} />
                     ))}
                   </div>
                 )}

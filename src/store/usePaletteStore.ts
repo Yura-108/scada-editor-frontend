@@ -2,7 +2,7 @@ import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
 import {paletteItems} from "@/constants/palette";
 import {toast} from "sonner";
-import {buildSingleComponentTree} from "@/lib/buildComponentTree";
+import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
 
 type PaletteState = {
@@ -50,7 +50,7 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       if (!paletteItem.template) return;
       const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
-      const rootComponent = buildSingleComponentTree(paletteItem.template, rootElementKey);
+      const rootComponent = buildPaletteComponentTree(paletteItem.template, rootElementKey);
 
       if (!rootComponent) {
         toast.error("Не удалось собрать корневой компонент шаблона");

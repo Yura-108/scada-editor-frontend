@@ -40,13 +40,13 @@ export type ComponentCreateDto = {
   key: string;
   id: number | null;
   name: string;
-  children: ComponentCreateDto[];
+  children: string[];
   version: number;
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  scripts: ElementScript[];
-  bindings: unknown[];
+  scripts: { name: string; script: string }[];
+  bindings: { component_property_id: number; name: string; script: string }[];
   states: {
     name: string;
     image: string;
