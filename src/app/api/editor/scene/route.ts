@@ -4,7 +4,7 @@ import {protectedRoute} from "@/lib/protected";
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
 function parseProjectId(searchParams: URLSearchParams): number | null {
-  const raw = searchParams.get('projectId');
+  const raw = searchParams.get('project_id') ?? searchParams.get('projectId');
   if (raw === null || raw === '') return null;
 
   const projectId = Number(raw);
@@ -18,7 +18,7 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
 
   if (projectId === null) {
     return NextResponse.json(
-      {error: "Параметр projectId обязателен и должен быть целым числом (int64)"},
+      {error: "Параметр project_id обязателен и должен быть целым числом (int64)"},
       {status: 400}
     );
   }
@@ -54,13 +54,19 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
+  const projectId = scenePayload.project_id ?? scenePayload.projectId;
+  const body = {
+    name: scenePayload.name,
+    ...(projectId != null ? {project_id: Number(projectId)} : {}),
+  };
+
   const response = await fetch(`${BACKEND_URL}/api/editor/components/scene`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(scenePayload),
+    body: JSON.stringify(body),
   });
 
   const scene = await response.json().catch(() => null);

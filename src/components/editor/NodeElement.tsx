@@ -3,15 +3,10 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import {LeafElement} from "@/types/editorElement.type";
-
-// SVG-компоненты, которые ожидают { element }
-import { Lamp } from "@/components/ui/SVGComponents/LampSVG";
 import { Button } from "@/components/ui/SVGComponents/ButtonSVG";
-import { Indicator } from "@/components/ui/SVGComponents/IndicatorSVG";
-import Tank from "@/components/ui/SVGComponents/TankSVG";          // ← теперь с element
-import { Valve } from "@/components/ui/SVGComponents/ValveSvg";
+import { ProgressBar } from "@/components/ui/SVGComponents/ProgressBarSVG";
+import { Checkbox } from "@/components/ui/SVGComponents/CheckboxSVG";
 import { Text } from "@/components/ui/SVGComponents/TextSvg";
-import { NumericDisplay } from "@/components/ui/SVGComponents/NumericDisplaySVG";
 import Circle from "@/components/ui/SVGComponents/Circle";
 import Rectangle from "@/components/ui/SVGComponents/Rectangle";
 import Polygon from "@/components/ui/SVGComponents/Polygon";
@@ -43,9 +38,6 @@ export default function NodeElement({
       case "circle":
         return <Circle element={renderedElement} />
 
-      case "lamp":
-        return <Lamp element={renderedElement} />
-
       case "polygon":
         return <Polygon element={renderedElement} />
 
@@ -55,20 +47,14 @@ export default function NodeElement({
       case "button":
         return <Button element={renderedElement} />
 
-      case "indicator":
-        return <Indicator element={renderedElement} />
+      case "progress_bar":
+        return <ProgressBar element={renderedElement} />
 
-      case "tank":
-        return <Tank element={renderedElement} />
-
-      case "valve":
-        return <Valve element={renderedElement} />;
+      case "checkbox":
+        return <Checkbox element={renderedElement} />
 
       case "text":
-        return <Text element={renderedElement} />;
-
-      case "numeric":
-        return <NumericDisplay element={renderedElement} />;
+        return <Text element={renderedElement} />
 
       default:
         return (
@@ -85,17 +71,15 @@ export default function NodeElement({
       style={{ background: "transparent" }}
       onDoubleClick={e => console.log(e)}
     >
-      {element.label && element.type !== "text" && (
+      {element.label && element.type !== "text" && element.type !== "checkbox" && element.type !== "progress_bar" && (
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-white dark:bg-neutral-900/90 text-neutral-800 dark:text-neutral-200 text-xs rounded border border-neutral-300 dark:border-neutral-700 shadow-sm whitespace-nowrap z-10">
           {element.label}
         </div>
       )}
 
-      {/* Основное содержимое */}
       <div className="w-full h-full flex items-center justify-center p-1 box-border">
         {renderContent()}
       </div>
     </div>
   );
 }
-

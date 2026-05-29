@@ -528,7 +528,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       loadSceneList: async (projectId: number) => {
         try {
-          const res = await fetch(`/api/editor/scene?projectId=${projectId}`);
+          const res = await fetch(`/api/editor/scene?project_id=${projectId}`);
 
           if (!res.ok) {
             throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
@@ -613,7 +613,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const name = prompt("Название сцены");
           if (!name) return;
 
-          const payload = {name, projectId: currentProject.id};
+          const payload = {name, project_id: currentProject.id};
 
           const res = await fetch("/api/editor/scene", {
             method: "POST",

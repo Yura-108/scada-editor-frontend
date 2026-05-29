@@ -55,39 +55,16 @@ export const paletteItems: PaletteItemType[] = [
   // INDICATORS
   {
     id: 10 ** 5 + 7,
-    type: "lamp",
-    name: "Lamp",
+    type: "progress_bar",
+    name: "Progress Bar",
     category: "Indicators",
-    defaultProps: { value: false },
+    defaultProps: {value: 50, label: "Progress"},
   },
   {
     id: 10 ** 5 + 8,
-    type: "numeric",
-    name: "Numeric Display",
+    type: "checkbox",
+    name: "Checkbox",
     category: "Indicators",
-    defaultProps: { value: 0 },
-  },
-  {
-    id: 10 ** 5 + 9,
-    type: "indicator",
-    name: "Indicator",
-    category: "Indicators",
-    defaultProps: {value: 0}
-  },
-
-  // PROCESS
-  {
-    id: 10 ** 5 + 10,
-    type: "valve",
-    name: "Valve",
-    category: "Process",
-    defaultProps: {},
-  },
-  {
-    id: 10 ** 5 + 11,
-    type: "tank",
-    name: "Tank",
-    category: "Process",
-    defaultProps: { level: 50 },
+    defaultProps: {checked: false, label: "Checkbox"},
   },
 ];

@@ -78,12 +78,9 @@ export interface BaseCanvasElement {
 }
 
 export type ElementType =
-  | "lamp"
   | "button"
-  | "indicator"
-  | "tank"
-  | "valve"
-  | "numeric"
+  | "progress_bar"
+  | "checkbox"
   | "text"
   | "polygon"
   | "path"
@@ -138,6 +135,7 @@ export interface LeafElement extends BaseCanvasElement {
   fontFamily?: string;
   letterSpacing?: number;
   pressed? : boolean;
+  checked?: boolean;
   d?: string; // SVG path data
   // ... добавляй по мере необходимости
 }
