@@ -5,6 +5,34 @@ import {getRenderedElement} from "@/lib/getRenderedElement";
 export const getElementBounds = (el: DiagramElement, elements: DiagramElement[]) => {
   const abs = getAbsolutePosition(el, elements);
 
+  if (el.type === "group") {
+    const children = elements.filter((c) => String(c.parentKey) === String(el.key));
+
+    if (children.length > 0) {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const child of children) {
+        const childBounds = getElementBounds(child, elements);
+        minX = Math.min(minX, childBounds.minX);
+        minY = Math.min(minY, childBounds.minY);
+        maxX = Math.max(maxX, childBounds.maxX);
+        maxY = Math.max(maxY, childBounds.maxY);
+      }
+
+      return {
+        minX,
+        minY,
+        maxX,
+        maxY,
+        absX: minX,
+        absY: minY,
+      };
+    }
+  }
+
   if (el.type === "line") {
     const offsetX = abs.x - (el.x || 0);
     const offsetY = abs.y - (el.y || 0);

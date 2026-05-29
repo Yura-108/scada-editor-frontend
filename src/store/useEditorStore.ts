@@ -2,14 +2,13 @@ import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
-import getAbsolutePosition from "@/lib/getAbsolutePosition";
+import {fitGroupToChildren, GROUP_PADDING} from "@/lib/groupLayout";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
-import {getElementBounds} from "@/lib/getElementBounds";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 
@@ -633,18 +632,13 @@ export const useEditorStore = create<EditorState>()(temporal(
         }
       },
       groupSelected: () => {
-        const { elements, selectedIds, scene } = get();
+        const {elements, selectedIds, scene} = get();
         if (selectedIds.length < 2) return;
 
-        const padding = 60;
-
-        // -----------------------------
-        // 1. TOP LEVEL SELECTION
-        // -----------------------------
         const topLevelSelected = elements
           .filter(el => selectedIds.includes(el.key))
           .filter(el => {
-            let parentKey: string | null | undefined = el!.parentKey;
+            let parentKey: string | null | undefined = el.parentKey;
 
             while (parentKey) {
               if (selectedIds.includes(parentKey)) return false;
@@ -656,95 +650,35 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         if (topLevelSelected.length < 2) return;
 
-        // -----------------------------
-        // 2. CLASSIFY ELEMENTS
-        // -----------------------------
-        const simple = topLevelSelected.filter(
-          el => !isGroup(el) && !isComplex(el)
-        );
-
-        const complex = topLevelSelected.filter(
-          el => isComplex(el)
-        );
-
+        const simple = topLevelSelected.filter(el => !isGroup(el) && !isComplex(el));
+        const complex = topLevelSelected.filter(isComplex);
         const groups = topLevelSelected.filter(isGroup);
 
-        // -----------------------------
-        // 3. TRY TO ADD SIMPLE → EXISTING GROUP
-        // -----------------------------
-        if (
-          simple.length > 0 &&
-          complex.length === 0 &&
-          groups.length === 1
-        ) {
+        if (simple.length > 0 && complex.length === 0 && groups.length === 1) {
           const targetGroup = groups[0] as GroupElement;
-          const baseGroupWidth = Math.max(0, targetGroup.w || 0);
-          const baseGroupHeight = Math.max(0, targetGroup.h || 0);
+          const simpleKeys = simple.map(s => s.key);
 
-          // 1. Считаем границы новых элементов (в абсолютных координатах)
-          let minX = targetGroup.x;
-          let minY = targetGroup.y;
-          let maxX = targetGroup.x + baseGroupWidth;
-          let maxY = targetGroup.y + baseGroupHeight;
-
-          const simpleWithAbs = simple.map(s => ({
-            el: s,
-            abs: getAbsolutePosition(s, elements)
-          }));
-
-          simpleWithAbs.forEach(({ el, abs }) => {
-            minX = Math.min(minX, abs.x);
-            minY = Math.min(minY, abs.y);
-            maxX = Math.max(maxX, abs.x + (el.w || 0));
-            maxY = Math.max(maxY, abs.y + (el.h || 0));
-          });
-
-          // 2. Рассчитываем смещение (если группа расширилась влево или вверх)
-          const dx = targetGroup.x - minX;
-          const dy = targetGroup.y - minY;
-
-          // 3. Обновляем все элементы
-          const updatedElements = elements.map(el => {
-            // Если это новый добавляемый элемент
-            const newSimple = simpleWithAbs.find(s => s.el.key === el.key);
-            if (newSimple) {
+          let updatedElements = elements.map(el => {
+            if (simpleKeys.includes(el.key)) {
               return {
                 ...el,
                 parentKey: targetGroup.key,
-                x: newSimple.abs.x - minX,
-                y: newSimple.abs.y - minY,
+                parentId: targetGroup.id,
               };
             }
 
-            // Если это старый ребенок этой же группы — корректируем его позицию из-за сдвига группы
-            if (el.parentKey === targetGroup.key) {
-              return {
-                ...el,
-                x: (el.x || 0) + dx,
-                y: (el.y || 0) + dy,
-              };
-            }
-
-            // Если это сама группа — обновляем её размеры и позицию
             if (el.key === targetGroup.key) {
-              const nextWidth = Math.max(1, maxX - minX);
-              const nextHeight = Math.max(1, maxY - minY);
-
-              return {
-                ...targetGroup,
-                x: minX,
-                y: minY,
-                w: nextWidth,
-                h: nextHeight,
-                children: [
-                  ...(targetGroup.children ?? []),
-                  ...simple.map(s => s.key),
-                ],
-              };
+              const mergedChildren = [...(targetGroup.children ?? [])];
+              for (const key of simpleKeys) {
+                if (!mergedChildren.includes(key)) mergedChildren.push(key);
+              }
+              return {...targetGroup, children: mergedChildren};
             }
 
             return el;
           });
+
+          updatedElements = fitGroupToChildren(updatedElements, targetGroup.key, GROUP_PADDING);
 
           set({
             elements: updatedElements,
@@ -754,9 +688,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
-        // -----------------------------
-        // 4. CREATE NEW GROUP
-        // -----------------------------
         const newGroupId = createUuid();
         const selectedKeys = topLevelSelected.map(el => el.key);
         const parentKeys = [...new Set(topLevelSelected.map(el => el.parentKey).filter(Boolean))];
@@ -768,93 +699,43 @@ export const useEditorStore = create<EditorState>()(temporal(
           ? scene?.id || null
           : commonParentElement?.id ?? null;
 
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
-
-        topLevelSelected.forEach(el => {
-          const bounds = getElementBounds(el, elements);
-
-          minX = Math.min(minX, bounds.minX);
-          minY = Math.min(minY, bounds.minY);
-          maxX = Math.max(maxX, bounds.maxX);
-          maxY = Math.max(maxY, bounds.maxY);
-        });
-        
-        let parentAbsX = 0;
-        let parentAbsY = 0;
-        if (commonParentElement) {
-          const parentAbs = getAbsolutePosition(commonParentElement, elements);
-          parentAbsX = parentAbs.x;
-          parentAbsY = parentAbs.y;
-        }
-
-        const groupAbsX = minX - padding / 2;
-        const groupAbsY = minY - padding / 2;
-
-        const updatedElements = elements.map(el => {
-          const isTopLevelSelected = topLevelSelected.some(t => t.key === el.key);
-          if (!isTopLevelSelected) return el;
-
-          const bounds = getElementBounds(el, elements);
-
-          const newX = bounds.absX - groupAbsX;
-          const newY = bounds.absY - groupAbsY;
-
-          if (el.type === "line") {
-            return {
-              ...el,
-              x: newX,
-              y: newY,
-              x1: bounds.absX1! - groupAbsX,
-              y1: bounds.absY1! - groupAbsY,
-              x2: bounds.absX2! - groupAbsX,
-              y2: bounds.absY2! - groupAbsY,
-              parentKey: newGroupId,
-              parentId: null,
-            };
-          }
+        let updatedElements = elements.map(el => {
+          if (!selectedKeys.includes(el.key)) return el;
 
           return {
             ...el,
-            x: newX,
-            y: newY,
             parentKey: newGroupId,
             parentId: null,
           };
         });
 
-        const elementsWithParentUpdated = commonParentElement
-          ? updatedElements.map(el => {
-              if (el.key !== commonParentElement.key) return el;
+        if (commonParentElement) {
+          updatedElements = updatedElements.map(el => {
+            if (el.key !== commonParentElement.key) return el;
 
-              const nextChildren = el.children.filter(childKey => !selectedKeys.includes(childKey));
-              const insertIndex = el.children.findIndex(childKey => selectedKeys.includes(childKey));
+            const nextChildren = el.children.filter(childKey => !selectedKeys.includes(childKey));
+            const insertIndex = el.children.findIndex(childKey => selectedKeys.includes(childKey));
 
-              if (insertIndex >= 0) {
-                nextChildren.splice(insertIndex, 0, newGroupId);
-              } else {
-                nextChildren.push(newGroupId);
-              }
+            if (insertIndex >= 0) {
+              nextChildren.splice(insertIndex, 0, newGroupId);
+            } else {
+              nextChildren.push(newGroupId);
+            }
 
-              return {
-                ...el,
-                children: nextChildren,
-              };
-            })
-          : updatedElements;
+            return {...el, children: nextChildren};
+          });
+        }
 
         const group: GroupElement = {
           id: null,
           key: newGroupId,
           type: "group",
-          x: groupAbsX - parentAbsX,
-          y: groupAbsY - parentAbsY,
-          w: Math.max(1, maxX - minX + padding),
-          h: Math.max(1, maxY - minY + padding),
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
           composition: true,
-          children: topLevelSelected.map(el => el.key),
+          children: selectedKeys,
           parentId: newGroupParentId,
           parentKey: commonParentKey,
           label: `Group (${topLevelSelected.length})`,
@@ -872,8 +753,14 @@ export const useEditorStore = create<EditorState>()(temporal(
           }],
         };
 
+        updatedElements = fitGroupToChildren(
+          [...updatedElements, group],
+          newGroupId,
+          GROUP_PADDING,
+        );
+
         set({
-          elements: [...elementsWithParentUpdated, group],
+          elements: updatedElements,
           selectedIds: [newGroupId],
         });
       },
