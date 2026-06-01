@@ -1,5 +1,5 @@
 import './globals.css';
-import {Inter} from 'next/font/google';
+import {Inter, Geist } from 'next/font/google';
 import Providers from './providers';
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ThemeProvider } from "next-themes";
@@ -10,6 +10,9 @@ import {Cpu, Settings} from "lucide-react";
 import LogoutButton from "@/components/ui/LogoutButton";
 import {getUser} from "@/lib/getUser";
 import HeaderNav from "@/components/editor/HeaderNav";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const inter = Inter({subsets: ['latin']});
 
@@ -17,7 +20,7 @@ export default async function RootLayout({children}: { children: React.ReactNode
   const user = await getUser();
 
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
     <body className={inter.className}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <Providers>

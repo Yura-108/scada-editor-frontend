@@ -15,6 +15,7 @@ import {handleAddProperty} from "@/lib/handleAddProperty";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {Stage, Layer, Rect, Circle, Line, Text, Group, Path, RegularPolygon} from "react-konva";
 import Konva from "konva";
+import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 
 const MIN_SIZE = 20;
 
@@ -41,6 +42,12 @@ export default function Canvas() {
 
   // Custom context menu state for the canvas
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: any[] } | null>(null);
+
+  // Modal state for moving to group
+  const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean, elementKey: string | null }>({
+    isOpen: false,
+    elementKey: null
+  });
 
   const {setNodeRef} = useDroppable({id: "canvas"});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,12 +169,12 @@ export default function Canvas() {
       const sy = Math.min(selectionRect.y, selectionRect.y + selectionRect.height);
       const sw = Math.abs(selectionRect.width);
       const sh = Math.abs(selectionRect.height);
-      const selBox = {x: sx, y: sy, w: sw, h: sh};
 
       const selected = elements
         .filter(el => {
           const re = getRenderedElement(el);
-          return isIntersecting(selBox, { x: re.x, y: re.y, w: re.w, h: re.h });
+          // Используем {x, y, width, height} для selBox, чтобы соответствовать интерфейсу isIntersecting
+          return isIntersecting({ x: sx, y: sy, width: sw, height: sh }, { x: re.x, y: re.y, w: re.w, h: re.h });
         })
         .map(el => el.key);
 
@@ -189,7 +196,17 @@ export default function Canvas() {
 
     return [
       {label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id},
-      ...editorElementMenuItems.map(item => ({...item, onClick: () => { item.onClick?.(); closeMenu(); }})),
+      ...editorElementMenuItems.map(item => ({
+        ...item,
+        onClick: () => {
+          if (item.label === 'Переместить в группу') {
+            setMoveToGroupState({ isOpen: true, elementKey: el.key });
+          } else {
+            item.onClick?.();
+          }
+          closeMenu();
+        }
+      })),
       el.type === "group" ? {label: "Сохранить в палитру", onClick: handleFaceplate} : null
     ].filter(Boolean);
   };
@@ -563,6 +580,12 @@ export default function Canvas() {
           </div>
         </div>
       )}
+
+      <MoveToGroupModal
+        isOpen={moveToGroupState.isOpen}
+        elementKey={moveToGroupState.elementKey}
+        onClose={() => setMoveToGroupState({ isOpen: false, elementKey: null })}
+      />
     </div>
   );
 }

@@ -63,6 +63,7 @@ type EditorState = {
 
   groupSelected: () => void;
   ungroupSelected: () => void;
+  moveElementToGroup: (elementKey: string, targetGroupKey: string) => void;
 
   // removeElements: (ids: string[]) => void;
 }
@@ -387,26 +388,31 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       addTags: async (payload: PropertyCreateRequestDto) => {
-        const res = await fetch("/api/editor/tags/", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
+        try {
+          const res = await fetch(`/api/editor/tags`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+          });
 
-        if (!res.ok) {
-          const errorText = await res.text().catch(() => "Неизвестная ошибка");
-          throw new Error(`Не удалось добавить свойство: ${errorText}`);
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => "Неизвестная ошибка");
+            throw new Error(`Не удалось добавить свойство: ${errorText}`);
+          }
+
+          const newProperty: PropertyCreateDto = await res.json();
+
+          set(state => ({
+            elements: state.elements.map(el =>
+              el.id === payload.component_id
+                ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+                : el
+            )
+          }));
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка при добавлении свойства"));
         }
-
-        const newProperty: PropertyCreateDto = await res.json();
-
-        set(state => ({
-          elements: state.elements.map(el =>
-            el.id === payload.component_id
-              ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
-              : el
-          )
-        }));
       },
       editProperty: async (propertyId: number, payload: PropertyCreateRequestDto) => {
         const res = await fetch(`/api/editor/tags/${propertyId}`, {
@@ -813,7 +819,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           });
 
           // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки")
-          // Нам нужно обновить массив children у этого "дедушки"
           if (grandParentKey) {
             updatedElements = updatedElements.map((el) => {
               if (el.key === grandParentKey && el.type === "group") {
@@ -833,7 +838,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         // 2. Окончательно удаляем сами разбитые группы из массива
         updatedElements = updatedElements.filter((el) => !groupIdsToRemove.includes(el.key));
 
-        // 3. Сохраняем в выделении обычные фигуры, если они были выделены вместе с группами
+        // 3. Сохраняем в выделении обычные фигуры, которые были выделены вместе с группами
         const retainedSelectedIds = selectedIds.filter((id) => !groupIdsToRemove.includes(id));
 
         // Обновляем стейт
@@ -841,6 +846,60 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: updatedElements,
           selectedIds: [...retainedSelectedIds, ...newlySelectedIds],
         });
+      },
+      moveElementToGroup: (elementKey, targetGroupKey) => {
+        const { elements } = get();
+        const element = elements.find(el => el.key === elementKey);
+        const targetGroup = elements.find(el => el.key === targetGroupKey);
+
+        if (!element || !targetGroup || targetGroup.type !== "group") return;
+
+        const oldParentKey = element.parentKey;
+
+        // 1. Обновляем сам элемент
+        let updatedElements = elements.map(el => {
+          if (el.key === elementKey) {
+            return {
+              ...el,
+              parentKey: targetGroupKey,
+              parentId: targetGroup.id,
+            };
+          }
+          return el;
+        });
+
+        // 2. Убираем элемент из старого родителя
+        if (oldParentKey && oldParentKey !== targetGroupKey) {
+          updatedElements = updatedElements.map(el => {
+            if (el.key === oldParentKey && el.type === "group") {
+              return {
+                ...el,
+                children: el.children.filter(childKey => childKey !== elementKey),
+              };
+            }
+            return el;
+          });
+        }
+
+        // 3. Добавляем элемент новому родителю
+        updatedElements = updatedElements.map(el => {
+          if (el.key === targetGroupKey) {
+            const nextChildren = [...(el.children ?? [])];
+            if (!nextChildren.includes(elementKey)) {
+              nextChildren.push(elementKey);
+            }
+            return { ...el, children: nextChildren };
+          }
+          return el;
+        });
+
+        // 4. Корректируем размеры групп
+        updatedElements = fitGroupToChildren(updatedElements, targetGroupKey, GROUP_PADDING);
+        if (oldParentKey && oldParentKey !== targetGroupKey) {
+          updatedElements = fitGroupToChildren(updatedElements, oldParentKey, GROUP_PADDING);
+        }
+
+        set({ elements: updatedElements });
       }
     }),
     {

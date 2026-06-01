@@ -66,7 +66,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
   const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
     // 1. Ensure every element has a truly unique key for the editor session.
     // We cannot rely on api id because it might be 0 or non-unique across different types.
-    const elementKey = el.key || createUuid();
+    const elementKey = el.key && el.key !== "0" ? el.key : createUuid();
 
     const normalizedStates = (el.states ?? []).map((state, index) => ({
       id: state.id != null ? String(state.id) : createUuid(),
@@ -91,9 +91,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
     const rawChildren = el.children ?? [];
 
     const resolvedParentId = el.parent_id ?? fallbackParentId ?? scene?.id ?? null;
-    const resolvedParentKey = fallbackParentKey ?? (resolvedParentId != null
-      ? String(resolvedParentId)
-      : String(scene?.id ?? ""));
+    const resolvedParentKey = fallbackParentKey ?? (scene?.key ?? String(scene?.id ?? ""));
 
     const flattenedElement = {
       id: el.id,
