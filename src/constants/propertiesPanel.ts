@@ -16,76 +16,9 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
 
 export const basePropertySchema: PropertySchema[] = [
   {
-    key: "x",
-    label: "Координата X",
-    type: "number",
-  },
-  {
-    key: "y",
-    label: "Координата Y",
-    type: "number",
-  },
-  {
-    key: "w",
-    label: "Ширина",
-    type: "number",
-  },
-  {
-    key: "h",
-    label: "Высота",
-    type: "number",
-  },
-  {
     key: "label",
     label: "Название",
     type: "text",
-  },
-  {
-    key: "rotate",
-    label: "Поворот",
-    type: "number",
-    min: -360,
-    max: 360,
-    defaultValue: 0,
-  },
-  // {
-  //   key: "scaleX",
-  //   label: "Масштаб X",
-  //   type: "number",
-  //   min: -5,
-  //   max: 5,
-  //   step: 0.1,
-  //   defaultValue: 1,
-  // },
-  // {
-  //   key: "scaleY",
-  //   label: "Масштаб Y",
-  //   type: "number",
-  //   min: -5,
-  //   max: 5,
-  //   step: 0.1,
-  //   defaultValue: 1,
-  // },
-  // {
-  //   key: "flipX",
-  //   label: "Отразить по X",
-  //   type: "boolean",
-  //   defaultValue: false,
-  // },
-  // {
-  //   key: "flipY",
-  //   label: "Отразить по Y",
-  //   type: "boolean",
-  //   defaultValue: false,
-  // },
-  {
-    key: "opacity",
-    label: "Прозрачность",
-    type: "number",
-    min: 0,
-    max: 1,
-    step: 0.1,
-    defaultValue: 1,
   },
 ];
 
@@ -130,6 +63,14 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   ],
   circle: [
     {
+      key: "radius",
+      label: "Радиус",
+      type: "number",
+      min: 1,
+      max: 1000,
+      defaultValue: 40,
+    },
+    {
       key: "bg",
       label: "Цвет заливки",
       type: "color",
@@ -148,22 +89,6 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       min: 0,
       max: 20,
       defaultValue: 2,
-    },
-    {
-      key: "rx",
-      label: "Горизонтальный радиус",
-      type: "number",
-      min: 10,
-      max: 200,
-      defaultValue: 50,
-    },
-    {
-      key: "ry",
-      label: "Вертикальный радиус",
-      type: "number",
-      min: 10,
-      max: 200,
-      defaultValue: 50,
     },
   ],
   line: [
@@ -201,10 +126,12 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   ],
   polygon: [
     {
-      key: "points",
-      label: "Точки (x,y через пробел)",
-      type: "text",
-      defaultValue: "10,10 90,10 50,90",
+      key: "sides",
+      label: "Количество углов",
+      type: "number",
+      min: 3,
+      max: 100,
+      defaultValue: 3,
     },
     {
       key: "bg",

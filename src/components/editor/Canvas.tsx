@@ -4,21 +4,23 @@ import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
 import {useDroppable} from "@dnd-kit/core";
 import {useEditorStore} from "@/store/useEditorStore";
 import {GRID} from "@/lib/utils";
-import NodeElement from "@/components/editor/NodeElement";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
-import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
 import {LinesLayer} from "@/components/editor/LinesLayer";
 import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
-import {Line} from "@/components/ui/SVGComponents/Line";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {getRenderedElement} from "@/lib/getRenderedElement";
+import {Stage, Layer, Rect, Circle, Line, Text, Group, Path, RegularPolygon} from "react-konva";
+import Konva from "konva";
+
+const MIN_SIZE = 20;
 
 export default function Canvas() {
-  const {elements,
+  const {
+    elements,
     selectedIds,
     selectMultiple,
     setCanvasRect,
@@ -27,34 +29,23 @@ export default function Canvas() {
     pasteSelectedElement,
     camera,
     scene,
+    setCameraPan,
+    setCameraZoom,
+    updateElementVisual
   } = useEditorStore();
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
 
-  const [selectionRect, setSelectionRect] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
+
+  // Custom context menu state for the canvas
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: any[] } | null>(null);
 
   const {setNodeRef} = useDroppable({id: "canvas"});
   const containerRef = useRef<HTMLDivElement>(null);
-  const pointerState = useRef({
-    mode: "idle",
-    startX: 0,
-    startY: 0,
-    startPanX: 0,
-    startPanY: 0,
-    resizeDir: "",
-    resizeElementId: "",
-    initialPositions: {} as Record<string, { x: number; y: number; w: number; h: number; rotate: number }>,
-    hasDragged: false
-  });
-  const elementRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const stageRef = useRef<Konva.Stage>(null);
 
-  // Обновление размеров и позиции canvas
   useEffect(() => {
     const updateRect = () => {
       if (containerRef.current) {
@@ -64,16 +55,16 @@ export default function Canvas() {
 
     updateRect();
     window.addEventListener("resize", updateRect);
-    const resizeObserver = new ResizeObserver(updateRect);
-    if (containerRef.current) resizeObserver.observe(containerRef.current);
-
-    return () => {
-      window.removeEventListener("resize", updateRect);
-      resizeObserver.disconnect();
-    };
+    return () => window.removeEventListener("resize", updateRect);
   }, [setCanvasRect]);
 
-  // Горячие клавиши
+  const rootElements = useMemo(() => elements.filter(el => el.parentKey === String(scene?.id)), [elements, scene]);
+  const elementsMap = useMemo(() => {
+    const map: Record<string, DiagramElement> = {};
+    elements.forEach(el => map[el.key] = el);
+    return map;
+  }, [elements]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -91,625 +82,487 @@ export default function Canvas() {
         pasteSelectedElement();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
 
-  useEffect(() => {
-    const el = document.getElementById("canvas-viewport");
-    if (!el) return;
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    if (!e.evt.ctrlKey) {
+        // pan via wheel?
+        return;
+    }
+    const stage = stageRef.current;
+    if (!stage) return;
 
-    const handler = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
+    const oldScale = stage.scaleX();
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
 
-      const {camera, setCameraZoom} = useEditorStore.getState();
-
-      const zoomSensitivity = 0.001;
-      const delta = -e.deltaY * zoomSensitivity;
-
-      const oldZoom = camera.zoom;
-      const newZoom = Math.min(Math.max(camera.zoom + delta, 0.2), 3);
-
-      if (newZoom === oldZoom) return;
-
-      setCameraZoom(newZoom);
+    const mousePointTo = {
+      x: (pointer.x - stage.x()) / oldScale,
+      y: (pointer.y - stage.y()) / oldScale,
     };
 
-    el.addEventListener("wheel", handler, {passive: false});
+    const zoomSensitivity = 0.001;
+    let newZoom = Math.min(Math.max(oldScale + (-e.evt.deltaY * zoomSensitivity), 0.2), 3);
 
-    return () => el.removeEventListener("wheel", handler);
-  }, []);
+    setCameraZoom(newZoom);
+    setCameraPan(
+      pointer.x - mousePointTo.x * newZoom - camera.x,
+      pointer.y - mousePointTo.y * newZoom - camera.y
+    );
+  };
 
-  // useEffect(() => {
-  //   const viewportWidth = window.innerWidth;
-  //   const viewportHeight = window.innerHeight;
-  //
-  //   const zoom = useEditorStore.getState().camera.zoom;
-  //
-  //   const centerX = (viewportWidth / 2) - (CANVAS_WIDTH / 2 * zoom);
-  //   const centerY = (viewportHeight / 2) - (CANVAS_HEIGHT / 2 * zoom);
-  //   useEditorStore.setState((state) => ({
-  //     camera: {
-  //       ...state.camera,
-  //       x: centerX,
-  //       y: centerY
-  //     }
-  //   }));
-  // }, []);
+  const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (contextMenu) setContextMenu(null);
+    const clickedOnEmpty = e.target === e.target.getStage();
+    const clickedOnBg = e.target.name() === "grid-bg";
 
-  const rootElements = useMemo(
-    () => elements.filter(el => el.parentKey === String(scene?.id)),
-    [elements]
-  );
-
-  const handleSelect = useCallback((id: string, e: React.MouseEvent | React.PointerEvent | MouseEvent) => {
-    if (e.shiftKey) {
-      const newSelection = selectedIds.includes(id)
-        ? selectedIds.filter(i => i !== id)
-        : [...selectedIds, id];
-      selectMultiple(newSelection);
-    } else {
-      selectMultiple([id]);
-    }
-  }, [selectedIds, selectMultiple]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
-    const isMiddleClick = e.button === 1 || e.buttons === 4;
-    const rect = containerRef.current!.getBoundingClientRect();
-    const zoom = useEditorStore.getState().camera.zoom;
-    const resizeHandle = (e.target as HTMLElement).closest(".resize-handle");
-    const elNode = (e.target as HTMLElement).closest(".scada-selectable");
-    const clickElementId = elNode?.getAttribute("data-id");
-
-    if (isMiddleClick) {
-      pointerState.current = {
-        ...pointerState.current,
-        mode: "pan",
-        startX: e.clientX,
-        startY: e.clientY,
-        startPanX: useEditorStore.getState().camera.x,
-        startPanY: useEditorStore.getState().camera.y
-      };
-      (e.currentTarget as HTMLElement).style.cursor = "grabbing";
-      return;
+    // Middle click pan
+    if (e.evt instanceof MouseEvent && (e.evt.button === 1 || e.evt.buttons === 4)) {
+       return;
     }
 
-    if (resizeHandle && clickElementId) {
-      e.stopPropagation();
-      e.preventDefault();
-      resizeHandle.setPointerCapture(e.pointerId);
-
-      pointerState.current.mode = "resize";
-      pointerState.current.hasDragged = false;
-      pointerState.current.startX = e.clientX;
-      pointerState.current.startY = e.clientY;
-      pointerState.current.resizeDir = resizeHandle.getAttribute("data-direction") || "";
-      pointerState.current.resizeElementId = clickElementId;
-
-      const el = elementsMap[clickElementId];
-      if (el) {
-        const rendered = getRenderedElement(el);
-        const rotate = (rendered as LeafElement).rotate || 0;
-        pointerState.current.initialPositions = {
-          [clickElementId]: { x: rendered.x, y: rendered.y, w: rendered.w, h: rendered.h, rotate }
-        };
+    if (clickedOnEmpty || clickedOnBg) {
+      if (!e.evt.shiftKey) {
+        selectMultiple([]);
       }
-      return;
-    }
-
-    if (clickElementId) {
-      // Element Drag Mode
-      e.stopPropagation();
-      e.preventDefault();
-      elNode?.setPointerCapture(e.pointerId);
-
-      pointerState.current.mode = "drag";
-      pointerState.current.hasDragged = false;
-      pointerState.current.startX = e.clientX;
-      pointerState.current.startY = e.clientY;
-
-      let actSelect = [...selectedIds];
-      if (!selectedIds.includes(clickElementId)) {
-        if (e.shiftKey) {
-          actSelect = [...selectedIds, clickElementId];
-        } else {
-          actSelect = [clickElementId];
-        }
-        selectMultiple(actSelect);
-      } else if (e.shiftKey) {
-        actSelect = actSelect.filter(i => i !== clickElementId);
-        selectMultiple(actSelect);
-        return;
+      const pos = stageRef.current?.getPointerPosition();
+      if (pos && stageRef.current) {
+         setSelectionRect({
+            x: (pos.x - stageRef.current.x()) / stageRef.current.scaleX(),
+            y: (pos.y - stageRef.current.y()) / stageRef.current.scaleX(),
+            width: 0,
+            height: 0
+         });
       }
-
-      const newInitials: Record<string, {x: number, y: number, w: number, h: number, rotate: number}> = {};
-      actSelect.forEach(selId => {
-        const el = elementsMap[selId];
-        if (el) {
-          const rendered = getRenderedElement(el);
-          const rotate = (rendered as LeafElement).rotate || 0;
-          newInitials[selId] = { x: rendered.x, y: rendered.y, w: rendered.w, h: rendered.h, rotate };
-        }
-      });
-      pointerState.current.initialPositions = newInitials;
-    } else {
-      // Selection Lasso Mode
-      pointerState.current.mode = "lasso";
-      const startX = (e.clientX - rect.left) / zoom;
-      const startY = (e.clientY - rect.top) / zoom;
-      pointerState.current.startX = startX;
-      pointerState.current.startY = startY;
-      setSelectionRect({ x: startX, y: startY, width: 0, height: 0 });
     }
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    const { mode, startX, startY, initialPositions, startPanX, startPanY, resizeDir, resizeElementId } = pointerState.current;
-
-    if (mode === "pan") {
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      useEditorStore.getState().setCameraPan(startPanX + dx - useEditorStore.getState().camera.x, startPanY + dy - useEditorStore.getState().camera.y);
-    } else if (mode === "resize") {
-      pointerState.current.hasDragged = true;
-      const zoom = useEditorStore.getState().camera.zoom;
-      const dxScreen = (e.clientX - startX) / zoom;
-      const dyScreen = (e.clientY - startY) / zoom;
-      const id = resizeElementId;
-      const init = initialPositions[id];
-      if (!init) return;
-
-      const MIN_SIZE = 20; // Минимальный размер элемента
-
-      // Project dx and dy into the element's rotated coordinate space
-      const angle = (init.rotate * Math.PI) / 180;
-      const dx = dxScreen * Math.cos(angle) + dyScreen * Math.sin(angle);
-      const dy = -dxScreen * Math.sin(angle) + dyScreen * Math.cos(angle);
-
-      let newX = init.x;
-      let newY = init.y;
-      let newW = init.w;
-      let newH = init.h;
-
-      if (resizeDir === 'e') {
-        newW = Math.max(MIN_SIZE, init.w + dx);
-      } else if (resizeDir === 'w') {
-        const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-        newW = init.w - deltaW;
-        newX = init.x + deltaW * Math.cos(angle);
-        newY = init.y + deltaW * Math.sin(angle);
-      } else if (resizeDir === 's') {
-        newH = Math.max(MIN_SIZE, init.h + dy);
-      } else if (resizeDir === 'n') {
-        const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-        newH = init.h - deltaH;
-        newX = init.x - deltaH * Math.sin(angle);
-        newY = init.y + deltaH * Math.cos(angle);
-      } else if (resizeDir === 'se') {
-        newW = Math.max(MIN_SIZE, init.w + dx);
-        newH = Math.max(MIN_SIZE, init.h + dy);
-      } else if (resizeDir === 'sw') {
-        const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-        newW = init.w - deltaW;
-        newH = Math.max(MIN_SIZE, init.h + dy);
-        newX = init.x + deltaW * Math.cos(angle);
-        newY = init.y + deltaW * Math.sin(angle);
-      } else if (resizeDir === 'ne') {
-        newW = Math.max(MIN_SIZE, init.w + dx);
-        const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-        newH = init.h - deltaH;
-        newX = init.x - deltaH * Math.sin(angle);
-        newY = init.y + deltaH * Math.cos(angle);
-      } else if (resizeDir === 'nw') {
-        const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-        const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-        newW = init.w - deltaW;
-        newH = init.h - deltaH;
-        newX = init.x + deltaW * Math.cos(angle) - deltaH * Math.sin(angle);
-        newY = init.y + deltaW * Math.sin(angle) + deltaH * Math.cos(angle);
-      }
-
-      // Гарантируем, что размеры положительные и достаточно большие
-      newW = Math.max(MIN_SIZE, newW);
-      newH = Math.max(MIN_SIZE, newH);
-
-      const node = elementRefs.current[id];
-      if (node) {
-        node.style.width = `${newW}px`;
-        node.style.height = `${newH}px`;
-        node.style.transform = `translate(${newX - init.x}px, ${newY - init.y}px) rotate(${init.rotate}deg)`;
-      }
-    } else if (mode === "drag") {
-      pointerState.current.hasDragged = true;
-      const zoom = useEditorStore.getState().camera.zoom;
-      const dx = (e.clientX - startX) / zoom;
-      const dy = (e.clientY - startY) / zoom;
-
-      // Оптимизация: прямое обновление DOM для плавности (Draw.io style)
-      Object.keys(initialPositions).forEach((id) => {
-        const node = elementRefs.current[id];
-        if (node) {
-          const init = initialPositions[id];
-          let newX = dx;
-          let newY = dy;
-
-          const el = elementsMap[id];
-          if (el && el.parentKey && el.parentKey !== String(useEditorStore.getState().scene?.id)) {
-            const parent = elementsMap[el.parentKey];
-            if (parent && parent.type === 'group') {
-              const renderedParent = getRenderedElement(parent);
-              const pw = renderedParent.w ?? 0;
-              const ph = renderedParent.h ?? 0;
-              const maxDx = pw - init.w - init.x;
-              const maxDy = ph - init.h - init.y;
-              const minDx = -init.x;
-              const minDy = -init.y;
-
-              newX = Math.max(minDx, Math.min(dx, maxDx));
-              newY = Math.max(minDy, Math.min(dy, maxDy));
-            }
-          }
-
-          node.style.transform = `translate(${newX}px, ${newY}px) rotate(${init.rotate || 0}deg)`;
+  const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (selectionRect && stageRef.current) {
+        const pos = stageRef.current.getPointerPosition();
+        if (pos) {
+            const rx = (pos.x - stageRef.current.x()) / stageRef.current.scaleX();
+            const ry = (pos.y - stageRef.current.y()) / stageRef.current.scaleX();
+            setSelectionRect(prev => prev ? {
+               x: prev.x,
+               y: prev.y,
+               width: rx - prev.x,
+               height: ry - prev.y
+            } : null);
         }
-      });
-    } else if (mode === "lasso") {
-      const rect = containerRef.current!.getBoundingClientRect();
-      const zoom = useEditorStore.getState().camera.zoom;
-      const currentX = (e.clientX - rect.left) / zoom;
-      const currentY = (e.clientY - rect.top) / zoom;
-
-      setSelectionRect({
-        x: Math.min(startX, currentX),
-        y: Math.min(startY, currentY),
-        width: Math.abs(currentX - startX),
-        height: Math.abs(currentY - startY),
-      });
     }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    const { mode, initialPositions, hasDragged, startX, startY, resizeElementId, resizeDir } = pointerState.current;
-    const elNode = (e.target as HTMLElement).closest(".scada-selectable");
-    const resizeHandle = (e.target as HTMLElement).closest(".resize-handle");
-    if (elNode) elNode.releasePointerCapture(e.pointerId);
-    if (resizeHandle) resizeHandle.releasePointerCapture(e.pointerId);
+  const handleStageMouseUp = () => {
+    if (selectionRect) {
+      const sx = Math.min(selectionRect.x, selectionRect.x + selectionRect.width);
+      const sy = Math.min(selectionRect.y, selectionRect.y + selectionRect.height);
+      const sw = Math.abs(selectionRect.width);
+      const sh = Math.abs(selectionRect.height);
+      const selBox = {x: sx, y: sy, w: sw, h: sh};
 
-    if (mode === "pan") {
-      (e.currentTarget as HTMLElement).style.cursor = "crosshair";
-    } else if (mode === "resize" && hasDragged) {
-      const zoom = useEditorStore.getState().camera.zoom;
-      const dxScreen = (e.clientX - startX) / zoom;
-      const dyScreen = (e.clientY - startY) / zoom;
-      const id = resizeElementId;
-      const init = initialPositions[id];
+      const selected = elements
+        .filter(el => {
+          const re = getRenderedElement(el);
+          return isIntersecting(selBox, { x: re.x, y: re.y, w: re.w, h: re.h });
+        })
+        .map(el => el.key);
 
-      if (init) {
-        const MIN_SIZE = 20;
-        const angle = (init.rotate * Math.PI) / 180;
-        const dx = dxScreen * Math.cos(angle) + dyScreen * Math.sin(angle);
-        const dy = -dxScreen * Math.sin(angle) + dyScreen * Math.cos(angle);
-
-        let newX = init.x;
-        let newY = init.y;
-        let newW = init.w;
-        let newH = init.h;
-
-        if (resizeDir === 'e') {
-          newW = Math.max(MIN_SIZE, init.w + dx);
-        } else if (resizeDir === 'w') {
-          const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-          newW = init.w - deltaW;
-          newX = init.x + deltaW * Math.cos(angle);
-          newY = init.y + deltaW * Math.sin(angle);
-        } else if (resizeDir === 's') {
-          newH = Math.max(MIN_SIZE, init.h + dy);
-        } else if (resizeDir === 'n') {
-          const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-          newH = init.h - deltaH;
-          newX = init.x - deltaH * Math.sin(angle);
-          newY = init.y + deltaH * Math.cos(angle);
-        } else if (resizeDir === 'se') {
-          newW = Math.max(MIN_SIZE, init.w + dx);
-          newH = Math.max(MIN_SIZE, init.h + dy);
-        } else if (resizeDir === 'sw') {
-          const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-          newW = init.w - deltaW;
-          newH = Math.max(MIN_SIZE, init.h + dy);
-          newX = init.x + deltaW * Math.cos(angle);
-          newY = init.y + deltaW * Math.sin(angle);
-        } else if (resizeDir === 'ne') {
-          newW = Math.max(MIN_SIZE, init.w + dx);
-          const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-          newH = init.h - deltaH;
-          newX = init.x - deltaH * Math.sin(angle);
-          newY = init.y + deltaH * Math.cos(angle);
-        } else if (resizeDir === 'nw') {
-          const deltaW = init.w - Math.max(MIN_SIZE, init.w - dx);
-          const deltaH = init.h - Math.max(MIN_SIZE, init.h - dy);
-          newW = init.w - deltaW;
-          newH = init.h - deltaH;
-          newX = init.x + deltaW * Math.cos(angle) - deltaH * Math.sin(angle);
-          newY = init.y + deltaW * Math.sin(angle) + deltaH * Math.cos(angle);
-        }
-
-        // Гарантируем, что размеры положительные и достаточно большие
-        newW = Math.max(MIN_SIZE, newW);
-        newH = Math.max(MIN_SIZE, newH);
-
-        newX = Math.round(newX / GRID) * GRID;
-        newY = Math.round(newY / GRID) * GRID;
-        newW = Math.max(GRID, Math.round(newW / GRID) * GRID);
-        newH = Math.max(GRID, Math.round(newH / GRID) * GRID);
-
-        const node = elementRefs.current[id];
-        if (node) {
-          node.style.width = '';
-          node.style.height = '';
-          node.style.transform = '';
-        }
-
-        useEditorStore.getState().updateElementVisual(id, { x: newX, y: newY, w: newW, h: newH });
-      }
-    } else if (mode === "drag" && hasDragged) {
-      const zoom = useEditorStore.getState().camera.zoom;
-      const dx = (e.clientX - startX) / zoom;
-      const dy = (e.clientY - startY) / zoom;
-
-      Object.entries(initialPositions).forEach(([id, init]) => {
-        const node = elementRefs.current[id];
-        if (node) node.style.transform = ``;
-
-        let newX = Math.round((init.x + dx) / GRID) * GRID;
-        let newY = Math.round((init.y + dy) / GRID) * GRID;
-
-        const el = elementsMap[id];
-        if (el && el.parentKey && el.parentKey !== String(useEditorStore.getState().scene?.id)) {
-          const parent = elementsMap[el.parentKey];
-          if (parent && parent.type === 'group') {
-            const renderedParent = getRenderedElement(parent);
-            const pw = renderedParent.w ?? 0;
-            const ph = renderedParent.h ?? 0;
-            const maxDx = pw - init.w - init.x;
-            const maxDy = ph - init.h - init.y;
-            const minDx = -init.x;
-            const minDy = -init.y;
-
-            const constrainedDx = Math.max(minDx, Math.min(dx, maxDx));
-            const constrainedDy = Math.max(minDy, Math.min(dy, maxDy));
-
-            newX = Math.round((init.x + constrainedDx) / GRID) * GRID;
-            newY = Math.round((init.y + constrainedDy) / GRID) * GRID;
-          }
-        }
-
-        useEditorStore.getState().updateElementVisual(id, { x: newX, y: newY });
-      });
-    } else if (mode === "lasso") {
-      if (selectionRect) {
-        // Find elements inside the rect
-        const selected = elements
-          .filter(el => {
-            const re = getRenderedElement(el);
-            return isIntersecting(selectionRect, { x: re.x, y: re.y, w: re.w, h: re.h });
-          })
-          .map(el => el.key);
+      if (selected.length > 0) {
         selectMultiple(selected);
       }
       setSelectionRect(null);
     }
-
-    pointerState.current.mode = "idle";
-    pointerState.current.hasDragged = false;
   };
 
-  const elementsMap = useMemo(() => {
-    const map: Record<string, DiagramElement> = {};
-    elements.forEach(el => map[el.key] = el);
-    return map;
-  }, [elements]);
+  const closeMenu = () => setContextMenu(null);
 
-  const renderElement = (el: DiagramElement, isInsideGroup = false) => {
-    if (el.type === 'line') return null;
-    const isSelected = selectedIds.includes(el.key);
-    const renderedElement = getRenderedElement(el);
-    const rotate = (renderedElement as LeafElement).rotate || 0;
-    const posSizeStyle = {
-      left: renderedElement.x,
-      top: renderedElement.y,
-      width: renderedElement.w,
-      height: renderedElement.h,
-      transform: `rotate(${rotate}deg)`,
-      transformOrigin: '50% 50%',
+  const buildItemMenu = (el: DiagramElement) => {
+    const handleFaceplate = () => {
+      const allDescendants = getDescendants(el.key, elements);
+      OpenCreateFaceplateModal([el, ...allDescendants]);
+      closeMenu();
     };
 
-    const renderResizeHandles = () => {
-      if (!isSelected) return null;
-      return (
-        <>
-          <div data-direction="nw" className="absolute top-[-5px] left-[-5px] w-2.5 h-2.5 bg-white border border-blue-500 resize-handle cursor-nwse-resize z-20" style={{ pointerEvents: 'auto' }} />
-          <div data-direction="ne" className="absolute top-[-5px] right-[-5px] w-2.5 h-2.5 bg-white border border-blue-500 resize-handle cursor-nesw-resize z-20" style={{ pointerEvents: 'auto' }} />
-          <div data-direction="se" className="absolute bottom-[-5px] right-[-5px] w-2.5 h-2.5 bg-white border border-blue-500 resize-handle cursor-nwse-resize z-20" style={{ pointerEvents: 'auto' }} />
-          <div data-direction="sw" className="absolute bottom-[-5px] left-[-5px] w-2.5 h-2.5 bg-white border border-blue-500 resize-handle cursor-nesw-resize z-20" style={{ pointerEvents: 'auto' }} />
-        </>
-      );
-    };
+    return [
+      {label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id},
+      ...editorElementMenuItems.map(item => ({...item, onClick: () => { item.onClick?.(); closeMenu(); }})),
+      el.type === "group" ? {label: "Сохранить в палитру", onClick: handleFaceplate} : null
+    ].filter(Boolean);
+  };
 
-    const handleFaceplate = async () => {
-      const rootElement = elements.find(element => element.key === el.key);
-      if (!rootElement) return;
+  const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault();
+    const pos = stageRef.current?.getPointerPosition();
+    if (!pos) return;
 
-      const allDescendants = getDescendants(rootElement.key, elements);
-
-      const faceplate = [rootElement, ...allDescendants];
-
-      OpenCreateFaceplateModal(faceplate);
+    // Check what we clicked
+    const tg = e.target;
+    if (tg === e.target.getStage() || tg.name() === "grid-bg") {
+       setContextMenu({
+           x: e.evt.clientX,
+           y: e.evt.clientY,
+           items: [
+               { label: "Вставить", onClick: () => { pasteSelectedElement(); closeMenu(); } },
+           ]
+       });
+       return;
     }
 
-    if (el.type === "group") {
-      const group = el as GroupElement;
-
-      const groupLines = group.children
-        .map(childId => elementsMap[childId])
-        .filter(child => child?.type === 'line');
-
-      return (
-        <DynamicContextMenu
-          key={el.key}
-          items={[
-            {label: 'Добавить свойство', onClick: () => handleAddProperty(el.id), disabled: !el.id},
-            {label: 'Сохранить в палитру', onClick: handleFaceplate},
-            {label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger'}
-          ]}
-        >
-            <div
-              ref={node => { elementRefs.current[el.key] = node; }}
-              data-id={el.key}
-              className={cn(
-                "absolute scada-selectable group-element rounded-lg border-2 box-border select-none touch-none",
-                isSelected ? "border-blue-500 bg-blue-900/30 shadow-[0_0_0_1px_rgba(59,130,246,0.5)]" : "border-blue-700/50 bg-blue-950/20"
-              )}
-              style={{ ...posSizeStyle, borderStyle: group.borderStyle || "dashed", pointerEvents: "auto" }}
-            >
-              {group.children.map((childId) => {
-                const child = elementsMap[childId];
-                if (!child) return null;
-                return (
-                  <React.Fragment key={child.key}>
-                    {renderElement(child, true)}
-                  </React.Fragment>
-                );
-              })}
-
-              {groupLines.length > 0 && (
-                <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
-                  {groupLines.map(line => (
-                    <Line key={line.key} element={line as LeafElement} onSelect={handleSelect} />
-                  ))}
-                </svg>
-              )}
-              {renderResizeHandles()}
-            </div>
-        </DynamicContextMenu>
-      );
+    // Find associated element
+    const elId = tg.attrs.id || tg.parent?.attrs.id || tg.parent?.parent?.attrs.id;
+    if (elId) {
+       selectMultiple([elId]);
+       const el = elementsMap[elId];
+       if (el) {
+           setContextMenu({
+               x: e.evt.clientX,
+               y: e.evt.clientY,
+               items: buildItemMenu(el)
+           });
+       }
     }
+  };
 
-    // Обычный элемент (лист)
-    const nodeContent = (
-      <div
-        ref={node => { elementRefs.current[el.key] = node; }}
-        data-id={el.key}
-        className={cn(
-          "absolute scada-selectable child-element z-10 select-none touch-none hover:ring-1 hover:ring-blue-400/50",
-          isSelected ? "shadow-xl ring-2 ring-blue-500" : "shadow-sm"
-        )}
-        style={{ ...posSizeStyle, pointerEvents: "auto" }}
-      >
-        <NodeElement element={el as LeafElement} isSelected={isSelected} />
-        {renderResizeHandles()}
-      </div>
+  const renderAnchor = (x: number, y: number, onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void, key: string) => {
+    return (
+      <Circle
+        key={key}
+         x={x}
+         y={y}
+         radius={5}
+         fill="white"
+         stroke="#3b82f6"
+         strokeWidth={2}
+         draggable
+         onDragMove={onDragMove}
+         onDragStart={(e) => { e.cancelBubble = true; }}
+         hitStrokeWidth={10}
+         onMouseEnter={e => {
+            const container = e.target.getStage()?.container();
+            if(container) container.style.cursor = "pointer";
+         }}
+         onMouseLeave={e => {
+            const container = e.target.getStage()?.container();
+            if(container) container.style.cursor = "default";
+         }}
+      />
     );
+  };
 
-    if (isInsideGroup) {
+  const renderShapeElement = (el: DiagramElement) => {
+    const isSelected = selectedIds.includes(el.key);
+    const rendered = getRenderedElement(el) as LeafElement;
+
+    if (rendered.type === "polygon") {
+      let pts = rendered.points || [];
+      if (typeof pts === "string") {
+          try { pts = JSON.parse(pts); } catch(err) { pts = []; }
+      }
+
+      const expectedLen = (rendered.sides || 3) * 2;
+      if (!Array.isArray(pts) || pts.length !== expectedLen) {
+          const sides = rendered.sides || 3;
+          const radius = rendered.radius || 40;
+          const cx = rendered.x + (rendered.w / 2 || 0);
+          const cy = rendered.y + (rendered.h / 2 || 0);
+          pts = [];
+          for (let i = 0; i < sides; i++) {
+              const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+              pts.push(cx + radius * Math.cos(angle));
+              pts.push(cy + radius * Math.sin(angle));
+          }
+      }
+
       return (
-        <DynamicContextMenu key={el.key} items={[
-          {label: 'Добавить свойство', onClick: () => handleAddProperty(el.id), disabled: !el.id},
-          ...editorElementMenuItems,
-        ]}>
-          {nodeContent}
-        </DynamicContextMenu>
+        <Group key={el.key} id={el.key}>
+           <Line
+             points={pts as number[]}
+             closed={true}
+             fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+             strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+             draggable
+             onDragEnd={(e) => {
+                 const node = e.target;
+                 const dx = node.x();
+                 const dy = node.y();
+                 const newPts = (pts as number[]).map((p, i) => i % 2 === 0 ? p + dx : p + dy);
+                 node.position({x:0,y:0});
+                 updateElementVisual(el.key, { points: newPts });
+             }}
+             onClick={(e) => {
+                if(e.evt.shiftKey) { setContextMenu(null); selectMultiple([...selectedIds, el.key]); }
+                else { setContextMenu(null); selectMultiple([el.key]); }
+             }}
+           />
+           {isSelected && (pts as number[]).map((p, i) => {
+              if (i % 2 !== 0) return null; // skip y
+              return renderAnchor(
+                 p, (pts as number[])[i+1],
+                 (e) => {
+                     const cp = [...(pts as number[])];
+                     cp[i] = e.target.x();
+                     cp[i+1] = e.target.y();
+                     updateElementVisual(el.key, { points: cp });
+                 },
+                 `${el.key}-anc-${i}`
+              );
+           })}
+        </Group>
       );
+    }
+
+    if (rendered.type === "circle") {
+       const r = rendered.radius || rendered.w / 2 || 40;
+       const cx = rendered.x + r;
+       const cy = rendered.y + r;
+       return (
+         <Group key={el.key} id={el.key}>
+            <Circle
+               x={cx}
+               y={cy}
+               radius={r}
+               fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+               strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+               draggable
+               onDragEnd={(e) => {
+                   const nx = e.target.x();
+                   const ny = e.target.y();
+                   const dx = nx - cx;
+                   const dy = ny - cy;
+                   e.target.position({x: cx, y: cy});
+                   updateElementVisual(el.key, { x: rendered.x + dx, y: rendered.y + dy });
+               }}
+               onClick={(e) => {
+                   if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+                   else selectMultiple([el.key]);
+               }}
+            />
+            {isSelected && renderAnchor(
+               cx + r, cy,
+               (e) => {
+                   const newR = Math.sqrt(Math.pow(e.target.x() - cx, 2) + Math.pow(e.target.y() - cy, 2));
+                   const clampedR = Math.max(1, newR);
+                   updateElementVisual(el.key, { radius: clampedR, w: clampedR * 2, h: clampedR * 2 });
+               },
+               `${el.key}-anc-r`
+            )}
+         </Group>
+       );
+    }
+
+    if (rendered.type === "line") {
+       const x1 = rendered.x1 ?? rendered.x;
+       const y1 = rendered.y1 ?? rendered.y;
+       const x2 = rendered.x2 ?? rendered.x + 80;
+       const y2 = rendered.y2 ?? rendered.y;
+       return (
+         <Group key={el.key} id={el.key}>
+            <Line
+              points={[x1, y1, x2, y2]}
+              stroke={isSelected ? "#3b82f6" : "#9ca3af"}
+              strokeWidth={rendered.strokeWidth || 2}
+              draggable
+              onDragEnd={(e) => {
+                  const dx = e.target.x();
+                  const dy = e.target.y();
+                  e.target.position({x:0, y:0});
+                  updateElementVisual(el.key, {
+                      x1: x1 + dx, y1: y1 + dy,
+                      x2: x2 + dx, y2: y2 + dy,
+                      x: (x1 + x2)/2 + dx, y: (y1 + y2)/2 + dy,
+                  });
+              }}
+              onClick={(e) => {
+                   if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+                   else selectMultiple([el.key]);
+              }}
+            />
+            {isSelected && renderAnchor(x1, y1, (e) => updateElementVisual(el.key, { x1: e.target.x(), y1: e.target.y() }), `${el.key}-anc-1`)}
+            {isSelected && renderAnchor(x2, y2, (e) => updateElementVisual(el.key, { x2: e.target.x(), y2: e.target.y() }), `${el.key}-anc-2`)}
+         </Group>
+       );
     }
 
     return (
-      <DynamicContextMenu key={el.key} items={[
-        {label: 'Добавить свойство', onClick: () => handleAddProperty(el.id), disabled: !el.id},
-        ...editorElementMenuItems,
-      ]}>
-        {nodeContent}
-      </DynamicContextMenu>
+      <Group
+         key={el.key}
+         id={el.key}
+         x={rendered.x}
+         y={rendered.y}
+         rotation={rendered.rotate || 0}
+         draggable
+         onDragEnd={(e) => {
+             updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() });
+         }}
+         onClick={(e) => {
+           if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+           else selectMultiple([el.key]);
+         }}
+      >
+        <Rect
+          width={rendered.w}
+          height={rendered.h}
+          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+          strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
+          cornerRadius={rendered.rx || 0}
+        />
+        {rendered.label && (
+           <Text
+             text={rendered.label}
+             width={rendered.w}
+             height={rendered.h}
+             align="center"
+             verticalAlign="middle"
+             fill={rendered.textColor || "#000"}
+           />
+        )}
+
+        {isSelected && renderAnchor(rendered.w, rendered.h, (e) => {
+            updateElementVisual(el.key, { w: Math.max(MIN_SIZE, e.target.x()), h: Math.max(MIN_SIZE, e.target.y()) });
+        }, `${el.key}-anc-se`)}
+      </Group>
     );
   };
 
+  const renderGroup = (group: GroupElement) => {
+    const isSelected = selectedIds.includes(group.key);
+    const rendered = getRenderedElement(group);
+
+    return (
+       <Group
+         key={group.key}
+         id={group.key}
+         x={group.x}
+         y={group.y}
+         draggable
+         onDragEnd={(e) => {
+             updateElementVisual(group.key, { x: e.target.x(), y: e.target.y() });
+         }}
+       >
+         {group.children.map(childId => {
+             const child = elementsMap[childId];
+             if (!child) return null;
+             if (child.type === 'group') return renderGroup(child as GroupElement);
+             return renderShapeElement(child);
+         })}
+         <Circle
+           x={group.w / 2}
+           y={group.h / 2}
+           radius={6}
+           fill={isSelected ? "#3b82f6" : "rgba(59,130,246,0.4)"}
+           stroke={isSelected ? "white" : "rgba(59,130,246,0.8)"}
+           strokeWidth={2}
+           onClick={(e) => {
+             e.cancelBubble = true;
+             if(e.evt.shiftKey) selectMultiple([...selectedIds, group.key]);
+             else selectMultiple([group.key]);
+           }}
+           onMouseEnter={e => {
+              const container = e.target.getStage()?.container();
+              if(container) container.style.cursor = "move";
+           }}
+           onMouseLeave={e => {
+              const container = e.target.getStage()?.container();
+              if(container) container.style.cursor = "default";
+           }}
+         />
+       </Group>
+    );
+  }
+
   return (
     <div
+      ref={containerRef}
       id="canvas-viewport"
-      className="relative w-full h-full overflow-hidden touch-none bg-neutral-950"
-      onPointerMove={handlePointerMove}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      className="relative w-full h-full overflow-hidden bg-neutral-950 context-menu-container"
     >
-      <DynamicContextMenu items={[
-        { label: 'Вставить элемент', onClick: () => console.log('Paste') },
-        { label: 'Очистить холст', onClick: () => console.log('Clear'), variant: 'danger' }
-      ]}>
-        <div
-          id="canvas-scene"
-          style={{
-            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
-            transformOrigin: '0 0',
-            width: `${CANVAS_WIDTH}px`,
-            height: `${CANVAS_HEIGHT}px`,
-            overflow: 'visible',
-            touchAction: 'none'
-          }}
-          ref={(node) => {
-            setNodeRef(node);
-            containerRef.current = node;
-          }}
-          className="select-none touch-none absolute"
+      <div
+        ref={setNodeRef}
+        style={{width:"100%", height:"100%"}}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <Stage
+          ref={stageRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          scaleX={camera.zoom}
+          scaleY={camera.zoom}
+          x={camera.x}
+          y={camera.y}
+          onWheel={handleWheel}
+          onMouseDown={handleStageMouseDown}
+          onMouseMove={handleStageMouseMove}
+          onMouseUp={handleStageMouseUp}
+          onContextMenu={handleStageContextMenu}
         >
-          {/* Фоновая сетка */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `
-            linear-gradient(to right, rgba(60,60,70,0.4) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(60,60,70,0.4) 1px, transparent 1px)
-          `,
-              backgroundSize: `${GRID}px ${GRID}px`,
-            }}
-          />
-
-          {/* 1 слой — линии */}
-          <LinesLayer onSelect={handleSelect}/>
-
-          {/* 2 слой — элементы */}
-          {rootElements.map(el => (
-            <React.Fragment key={el.key}>
-              {renderElement(el)}
-            </React.Fragment>
-          ))}
-
-
-          {/* Подсказка, если canvas пустой */}
-          {rootElements.length === 0 && (
-            <div
-              className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
-              Перетащите элемент из палитры сюда
-            </div>
-          )}
-
-          {/* Рамка выделения */}
-          {selectionRect && (
-            <div
-              className="absolute pointer-events-none"
-              style={{
-                left: selectionRect.x,
-                top: selectionRect.y,
-                width: selectionRect.width,
-                height: selectionRect.height,
-                backgroundColor: "rgb(0, 150, 255, 0.2)",
-                border: "1px solid #0096ff",
-              }}
+          <Layer>
+            <Rect
+               name="grid-bg"
+               x={-CANVAS_WIDTH/2}
+               y={-CANVAS_HEIGHT/2}
+               width={CANVAS_WIDTH*2}
+               height={CANVAS_HEIGHT*2}
+               fillPriority="pattern"
+               fillPatternImage={(()=>{
+                  const cvs = document.createElement("canvas");
+                  cvs.width = GRID; cvs.height = GRID;
+                  const ctx = cvs.getContext("2d");
+                  if (ctx) {
+                      ctx.strokeStyle = "rgba(100,100,120,0.4)";
+                      ctx.beginPath();
+                      ctx.moveTo(0,0); ctx.lineTo(GRID,0);
+                      ctx.moveTo(0,0); ctx.lineTo(0,GRID);
+                      ctx.stroke();
+                  }
+                  return cvs;
+               })()}
             />
-          )}
+
+            {rootElements.map(el => (
+              <React.Fragment key={el.key}>
+                {el.type === 'group' ? renderGroup(el as GroupElement) : renderShapeElement(el)}
+              </React.Fragment>
+            ))}
+
+            {selectionRect && (
+              <Rect
+                x={Math.min(selectionRect.x, selectionRect.x + selectionRect.width)}
+                y={Math.min(selectionRect.y, selectionRect.y + selectionRect.height)}
+                width={Math.abs(selectionRect.width)}
+                height={Math.abs(selectionRect.height)}
+                fill="rgba(0, 150, 255, 0.2)"
+                stroke="#0096ff"
+                strokeWidth={1}
+              />
+            )}
+          </Layer>
+        </Stage>
+      </div>
+
+      {contextMenu && (
+        <div style={{ position: 'absolute', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}>
+          <div className="min-w-40 bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200">
+             {contextMenu.items.map((item, idx) => (
+               <div
+                  key={idx}
+                  onClick={item.onClick}
+                  className={`
+                    group flex items-center px-3 py-2 text-sm outline-none cursor-default rounded-sm text-gray-700 focus:bg-indigo-600 focus:text-gray-900 dark:text-white hover:bg-indigo-600
+                  `}
+               >
+                  {item.label}
+               </div>
+             ))}
+          </div>
         </div>
-      </DynamicContextMenu>
+      )}
     </div>
-  )
+  );
 }

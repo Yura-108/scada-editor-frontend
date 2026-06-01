@@ -64,6 +64,10 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
   }
 
   const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
+    // 1. Ensure every element has a truly unique key for the editor session.
+    // We cannot rely on api id because it might be 0 or non-unique across different types.
+    const elementKey = el.key || createUuid();
+
     const normalizedStates = (el.states ?? []).map((state, index) => ({
       id: state.id != null ? String(state.id) : createUuid(),
       name: state.name,
@@ -82,14 +86,9 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       };
 
     const image = defaultState.overrides;
-    const objectChildren = (el.children ?? []).filter((child): child is ComponentDto => typeof child === "object" && child !== null);
-    const childrenKeys = (el.children ?? []).map(child => {
-      if (typeof child === "object" && child !== null) {
-        return String(child.key ?? child.id);
-      }
 
-      return String(child);
-    });
+    // Handle children: they might be objects (ComponentDto) or strings/numbers
+    const rawChildren = el.children ?? [];
 
     const resolvedParentId = el.parent_id ?? fallbackParentId ?? scene?.id ?? null;
     const resolvedParentKey = fallbackParentKey ?? (resolvedParentId != null
@@ -98,7 +97,7 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
 
     const flattenedElement = {
       id: el.id,
-      key: el.key ?? String(el.id),
+      key: elementKey,
       type: el.type,
       x: toFiniteNumber(image.x, 0),
       y: toFiniteNumber(image.y, 0),
@@ -109,16 +108,37 @@ export default function transformElements(apiElements: ComponentDto[] = []) {
       states: normalizedStates,
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
-      children: childrenKeys,
+      children: [], // Will be populated by children's processing
       scripts: normalizeArray(el.scripts),
       bindings: normalizeArray(el.bindings),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
     };
 
+    // Process children recursively and collect their new unique keys
+    const childResults: DiagramElement[] = [];
+    const childKeys: string[] = [];
+
+    rawChildren.forEach(child => {
+      if (typeof child === "object" && child !== null) {
+        const childElements = flattenNode(child as ComponentDto, el.id, elementKey);
+        const firstChild = childElements[0];
+        if (firstChild) {
+          childKeys.push(firstChild.key);
+          childResults.push(...childElements);
+        }
+      } else {
+        // If it's just an ID, we can't fully flatten it without the object,
+        // but we keep the reference.
+        childKeys.push(String(child));
+      }
+    });
+
+    flattenedElement.children = childKeys;
+
     return [
       flattenedElement as DiagramElement,
-      ...objectChildren.flatMap(child => flattenNode(child, el.id, String(el.key ?? el.id))),
+      ...childResults,
     ];
   };
 

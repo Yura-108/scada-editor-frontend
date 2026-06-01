@@ -57,13 +57,19 @@ export function fitGroupToChildren(
 
     if (!childKeys.has(el.key)) return el;
 
+    // For vector elements, we want to maintain their absolute coordinates
+    // relative to the new group origin.
     const bounds = getElementBounds(el, elements);
+
+    // Correct the absolute coordinates to be relative to the new group position
+    const relX = bounds.minX - newGroupAbsX;
+    const relY = bounds.minY - newGroupAbsY;
 
     if (el.type === "line") {
       return {
         ...el,
-        x: (bounds.absX ?? bounds.minX) - newGroupAbsX,
-        y: (bounds.absY ?? bounds.minY) - newGroupAbsY,
+        x: relX,
+        y: relY,
         x1: bounds.absX1! - newGroupAbsX,
         y1: bounds.absY1! - newGroupAbsY,
         x2: bounds.absX2! - newGroupAbsX,
@@ -75,8 +81,8 @@ export function fitGroupToChildren(
 
     return {
       ...el,
-      x: (bounds.absX ?? bounds.minX) - newGroupAbsX,
-      y: (bounds.absY ?? bounds.minY) - newGroupAbsY,
+      x: relX,
+      y: relY,
       w: rendered.w ?? 0,
       h: rendered.h ?? 0,
     };

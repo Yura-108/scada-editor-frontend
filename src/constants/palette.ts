@@ -17,39 +17,11 @@ export const paletteItems: PaletteItemType[] = [
     defaultProps: {name: "Circle"}
   },
   {
-    id: 10 ** 5 + 2,
-    type: "rectangle",
-    name: "Rectangle",
-    category: "Basic",
-    defaultProps: {name: "Rectangle"}
-  },
-  {
     id: 10 ** 5 + 3,
     type: "polygon",
     name: "Polygon",
     category: "Basic",
     defaultProps: {name: "Polygon"}
-  },
-  {
-    id: 10 ** 5 + 4,
-    type: "path",
-    name: "Path",
-    category: "Basic",
-    defaultProps: {name: "Path"}
-  },
-  {
-    id: 10 ** 5 + 5,
-    type: "button",
-    name: "Button",
-    category: "Basic",
-    defaultProps: { name: "Button" },
-  },
-  {
-    id: 10 ** 5 + 6,
-    type: "text",
-    name: "Text",
-    category: "Basic",
-    defaultProps: { text: "Text" },
   },
 
   // INDICATORS

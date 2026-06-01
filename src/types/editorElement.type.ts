@@ -78,21 +78,19 @@ export interface BaseCanvasElement {
 }
 
 export type ElementType =
-  | "button"
-  | "progress_bar"
-  | "checkbox"
-  | "text"
   | "polygon"
-  | "path"
-  | "rectangle"
   | "circle"
   | "line"
-  | "custom"
+  | "group"
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
   color?: string;
+  points?: number[]; // Array of [x1,y1, x2,y2, ...] absolute coordinates
+  vertexCount?: number; // Number of vertices for polygons
+  sides?: number; // for polygon initial generation
+  radius?: number; // for circle and regular polygon initial generation
   size?: number | "small" | "medium" | "large";
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";
   value?: number | string;
@@ -129,9 +127,7 @@ export interface LeafElement extends BaseCanvasElement {
   flipX?: boolean;
   flipY?: boolean;
   opacity?: number;     // 0-1
-  zIndex?: number;
-  points?: string;
-  unitColor?: string;
+
   fontFamily?: string;
   letterSpacing?: number;
   pressed? : boolean;
