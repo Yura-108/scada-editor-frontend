@@ -394,7 +394,7 @@ export default function Canvas() {
          <Group key={el.key} id={el.key}>
             <Line
               points={[x1, y1, x2, y2]}
-              stroke={isSelected ? "#3b82f6" : "#9ca3af"}
+              stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#9ca3af")}
               strokeWidth={rendered.strokeWidth || 2}
               draggable
               onDragEnd={(e) => {

@@ -58,21 +58,3 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   return NextResponse.json(paletteItem, {status: 201});
 })
 
-export const DELETE = protectedRoute(async (_request, { token, params }) => {
-  const { id } = params;
-
-  const response = await fetch(`${BACKEND_URL}/api/editor/templates/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => {});
-    return NextResponse.json(
-      { error: err?.message || "Ошибка удаления" },
-      { status: response.status }
-    );
-  }
-
-  return new NextResponse(null, { status: 204 });
-});

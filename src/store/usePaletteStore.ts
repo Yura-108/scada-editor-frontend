@@ -10,6 +10,7 @@ type PaletteState = {
   addPaletteItem: (paletteItem: PaletteItemType) => void;
   loadPaletteItems: () => Promise<void>;
   createPaletteItem: (paletteItem: Omit<PaletteItemType, 'id'>) => Promise<void>;
+  updatePaletteItem: (id: number, paletteItem: Omit<PaletteItemType, 'id'>) => Promise<void>;
 }
 
 export const usePaletteStore = create<PaletteState>((set, get) => ({
@@ -87,6 +88,53 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
       console.error(err);
       toast.error(err.message || "Ошибка загрузки списка элементов");
     }
+  },
+  updatePaletteItem: async (id, paletteItem) => {
+    try {
+      if (!paletteItem.template) return;
+      const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
+      const rootComponent = buildPaletteComponentTree(paletteItem.template, rootElementKey);
+
+      if (!rootComponent) {
+        toast.error("Не удалось собрать корневой компонент шаблона");
+        return;
+      }
+
+      const paletteItemUpdateDTO = {
+        name: paletteItem.name,
+        type: paletteItem.category,
+        rootComponent,
+      };
+
+      const res = await fetch(`/api/editor/palette/${id}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(paletteItemUpdateDTO),
+      });
+
+      const paletteItemResponse: PaletteItemResponseDTO = await res.json();
+
+      const updatedPaletteItem: PaletteItemType = {
+        id: paletteItemResponse.id,
+        name: paletteItemResponse.name,
+        type: 'custom',
+        category: paletteItemResponse.type,
+        defaultProps: paletteItem.defaultProps,
+        template: transformElements([paletteItemResponse.rootComponent])
+      }
+
+      // Обновляем элемент в списке
+      set({
+        paletteItems: get().paletteItems.map(item =>
+          item.id === id ? updatedPaletteItem : item
+        )
+      });
+
+       toast.success("Шаблон успешно обновлен");
+     } catch (err: any) {
+       console.error(err);
+       toast.error(err.message || "Ошибка обновления шаблона");
+     }
   }
 }))
 
