@@ -416,6 +416,36 @@ export default function Canvas() {
        );
     }
 
+    if (rendered.type === "text") {
+      return (
+        <Text
+          key={el.key}
+          id={el.key}
+          x={rendered.x}
+          y={rendered.y}
+          text={rendered.text ?? "Text"}
+          fontSize={rendered.fontSize ?? 16}
+          fontStyle={rendered.bold ? "bold" : "normal"}
+          fontFamily={rendered.fontFamily || "Arial"}
+          fill={rendered.color || rendered.textColor || "#ffffff"}
+          align={rendered.align || "left"}
+          width={rendered.w || undefined}
+          listening={true}
+          draggable
+          onDragEnd={(e) => {
+            updateElementVisual(el.key, {
+              x: e.target.x(),
+              y: e.target.y(),
+            });
+          }}
+          onClick={(e) => {
+            if (e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+            else selectMultiple([el.key]);
+          }}
+        />
+      );
+    }
+
     return (
       <Group
          key={el.key}

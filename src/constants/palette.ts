@@ -5,23 +5,30 @@ export const paletteItems: PaletteItemType[] = [
   {
     id: 10 ** 5,
     type: "line",
-    name: "Line",
-    category: "Basic",
+    name: "Линия",
+    category: "Базовые",
     defaultProps: {name: "Line"}
   },
   {
     id: 10 ** 5 + 1,
     type: "circle",
-    name: "Circle",
-    category: "Basic",
+    name: "Круг",
+    category: "Базовые",
     defaultProps: {name: "Circle"}
   },
   {
     id: 10 ** 5 + 3,
     type: "polygon",
-    name: "Polygon",
-    category: "Basic",
+    name: "Многоугольник",
+    category: "Базовые",
     defaultProps: {name: "Polygon"}
+  },
+  {
+    id: 10 ** 5 + 4,
+    type: "text",
+    name: "Текст",
+    category: "Базовые",
+    defaultProps: {name: "Text", text: "Text", fontSize: 16, color: "#ffffff", bold: false, align: "left"}
   },
 
   // INDICATORS

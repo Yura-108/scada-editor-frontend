@@ -288,18 +288,6 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       defaultValue: "#ffffff",
     },
     {
-      key: "bold",
-      label: "Bold",
-      type: "boolean",
-      defaultValue: false,
-    },
-    {
-      key: "italic",
-      label: "Italic",
-      type: "boolean",
-      defaultValue: false,
-    },
-    {
       key: "align",
       label: "Text Align",
       type: "select",
@@ -309,6 +297,12 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
         {label: "Right", value: "right"},
       ],
       defaultValue: "center",
+    },
+    {
+      key: "bold",
+      label: "Bold",
+      type: "boolean",
+      defaultValue: false,
     },
   ],
   button: [

@@ -81,6 +81,7 @@ export type ElementType =
   | "polygon"
   | "circle"
   | "line"
+  | "text"
   | "group"
   | "custom"
 
