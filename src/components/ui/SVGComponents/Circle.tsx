@@ -29,7 +29,7 @@ export default function Circle({ element }: CircleProps) {
           rx={rx}
           ry={ry}
           fill={element.bg ?? "#4b5563"}
-          stroke={element.strokeColor ?? "#9ca3af"}
+          stroke={element.strokeColor ?? "#1e1f22"}
           strokeWidth={element.strokeWidth ?? 2}
         />
       </g>

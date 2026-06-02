@@ -3,7 +3,7 @@
 import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
 import {useDroppable} from "@dnd-kit/core";
 import {useEditorStore} from "@/store/useEditorStore";
-import {GRID} from "@/lib/utils";
+import {GRID, snap} from "@/lib/utils";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
@@ -307,7 +307,7 @@ export default function Canvas() {
              points={pts as number[]}
              closed={true}
              fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#8a909b")}
              strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
              draggable
              onDragEnd={(e) => {
@@ -317,8 +317,8 @@ export default function Canvas() {
                  const newPts = (pts as number[]).map((p, i) => i % 2 === 0 ? p + dx : p + dy);
                  node.position({x:0,y:0});
                  updateElementVisual(el.key, {
-                   x: rendered.x + dx,
-                   y: rendered.y + dy,
+                   x: snap(rendered.x + dx),
+                   y: snap(rendered.y + dy),
                  });
              }}
              onClick={(e) => {
@@ -332,8 +332,9 @@ export default function Canvas() {
                  p, (pts as number[])[i+1],
                  (e) => {
                      const cp = [...(pts as number[])];
-                     cp[i] = e.target.x();
-                     cp[i+1] = e.target.y();
+                     cp[i] = snap(e.target.x());
+                     cp[i+1] = snap(e.target.y());
+                     e.target.position({ x: cp[i], y: cp[i+1] });
                      updateElementVisual(el.key, { points: cp });
                  },
                  `${el.key}-anc-${i}`
@@ -354,7 +355,7 @@ export default function Canvas() {
                y={cy}
                radius={r}
                fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#9ca3af")}
                strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
                draggable
                onDragEnd={(e) => {
@@ -363,7 +364,7 @@ export default function Canvas() {
                    const dx = nx - cx;
                    const dy = ny - cy;
                    e.target.position({x: cx, y: cy});
-                   updateElementVisual(el.key, { x: rendered.x + dx, y: rendered.y + dy });
+                   updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
                }}
                onClick={(e) => {
                    if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
@@ -374,7 +375,8 @@ export default function Canvas() {
                cx + r, cy,
                (e) => {
                    const newR = Math.sqrt(Math.pow(e.target.x() - cx, 2) + Math.pow(e.target.y() - cy, 2));
-                   const clampedR = Math.max(1, newR);
+                   const clampedR = Math.max(1, snap(newR));
+                   e.target.position({ x: cx + clampedR, y: cy });
                    updateElementVisual(el.key, { radius: clampedR, w: clampedR * 2, h: clampedR * 2 });
                },
                `${el.key}-anc-r`
@@ -400,9 +402,9 @@ export default function Canvas() {
                   const dy = e.target.y();
                   e.target.position({x:0, y:0});
                   updateElementVisual(el.key, {
-                      x1: x1 + dx, y1: y1 + dy,
-                      x2: x2 + dx, y2: y2 + dy,
-                      x: (x1 + x2)/2 + dx, y: (y1 + y2)/2 + dy,
+                      x1: snap(x1 + dx), y1: snap(y1 + dy),
+                      x2: snap(x2 + dx), y2: snap(y2 + dy),
+                      x: snap((x1 + x2)/2 + dx), y: snap((y1 + y2)/2 + dy),
                   });
               }}
               onClick={(e) => {
@@ -410,8 +412,18 @@ export default function Canvas() {
                    else selectMultiple([el.key]);
               }}
             />
-            {isSelected && renderAnchor(x1, y1, (e) => updateElementVisual(el.key, { x1: e.target.x(), y1: e.target.y() }), `${el.key}-anc-1`)}
-            {isSelected && renderAnchor(x2, y2, (e) => updateElementVisual(el.key, { x2: e.target.x(), y2: e.target.y() }), `${el.key}-anc-2`)}
+            {isSelected && renderAnchor(x1, y1, (e) => {
+                const sx = snap(e.target.x());
+                const sy = snap(e.target.y());
+                e.target.position({ x: sx, y: sy });
+                updateElementVisual(el.key, { x1: sx, y1: sy });
+            }, `${el.key}-anc-1`)}
+            {isSelected && renderAnchor(x2, y2, (e) => {
+                const sx = snap(e.target.x());
+                const sy = snap(e.target.y());
+                e.target.position({ x: sx, y: sy });
+                updateElementVisual(el.key, { x2: sx, y2: sy });
+            }, `${el.key}-anc-2`)}
          </Group>
        );
     }

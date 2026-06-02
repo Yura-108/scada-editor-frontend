@@ -75,13 +75,12 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
       }}
     >
       <line
-        points={}
         x1={element.x1}
         y1={element.y1}
         x2={element.x2}
         y2={element.y2}
-        stroke="#9ca3af"
-        strokeWidth={2}
+        stroke="#270a1f"
+        strokeWidth={4}
       />
 
       {selected && (
