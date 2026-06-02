@@ -476,6 +476,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         // Отправляем DELETE на сервер только для тех элементов, у которых есть id
         if (ids.length === 0) return;
 
+        console.log(ids)
+
         try {
           const res = await fetch(`/api/editor/components`, {
             method: 'DELETE',
@@ -535,9 +537,14 @@ export const useEditorStore = create<EditorState>()(temporal(
             body: JSON.stringify(payload),
           });
 
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
           const oldData = await res.json();
 
-          const newData = transformElements(oldData);
+          const newData = transformElements(oldData, scene);
 
           console.log(newData)
 
