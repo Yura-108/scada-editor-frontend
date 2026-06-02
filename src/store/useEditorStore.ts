@@ -2,7 +2,14 @@ import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
-import {fitGroupToChildren, GROUP_PADDING} from "@/lib/groupLayout";
+import {
+  elementToGroupLocal,
+  GROUP_PADDING,
+  layoutGroupFromBounds,
+  snapshotBounds,
+  unionBounds,
+  resolveParentAbsolute,
+} from "@/lib/groupLayout";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
@@ -663,28 +670,20 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (simple.length > 0 && complex.length === 0 && groups.length === 1) {
           const targetGroup = groups[0] as GroupElement;
           const simpleKeys = simple.map(s => s.key);
+          const allChildKeys = [
+            ...new Set([...(targetGroup.children ?? []), ...simpleKeys]),
+          ];
 
-          let updatedElements = elements.map(el => {
-            if (simpleKeys.includes(el.key)) {
-              return {
-                ...el,
-                parentKey: targetGroup.key,
-                parentId: targetGroup.id,
-              };
-            }
+          const boundsByKey = snapshotBounds(elements, allChildKeys);
 
-            if (el.key === targetGroup.key) {
-              const mergedChildren = [...(targetGroup.children ?? [])];
-              for (const key of simpleKeys) {
-                if (!mergedChildren.includes(key)) mergedChildren.push(key);
-              }
-              return {...targetGroup, children: mergedChildren};
-            }
-
-            return el;
-          });
-
-          updatedElements = fitGroupToChildren(updatedElements, targetGroup.key, GROUP_PADDING);
+          const updatedElements = layoutGroupFromBounds(
+            elements,
+            targetGroup.key,
+            allChildKeys,
+            boundsByKey,
+            GROUP_PADDING,
+            scene?.id,
+          );
 
           set({
             elements: updatedElements,
@@ -705,11 +704,16 @@ export const useEditorStore = create<EditorState>()(temporal(
           ? scene?.id || null
           : commonParentElement?.id ?? null;
 
+        const boundsByKey = snapshotBounds(elements, selectedKeys);
+        const box = unionBounds([...boundsByKey.values()], GROUP_PADDING);
+        const parentAbs = resolveParentAbsolute(commonParentKey, elements, scene?.id);
+
         let updatedElements = elements.map(el => {
           if (!selectedKeys.includes(el.key)) return el;
 
+          const bounds = boundsByKey.get(el.key)!;
           return {
-            ...el,
+            ...elementToGroupLocal(el, bounds, box.absX, box.absY),
             parentKey: newGroupId,
             parentId: null,
           };
@@ -736,10 +740,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           id: null,
           key: newGroupId,
           type: "group",
-          x: 0,
-          y: 0,
-          w: 1,
-          h: 1,
+          x: box.absX - parentAbs.x,
+          y: box.absY - parentAbs.y,
+          w: box.w,
+          h: box.h,
           composition: true,
           children: selectedKeys,
           parentId: newGroupParentId,
@@ -759,14 +763,19 @@ export const useEditorStore = create<EditorState>()(temporal(
           }],
         };
 
-        updatedElements = fitGroupToChildren(
-          [...updatedElements, group],
-          newGroupId,
-          GROUP_PADDING,
+        console.log(
+          updatedElements
+            .filter(el => selectedKeys.includes(el.key))
+            .map(el => ({
+              key: el.key,
+              parentKey: el.parentKey,
+              x: el.x,
+              y: el.y,
+            }))
         );
 
         set({
-          elements: updatedElements,
+          elements: [...updatedElements, group],
           selectedIds: [newGroupId],
         });
       },
@@ -855,48 +864,53 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (!element || !targetGroup || targetGroup.type !== "group") return;
 
         const oldParentKey = element.parentKey;
+        const {scene} = get();
 
-        // 1. Обновляем сам элемент
+        const targetChildKeys = [
+          ...new Set([...(targetGroup.children ?? []), elementKey]),
+        ];
+        const targetBoundsByKey = snapshotBounds(elements, targetChildKeys);
+
         let updatedElements = elements.map(el => {
-          if (el.key === elementKey) {
+          if (el.key === oldParentKey && el.type === "group" && oldParentKey !== targetGroupKey) {
             return {
               ...el,
-              parentKey: targetGroupKey,
-              parentId: targetGroup.id,
+              children: el.children.filter(childKey => childKey !== elementKey),
             };
           }
-          return el;
-        });
-
-        // 2. Убираем элемент из старого родителя
-        if (oldParentKey && oldParentKey !== targetGroupKey) {
-          updatedElements = updatedElements.map(el => {
-            if (el.key === oldParentKey && el.type === "group") {
-              return {
-                ...el,
-                children: el.children.filter(childKey => childKey !== elementKey),
-              };
-            }
-            return el;
-          });
-        }
-
-        // 3. Добавляем элемент новому родителю
-        updatedElements = updatedElements.map(el => {
           if (el.key === targetGroupKey) {
             const nextChildren = [...(el.children ?? [])];
-            if (!nextChildren.includes(elementKey)) {
-              nextChildren.push(elementKey);
-            }
-            return { ...el, children: nextChildren };
+            if (!nextChildren.includes(elementKey)) nextChildren.push(elementKey);
+            return {...el, children: nextChildren};
           }
           return el;
         });
 
-        // 4. Корректируем размеры групп
-        updatedElements = fitGroupToChildren(updatedElements, targetGroupKey, GROUP_PADDING);
+        updatedElements = layoutGroupFromBounds(
+          updatedElements,
+          targetGroupKey,
+          targetChildKeys,
+          targetBoundsByKey,
+          GROUP_PADDING,
+          scene?.id,
+        );
+
         if (oldParentKey && oldParentKey !== targetGroupKey) {
-          updatedElements = fitGroupToChildren(updatedElements, oldParentKey, GROUP_PADDING);
+          const oldGroup = updatedElements.find(
+            el => el.key === oldParentKey && el.type === "group",
+          ) as GroupElement | undefined;
+
+          if (oldGroup?.children.length) {
+            const oldBoundsByKey = snapshotBounds(updatedElements, oldGroup.children);
+            updatedElements = layoutGroupFromBounds(
+              updatedElements,
+              oldParentKey,
+              oldGroup.children,
+              oldBoundsByKey,
+              GROUP_PADDING,
+              scene?.id,
+            );
+          }
         }
 
         set({ elements: updatedElements });

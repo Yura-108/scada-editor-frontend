@@ -82,13 +82,13 @@ export type ElementType =
   | "circle"
   | "line"
   | "group"
+  | "custom"
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
   color?: string;
-  points?: number[]; // Array of [x1,y1, x2,y2, ...] absolute coordinates
-  vertexCount?: number; // Number of vertices for polygons
+  points?: number[]; // Array of [x1,y1, x2,y2, ...] relative to element x,y or absolute? Let's use absolute or relative depending on implementation
   sides?: number; // for polygon initial generation
   radius?: number; // for circle and regular polygon initial generation
   size?: number | "small" | "medium" | "large";

@@ -6,14 +6,12 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {GRID} from "@/lib/utils";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
-import {LinesLayer} from "@/components/editor/LinesLayer";
-import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {getRenderedElement} from "@/lib/getRenderedElement";
-import {Stage, Layer, Rect, Circle, Line, Text, Group, Path, RegularPolygon} from "react-konva";
+import {Stage, Layer, Rect, Circle, Line, Text, Group} from "react-konva";
 import Konva from "konva";
 import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 
@@ -244,6 +242,8 @@ export default function Canvas() {
     }
   };
 
+  console.log("Rendering Canvas with elements:", elements);
+
   const renderAnchor = (x: number, y: number, onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void, key: string) => {
     return (
       <Circle
@@ -284,8 +284,10 @@ export default function Canvas() {
       if (!Array.isArray(pts) || pts.length !== expectedLen) {
           const sides = rendered.sides || 3;
           const radius = rendered.radius || 40;
-          const cx = rendered.x + (rendered.w / 2 || 0);
-          const cy = rendered.y + (rendered.h / 2 || 0);
+
+          const cx = rendered.w / 2;
+          const cy = rendered.h / 2;
+
           pts = [];
           for (let i = 0; i < sides; i++) {
               const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
@@ -295,7 +297,12 @@ export default function Canvas() {
       }
 
       return (
-        <Group key={el.key} id={el.key}>
+          <Group
+            key={el.key}
+            id={el.key}
+            x={rendered.x}
+            y={rendered.y}
+          >
            <Line
              points={pts as number[]}
              closed={true}
@@ -309,7 +316,10 @@ export default function Canvas() {
                  const dy = node.y();
                  const newPts = (pts as number[]).map((p, i) => i % 2 === 0 ? p + dx : p + dy);
                  node.position({x:0,y:0});
-                 updateElementVisual(el.key, { points: newPts });
+                 updateElementVisual(el.key, {
+                   x: rendered.x + dx,
+                   y: rendered.y + dy,
+                 });
              }}
              onClick={(e) => {
                 if(e.evt.shiftKey) { setContextMenu(null); selectMultiple([...selectedIds, el.key]); }
@@ -415,7 +425,10 @@ export default function Canvas() {
          rotation={rendered.rotate || 0}
          draggable
          onDragEnd={(e) => {
-             updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() });
+           updateElementVisual(el.key, {
+             x: rendered.x + dx,
+             y: rendered.y + dy,
+           });
          }}
          onClick={(e) => {
            if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);

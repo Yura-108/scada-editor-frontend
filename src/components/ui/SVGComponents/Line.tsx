@@ -75,6 +75,7 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
       }}
     >
       <line
+        points={}
         x1={element.x1}
         y1={element.y1}
         x2={element.x2}
