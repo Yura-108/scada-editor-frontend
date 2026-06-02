@@ -1,6 +1,6 @@
 import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
-import {paletteItems} from "@/constants/palette";
+import {paletteItems as paletteItemsStatic} from "@/constants/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
@@ -13,7 +13,7 @@ type PaletteState = {
 }
 
 export const usePaletteStore = create<PaletteState>((set, get) => ({
-  paletteItems: paletteItems,
+  paletteItems: paletteItemsStatic,
   addPaletteItem: (paletteItem) => {
     set({
       paletteItems: [...get().paletteItems, paletteItem]
@@ -38,7 +38,7 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
       });
 
       set({
-        paletteItems: [...get().paletteItems, ...paletteItems]
+        paletteItems: [...paletteItemsStatic, ...paletteItems]
       });
       toast.success("Список элементов загружен");
     } catch (err: any) {
