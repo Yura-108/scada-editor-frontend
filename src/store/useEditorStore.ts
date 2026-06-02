@@ -458,29 +458,38 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const idsToDelete = new Set([...selectedIds, ...childrenIds]);
 
+        // Собираем только id, которые существуют (не null/undefined)
         const ids = elements
-          .filter(el => [...idsToDelete].includes(el.key))
+          .filter(el => idsToDelete.has(el.key))
           .map(el => el.id)
-          .filter(Boolean);
+          .filter((id): id is number => id !== null && id !== undefined);
+
+        // Локально удаляем выделенные элементы (даже если у них не было id)
+        set({
+          elements: elements.filter(el => !idsToDelete.has(el.key)),
+          selectedIds: [],
+          currentComponentStateByElementKey: Object.fromEntries(
+            Object.entries(get().currentComponentStateByElementKey).filter(([elementKey]) => !idsToDelete.has(elementKey))
+          ),
+        });
+
+        // Отправляем DELETE на сервер только для тех элементов, у которых есть id
+        if (ids.length === 0) return;
 
         try {
-          await fetch(`/api/editor/components`, {
+          const res = await fetch(`/api/editor/components`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ids),
           });
 
-          set({
-            elements: elements.filter(el => !idsToDelete.has(el.key)),
-            selectedIds: [],
-            currentComponentStateByElementKey: Object.fromEntries(
-              Object.entries(get().currentComponentStateByElementKey).filter(([elementKey]) => !idsToDelete.has(elementKey))
-            ),
-          });
-
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
         } catch (err) {
           console.error('Ошибка при удалении:', err);
-          toast.error('Не удалось удалить элементы. Попробуйте снова.');
+          toast.error('Не удалось удалить элементы на сервере. Попробуйте снова.');
         }
       },
       copySelectedElement: () => {
@@ -605,14 +614,21 @@ export const useEditorStore = create<EditorState>()(temporal(
         try {
           const res = await fetch(`/api/editor/scene/${id}`);
 
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
           const scene = await res.json();
-          const newElements = transformElements(scene.children);
+          const newElements = transformElements(scene?.children ?? [], scene);
 
           set({scene, elements: newElements, selectedIds: [], currentComponentStateByElementKey: {}});
 
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
+          // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
+          set({scene: null, elements: [], selectedIds: [], currentComponentStateByElementKey: {}});
         }
       },
       createScene: async () => {

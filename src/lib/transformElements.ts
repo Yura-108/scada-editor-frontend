@@ -1,5 +1,4 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {useEditorStore} from "@/store/useEditorStore";
 import {createUuid} from "@/lib/createUuid";
 
 type BackendStateDto = {
@@ -56,9 +55,10 @@ const toFiniteNumber = (value: unknown, fallback: number) => {
 
 const normalizeArray = <T,>(value: T[] | undefined | null) => Array.isArray(value) ? value : [];
 
-export default function transformElements(apiElements: ComponentDto[] = []) {
-  const {scene} = useEditorStore.getState();
-
+export default function transformElements(
+  apiElements: ComponentDto[] = [],
+  scene: { id?: number | string; key?: string } | null = null,
+) {
   if (!Array.isArray(apiElements)) {
     return [];
   }
