@@ -1,6 +1,6 @@
 import {DiagramElement, GroupElement} from "@/types/editorElement.type";
-import getAbsolutePosition from "@/lib/getAbsolutePosition";
-import {getElementBounds} from "@/lib/getElementBounds";
+import getAbsolutePosition, {getAbsoluteRenderedPosition} from "@/lib/getAbsolutePosition";
+import {getElementBounds, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 
 export const GROUP_PADDING = 24;
@@ -23,7 +23,7 @@ export function resolveParentAbsolute(
 
   if (!parent) return {x: 0, y: 0};
 
-  return getAbsolutePosition(parent, elements);
+  return getAbsoluteRenderedPosition(parent, elements);
 }
 
 export function unionBounds(boundsList: ElementBounds[], padding = GROUP_PADDING) {
@@ -50,25 +50,66 @@ export function unionBounds(boundsList: ElementBounds[], padding = GROUP_PADDING
   };
 }
 
+/** Позиционные поля, которые могут храниться в overrides и конфликтовать с группировкой. */
+const POSITION_OVERRIDE_KEYS = new Set([
+  "x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points",
+]);
+
 /** Переводит элемент в локальные координаты группы, сохраняя визуальную позицию на холсте. */
 export function elementToGroupLocal(
   el: DiagramElement,
-  bounds: ElementBounds,
+  bounds: ElementBounds & { absX1?: number; absY1?: number; absX2?: number; absY2?: number },
   groupAbsX: number,
   groupAbsY: number,
 ): DiagramElement {
   const rendered = getRenderedElement(el);
 
+  // Убираем позиционные overrides из states, чтобы они не перебивали новые base-значения.
+  // Стилевые overrides (fill, stroke, opacity, …) сохраняем.
+  const cleanedStates = (el.states ?? []).map((s) => ({
+    ...s,
+    overrides: Object.fromEntries(
+      Object.entries(s.overrides ?? {}).filter(([k]) => !POSITION_OVERRIDE_KEYS.has(k)),
+    ),
+  }));
+
+  // Линия: позиция кодируется через x1/y1/x2/y2 в локальном пространстве родителя.
+  // bounds содержит absX1/absY1/absX2/absY2 — абсолютные мировые координаты точек.
+  // Переводим их в group-local, обнуляем x/y (они у линии — «центр», не origin).
+  if (el.type === "line" || rendered.type === "line") {
+    const ax1 = bounds.absX1 ?? bounds.minX;
+    const ay1 = bounds.absY1 ?? bounds.minY;
+    const ax2 = bounds.absX2 ?? bounds.maxX;
+    const ay2 = bounds.absY2 ?? bounds.maxY;
+
+    const lx1 = ax1 - groupAbsX;
+    const ly1 = ay1 - groupAbsY;
+    const lx2 = ax2 - groupAbsX;
+    const ly2 = ay2 - groupAbsY;
+
+    return {
+      ...el,
+      x1: lx1,
+      y1: ly1,
+      x2: lx2,
+      y2: ly2,
+      x: (lx1 + lx2) / 2,
+      y: (ly1 + ly2) / 2,
+      states: cleanedStates,
+    };
+  }
+
+  // Все остальные типы: позиция — через x/y (origin верхнего левого угла)
+  const newX = (bounds.absX ?? bounds.minX) - groupAbsX;
+  const newY = (bounds.absY ?? bounds.minY) - groupAbsY;
+
   return {
     ...el,
-
-    // абсолютная позиция элемента -> локальная позиция внутри группы
-    x: (bounds.absX ?? bounds.minX) - groupAbsX,
-    y: (bounds.absY ?? bounds.minY) - groupAbsY,
-
-    // размеры сохраняем как есть
+    x: newX,
+    y: newY,
     w: rendered.w ?? el.w ?? 0,
     h: rendered.h ?? el.h ?? 0,
+    states: cleanedStates,
   };
 }
 
@@ -123,7 +164,11 @@ export function layoutGroupFromBounds(
   });
 }
 
-/** Снимает абсолютные границы элементов в текущем состоянии дерева. */
+/**
+ * Снимает абсолютные границы элементов в текущем состоянии дерева.
+ * Использует rendered-aware позиции, чтобы корректно обрабатывать элементы,
+ * которые были перемещены (позиция в state overrides, а не в base el.x/el.y).
+ */
 export function snapshotBounds(
   elements: DiagramElement[],
   keys: string[],
@@ -132,7 +177,7 @@ export function snapshotBounds(
 
   for (const key of keys) {
     const el = elements.find((e) => e.key === key);
-    if (el) map.set(key, getElementBounds(el, elements));
+    if (el) map.set(key, getElementBoundsRendered(el, elements));
   }
 
   return map;

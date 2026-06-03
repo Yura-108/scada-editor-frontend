@@ -17,6 +17,87 @@ import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 
 const MIN_SIZE = 20;
 
+interface TextShapeElementProps {
+  el: DiagramElement;
+  isSelected: boolean;
+  snap: (v: number) => number;
+  selectedIds: string[];
+  selectMultiple: (ids: string[]) => void;
+  updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+}
+
+function TextShapeElement({ el, isSelected, snap, selectedIds, selectMultiple, updateElementVisual }: TextShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const textRef = useRef<Konva.Text>(null);
+
+  const pad = 4;
+
+  const fontSize = rendered.fontSize ?? 16;
+  const text = rendered.text ?? "Text";
+  const fontFamily = rendered.fontFamily || "Arial";
+  const fontStyle = rendered.bold ? "bold" : "normal";
+
+  // Читаем размер прямо с Konva-узла если он уже смонтирован (все рендеры кроме первого).
+  // На первом рендере textRef.current === null — создаём временный узел для синхронного измерения.
+  let selW: number;
+  let selH: number;
+  if (textRef.current) {
+    selW = rendered.w || textRef.current.getTextWidth();
+    selH = rendered.h || textRef.current.getTextHeight();
+  } else {
+    const tmp = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width: rendered.w || undefined });
+    selW = rendered.w || tmp.getTextWidth();
+    selH = rendered.h || tmp.getTextHeight();
+    tmp.destroy();
+  }
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => {
+        updateElementVisual(el.key, {
+          x: snap(e.target.x()),
+          y: snap(e.target.y()),
+        });
+      }}
+      onClick={(e) => {
+        if (e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
+        else selectMultiple([el.key]);
+      }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad}
+          y={-pad}
+          width={selW + pad * 2}
+          height={selH + pad * 2}
+          fill="transparent"
+          stroke="#3b82f6"
+          strokeWidth={1.5}
+          dash={[4, 3]}
+          listening={false}
+        />
+      )}
+      <Text
+        ref={textRef}
+        x={0}
+        y={0}
+        text={text}
+        fontSize={fontSize}
+        fontStyle={fontStyle}
+        fontFamily={fontFamily}
+        fill={rendered.color || rendered.textColor || "#ffffff"}
+        align={rendered.align || "left"}
+        width={rendered.w || undefined}
+        listening={true}
+      />
+    </Group>
+  );
+}
+
 export default function Canvas() {
   const {
     elements,
@@ -484,30 +565,14 @@ export default function Canvas() {
 
     if (rendered.type === "text") {
       return (
-        <Text
+        <TextShapeElement
           key={el.key}
-          id={el.key}
-          x={rendered.x}
-          y={rendered.y}
-          text={rendered.text ?? "Text"}
-          fontSize={rendered.fontSize ?? 16}
-          fontStyle={rendered.bold ? "bold" : "normal"}
-          fontFamily={rendered.fontFamily || "Arial"}
-          fill={rendered.color || rendered.textColor || "#ffffff"}
-          align={rendered.align || "left"}
-          width={rendered.w || undefined}
-          listening={true}
-          draggable
-          onDragEnd={(e) => {
-            updateElementVisual(el.key, {
-              x: snap(e.target.x()),
-              y: snap(e.target.y()),
-            });
-          }}
-          onClick={(e) => {
-            if (e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
-            else selectMultiple([el.key]);
-          }}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          selectedIds={selectedIds}
+          selectMultiple={selectMultiple}
+          updateElementVisual={updateElementVisual}
         />
       );
     }
