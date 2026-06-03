@@ -325,7 +325,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const composition = getComposition(type);
 
-        const x = snap(screenX + 150);
+        const x = snap(screenX);
         const y = snap(screenY);
 
         if (type === 'line') {

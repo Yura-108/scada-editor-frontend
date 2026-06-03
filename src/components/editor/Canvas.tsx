@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
+import React, {useMemo, useRef, useEffect, useState} from "react";
 import {useDroppable} from "@dnd-kit/core";
 import {useEditorStore} from "@/store/useEditorStore";
 import {GRID, snap} from "@/lib/utils";
@@ -70,6 +70,15 @@ export default function Canvas() {
     return map;
   }, [elements]);
 
+  // Absolute world position of an element, using rendered (override-aware) coords at every level.
+  const getAbsoluteRenderedPos = (el: DiagramElement): {x: number; y: number} => {
+    const rendered = getRenderedElement(el);
+    const parent = el.parentKey ? elementsMap[el.parentKey] : null;
+    if (!parent) return { x: rendered.x ?? 0, y: rendered.y ?? 0 };
+    const parentPos = getAbsoluteRenderedPos(parent);
+    return { x: parentPos.x + (rendered.x ?? 0), y: parentPos.y + (rendered.y ?? 0) };
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -130,7 +139,7 @@ export default function Canvas() {
     }
 
     if (clickedOnEmpty || clickedOnBg) {
-      if (!e.evt.shiftKey) {
+      if (!e.evt.shiftKey && !e.evt.ctrlKey) {
         selectMultiple([]);
       }
       const pos = stageRef.current?.getPointerPosition();
@@ -145,7 +154,7 @@ export default function Canvas() {
     }
   };
 
-  const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handleStageMouseMove = () => {
     if (selectionRect && stageRef.current) {
         const pos = stageRef.current.getPointerPosition();
         if (pos) {
@@ -168,16 +177,58 @@ export default function Canvas() {
       const sw = Math.abs(selectionRect.width);
       const sh = Math.abs(selectionRect.height);
 
+      const getSelectionBounds = (el: DiagramElement) => {
+        const rendered = getRenderedElement(el);
+        const absPos  = getAbsoluteRenderedPos(el);
+
+        if (rendered.type === "polygon") {
+          // Вершины хранятся локально внутри polygon Group.
+          // Абсолютная позиция вершины = absPos (позиция Group) + local vertex.
+          const pts: number[] = Array.isArray(rendered.points)
+            ? rendered.points as number[]
+            : (() => { try { return JSON.parse((rendered.points as string | undefined) ?? "[]"); } catch { return []; } })();
+
+          if (pts.length >= 2) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i + 1 < pts.length; i += 2) {
+              minX = Math.min(minX, absPos.x + pts[i]);
+              minY = Math.min(minY, absPos.y + pts[i + 1]);
+              maxX = Math.max(maxX, absPos.x + pts[i]);
+              maxY = Math.max(maxY, absPos.y + pts[i + 1]);
+            }
+            return { x: minX, y: minY, w: Math.max(maxX - minX, 1), h: Math.max(maxY - minY, 1) };
+          }
+        }
+
+        if (rendered.type === "line") {
+          // x1/y1/x2/y2 хранятся в той же системе координат что rendered.x/y (родитель-локальная).
+          // absPos = parentAbs + rendered.x  →  parentAbs = absPos - rendered.x
+          const pax = absPos.x - (rendered.x ?? 0);
+          const pay = absPos.y - (rendered.y ?? 0);
+          const ax1 = pax + (rendered.x1 ?? rendered.x ?? 0);
+          const ay1 = pay + (rendered.y1 ?? rendered.y ?? 0);
+          const ax2 = pax + (rendered.x2 ?? ((rendered.x ?? 0) + 80));
+          const ay2 = pay + (rendered.y2 ?? rendered.y ?? 0);
+          return {
+            x: Math.min(ax1, ax2),
+            y: Math.min(ay1, ay2),
+            w: Math.max(Math.abs(ax2 - ax1), 2),
+            h: Math.max(Math.abs(ay2 - ay1), 2),
+          };
+        }
+
+        return { x: absPos.x, y: absPos.y, w: rendered.w ?? 0, h: rendered.h ?? 0 };
+      };
+
       const selected = elements
-        .filter(el => {
-          const re = getRenderedElement(el);
-          // Используем {x, y, width, height} для selBox, чтобы соответствовать интерфейсу isIntersecting
-          return isIntersecting({ x: sx, y: sy, width: sw, height: sh }, { x: re.x, y: re.y, w: re.w, h: re.h });
-        })
+        .filter(el => isIntersecting(
+          { x: sx, y: sy, width: sw, height: sh },
+          getSelectionBounds(el),
+        ))
         .map(el => el.key);
 
       if (selected.length > 0) {
-        selectMultiple(selected);
+        selectMultiple([...new Set([...selectedIds, ...selected])]);
       }
       setSelectionRect(null);
     }
@@ -275,13 +326,17 @@ export default function Canvas() {
     const rendered = getRenderedElement(el) as LeafElement;
 
     if (rendered.type === "polygon") {
-      let pts = rendered.points || [];
-      if (typeof pts === "string") {
-          try { pts = JSON.parse(pts); } catch(err) { pts = []; }
+      let pts: number[] = [];
+      const pointsData = rendered.points as string | number[] | undefined;
+
+      if (typeof pointsData === "string") {
+          try { pts = JSON.parse(pointsData); } catch(err) { pts = []; }
+      } else if (Array.isArray(pointsData)) {
+          pts = pointsData;
       }
 
       const expectedLen = (rendered.sides || 3) * 2;
-      if (!Array.isArray(pts) || pts.length !== expectedLen) {
+      if (pts.length !== expectedLen) {
           const sides = rendered.sides || 3;
           const radius = rendered.radius || 40;
 
@@ -310,19 +365,18 @@ export default function Canvas() {
              stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#8a909b")}
              strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
              draggable
-             onDragEnd={(e) => {
-                 const node = e.target;
-                 const dx = node.x();
-                 const dy = node.y();
-                 const newPts = (pts as number[]).map((p, i) => i % 2 === 0 ? p + dx : p + dy);
-                 node.position({x:0,y:0});
-                 updateElementVisual(el.key, {
-                   x: snap(rendered.x + dx),
-                   y: snap(rendered.y + dy),
-                 });
-             }}
+              onDragEnd={(e) => {
+                  const node = e.target;
+                  const dx = node.x();
+                  const dy = node.y();
+                  node.position({x:0,y:0});
+                  updateElementVisual(el.key, {
+                    x: snap(rendered.x + dx),
+                    y: snap(rendered.y + dy),
+                  });
+              }}
              onClick={(e) => {
-                if(e.evt.shiftKey) { setContextMenu(null); selectMultiple([...selectedIds, el.key]); }
+                if(e.evt.shiftKey || e.evt.ctrlKey) { setContextMenu(null); selectMultiple([...selectedIds, el.key]); }
                 else { setContextMenu(null); selectMultiple([el.key]); }
              }}
            />
@@ -367,7 +421,7 @@ export default function Canvas() {
                    updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
                }}
                onClick={(e) => {
-                   if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+                   if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
                    else selectMultiple([el.key]);
                }}
             />
@@ -408,7 +462,7 @@ export default function Canvas() {
                   });
               }}
               onClick={(e) => {
-                   if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+                   if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
                    else selectMultiple([el.key]);
               }}
             />
@@ -446,12 +500,12 @@ export default function Canvas() {
           draggable
           onDragEnd={(e) => {
             updateElementVisual(el.key, {
-              x: e.target.x(),
-              y: e.target.y(),
+              x: snap(e.target.x()),
+              y: snap(e.target.y()),
             });
           }}
           onClick={(e) => {
-            if (e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+            if (e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
             else selectMultiple([el.key]);
           }}
         />
@@ -468,12 +522,12 @@ export default function Canvas() {
          draggable
          onDragEnd={(e) => {
            updateElementVisual(el.key, {
-             x: rendered.x + dx,
-             y: rendered.y + dy,
+             x: snap(e.target.x()),
+             y: snap(e.target.y()),
            });
          }}
          onClick={(e) => {
-           if(e.evt.shiftKey) selectMultiple([...selectedIds, el.key]);
+           if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
            else selectMultiple([el.key]);
          }}
       >
@@ -511,11 +565,15 @@ export default function Canvas() {
        <Group
          key={group.key}
          id={group.key}
-         x={group.x}
-         y={group.y}
+         x={rendered.x}
+         y={rendered.y}
          draggable
          onDragEnd={(e) => {
-             updateElementVisual(group.key, { x: e.target.x(), y: e.target.y() });
+             if (e.target !== e.currentTarget) return; // ignore bubbled child drag events
+             updateElementVisual(group.key, {
+               x: snap(e.target.x()),
+               y: snap(e.target.y())
+             });
          }}
        >
          {group.children.map(childId => {
@@ -525,15 +583,15 @@ export default function Canvas() {
              return renderShapeElement(child);
          })}
          <Circle
-           x={group.w / 2}
-           y={group.h / 2}
+           x={rendered.w / 2}
+           y={rendered.h / 2}
            radius={6}
            fill={isSelected ? "#3b82f6" : "rgba(59,130,246,0.4)"}
            stroke={isSelected ? "white" : "rgba(59,130,246,0.8)"}
            strokeWidth={2}
            onClick={(e) => {
              e.cancelBubble = true;
-             if(e.evt.shiftKey) selectMultiple([...selectedIds, group.key]);
+             if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, group.key]);
              else selectMultiple([group.key]);
            }}
            onMouseEnter={e => {
@@ -593,7 +651,7 @@ export default function Canvas() {
                       ctx.moveTo(0,0); ctx.lineTo(0,GRID);
                       ctx.stroke();
                   }
-                  return cvs;
+                  return cvs as any;
                })()}
             />
 
