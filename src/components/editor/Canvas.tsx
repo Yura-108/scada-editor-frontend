@@ -17,6 +17,62 @@ import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 
 const MIN_SIZE = 20;
 
+interface CircleResizeHandleProps {
+  cx: number;
+  cy: number;
+  r: number;
+  elKey: string;
+  snap: (v: number) => number;
+  updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+  circleRef: React.RefObject<Konva.Circle | null>;
+}
+
+function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circleRef }: CircleResizeHandleProps) {
+  const handleRef = useRef<Konva.Circle>(null);
+
+  return (
+    <Circle
+      ref={handleRef}
+      x={cx + r}
+      y={cy}
+      radius={8}
+      fill="transparent"
+      stroke="transparent"
+      hitStrokeWidth={12}
+      draggable
+      onDragStart={(e) => { e.cancelBubble = true; }}
+      onDragMove={(e) => {
+        const dx = e.target.x() - cx;
+        const dy = e.target.y() - cy;
+        const newR = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+        // Зажимаем handle на горизонтальной оси
+        e.target.y(cy);
+        // Обновляем круг императивно — без React ре-рендера
+        circleRef.current?.radius(newR);
+        circleRef.current?.getLayer()?.batchDraw();
+      }}
+      onDragEnd={(e) => {
+        const dx = e.target.x() - cx;
+        const dy = e.target.y() - cy;
+        const newR = Math.max(1, snap(Math.sqrt(dx * dx + dy * dy)));
+        // Сначала обновляем Konva-узлы до снаппленного значения — убираем визуальный прыжок
+        e.target.position({ x: cx + newR, y: cy });
+        circleRef.current?.radius(newR);
+        circleRef.current?.getLayer()?.batchDraw();
+        updateElementVisual(elKey, { radius: newR, w: newR * 2, h: newR * 2 });
+      }}
+      onMouseEnter={e => {
+        const container = e.target.getStage()?.container();
+        if (container) container.style.cursor = "ew-resize";
+      }}
+      onMouseLeave={e => {
+        const container = e.target.getStage()?.container();
+        if (container) container.style.cursor = "default";
+      }}
+    />
+  );
+}
+
 interface TextShapeElementProps {
   el: DiagramElement;
   isSelected: boolean;
@@ -373,8 +429,7 @@ export default function Canvas() {
        }
     }
   };
-
-  console.log("Rendering Canvas with elements:", elements);
+  
 
   const renderAnchor = (x: number, y: number, onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void, key: string) => {
     return (
@@ -483,9 +538,11 @@ export default function Canvas() {
        const r = rendered.radius || rendered.w / 2 || 40;
        const cx = rendered.x + r;
        const cy = rendered.y + r;
+       const circleRef = React.createRef<Konva.Circle>();
        return (
          <Group key={el.key} id={el.key}>
             <Circle
+               ref={circleRef}
                x={cx}
                y={cy}
                radius={r}
@@ -506,15 +563,17 @@ export default function Canvas() {
                    else selectMultiple([el.key]);
                }}
             />
-            {isSelected && renderAnchor(
-               cx + r, cy,
-               (e) => {
-                   const newR = Math.sqrt(Math.pow(e.target.x() - cx, 2) + Math.pow(e.target.y() - cy, 2));
-                   const clampedR = Math.max(1, snap(newR));
-                   e.target.position({ x: cx + clampedR, y: cy });
-                   updateElementVisual(el.key, { radius: clampedR, w: clampedR * 2, h: clampedR * 2 });
-               },
-               `${el.key}-anc-r`
+            {isSelected && (
+              <CircleResizeHandle
+                key={`${el.key}-resize`}
+                cx={cx}
+                cy={cy}
+                r={r}
+                elKey={el.key}
+                snap={snap}
+                updateElementVisual={updateElementVisual}
+                circleRef={circleRef}
+              />
             )}
          </Group>
        );

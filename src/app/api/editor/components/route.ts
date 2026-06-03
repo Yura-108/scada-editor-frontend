@@ -70,7 +70,5 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
 
   const editorElements = await response.json().catch(() => null);
 
-  console.log(editorElements)
-
   return NextResponse.json(editorElements, {status: 201});
 })

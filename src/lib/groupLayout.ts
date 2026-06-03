@@ -64,7 +64,16 @@ export function elementToGroupLocal(
 ): DiagramElement {
   const rendered = getRenderedElement(el);
 
-  // Убираем позиционные overrides из states, чтобы они не перебивали новые base-значения.
+  // Переносим ВСЕ позиционные значения из rendered в base, чтобы ничего не потерялось.
+  // rendered = {...el, ...overrides}, поэтому rendered[key] — всегда актуальное значение.
+  // Это гарантирует сохранение radius, points, w, h и т.д. при очистке overrides.
+  const renderedPositionBase: Partial<Record<string, unknown>> = {};
+  for (const key of POSITION_OVERRIDE_KEYS) {
+    const value = (rendered as unknown as Record<string, unknown>)[key];
+    if (value !== undefined) renderedPositionBase[key] = value;
+  }
+
+  // Убираем позиционные overrides из states: они уже записаны в base выше.
   // Стилевые overrides (fill, stroke, opacity, …) сохраняем.
   const cleanedStates = (el.states ?? []).map((s) => ({
     ...s,
@@ -89,26 +98,26 @@ export function elementToGroupLocal(
 
     return {
       ...el,
-      x1: lx1,
-      y1: ly1,
-      x2: lx2,
-      y2: ly2,
+      ...renderedPositionBase,
+      x1: lx1, y1: ly1,
+      x2: lx2, y2: ly2,
       x: (lx1 + lx2) / 2,
       y: (ly1 + ly2) / 2,
       states: cleanedStates,
     };
   }
 
-  // Все остальные типы: позиция — через x/y (origin верхнего левого угла)
+  // Все остальные типы: позиция — через x/y (origin верхнего левого угла).
+  // renderedPositionBase уже содержит актуальные w, h, radius, points и т.д.
+  // Поверх него ставим вычисленные group-local x/y.
   const newX = (bounds.absX ?? bounds.minX) - groupAbsX;
   const newY = (bounds.absY ?? bounds.minY) - groupAbsY;
 
   return {
     ...el,
+    ...renderedPositionBase,
     x: newX,
     y: newY,
-    w: rendered.w ?? el.w ?? 0,
-    h: rendered.h ?? el.h ?? 0,
     states: cleanedStates,
   };
 }

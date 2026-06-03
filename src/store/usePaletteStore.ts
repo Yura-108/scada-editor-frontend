@@ -11,6 +11,8 @@ type PaletteState = {
   loadPaletteItems: () => Promise<void>;
   createPaletteItem: (paletteItem: Omit<PaletteItemType, 'id'>) => Promise<void>;
   updatePaletteItem: (id: number, paletteItem: Omit<PaletteItemType, 'id'>) => Promise<void>;
+  deletePaletteItem: (id: number) => Promise<void>;
+  deletePaletteCategory: (category: string) => Promise<void>;
 }
 
 export const usePaletteStore = create<PaletteState>((set, get) => ({
@@ -130,11 +132,45 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         )
       });
 
-       toast.success("Шаблон успешно обновлен");
-     } catch (err: any) {
-       console.error(err);
-       toast.error(err.message || "Ошибка обновления шаблона");
-     }
-  }
+      toast.success("Шаблон успешно обновлен");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Ошибка обновления шаблона");
+    }
+  },
+  deletePaletteItem: async (id) => {
+    console.log('DELETE PALETTE ITEM', id);
+    try {
+      const res = await fetch(`/api/editor/palette/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => {});
+        throw new Error(err?.error || "Ошибка удаления");
+      }
+      set({ paletteItems: get().paletteItems.filter(item => item.id !== id) });
+      toast.success("Шаблон удалён");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Ошибка удаления шаблона");
+    }
+  },
+  deletePaletteCategory: async (category) => {
+    const items = get().paletteItems.filter(item => item.category === category);
+    let failed = 0;
+    for (const item of items) {
+      try {
+        const res = await fetch(`/api/editor/palette/${item.id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const err = await res.json().catch(() => {});
+          throw new Error(err?.error || "Ошибка удаления");
+        }
+        set({ paletteItems: get().paletteItems.filter(i => i.id !== item.id) });
+      } catch (err: any) {
+        console.error(err);
+        failed++;
+      }
+    }
+    if (failed === 0) toast.success(`Группа «${category}» удалена`);
+    else toast.error(`Удалено с ошибками: ${failed} из ${items.length}`);
+  },
 }))
 

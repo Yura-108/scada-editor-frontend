@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import PaletteItem from "./PaletteItem";
-import {Search, X, ChevronDown} from "lucide-react";
+import {Search, X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
 
+const STATIC_ID_THRESHOLD = 10 ** 5;
+
 export default function Palette() {
-  const {paletteItems} = usePaletteStore();
+  const {paletteItems, deletePaletteCategory} = usePaletteStore();
   const [search, setSearch] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
@@ -70,31 +72,48 @@ export default function Palette() {
         ) : (
           sortedCategories.map((category) => {
             const isExpanded = getCategoryExpandedState(category);
-            
+            const items: PaletteItemType[] = grouped[category];
+            const isDeletableCategory = items.every(item => item.id < STATIC_ID_THRESHOLD);
+
             return (
               <div key={category} className="space-y-2">
-                <button
-                  onClick={() => !isSearchActive && toggleCategory(category)}
-                  disabled={isSearchActive}
-                  className="w-full flex items-center gap-2 px-1 py-1.5 rounded-md transition-all hover:bg-neutral-100 dark:bg-neutral-800/50 disabled:hover:bg-transparent"
-                >
-                  <ChevronDown
-                    size={16}
-                    className={`text-neutral-500 transition-transform shrink-0 ${
-                      isExpanded ? "" : "-rotate-90"
-                    }`}
-                  />
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400 text-left">
-                    {category}
-                  </h3>
-                  <span className="ml-auto text-xs text-neutral-600">
-                    {grouped[category].length}
-                  </span>
-                </button>
+                <div className="group/cat flex items-center gap-1">
+                  {/* Основная кликабельная область */}
+                  <button
+                    onClick={() => !isSearchActive && toggleCategory(category)}
+                    disabled={isSearchActive}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800/50 disabled:hover:bg-transparent"
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`text-neutral-500 transition-transform shrink-0 ${
+                        isExpanded ? "" : "-rotate-90"
+                      }`}
+                    />
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400 text-left flex-1 truncate">
+                      {category}
+                    </h3>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium shrink-0">
+                {items.length}
+              </span>
+                  </button>
+
+                  {/* Кнопка удаления группы — справа */}
+                  {isDeletableCategory && (
+                    <button
+                      onClick={() => deletePaletteCategory(category)}
+                      className="p-2 rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-500/10
+                           opacity-0 group-hover/cat:opacity-100 transition-all duration-200 shrink-0"
+                      title={`Удалить группу «${category}»`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
 
                 {isExpanded && (
                   <div className="grid gap-1.5 pl-1">
-                    {grouped[category].map((item: PaletteItemType, index) => (
+                    {items.map((item: PaletteItemType, index) => (
                       <PaletteItem key={`${category}-${item.id}-${index}`} item={item} />
                     ))}
                   </div>
