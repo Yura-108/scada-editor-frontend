@@ -54,7 +54,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br bg-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
           {/* Заголовок */}

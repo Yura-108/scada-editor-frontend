@@ -18,6 +18,7 @@ import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
+import {getElementBoundsRendered} from "@/lib/getElementBounds";
 
 export type {EditorProject};
 
@@ -34,6 +35,9 @@ type EditorState = {
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
+  activeGroupKey: string | null;
+  enterGroup: (key: string) => void;
+  exitGroup: () => void;
   currentComponentStateByElementKey: Record<string, string>;
   setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
   clearCurrentComponentStateId: (elementKey: string) => void;
@@ -79,6 +83,109 @@ const isGroup = (el: DiagramElement) => el.type === "group";
 
 const isComplex = (el: DiagramElement) =>
   elementRegistry[el.type as ElementType]?.complex ?? false;
+
+/**
+ * После перемещения/ресайза элемента пересчитывает x/y/w/h всех групп-предков
+ * снизу вверх, чтобы рамки групп всегда облегали своё содержимое.
+ * Компенсирует сдвиг origin группы в локальных координатах детей, чтобы не
+ * было визуального прыжка при расширении рамки в сторону верхнего-левого угла.
+ */
+const RECOMPUTE_EXTRA_PADDING = 20; // extra on top of GROUP_PADDING
+
+const recomputeAncestorBounds = (
+  elements: DiagramElement[],
+  movedKey: string,
+  sceneId: number | null | undefined,
+): DiagramElement[] => {
+  let result = elements;
+  const sceneIdStr = String(sceneId ?? "");
+  const totalPadding = GROUP_PADDING + RECOMPUTE_EXTRA_PADDING;
+
+  // Собираем цепочку групп-предков снизу вверх
+  const ancestorGroupKeys: string[] = [];
+  const movedEl = result.find(el => el.key === movedKey);
+  let parentKey = movedEl?.parentKey ?? null;
+  while (parentKey && parentKey !== sceneIdStr) {
+    const parent = result.find(el => el.key === parentKey);
+    if (!parent || parent.type !== "group") break;
+    ancestorGroupKeys.push(parent.key);
+    parentKey = parent.parentKey ?? null;
+  }
+
+  // Пересчитываем от самого глубокого предка к корневому
+  for (const groupKey of ancestorGroupKeys) {
+    const group = result.find(el => el.key === groupKey);
+    if (!group || group.type !== "group") continue;
+
+    const childKeySet = new Set(group.children);
+    if (!childKeySet.size) continue;
+
+    // Считаем абсолютные границы всех детей в актуальном state (result уже обновлён)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const childKey of childKeySet) {
+      const child = result.find(el => el.key === childKey);
+      if (!child) continue;
+      const b = getElementBoundsRendered(child, result);
+      minX = Math.min(minX, b.minX);
+      minY = Math.min(minY, b.minY);
+      maxX = Math.max(maxX, b.maxX);
+      maxY = Math.max(maxY, b.maxY);
+    }
+
+    if (!isFinite(minX)) continue;
+
+    const parentAbs = resolveParentAbsolute(group.parentKey, result, sceneId);
+
+    const newGroupX = minX - totalPadding - parentAbs.x;
+    const newGroupY = minY - totalPadding - parentAbs.y;
+    const dx = newGroupX - group.x;
+    const dy = newGroupY - group.y;
+
+    result = result.map(el => {
+      if (el.key === groupKey) {
+        return {
+          ...el,
+          x: newGroupX,
+          y: newGroupY,
+          w: maxX - minX + totalPadding * 2,
+          h: maxY - minY + totalPadding * 2,
+        } as DiagramElement;
+      }
+
+      // Компенсируем сдвиг origin группы в локальных координатах прямых детей,
+      // чтобы их абсолютная позиция на холсте не изменилась.
+      if (childKeySet.has(el.key) && (dx !== 0 || dy !== 0)) {
+        const leafEl = el as import("@/types/editorElement.type").LeafElement;
+        const adjustedStates = (el.states ?? []).map(s => ({
+          ...s,
+          overrides: Object.fromEntries(
+            Object.entries(s.overrides ?? {}).map(([k, v]) => {
+              if (typeof v !== "number") return [k, v];
+              if (k === "x" || k === "x1" || k === "x2") return [k, v - dx];
+              if (k === "y" || k === "y1" || k === "y2") return [k, v - dy];
+              return [k, v];
+            }),
+          ),
+        }));
+
+        return {
+          ...el,
+          x: el.x - dx,
+          y: el.y - dy,
+          ...(leafEl.x1 !== undefined ? {x1: leafEl.x1 - dx} : {}),
+          ...(leafEl.y1 !== undefined ? {y1: leafEl.y1 - dy} : {}),
+          ...(leafEl.x2 !== undefined ? {x2: leafEl.x2 - dx} : {}),
+          ...(leafEl.y2 !== undefined ? {y2: leafEl.y2 - dy} : {}),
+          states: adjustedStates,
+        } as DiagramElement;
+      }
+
+      return el;
+    });
+  }
+
+  return result;
+};
 
 const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
   const result = new Set<string>();
@@ -133,6 +240,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       elements: [],
       selectedId: null,
       selectedIds: [],
+      activeGroupKey: null,
       currentComponentStateByElementKey: {},
       clipboard: null,
       canvasRect: null,
@@ -227,8 +335,8 @@ export const useEditorStore = create<EditorState>()(temporal(
        updateElementVisual: (key, updates) => {
          const { currentComponentStateByElementKey } = get();
 
-         set(state => ({
-           elements: state.elements.map(el => {
+         set(state => {
+           const updatedElements = state.elements.map(el => {
              if (el.key !== key) return el;
 
              // Валидация: гарантируем минимальные размеры для групп и элементов
@@ -238,6 +346,13 @@ export const useEditorStore = create<EditorState>()(temporal(
                ...(updates.w !== undefined && { w: Math.max(MIN_SIZE, updates.w) }),
                ...(updates.h !== undefined && { h: Math.max(MIN_SIZE, updates.h) }),
              };
+
+             // Группы всегда хранят позицию в base, не в overrides.
+             // recomputeAncestorBounds читает group.x (base), поэтому override
+             // приводит к расхождению rendered.x vs base.x и телепортации детей.
+             if (isGroup(el)) {
+               return { ...el, ...validatedUpdates } as DiagramElement;
+             }
 
              const currentComponentStateId = currentComponentStateByElementKey[key]
                ?? el.states.find(s => s.isDefault)?.id
@@ -264,8 +379,17 @@ export const useEditorStore = create<EditorState>()(temporal(
                    : s
                ),
              } as DiagramElement;
-           }),
-         }));
+           });
+
+           // Если изменились позиционные поля — пересчитываем рамки групп-предков
+           const POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
+           const hasPositionalChange = Object.keys(updates).some(k => POSITIONAL_KEYS.has(k));
+           if (hasPositionalChange) {
+             return { elements: recomputeAncestorBounds(updatedElements, key, state.scene?.id) };
+           }
+
+           return { elements: updatedElements };
+         });
        },
       updateElement: (key, updates) => {
         set(state => ({
@@ -279,6 +403,19 @@ export const useEditorStore = create<EditorState>()(temporal(
       select: (id) => set({selectedIds: id ? [id] : []}),
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
+      enterGroup: (key) => set({activeGroupKey: key, selectedIds: []}),
+      exitGroup: () => set(state => {
+        if (!state.activeGroupKey) return {};
+        const group = state.elements.find(el => el.key === state.activeGroupKey);
+        const parentKey = group?.parentKey;
+        const parentIsGroup = parentKey
+          ? state.elements.find(el => el.key === parentKey)?.type === 'group'
+          : false;
+        return {
+          activeGroupKey: parentIsGroup ? parentKey! : null,
+          selectedIds: [],
+        };
+      }),
       addTemplate: (screenX, screenY, template) => {
         const {scene} = get();
         const x = snap(screenX);
@@ -561,8 +698,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           }
 
           const json = await res.json();
-          set({sceneList: json});
-          return json;
+          const filtered = json.filter((scene: {parentId?: number}) => scene.parentId === projectId);
+          set({sceneList: filtered});
+          return filtered;
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
@@ -626,13 +764,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           const scene = await res.json();
           const newElements = transformElements(scene?.children ?? [], scene);
 
-          set({scene, elements: newElements, selectedIds: [], currentComponentStateByElementKey: {}});
+          set({scene, elements: newElements, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
 
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
           // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
-          set({scene: null, elements: [], selectedIds: [], currentComponentStateByElementKey: {}});
+          set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
         }
       },
       createScene: async () => {
@@ -656,7 +794,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const newScene = await res.json();
 
-          set({scene: newScene, selectedIds: [], currentComponentStateByElementKey: {}});
+          set({scene: newScene, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
 
           toast.success("Сцена создана");
         } catch (err: unknown) {

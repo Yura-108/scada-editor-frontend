@@ -56,7 +56,7 @@ export default function RegisterForm() {
 
   return (
     <>
-      <div className="min-h-screen bg-linear-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br bg-gray-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-xl bg-opacity-95">
             <div className="text-center mb-8">

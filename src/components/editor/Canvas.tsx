@@ -77,12 +77,11 @@ interface TextShapeElementProps {
   el: DiagramElement;
   isSelected: boolean;
   snap: (v: number) => number;
-  selectedIds: string[];
-  selectMultiple: (ids: string[]) => void;
+  onElementClick: (key: string, multi: boolean) => void;
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
 }
 
-function TextShapeElement({ el, isSelected, snap, selectedIds, selectMultiple, updateElementVisual }: TextShapeElementProps) {
+function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: TextShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const textRef = useRef<Konva.Text>(null);
 
@@ -120,8 +119,8 @@ function TextShapeElement({ el, isSelected, snap, selectedIds, selectMultiple, u
         });
       }}
       onClick={(e) => {
-        if (e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
-        else selectMultiple([el.key]);
+        e.cancelBubble = true;
+        onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
       }}
     >
       {isSelected && (
@@ -154,6 +153,7 @@ function TextShapeElement({ el, isSelected, snap, selectedIds, selectMultiple, u
   );
 }
 
+
 export default function Canvas() {
   const {
     elements,
@@ -167,8 +167,14 @@ export default function Canvas() {
     scene,
     setCameraPan,
     setCameraZoom,
-    updateElementVisual
+    updateElementVisual,
+    activeGroupKey,
+    enterGroup,
+    exitGroup,
+    clearSelection,
   } = useEditorStore();
+
+  console.log(elements)
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -207,6 +213,51 @@ export default function Canvas() {
     return map;
   }, [elements]);
 
+  // Given a clicked element key, resolve what should actually be selected.
+  // In top-level mode: returns the root ancestor (child of the scene).
+  // In group-entered mode: returns the direct child of activeGroupKey,
+  //   or null if the clicked element is outside the active group.
+  const resolveClickTarget = (clickedKey: string): string | null => {
+    const sceneId = String(scene?.id);
+
+    if (!activeGroupKey) {
+      // Walk up to find the root (direct child of scene)
+      let key: string | null = clickedKey;
+      let prev = key;
+      while (key) {
+        const el = elementsMap[key];
+        if (!el) break;
+        if (el.parentKey === sceneId) return key;
+        prev = key;
+        key = el.parentKey;
+      }
+      return prev;
+    }
+
+    // Inside a group: find the direct child of activeGroupKey in the path
+    let key: string | null = clickedKey;
+    while (key) {
+      const el = elementsMap[key];
+      if (!el) return null;
+      if (el.parentKey === activeGroupKey) return key;
+      key = el.parentKey;
+    }
+    return null; // outside the active group
+  };
+
+  const handleElementClick = (clickedKey: string, multi: boolean) => {
+    const target = resolveClickTarget(clickedKey);
+    if (target === null) {
+      exitGroup();
+      return;
+    }
+    if (multi) {
+      selectMultiple([...selectedIds.filter(id => id !== target), target]);
+    } else {
+      selectMultiple([target]);
+    }
+  };
+
   // Absolute world position of an element, using rendered (override-aware) coords at every level.
   const getAbsoluteRenderedPos = (el: DiagramElement): {x: number; y: number} => {
     const rendered = getRenderedElement(el);
@@ -220,6 +271,11 @@ export default function Canvas() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (activeGroupKey) exitGroup();
+        else clearSelection();
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         deleteSelectedElement();
@@ -235,7 +291,7 @@ export default function Canvas() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
+  }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement, activeGroupKey, exitGroup, clearSelection]);
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -276,7 +332,9 @@ export default function Canvas() {
     }
 
     if (clickedOnEmpty || clickedOnBg) {
-      if (!e.evt.shiftKey && !e.evt.ctrlKey) {
+      if (activeGroupKey) {
+        exitGroup();
+      } else if (!e.evt.shiftKey && !e.evt.ctrlKey) {
         selectMultiple([]);
       }
       const pos = stageRef.current?.getPointerPosition();
@@ -512,8 +570,9 @@ export default function Canvas() {
                   });
               }}
              onClick={(e) => {
-                if(e.evt.shiftKey || e.evt.ctrlKey) { setContextMenu(null); selectMultiple([...selectedIds, el.key]); }
-                else { setContextMenu(null); selectMultiple([el.key]); }
+                e.cancelBubble = true;
+                setContextMenu(null);
+                handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
              }}
            />
            {isSelected && (pts as number[]).map((p, i) => {
@@ -559,8 +618,8 @@ export default function Canvas() {
                    updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
                }}
                onClick={(e) => {
-                   if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
-                   else selectMultiple([el.key]);
+                   e.cancelBubble = true;
+                   handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
                }}
             />
             {isSelected && (
@@ -590,6 +649,7 @@ export default function Canvas() {
               points={[x1, y1, x2, y2]}
               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#9ca3af")}
               strokeWidth={rendered.strokeWidth || 2}
+              hitStrokeWidth={Math.max(12, rendered.strokeWidth || 2)}
               draggable
               onDragEnd={(e) => {
                   const dx = e.target.x();
@@ -602,8 +662,8 @@ export default function Canvas() {
                   });
               }}
               onClick={(e) => {
-                   if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
-                   else selectMultiple([el.key]);
+                   e.cancelBubble = true;
+                   handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
               }}
             />
             {isSelected && renderAnchor(x1, y1, (e) => {
@@ -629,8 +689,7 @@ export default function Canvas() {
           el={el}
           isSelected={isSelected}
           snap={snap}
-          selectedIds={selectedIds}
-          selectMultiple={selectMultiple}
+          onElementClick={handleElementClick}
           updateElementVisual={updateElementVisual}
         />
       );
@@ -651,8 +710,8 @@ export default function Canvas() {
            });
          }}
          onClick={(e) => {
-           if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, el.key]);
-           else selectMultiple([el.key]);
+           e.cancelBubble = true;
+           handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
          }}
       >
         <Rect
@@ -683,6 +742,7 @@ export default function Canvas() {
 
   const renderGroup = (group: GroupElement) => {
     const isSelected = selectedIds.includes(group.key);
+    const isActive = activeGroupKey === group.key;
     const rendered = getRenderedElement(group);
 
     return (
@@ -692,41 +752,61 @@ export default function Canvas() {
          x={rendered.x}
          y={rendered.y}
          draggable
+         onDragStart={(e) => {
+             if (e.target === e.currentTarget && !isSelected) {
+               e.target.stopDrag();
+             }
+         }}
          onDragEnd={(e) => {
-             if (e.target !== e.currentTarget) return; // ignore bubbled child drag events
+             if (e.target !== e.currentTarget) return;
              updateElementVisual(group.key, {
                x: snap(e.target.x()),
                y: snap(e.target.y())
              });
          }}
+         onDblClick={(e) => {
+           e.cancelBubble = true;
+           const clickedId = (e.target as Konva.Node).attrs.id
+             || (e.target as Konva.Node).parent?.attrs.id
+             || (e.target as Konva.Node).parent?.parent?.attrs.id;
+           const resolved = clickedId ? resolveClickTarget(clickedId) : group.key;
+           if (resolved === group.key) {
+             enterGroup(group.key);
+           }
+         }}
        >
+         {/* Background rect: hit area + selection/active border */}
+         <Rect
+           x={0}
+           y={0}
+           width={rendered.w}
+           height={rendered.h}
+           fill="transparent"
+           stroke={isActive ? "#f59e0b" : isSelected ? "#3b82f6" : "transparent"}
+           strokeWidth={isActive || isSelected ? 2 : 0}
+           dash={isActive ? [6, 3] : [4, 3]}
+           listening={true}
+           onClick={(e) => {
+             e.cancelBubble = true;
+             handleElementClick(group.key, e.evt.shiftKey || e.evt.ctrlKey);
+           }}
+           onMouseEnter={e => {
+             if (isSelected) {
+               const container = e.target.getStage()?.container();
+               if (container) container.style.cursor = "move";
+             }
+           }}
+           onMouseLeave={e => {
+             const container = e.target.getStage()?.container();
+             if (container) container.style.cursor = "default";
+           }}
+         />
          {group.children.map(childId => {
              const child = elementsMap[childId];
              if (!child) return null;
              if (child.type === 'group') return renderGroup(child as GroupElement);
              return renderShapeElement(child);
          })}
-         <Circle
-           x={rendered.w / 2}
-           y={rendered.h / 2}
-           radius={6}
-           fill={isSelected ? "#3b82f6" : "rgba(59,130,246,0.4)"}
-           stroke={isSelected ? "white" : "rgba(59,130,246,0.8)"}
-           strokeWidth={2}
-           onClick={(e) => {
-             e.cancelBubble = true;
-             if(e.evt.shiftKey || e.evt.ctrlKey) selectMultiple([...selectedIds, group.key]);
-             else selectMultiple([group.key]);
-           }}
-           onMouseEnter={e => {
-              const container = e.target.getStage()?.container();
-              if(container) container.style.cursor = "move";
-           }}
-           onMouseLeave={e => {
-              const container = e.target.getStage()?.container();
-              if(container) container.style.cursor = "default";
-           }}
-         />
        </Group>
     );
   }
