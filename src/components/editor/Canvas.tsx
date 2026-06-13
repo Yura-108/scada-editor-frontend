@@ -193,6 +193,33 @@ export default function Canvas() {
   const {setNodeRef} = useDroppable({id: "canvas"});
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  const middlePanRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Middle mouse button pan — native window events so drag works outside canvas bounds
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!middlePanRef.current) return;
+      const dx = e.clientX - middlePanRef.current.x;
+      const dy = e.clientY - middlePanRef.current.y;
+      middlePanRef.current = { x: e.clientX, y: e.clientY };
+      useEditorStore.getState().setCameraPan(dx, dy);
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button === 1 && middlePanRef.current) {
+        middlePanRef.current = null;
+        const container = stageRef.current?.container();
+        if (container) container.style.cursor = "default";
+      }
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     const updateRect = () => {
@@ -295,30 +322,35 @@ export default function Canvas() {
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
-    if (!e.evt.ctrlKey) {
-        // pan via wheel?
-        return;
-    }
     const stage = stageRef.current;
     if (!stage) return;
 
-    const oldScale = stage.scaleX();
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+    if (e.evt.ctrlKey) {
+      // Ctrl + Wheel → zoom to cursor point
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
 
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
 
-    const zoomSensitivity = 0.001;
-    let newZoom = Math.min(Math.max(oldScale + (-e.evt.deltaY * zoomSensitivity), 0.2), 3);
+      const zoomSensitivity = 0.001;
+      const newZoom = Math.min(Math.max(oldScale + (-e.evt.deltaY * zoomSensitivity), 0.2), 3);
 
-    setCameraZoom(newZoom);
-    setCameraPan(
-      pointer.x - mousePointTo.x * newZoom - camera.x,
-      pointer.y - mousePointTo.y * newZoom - camera.y
-    );
+      setCameraZoom(newZoom);
+      setCameraPan(
+        pointer.x - mousePointTo.x * newZoom - camera.x,
+        pointer.y - mousePointTo.y * newZoom - camera.y
+      );
+    } else if (e.evt.shiftKey) {
+      // Shift + Wheel → horizontal pan
+      setCameraPan(-e.evt.deltaY, 0);
+    } else {
+      // Wheel → pan (deltaX + deltaY covers both mouse wheel and trackpad)
+      setCameraPan(-e.evt.deltaX, -e.evt.deltaY);
+    }
   };
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -326,9 +358,12 @@ export default function Canvas() {
     const clickedOnEmpty = e.target === e.target.getStage();
     const clickedOnBg = e.target.name() === "grid-bg";
 
-    // Middle click pan
-    if (e.evt instanceof MouseEvent && (e.evt.button === 1 || e.evt.buttons === 4)) {
-       return;
+    // Middle click → start panning
+    if (e.evt instanceof MouseEvent && e.evt.button === 1) {
+      middlePanRef.current = { x: e.evt.clientX, y: e.evt.clientY };
+      const container = stageRef.current?.container();
+      if (container) container.style.cursor = "grabbing";
+      return;
     }
 
     if (clickedOnEmpty || clickedOnBg) {

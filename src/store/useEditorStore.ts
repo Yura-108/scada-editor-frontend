@@ -69,6 +69,7 @@ type EditorState = {
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportScene: () => void;
+  importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
   loadScene: (id: number) => Promise<void>;
   createScene: () => Promise<void>;
 
@@ -455,6 +456,99 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
 
       },
+      importElementsFromJson: (rawElements) => {
+        const { scene } = get();
+
+        const CANVAS_W = 5000;
+        const CANVAS_H = 5000;
+
+        const isNullish = (v: unknown) =>
+          v == null || v === "null" || v === "undefined";
+
+        const parseBool = (v: unknown, fallback: boolean): boolean => {
+          if (v === true  || v === "true")  return true;
+          if (v === false || v === "false") return false;
+          return fallback;
+        };
+
+        // Converts a value to a pixel coordinate.
+        // If the value is a percentage string like "84.9%", multiplies by `total` (canvas width or height).
+        // If the value is already a number, returns it as-is.
+        const parseCoord = (v: unknown, total: number): number => {
+          if (typeof v === "number") return v;
+          if (typeof v === "string") {
+            const trimmed = v.trim();
+            if (trimmed.endsWith("%")) {
+              return (parseFloat(trimmed) / 100) * total;
+            }
+            const n = parseFloat(trimmed);
+            return isNaN(n) ? 0 : n;
+          }
+          return 0;
+        };
+
+        // Pass 1: assign new keys to every element, build old→new key map
+        const keyMap: Record<string, string> = {};
+        for (const raw of rawElements) {
+          const oldKey = String(raw.key ?? "");
+          const newKey = createUuid();
+          if (oldKey && !isNullish(oldKey)) {
+            keyMap[oldKey] = newKey;
+          }
+          (raw as Record<string, unknown>).__newKey = newKey;
+        }
+
+        // Pass 2: normalise each element
+        const imported: DiagramElement[] = rawElements.map(raw => {
+          const newKey = raw.__newKey as string;
+
+          const oldParentKey = String(raw.parentKey ?? "");
+          const parentKey = isNullish(raw.parentKey) || !keyMap[oldParentKey]
+            ? String(scene?.id)
+            : keyMap[oldParentKey];
+
+          const children = Array.isArray(raw.children)
+            ? (raw.children as string[]).map(ck => keyMap[ck] ?? ck)
+            : [];
+
+          const states = Array.isArray(raw.states)
+            ? (raw.states as Record<string, unknown>[]).map(s => ({
+                id: isNullish(s.id) ? createUuid() : String(s.id),
+                name: String(s.name ?? "Нормальное"),
+                overrides: (s.overrides as Record<string, unknown>) ?? {},
+                isDefault: parseBool(s.isDefault, false),
+              }))
+            : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }];
+
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { __newKey, ...rest } = raw as Record<string, unknown>;
+
+          return {
+            ...rest,
+            id:          isNullish(raw.id) ? null : Number(raw.id),
+            key:         newKey,
+            parentKey,
+            parentId:    isNullish(raw.parentId) ? null : Number(raw.parentId),
+            composition: parseBool(raw.composition, false),
+            children,
+            scripts:     Array.isArray(raw.scripts)    ? raw.scripts    : [],
+            bindings:    Array.isArray(raw.bindings)   ? raw.bindings   : [],
+            properties:  Array.isArray(raw.properties) ? raw.properties : [],
+            states,
+            // Convert percentage strings to pixel coordinates using the logical canvas size
+            x:  parseCoord(raw.x,  CANVAS_W),
+            y:  parseCoord(raw.y,  CANVAS_H),
+            w:  parseCoord(raw.w,  CANVAS_W),
+            h:  parseCoord(raw.h,  CANVAS_H),
+            ...(raw.x1 !== undefined && { x1: parseCoord(raw.x1, CANVAS_W) }),
+            ...(raw.y1 !== undefined && { y1: parseCoord(raw.y1, CANVAS_H) }),
+            ...(raw.x2 !== undefined && { x2: parseCoord(raw.x2, CANVAS_W) }),
+            ...(raw.y2 !== undefined && { y2: parseCoord(raw.y2, CANVAS_H) }),
+          } as DiagramElement;
+        });
+
+        set(state => ({ elements: [...state.elements, ...imported] }));
+      },
       addElementAt: (screenX, screenY, type) => {
         const {scene} = get();
         const rect = get().canvasRect;
@@ -698,9 +792,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           }
 
           const json = await res.json();
-          const filtered = json.filter((scene: {parentId?: number}) => scene.parentId === projectId);
-          set({sceneList: filtered});
-          return filtered;
+          const list = Array.isArray(json) ? json : [];
+          set({sceneList: list});
+          return list;
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));

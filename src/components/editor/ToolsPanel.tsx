@@ -1,6 +1,6 @@
-import React from "react";
+import React, {useRef} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase} from "lucide-react";
+import {Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload} from "lucide-react";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
@@ -9,6 +9,7 @@ import {toast} from "sonner";
 export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible: boolean, rightVisible: boolean }) {
   const {selectedIds, exportScene, elements, loadSceneList, createScene, scene, currentProject} = useEditorStore();
   const {loadPaletteItems} = usePaletteStore();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenProject = () => {
     openProjectModal();
@@ -22,6 +23,32 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
     }
     await loadSceneList(currentProject.id);
     openChooseSceneModal();
+  };
+
+  const handleImport = () => {
+    if (!scene) {
+      toast.info("Сначала загрузите или создайте сцену");
+      return;
+    }
+    importInputRef.current?.click();
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string);
+        const arr = Array.isArray(json) ? json : [json];
+        useEditorStore.getState().importElementsFromJson(arr);
+        toast.success(`Импортировано элементов: ${arr.length}`);
+      } catch {
+        toast.error("Ошибка чтения файла: неверный JSON");
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
   };
 
   const handleCreateSchema = async () => {
@@ -94,6 +121,17 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           Загрузить
         </button>
 
+        <button
+          onClick={handleImport}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
+                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
+                 hover:bg-white/10 hover:border-white/20
+                 active:translate-y-0.5 disabled:opacity-20 transition-all"
+        >
+          <Upload size={16} />
+          Импорт
+        </button>
+
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-1"></div>
 
         <button
@@ -131,6 +169,13 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           Сохранить
         </button>
       </div>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleImportFile}
+      />
     </nav>
   );
 }
