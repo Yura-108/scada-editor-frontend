@@ -31,19 +31,19 @@ export const paletteItems: PaletteItemType[] = [
     defaultProps: {name: "Text", text: "Text", fontSize: 16, color: "#ffffff", bold: false, align: "left"}
   },
 
-  // INDICATORS
+  // БАЗОВЫЕ — индикаторы
   {
     id: 10 ** 5 + 7,
     type: "progress_bar",
-    name: "Progress Bar",
-    category: "Indicators",
-    defaultProps: {value: 50, label: "Progress"},
+    name: "Прогресс-бар",
+    category: "Базовые",
+    defaultProps: {value: 50, w: 200, h: 20, color: "#3b82f6", bg: "#e5e7eb", textColor: "#ffffff", showPercentage: true},
   },
   {
     id: 10 ** 5 + 8,
     type: "checkbox",
-    name: "Checkbox",
-    category: "Indicators",
-    defaultProps: {checked: false, label: "Checkbox"},
+    name: "Чекбокс",
+    category: "Базовые",
+    defaultProps: {checked: false, label: "Checkbox", w: 160, h: 24, color: "#3b82f6"},
   },
 ];

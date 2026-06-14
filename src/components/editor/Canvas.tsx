@@ -74,7 +74,7 @@ function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circl
   );
 }
 
-interface TextShapeElementProps {
+interface ShapeElementProps {
   el: DiagramElement;
   isSelected: boolean;
   snap: (v: number) => number;
@@ -82,7 +82,7 @@ interface TextShapeElementProps {
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
 }
 
-function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: TextShapeElementProps) {
+function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const textRef = useRef<Konva.Text>(null);
   const { resolvedTheme } = useTheme();
@@ -95,19 +95,23 @@ function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementV
   const fontFamily = rendered.fontFamily || "Arial";
   const fontStyle = rendered.bold ? "bold" : "normal";
 
-  // Читаем размер прямо с Konva-узла если он уже смонтирован (все рендеры кроме первого).
-  // На первом рендере textRef.current === null — создаём временный узел для синхронного измерения.
-  let selW: number;
-  let selH: number;
-  if (textRef.current) {
-    selW = rendered.w || textRef.current.getTextWidth();
-    selH = rendered.h || textRef.current.getTextHeight();
-  } else {
+  // Измеряем реальный размер текста. Инициализируем через временный узел,
+  // затем обновляем по реальному узлу после каждого рендера Konva.
+  const [selDims, setSelDims] = useState<{ w: number; h: number }>(() => {
     const tmp = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width: rendered.w || undefined });
-    selW = rendered.w || tmp.getTextWidth();
-    selH = rendered.h || tmp.getTextHeight();
+    const dims = { w: tmp.getTextWidth(), h: tmp.height() };
     tmp.destroy();
-  }
+    return dims;
+  });
+
+  useEffect(() => {
+    if (textRef.current) {
+      setSelDims({
+        w: textRef.current.getTextWidth(),
+        h: textRef.current.height(),
+      });
+    }
+  }, [text, fontSize, fontFamily, fontStyle, rendered.w]);
 
   return (
     <Group
@@ -130,8 +134,8 @@ function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementV
         <Rect
           x={-pad}
           y={-pad}
-          width={selW + pad * 2}
-          height={selH + pad * 2}
+          width={selDims.w + pad * 2}
+          height={selDims.h + pad * 2}
           fill="transparent"
           stroke="#3b82f6"
           strokeWidth={1.5}
@@ -152,6 +156,129 @@ function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementV
         width={rendered.w || undefined}
         listening={true}
       />
+    </Group>
+  );
+}
+
+function CheckboxShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  const BOX = 18;
+  const pad = 4;
+  const w = rendered.w || 160;
+  const h = Math.max(rendered.h || 24, BOX);
+  const boxY = (h - BOX) / 2;
+  const checked = !!rendered.checked;
+  const label = rendered.label ?? "Checkbox";
+  const accent = rendered.color || rendered.strokeColor || "#3b82f6";
+  const textCol = rendered.textColor || (isDark ? "#ffffff" : "#1a1a1a");
+  const fontSize = rendered.fontSize || 14;
+  const boxBg = isDark ? "#0a0a0a" : "#ffffff";
+
+  // Галочка: три точки образуют ✓
+  const ckPts = [
+    BOX * 0.15, BOX * 0.50,
+    BOX * 0.42, BOX * 0.76,
+    BOX * 0.85, BOX * 0.20,
+  ];
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
+          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
+        />
+      )}
+      {/* Квадрат чекбокса */}
+      <Rect
+        x={0} y={boxY} width={BOX} height={BOX}
+        fill={checked ? accent : boxBg}
+        stroke={accent} strokeWidth={1.5} cornerRadius={3}
+      />
+      {/* Галочка */}
+      {checked && (
+        <Line
+          x={0} y={boxY}
+          points={ckPts}
+          stroke="#ffffff" strokeWidth={2.5}
+          lineCap="round" lineJoin="round" listening={false}
+        />
+      )}
+      {/* Подпись */}
+      {label && (
+        <Text
+          x={BOX + 8} y={0}
+          text={label} fontSize={fontSize}
+          fill={textCol} width={w - BOX - 8} height={h}
+          verticalAlign="middle"
+        />
+      )}
+    </Group>
+  );
+}
+
+function ProgressBarShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  const pad = 4;
+  const w = rendered.w || 200;
+  const h = rendered.h || 20;
+  const value = Math.max(0, Math.min(100, Number(rendered.value) || 0));
+  const fillW = (w * value) / 100;
+  const trackColor = rendered.bg || (isDark ? "#3f3f46" : "#e5e7eb");
+  const fillColor = rendered.color || "#3b82f6";
+  const textCol = rendered.textColor || "#ffffff";
+  const showPct = rendered.showPercentage !== false;
+  const r = Math.min(4, h / 2);
+  const fillFull = fillW >= w - 0.5;
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
+          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
+        />
+      )}
+      {/* Трек (фон) */}
+      <Rect x={0} y={0} width={w} height={h} fill={trackColor} cornerRadius={r} />
+      {/* Заполнение */}
+      {fillW > 0 && (
+        <Rect
+          x={0} y={0} width={fillW} height={h}
+          fill={fillColor}
+          cornerRadius={fillFull ? r : [r, 0, 0, r]}
+        />
+      )}
+      {/* Процент */}
+      {showPct && h >= 12 && (
+        <Text
+          x={0} y={0} width={w} height={h}
+          text={`${Math.round(value)}%`}
+          fontSize={Math.max(10, Math.floor(h * 0.62))}
+          fill={textCol} align="center" verticalAlign="middle"
+          listening={false}
+        />
+      )}
     </Group>
   );
 }
@@ -735,6 +862,32 @@ export default function Canvas() {
     if (rendered.type === "text") {
       return (
         <TextShapeElement
+          key={el.key}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          onElementClick={handleElementClick}
+          updateElementVisual={updateElementVisual}
+        />
+      );
+    }
+
+    if (rendered.type === "checkbox") {
+      return (
+        <CheckboxShapeElement
+          key={el.key}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          onElementClick={handleElementClick}
+          updateElementVisual={updateElementVisual}
+        />
+      );
+    }
+
+    if (rendered.type === "progress_bar") {
+      return (
+        <ProgressBarShapeElement
           key={el.key}
           el={el}
           isSelected={isSelected}

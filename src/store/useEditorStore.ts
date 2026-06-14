@@ -596,6 +596,36 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
+        if (type === 'checkbox') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 160, h: 24,
+            checked: false, label: "Checkbox",
+            color: "#3b82f6", strokeColor: "#3b82f6",
+            bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'progress_bar') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 200, h: 20,
+            value: 50, label: "",
+            color: "#3b82f6", bg: "#e5e7eb",
+            textColor: "#ffffff", showPercentage: true,
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
         const newElement: DiagramElement = {
           id: null,
           key: createUuid(),

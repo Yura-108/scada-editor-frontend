@@ -157,13 +157,14 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           <Ungroup size={16} />
           Разгруппировать
         </button>
-
         <button
           onClick={exportScene}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl
-                 bg-indigo-500/20 border border-indigo-400/30 text-indigo-200
-                 hover:bg-indigo-500/40 hover:border-indigo-400/50
-                 active:translate-y-0.5 transition-all"
+          className="
+    flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl
+    bg-primary/10 border border-primary/30 text-primary
+    hover:bg-primary/20 hover:border-primary/40
+    active:translate-y-0.5 transition-all
+  "
         >
           <Save size={16} strokeWidth={2.5} />
           Сохранить
