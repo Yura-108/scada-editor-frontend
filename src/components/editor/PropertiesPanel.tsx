@@ -330,7 +330,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {activeTab === "states" && (
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-3">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Состояние:
               </h4>
               <StateSelect elementKey={element.key} states={element.states}/>
@@ -355,12 +355,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {/* Свойства */}
         {activeTab === "properties" && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-300">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Добавленные свойства
             </h4>
 
             {elementProperties.length === 0 ? (
-              <div className="text-sm text-gray-500 italic py-3">
+              <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">
                 Нет добавленных свойств
               </div>
             ) : (
@@ -397,12 +397,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {/* Скрипты */}
         {activeTab === "scripts" && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-300">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Добавленные скрипты
             </h4>
 
             {elementScripts.length === 0 ? (
-              <div className="text-sm text-gray-500 italic py-3">
+              <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">
                 Нет добавленных скриптов
               </div>
             ) : (

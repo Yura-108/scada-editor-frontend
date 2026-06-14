@@ -74,5 +74,12 @@ body {
   background: #cbd5e1;
 }
 
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #404040;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
 
 

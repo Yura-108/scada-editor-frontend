@@ -2,6 +2,7 @@
 
 import React, {useMemo, useRef, useEffect, useState} from "react";
 import {useDroppable} from "@dnd-kit/core";
+import {useTheme} from "next-themes";
 import {useEditorStore} from "@/store/useEditorStore";
 import {GRID, snap} from "@/lib/utils";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
@@ -84,6 +85,8 @@ interface TextShapeElementProps {
 function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: TextShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const textRef = useRef<Konva.Text>(null);
+  const { resolvedTheme } = useTheme();
+  const textDefaultColor = resolvedTheme === "dark" ? "#ffffff" : "#1a1a1a";
 
   const pad = 4;
 
@@ -144,7 +147,7 @@ function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementV
         fontSize={fontSize}
         fontStyle={fontStyle}
         fontFamily={fontFamily}
-        fill={rendered.color || rendered.textColor || "#ffffff"}
+        fill={rendered.color || rendered.textColor || textDefaultColor}
         align={rendered.align || "left"}
         width={rendered.w || undefined}
         listening={true}
@@ -175,6 +178,18 @@ export default function Canvas() {
   } = useEditorStore();
 
   console.log(elements)
+
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const themeColors = {
+    textDefault:     isDark ? "#ffffff" : "#1a1a1a",
+    labelDefault:    isDark ? "#ffffff" : "#000000",
+    strokeDefault:   isDark ? "#9ca3af" : "#6b7280",
+    canvasBg:        isDark ? "#0a0a0a" : "#ffffff",
+    gridLine:        isDark ? "rgba(100,100,120,0.4)" : "rgba(0,0,0,0.07)",
+    anchorFill:      isDark ? "#ffffff" : "#1a1a1a",
+    anchorStroke:    "#3b82f6",
+  };
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
@@ -531,8 +546,8 @@ export default function Canvas() {
          x={x}
          y={y}
          radius={5}
-         fill="white"
-         stroke="#3b82f6"
+         fill={themeColors.anchorFill}
+         stroke={themeColors.anchorStroke}
          strokeWidth={2}
          draggable
          onDragMove={onDragMove}
@@ -591,7 +606,7 @@ export default function Canvas() {
              points={pts as number[]}
              closed={true}
              fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#8a909b")}
+             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
              strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
              draggable
               onDragEnd={(e) => {
@@ -641,7 +656,7 @@ export default function Canvas() {
                y={cy}
                radius={r}
                fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#9ca3af")}
+               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
                strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
                draggable
                onDragEnd={(e) => {
@@ -682,7 +697,7 @@ export default function Canvas() {
          <Group key={el.key} id={el.key}>
             <Line
               points={[x1, y1, x2, y2]}
-              stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#9ca3af")}
+              stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
               strokeWidth={rendered.strokeWidth || 2}
               hitStrokeWidth={Math.max(12, rendered.strokeWidth || 2)}
               draggable
@@ -753,7 +768,7 @@ export default function Canvas() {
           width={rendered.w}
           height={rendered.h}
           fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || "#333")}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
           strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
           cornerRadius={rendered.rx || 0}
         />
@@ -764,7 +779,7 @@ export default function Canvas() {
              height={rendered.h}
              align="center"
              verticalAlign="middle"
-             fill={rendered.textColor || "#000"}
+             fill={rendered.textColor || themeColors.labelDefault}
            />
         )}
 
@@ -850,7 +865,7 @@ export default function Canvas() {
     <div
       ref={containerRef}
       id="canvas-viewport"
-      className="relative w-full h-full overflow-hidden bg-neutral-950 context-menu-container"
+      className="relative w-full h-full overflow-hidden bg-white dark:bg-neutral-950 context-menu-container"
     >
       <div
         ref={setNodeRef}
@@ -873,6 +888,17 @@ export default function Canvas() {
         >
           <Layer>
             <Rect
+               key={`canvas-bg-${resolvedTheme}`}
+               name="canvas-bg"
+               x={-CANVAS_WIDTH/2}
+               y={-CANVAS_HEIGHT/2}
+               width={CANVAS_WIDTH*2}
+               height={CANVAS_HEIGHT*2}
+               fill={themeColors.canvasBg}
+               listening={false}
+            />
+            <Rect
+               key={`grid-${resolvedTheme}`}
                name="grid-bg"
                x={-CANVAS_WIDTH/2}
                y={-CANVAS_HEIGHT/2}
@@ -884,7 +910,7 @@ export default function Canvas() {
                   cvs.width = GRID; cvs.height = GRID;
                   const ctx = cvs.getContext("2d");
                   if (ctx) {
-                      ctx.strokeStyle = "rgba(100,100,120,0.4)";
+                      ctx.strokeStyle = themeColors.gridLine;
                       ctx.beginPath();
                       ctx.moveTo(0,0); ctx.lineTo(GRID,0);
                       ctx.moveTo(0,0); ctx.lineTo(0,GRID);
@@ -917,13 +943,13 @@ export default function Canvas() {
 
       {contextMenu && (
         <div style={{ position: 'absolute', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}>
-          <div className="min-w-40 bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200">
+          <div className="min-w-40 bg-white dark:bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 dark:border-neutral-700">
              {contextMenu.items.map((item, idx) => (
                <div
                   key={idx}
                   onClick={item.onClick}
                   className={`
-                    group flex items-center px-3 py-2 text-sm outline-none cursor-default rounded-sm text-gray-700 focus:bg-indigo-600 focus:text-gray-900 dark:text-white hover:bg-indigo-600
+                    group flex items-center px-3 py-2 text-sm outline-none cursor-default rounded-sm text-gray-700 dark:text-white hover:bg-indigo-500 hover:text-white
                   `}
                >
                   {item.label}

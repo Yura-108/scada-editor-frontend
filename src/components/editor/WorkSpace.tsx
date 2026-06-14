@@ -66,7 +66,7 @@ export default function WorkSpace() {
             <PropertiesPanel element={selectedElement} />
           ) : (
             <div className="h-full flex flex-col items-center text-center p-6">
-              <div className="text-neutral-500 text-sm font-medium">Выберите один элемент</div>
+              <div className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">Выберите один элемент</div>
             </div>
           )}
         </div>
