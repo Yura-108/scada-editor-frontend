@@ -2,21 +2,45 @@ import {snap} from "@/lib/utils";
 import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
-import getAbsolutePosition from "@/lib/getAbsolutePosition";
+import {
+  elementToGroupLocal,
+  GROUP_PADDING,
+  layoutGroupFromBounds,
+  snapshotBounds,
+  unionBounds,
+  resolveParentAbsolute,
+} from "@/lib/groupLayout";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
-import {PropertyCreateDto} from "@/types/tags.types";
+import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
+import {createUuid} from "@/lib/createUuid";
+import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
+import {getElementBoundsRendered} from "@/lib/getElementBounds";
+
+export type {EditorProject};
 
 type EditorState = {
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
-  loadSceneList: () => any;
+  currentProject: EditorProject | null;
+  projectList: EditorProject[];
+  loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
+  loadScenesForProject: (projectId: number) => Promise<{id: number; name: string}[] | void>;
+  loadProjectList: () => Promise<EditorProject[] | void>;
+  createProject: (name: string) => Promise<EditorProject | void>;
+  setCurrentProject: (project: EditorProject | null) => void;
   elements: DiagramElement[];
   selectedId: string | null;
   selectedIds: string[];
+  activeGroupKey: string | null;
+  enterGroup: (key: string) => void;
+  exitGroup: () => void;
+  currentComponentStateByElementKey: Record<string, string>;
+  setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
+  clearCurrentComponentStateId: (elementKey: string) => void;
   clipboard: DiagramElement | null;
   canvasRect: DOMRect | null;
   connecting: {
@@ -32,21 +56,26 @@ type EditorState = {
 
   setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
+  updateElementVisual: (id: string, data: Partial<DiagramElement>) => void;
   select: (id: string | null) => void;
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
+  addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
   addElementAt: (x: number, y: number, type: ElementType) => void;
+  addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
+  editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
-  addTags: (component_id: number, tag_id: string) => Promise<void>;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
   exportScene: () => void;
+  importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
   loadScene: (id: number) => Promise<void>;
   createScene: () => Promise<void>;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
+  moveElementToGroup: (elementKey: string, targetGroupKey: string) => void;
 
   // removeElements: (ids: string[]) => void;
 }
@@ -56,13 +85,164 @@ const isGroup = (el: DiagramElement) => el.type === "group";
 const isComplex = (el: DiagramElement) =>
   elementRegistry[el.type as ElementType]?.complex ?? false;
 
+/**
+ * После перемещения/ресайза элемента пересчитывает x/y/w/h всех групп-предков
+ * снизу вверх, чтобы рамки групп всегда облегали своё содержимое.
+ * Компенсирует сдвиг origin группы в локальных координатах детей, чтобы не
+ * было визуального прыжка при расширении рамки в сторону верхнего-левого угла.
+ */
+const RECOMPUTE_EXTRA_PADDING = 20; // extra on top of GROUP_PADDING
+
+const recomputeAncestorBounds = (
+  elements: DiagramElement[],
+  movedKey: string,
+  sceneId: number | null | undefined,
+): DiagramElement[] => {
+  let result = elements;
+  const sceneIdStr = String(sceneId ?? "");
+  const totalPadding = GROUP_PADDING + RECOMPUTE_EXTRA_PADDING;
+
+  // Собираем цепочку групп-предков снизу вверх
+  const ancestorGroupKeys: string[] = [];
+  const movedEl = result.find(el => el.key === movedKey);
+  let parentKey = movedEl?.parentKey ?? null;
+  while (parentKey && parentKey !== sceneIdStr) {
+    const parent = result.find(el => el.key === parentKey);
+    if (!parent || parent.type !== "group") break;
+    ancestorGroupKeys.push(parent.key);
+    parentKey = parent.parentKey ?? null;
+  }
+
+  // Пересчитываем от самого глубокого предка к корневому
+  for (const groupKey of ancestorGroupKeys) {
+    const group = result.find(el => el.key === groupKey);
+    if (!group || group.type !== "group") continue;
+
+    const childKeySet = new Set(group.children);
+    if (!childKeySet.size) continue;
+
+    // Считаем абсолютные границы всех детей в актуальном state (result уже обновлён)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const childKey of childKeySet) {
+      const child = result.find(el => el.key === childKey);
+      if (!child) continue;
+      const b = getElementBoundsRendered(child, result);
+      minX = Math.min(minX, b.minX);
+      minY = Math.min(minY, b.minY);
+      maxX = Math.max(maxX, b.maxX);
+      maxY = Math.max(maxY, b.maxY);
+    }
+
+    if (!isFinite(minX)) continue;
+
+    const parentAbs = resolveParentAbsolute(group.parentKey, result, sceneId);
+
+    const newGroupX = minX - totalPadding - parentAbs.x;
+    const newGroupY = minY - totalPadding - parentAbs.y;
+    const dx = newGroupX - group.x;
+    const dy = newGroupY - group.y;
+
+    result = result.map(el => {
+      if (el.key === groupKey) {
+        return {
+          ...el,
+          x: newGroupX,
+          y: newGroupY,
+          w: maxX - minX + totalPadding * 2,
+          h: maxY - minY + totalPadding * 2,
+        } as DiagramElement;
+      }
+
+      // Компенсируем сдвиг origin группы в локальных координатах прямых детей,
+      // чтобы их абсолютная позиция на холсте не изменилась.
+      if (childKeySet.has(el.key) && (dx !== 0 || dy !== 0)) {
+        const leafEl = el as import("@/types/editorElement.type").LeafElement;
+        const adjustedStates = (el.states ?? []).map(s => ({
+          ...s,
+          overrides: Object.fromEntries(
+            Object.entries(s.overrides ?? {}).map(([k, v]) => {
+              if (typeof v !== "number") return [k, v];
+              if (k === "x" || k === "x1" || k === "x2") return [k, v - dx];
+              if (k === "y" || k === "y1" || k === "y2") return [k, v - dy];
+              return [k, v];
+            }),
+          ),
+        }));
+
+        return {
+          ...el,
+          x: el.x - dx,
+          y: el.y - dy,
+          ...(leafEl.x1 !== undefined ? {x1: leafEl.x1 - dx} : {}),
+          ...(leafEl.y1 !== undefined ? {y1: leafEl.y1 - dy} : {}),
+          ...(leafEl.x2 !== undefined ? {x2: leafEl.x2 - dx} : {}),
+          ...(leafEl.y2 !== undefined ? {y2: leafEl.y2 - dy} : {}),
+          states: adjustedStates,
+        } as DiagramElement;
+      }
+
+      return el;
+    });
+  }
+
+  return result;
+};
+
+const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
+  const result = new Set<string>();
+  const queue = [rootKey];
+
+  while (queue.length) {
+    const currentKey = queue.shift()!;
+    const current = elements.find(el => el.key === currentKey);
+
+    if (!current) continue;
+
+    for (const childKey of current.children ?? []) {
+      if (result.has(childKey)) continue;
+
+      result.add(childKey);
+      queue.push(childKey);
+    }
+  }
+
+  result.delete(rootKey);
+  return [...result];
+};
+
+const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?: string) => {
+  if (element.states.some(state => state.name === stateName)) {
+    return element;
+  }
+
+  return {
+    ...element,
+    states: [
+      ...element.states,
+      {
+        id: forcedId ?? createUuid(),
+        name: stateName,
+        overrides: {},
+        isDefault: false,
+      },
+    ],
+  } as DiagramElement;
+};
+
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
+
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
       sceneList: [],
+      currentProject: null,
+      projectList: [],
       elements: [],
       selectedId: null,
       selectedIds: [],
+      activeGroupKey: null,
+      currentComponentStateByElementKey: {},
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -80,7 +260,139 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
-      updateElement: (key: string, updates: Partial<DiagramElement>) => {
+      addComponentStateToSubtree: (elementKey, stateName) => {
+        let rootStateId: string | null = null;
+
+        set(state => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root) return {};
+
+          const existingRootState = root.states.find(s => s.name === stateName);
+          rootStateId = existingRootState?.id ?? createUuid();
+
+          const keysToUpdate = root.type === "group"
+            ? [elementKey, ...getDescendantKeys(elementKey, state.elements)]
+            : [elementKey];
+
+          return {
+            elements: state.elements.map(el => keysToUpdate.includes(el.key)
+              ? ensureStateByName(el, stateName, el.key === elementKey ? rootStateId ?? undefined : undefined)
+              : el
+            ),
+          };
+        });
+
+        return rootStateId;
+      },
+      setCurrentComponentStateId: (elementKey, componentState) => set(state => ({
+        currentComponentStateByElementKey: (() => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root) {
+            return {
+              ...state.currentComponentStateByElementKey,
+              [elementKey]: componentState,
+            };
+          }
+
+          const nextMap = {
+            ...state.currentComponentStateByElementKey,
+            [elementKey]: componentState,
+          };
+
+          const rootStateName = root.states.find(s => s.id === componentState)?.name;
+          if (!rootStateName) {
+            return nextMap;
+          }
+
+          if (root.type !== "group") {
+            return nextMap;
+          }
+
+          const descendantKeys = getDescendantKeys(elementKey, state.elements);
+
+          for (const childKey of descendantKeys) {
+            const child = state.elements.find(el => el.key === childKey);
+            if (!child) continue;
+
+            const matchedState = child.states.find(s => s.name === rootStateName);
+            if (matchedState) {
+              nextMap[childKey] = matchedState.id;
+              continue;
+            }
+
+            const defaultState = child.states.find(s => s.isDefault) ?? child.states[0];
+            nextMap[childKey] = defaultState?.id ?? componentState;
+          }
+
+          return nextMap;
+        })(),
+      })),
+      clearCurrentComponentStateId: (elementKey) => set(state => {
+        const next = {...state.currentComponentStateByElementKey};
+        delete next[elementKey];
+
+        return {currentComponentStateByElementKey: next};
+      }),
+       updateElementVisual: (key, updates) => {
+         const { currentComponentStateByElementKey } = get();
+
+         set(state => {
+           const updatedElements = state.elements.map(el => {
+             if (el.key !== key) return el;
+
+             // Валидация: гарантируем минимальные размеры для групп и элементов
+             const MIN_SIZE = 20;
+             const validatedUpdates = {
+               ...updates,
+               ...(updates.w !== undefined && { w: Math.max(MIN_SIZE, updates.w) }),
+               ...(updates.h !== undefined && { h: Math.max(MIN_SIZE, updates.h) }),
+             };
+
+             // Группы всегда хранят позицию в base, не в overrides.
+             // recomputeAncestorBounds читает group.x (base), поэтому override
+             // приводит к расхождению rendered.x vs base.x и телепортации детей.
+             if (isGroup(el)) {
+               return { ...el, ...validatedUpdates } as DiagramElement;
+             }
+
+             const currentComponentStateId = currentComponentStateByElementKey[key]
+               ?? el.states.find(s => s.isDefault)?.id
+               ?? el.states[0]?.id;
+
+             if (!currentComponentStateId) {
+               return {
+                 ...el,
+                 ...validatedUpdates,
+               } as DiagramElement;
+             }
+
+             return {
+               ...el,
+               states: el.states.map(s =>
+                 s.id === currentComponentStateId
+                   ? {
+                     ...s,
+                     overrides: {
+                       ...s.overrides,
+                       ...validatedUpdates,
+                     },
+                   }
+                   : s
+               ),
+             } as DiagramElement;
+           });
+
+           // Если изменились позиционные поля — пересчитываем рамки групп-предков
+           const POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
+           const hasPositionalChange = Object.keys(updates).some(k => POSITIONAL_KEYS.has(k));
+           if (hasPositionalChange) {
+             return { elements: recomputeAncestorBounds(updatedElements, key, state.scene?.id) };
+           }
+
+           return { elements: updatedElements };
+         });
+       },
+      updateElement: (key, updates) => {
         set(state => ({
           elements: state.elements.map(el =>
             el.key === key
@@ -92,6 +404,19 @@ export const useEditorStore = create<EditorState>()(temporal(
       select: (id) => set({selectedIds: id ? [id] : []}),
       selectMultiple: (ids) => set({selectedIds: [...ids]}),
       clearSelection: () => set({selectedIds: []}),
+      enterGroup: (key) => set({activeGroupKey: key, selectedIds: []}),
+      exitGroup: () => set(state => {
+        if (!state.activeGroupKey) return {};
+        const group = state.elements.find(el => el.key === state.activeGroupKey);
+        const parentKey = group?.parentKey;
+        const parentIsGroup = parentKey
+          ? state.elements.find(el => el.key === parentKey)?.type === 'group'
+          : false;
+        return {
+          activeGroupKey: parentIsGroup ? parentKey! : null,
+          selectedIds: [],
+        };
+      }),
       addTemplate: (screenX, screenY, template) => {
         const {scene} = get();
         const x = snap(screenX);
@@ -99,7 +424,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const keyMap: Record<string, string> = {};
         template.forEach(el => {
-          keyMap[el.key] = crypto.randomUUID();
+          keyMap[el.key] = createUuid();
         });
 
         const root = template.find(el => el.type === "group") || template[0];
@@ -112,6 +437,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             key: keyMap[el.key],
             parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
             children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
+            scripts: Array.isArray((el as DiagramElement).scripts) ? (el as DiagramElement).scripts : [],
+            bindings: Array.isArray((el as DiagramElement).bindings) ? (el as DiagramElement).bindings : [],
           };
 
           // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
@@ -129,6 +456,99 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
 
       },
+      importElementsFromJson: (rawElements) => {
+        const { scene } = get();
+
+        const CANVAS_W = 5000;
+        const CANVAS_H = 5000;
+
+        const isNullish = (v: unknown) =>
+          v == null || v === "null" || v === "undefined";
+
+        const parseBool = (v: unknown, fallback: boolean): boolean => {
+          if (v === true  || v === "true")  return true;
+          if (v === false || v === "false") return false;
+          return fallback;
+        };
+
+        // Converts a value to a pixel coordinate.
+        // If the value is a percentage string like "84.9%", multiplies by `total` (canvas width or height).
+        // If the value is already a number, returns it as-is.
+        const parseCoord = (v: unknown, total: number): number => {
+          if (typeof v === "number") return v;
+          if (typeof v === "string") {
+            const trimmed = v.trim();
+            if (trimmed.endsWith("%")) {
+              return (parseFloat(trimmed) / 100) * total;
+            }
+            const n = parseFloat(trimmed);
+            return isNaN(n) ? 0 : n;
+          }
+          return 0;
+        };
+
+        // Pass 1: assign new keys to every element, build old→new key map
+        const keyMap: Record<string, string> = {};
+        for (const raw of rawElements) {
+          const oldKey = String(raw.key ?? "");
+          const newKey = createUuid();
+          if (oldKey && !isNullish(oldKey)) {
+            keyMap[oldKey] = newKey;
+          }
+          (raw as Record<string, unknown>).__newKey = newKey;
+        }
+
+        // Pass 2: normalise each element
+        const imported: DiagramElement[] = rawElements.map(raw => {
+          const newKey = raw.__newKey as string;
+
+          const oldParentKey = String(raw.parentKey ?? "");
+          const parentKey = isNullish(raw.parentKey) || !keyMap[oldParentKey]
+            ? String(scene?.id)
+            : keyMap[oldParentKey];
+
+          const children = Array.isArray(raw.children)
+            ? (raw.children as string[]).map(ck => keyMap[ck] ?? ck)
+            : [];
+
+          const states = Array.isArray(raw.states)
+            ? (raw.states as Record<string, unknown>[]).map(s => ({
+                id: isNullish(s.id) ? createUuid() : String(s.id),
+                name: String(s.name ?? "Нормальное"),
+                overrides: (s.overrides as Record<string, unknown>) ?? {},
+                isDefault: parseBool(s.isDefault, false),
+              }))
+            : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }];
+
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { __newKey, ...rest } = raw as Record<string, unknown>;
+
+          return {
+            ...rest,
+            id:          isNullish(raw.id) ? null : Number(raw.id),
+            key:         newKey,
+            parentKey,
+            parentId:    isNullish(raw.parentId) ? null : Number(raw.parentId),
+            composition: parseBool(raw.composition, false),
+            children,
+            scripts:     Array.isArray(raw.scripts)    ? raw.scripts    : [],
+            bindings:    Array.isArray(raw.bindings)   ? raw.bindings   : [],
+            properties:  Array.isArray(raw.properties) ? raw.properties : [],
+            states,
+            // Convert percentage strings to pixel coordinates using the logical canvas size
+            x:  parseCoord(raw.x,  CANVAS_W),
+            y:  parseCoord(raw.y,  CANVAS_H),
+            w:  parseCoord(raw.w,  CANVAS_W),
+            h:  parseCoord(raw.h,  CANVAS_H),
+            ...(raw.x1 !== undefined && { x1: parseCoord(raw.x1, CANVAS_W) }),
+            ...(raw.y1 !== undefined && { y1: parseCoord(raw.y1, CANVAS_H) }),
+            ...(raw.x2 !== undefined && { x2: parseCoord(raw.x2, CANVAS_W) }),
+            ...(raw.y2 !== undefined && { y2: parseCoord(raw.y2, CANVAS_H) }),
+          } as DiagramElement;
+        });
+
+        set(state => ({ elements: [...state.elements, ...imported] }));
+      },
       addElementAt: (screenX, screenY, type) => {
         const {scene} = get();
         const rect = get().canvasRect;
@@ -136,13 +556,13 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const composition = getComposition(type);
 
-        const x = snap(screenX + 150);
+        const x = snap(screenX);
         const y = snap(screenY);
 
         if (type === 'line') {
           const newElement: DiagramElement = {
             id: null,
-            key: crypto.randomUUID(),
+            key: createUuid(),
             type,
             composition,
             x,
@@ -158,7 +578,15 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [],
             label: "Element",
             bg: "transparent",
-            properties: []
+            scripts: [],
+            bindings: [],
+            properties: [],
+            states: [{
+              id: createUuid(),
+              name: "Нормальное",
+              overrides: {},
+              isDefault: true,
+            }],
           };
 
           set(state => ({
@@ -168,9 +596,39 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
+        if (type === 'checkbox') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 160, h: 24,
+            checked: false, label: "Checkbox",
+            color: "#3b82f6", strokeColor: "#3b82f6",
+            bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'progress_bar') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 200, h: 20,
+            value: 50, label: "",
+            color: "#3b82f6", bg: "#e5e7eb",
+            textColor: "#ffffff", showPercentage: true,
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
         const newElement: DiagramElement = {
           id: null,
-          key: crypto.randomUUID(),
+          key: createUuid(),
           type,
           composition,
           x,
@@ -182,37 +640,71 @@ export const useEditorStore = create<EditorState>()(temporal(
           children: [],
           label: "Element",
           bg: "transparent",
+            scripts: [],
+            bindings: [],
           properties: [],
+          states: [{
+            id: createUuid(),
+            name: "Нормальное",
+            overrides: {},
+            isDefault: true,
+          }],
         };
 
         set(state => ({
           elements: [...state.elements, newElement]
         }))
       },
-      addTags: async (component_id, tag_id) => {
-        const data: Omit<PropertyCreateDto, 'id'> = {
-          component_id,
-          tag_id,
-          property_type: null,
-          description: null,
-          value_type: null,
-          default_value: null,
-          logging: false,
-          onChange: null,
-        }
+      addTags: async (payload: PropertyCreateRequestDto) => {
+        try {
+          const res = await fetch(`/api/editor/tags`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+          });
 
-        const res = await fetch("/api/editor/tags/", {
-          method: "POST",
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => "Неизвестная ошибка");
+            throw new Error(`Не удалось добавить свойство: ${errorText}`);
+          }
+
+          const newProperty: PropertyCreateDto = await res.json();
+
+          set(state => ({
+            elements: state.elements.map(el =>
+              el.id === payload.component_id
+                ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+                : el
+            )
+          }));
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка при добавлении свойства"));
+        }
+      },
+      editProperty: async (propertyId: number, payload: PropertyCreateRequestDto) => {
+        const res = await fetch(`/api/editor/tags/${propertyId}`, {
+          method: "PUT",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(data)
+          body: JSON.stringify(payload)
         });
 
-        const newProperty: PropertyCreateDto = await res.json();
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Неизвестная ошибка");
+          throw new Error(`Не удалось обновить свойство: ${errorText}`);
+        }
+
+        const updatedProperty: PropertyCreateDto = await res.json();
 
         set(state => ({
           elements: state.elements.map(el =>
-            el.id === component_id
-              ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+            el.id === payload.component_id
+              ? {
+                  ...el,
+                  properties: (el.properties || []).map(p =>
+                    p.id === propertyId ? updatedProperty : p
+                  )
+                } as DiagramElement
               : el
           )
         }));
@@ -227,26 +719,39 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const idsToDelete = new Set([...selectedIds, ...childrenIds]);
 
+        // Собираем только id, которые существуют (не null/undefined)
         const ids = elements
-          .filter(el => [...idsToDelete].includes(el.key))
+          .filter(el => idsToDelete.has(el.key))
           .map(el => el.id)
-          .filter(Boolean);
+          .filter((id): id is number => id !== null && id !== undefined);
+
+        // Локально удаляем выделенные элементы (даже если у них не было id)
+        set({
+          elements: elements.filter(el => !idsToDelete.has(el.key)),
+          selectedIds: [],
+          currentComponentStateByElementKey: Object.fromEntries(
+            Object.entries(get().currentComponentStateByElementKey).filter(([elementKey]) => !idsToDelete.has(elementKey))
+          ),
+        });
+
+        // Отправляем DELETE на сервер только для тех элементов, у которых есть id
+        if (ids.length === 0) return;
+
 
         try {
-          await fetch(`/api/editor/components`, {
+          const res = await fetch(`/api/editor/components`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ids),
           });
 
-          set({
-            elements: elements.filter(el => !idsToDelete.has(el.key)),
-            selectedIds: [],
-          });
-
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
         } catch (err) {
           console.error('Ошибка при удалении:', err);
-          toast.error('Не удалось удалить элементы. Попробуйте снова.');
+          toast.error('Не удалось удалить элементы на сервере. Попробуйте снова.');
         }
       },
       copySelectedElement: () => {
@@ -268,9 +773,11 @@ export const useEditorStore = create<EditorState>()(temporal(
         const newElement = {
           ...clipboard,
           id: null,
-          key: crypto.randomUUID(),
+          key: createUuid(),
           x: clipboard.x + 20,
           y: clipboard.y + 20,
+          scripts: Array.isArray(clipboard.scripts) ? clipboard.scripts : [],
+          bindings: Array.isArray(clipboard.bindings) ? clipboard.bindings : [],
         };
 
         set(state => ({
@@ -290,77 +797,143 @@ export const useEditorStore = create<EditorState>()(temporal(
             body: JSON.stringify(payload),
           });
 
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
           const oldData = await res.json();
 
-          const newData = transformElements(oldData);
-
-          console.log(newData)
+          const newData = transformElements(oldData, scene);
 
           set({elements: newData});
           toast.success("Сохранено успешно!");
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка экспорта сцены");
+          toast.error(getErrorMessage(err, "Ошибка экспорта сцены"));
         }
       },
-      loadSceneList: async () => {
+      loadSceneList: async (projectId: number) => {
         try {
-          const res = await fetch("/api/editor/scene");
+          const res = await fetch(`/api/editor/scene?project_id=${projectId}`);
+
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
+          }
 
           const json = await res.json();
-          set({sceneList: json});
-          return json;
-        } catch (err: any) {
+          const list = Array.isArray(json) ? json : [];
+          set({sceneList: list});
+          return list;
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка загрузки списка сцен");
+          toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
         }
       },
-      loadScene: async (id) => {
+      loadScenesForProject: async (projectId: number) => {
+        return get().loadSceneList(projectId);
+      },
+      loadProjectList: async () => {
         try {
-          const res = await fetch(`/api/editor/scene/${id}`);
+          const res = await fetch("/api/editor/projects");
 
-          const scene = await res.json();
-          const newElements = transformElements(scene.children);
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка загрузки списка проектов"));
+          }
 
-          set({scene, elements: newElements});
-
-        } catch (err: any) {
+          const json = await res.json();
+          const projects = normalizeProjectList(json);
+          set({projectList: projects});
+          return projects;
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка загрузки сцены");
+          toast.error(getErrorMessage(err, "Ошибка загрузки списка проектов"));
         }
       },
-      createScene: async () => {
+      createProject: async (name: string) => {
         try {
-          const name = prompt("Название сцены");
-          if (!name) return;
-
-          const res = await fetch("/api/editor/scene", {
+          const res = await fetch("/api/editor/project", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({name}),
           });
 
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка создания проекта"));
+          }
+
+          const created = await res.json();
+          const newProject = toEditorProject(created);
+          if (!newProject) {
+            throw new Error("Некорректный ответ при создании проекта");
+          }
+          set(state => ({projectList: [...state.projectList, newProject]}));
+          toast.success("Проект создан");
+          return newProject;
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка создания проекта"));
+        }
+      },
+      setCurrentProject: (project) => set({currentProject: project}),
+      loadScene: async (id) => {
+        try {
+          const res = await fetch(`/api/editor/scene/${id}`);
+
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
+          const scene = await res.json();
+          const newElements = transformElements(scene?.children ?? [], scene);
+
+          set({scene, elements: newElements, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
+          // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
+          set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+        }
+      },
+      createScene: async () => {
+        try {
+          const {currentProject} = get();
+          if (!currentProject) {
+            toast.error("Сначала выберите проект");
+            return;
+          }
+
+          const name = prompt("Название сцены");
+          if (!name) return;
+
+          const payload = {name, project_id: currentProject.id};
+
+          const res = await fetch("/api/editor/scene", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+          });
+
           const newScene = await res.json();
 
-          set({scene: newScene});
+          set({scene: newScene, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
 
           toast.success("Сцена создана");
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err);
-          toast.error(err.message || "Ошибка создания сцены");
+          toast.error(getErrorMessage(err, "Ошибка создания сцены"));
         }
       },
       groupSelected: () => {
-        const { elements, selectedIds, scene } = get();
+        const {elements, selectedIds, scene} = get();
         if (selectedIds.length < 2) return;
 
-        // -----------------------------
-        // 1. TOP LEVEL SELECTION
-        // -----------------------------
         const topLevelSelected = elements
           .filter(el => selectedIds.includes(el.key))
           .filter(el => {
-            let parentKey: string | null | undefined = el!.parentKey;
+            let parentKey: string | null | undefined = el.parentKey;
 
             while (parentKey) {
               if (selectedIds.includes(parentKey)) return false;
@@ -372,90 +945,27 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         if (topLevelSelected.length < 2) return;
 
-        // -----------------------------
-        // 2. CLASSIFY ELEMENTS
-        // -----------------------------
-        const simple = topLevelSelected.filter(
-          el => !isGroup(el) && !isComplex(el)
-        );
-
-        const complex = topLevelSelected.filter(
-          el => isComplex(el)
-        );
-
+        const simple = topLevelSelected.filter(el => !isGroup(el) && !isComplex(el));
+        const complex = topLevelSelected.filter(isComplex);
         const groups = topLevelSelected.filter(isGroup);
 
-        // -----------------------------
-        // 3. TRY TO ADD SIMPLE → EXISTING GROUP
-        // -----------------------------
-        if (
-          simple.length > 0 &&
-          complex.length === 0 &&
-          groups.length === 1
-        ) {
+        if (simple.length > 0 && complex.length === 0 && groups.length === 1) {
           const targetGroup = groups[0] as GroupElement;
+          const simpleKeys = simple.map(s => s.key);
+          const allChildKeys = [
+            ...new Set([...(targetGroup.children ?? []), ...simpleKeys]),
+          ];
 
-          // 1. Считаем границы новых элементов (в абсолютных координатах)
-          let minX = targetGroup.x;
-          let minY = targetGroup.y;
-          let maxX = targetGroup.x + (targetGroup.w || 0);
-          let maxY = targetGroup.y + (targetGroup.h || 0);
+          const boundsByKey = snapshotBounds(elements, allChildKeys);
 
-          const simpleWithAbs = simple.map(s => ({
-            el: s,
-            abs: getAbsolutePosition(s, elements)
-          }));
-
-          simpleWithAbs.forEach(({ el, abs }) => {
-            minX = Math.min(minX, abs.x);
-            minY = Math.min(minY, abs.y);
-            maxX = Math.max(maxX, abs.x + (el.w || 0));
-            maxY = Math.max(maxY, abs.y + (el.h || 0));
-          });
-
-          // 2. Рассчитываем смещение (если группа расширилась влево или вверх)
-          const dx = targetGroup.x - minX;
-          const dy = targetGroup.y - minY;
-
-          // 3. Обновляем все элементы
-          const updatedElements = elements.map(el => {
-            // Если это новый добавляемый элемент
-            const newSimple = simpleWithAbs.find(s => s.el.key === el.key);
-            if (newSimple) {
-              return {
-                ...el,
-                parentKey: targetGroup.key,
-                x: newSimple.abs.x - minX,
-                y: newSimple.abs.y - minY,
-              };
-            }
-
-            // Если это старый ребенок этой же группы — корректируем его позицию из-за сдвига группы
-            if (el.parentKey === targetGroup.key) {
-              return {
-                ...el,
-                x: (el.x || 0) + dx,
-                y: (el.y || 0) + dy,
-              };
-            }
-
-            // Если это сама группа — обновляем её размеры и позицию
-            if (el.key === targetGroup.key) {
-              return {
-                ...targetGroup,
-                x: minX,
-                y: minY,
-                w: maxX - minX,
-                h: maxY - minY,
-                children: [
-                  ...(targetGroup.children ?? []),
-                  ...simple.map(s => s.key),
-                ],
-              };
-            }
-
-            return el;
-          });
+          const updatedElements = layoutGroupFromBounds(
+            elements,
+            targetGroup.key,
+            allChildKeys,
+            boundsByKey,
+            GROUP_PADDING,
+            scene?.id,
+          );
 
           set({
             elements: updatedElements,
@@ -465,58 +975,86 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
-        // -----------------------------
-        // 4. CREATE NEW GROUP
-        // -----------------------------
-        const newGroupId = crypto.randomUUID();
+        const newGroupId = createUuid();
+        const selectedKeys = topLevelSelected.map(el => el.key);
+        const parentKeys = [...new Set(topLevelSelected.map(el => el.parentKey).filter(Boolean))];
+        const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : String(scene?.id) || null;
+        const commonParentElement = commonParentKey
+          ? elements.find(el => el.key === commonParentKey && el.type === "group") as GroupElement | undefined
+          : undefined;
+        const newGroupParentId = commonParentKey === String(scene?.id)
+          ? scene?.id || null
+          : commonParentElement?.id ?? null;
 
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
+        const boundsByKey = snapshotBounds(elements, selectedKeys);
+        const box = unionBounds([...boundsByKey.values()], GROUP_PADDING);
+        const parentAbs = resolveParentAbsolute(commonParentKey, elements, scene?.id);
 
-        topLevelSelected.forEach(el => {
-          const abs = getAbsolutePosition(el, elements);
+        let updatedElements = elements.map(el => {
+          if (!selectedKeys.includes(el.key)) return el;
 
-          minX = Math.min(minX, abs.x);
-          minY = Math.min(minY, abs.y);
-          maxX = Math.max(maxX, abs.x + (el.w || 0));
-          maxY = Math.max(maxY, abs.y + (el.h || 0));
-        });
-
-        const updatedElements = elements.map(el => {
-          const isTopLevelSelected = topLevelSelected.some(t => t.key === el.key);
-          if (!isTopLevelSelected) return el;
-
-          const abs = getAbsolutePosition(el, elements);
-
+          const bounds = boundsByKey.get(el.key)!;
           return {
-            ...el,
-            x: abs.x - minX,
-            y: abs.y - minY,
+            ...elementToGroupLocal(el, bounds, box.absX, box.absY),
             parentKey: newGroupId,
             parentId: null,
           };
         });
 
+        if (commonParentElement) {
+          updatedElements = updatedElements.map(el => {
+            if (el.key !== commonParentElement.key) return el;
+
+            const nextChildren = el.children.filter(childKey => !selectedKeys.includes(childKey));
+            const insertIndex = el.children.findIndex(childKey => selectedKeys.includes(childKey));
+
+            if (insertIndex >= 0) {
+              nextChildren.splice(insertIndex, 0, newGroupId);
+            } else {
+              nextChildren.push(newGroupId);
+            }
+
+            return {...el, children: nextChildren};
+          });
+        }
+
         const group: GroupElement = {
           id: null,
           key: newGroupId,
           type: "group",
-          x: minX,
-          y: minY,
-          w: maxX - minX,
-          h: maxY - minY,
+          x: box.absX - parentAbs.x,
+          y: box.absY - parentAbs.y,
+          w: box.w,
+          h: box.h,
           composition: true,
-          children: topLevelSelected.map(el => el.key),
-          parentId: scene?.id || null,
-          parentKey: String(scene?.id) || null,
+          children: selectedKeys,
+          parentId: newGroupParentId,
+          parentKey: commonParentKey,
           label: `Group (${topLevelSelected.length})`,
           bg: "rgba(59,130,246,0.08)",
           borderStyle: "dashed",
           borderColor: "#3b82f6",
-          properties: []
+          scripts: [],
+          bindings: [],
+          properties: [],
+          states: [{
+            id: createUuid(),
+            name: "Нормальное",
+            overrides: {},
+            isDefault: true,
+          }],
         };
+
+        console.log(
+          updatedElements
+            .filter(el => selectedKeys.includes(el.key))
+            .map(el => ({
+              key: el.key,
+              parentKey: el.parentKey,
+              x: el.x,
+              y: el.y,
+            }))
+        );
 
         set({
           elements: [...updatedElements, group],
@@ -538,7 +1076,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // Здесь мы соберем ID элементов, которые освободятся из-под групп,
         // чтобы автоматически сделать их выделенными после разгруппировки
-        let newlySelectedIds: string[] = [];
+        const newlySelectedIds: string[] = [];
 
         // Работаем с копией массива элементов
         let updatedElements = [...elements];
@@ -572,7 +1110,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           });
 
           // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки")
-          // Нам нужно обновить массив children у этого "дедушки"
           if (grandParentKey) {
             updatedElements = updatedElements.map((el) => {
               if (el.key === grandParentKey && el.type === "group") {
@@ -592,7 +1129,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         // 2. Окончательно удаляем сами разбитые группы из массива
         updatedElements = updatedElements.filter((el) => !groupIdsToRemove.includes(el.key));
 
-        // 3. Сохраняем в выделении обычные фигуры, если они были выделены вместе с группами
+        // 3. Сохраняем в выделении обычные фигуры, которые были выделены вместе с группами
         const retainedSelectedIds = selectedIds.filter((id) => !groupIdsToRemove.includes(id));
 
         // Обновляем стейт
@@ -600,6 +1137,65 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: updatedElements,
           selectedIds: [...retainedSelectedIds, ...newlySelectedIds],
         });
+      },
+      moveElementToGroup: (elementKey, targetGroupKey) => {
+        const { elements } = get();
+        const element = elements.find(el => el.key === elementKey);
+        const targetGroup = elements.find(el => el.key === targetGroupKey);
+
+        if (!element || !targetGroup || targetGroup.type !== "group") return;
+
+        const oldParentKey = element.parentKey;
+        const {scene} = get();
+
+        const targetChildKeys = [
+          ...new Set([...(targetGroup.children ?? []), elementKey]),
+        ];
+        const targetBoundsByKey = snapshotBounds(elements, targetChildKeys);
+
+        let updatedElements = elements.map(el => {
+          if (el.key === oldParentKey && el.type === "group" && oldParentKey !== targetGroupKey) {
+            return {
+              ...el,
+              children: el.children.filter(childKey => childKey !== elementKey),
+            };
+          }
+          if (el.key === targetGroupKey) {
+            const nextChildren = [...(el.children ?? [])];
+            if (!nextChildren.includes(elementKey)) nextChildren.push(elementKey);
+            return {...el, children: nextChildren};
+          }
+          return el;
+        });
+
+        updatedElements = layoutGroupFromBounds(
+          updatedElements,
+          targetGroupKey,
+          targetChildKeys,
+          targetBoundsByKey,
+          GROUP_PADDING,
+          scene?.id,
+        );
+
+        if (oldParentKey && oldParentKey !== targetGroupKey) {
+          const oldGroup = updatedElements.find(
+            el => el.key === oldParentKey && el.type === "group",
+          ) as GroupElement | undefined;
+
+          if (oldGroup?.children.length) {
+            const oldBoundsByKey = snapshotBounds(updatedElements, oldGroup.children);
+            updatedElements = layoutGroupFromBounds(
+              updatedElements,
+              oldParentKey,
+              oldGroup.children,
+              oldBoundsByKey,
+              GROUP_PADDING,
+              scene?.id,
+            );
+          }
+        }
+
+        set({ elements: updatedElements });
       }
     }),
     {

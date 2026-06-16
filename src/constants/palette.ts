@@ -5,89 +5,45 @@ export const paletteItems: PaletteItemType[] = [
   {
     id: 10 ** 5,
     type: "line",
-    name: "Line",
-    category: "Basic",
+    name: "Линия",
+    category: "Базовые",
     defaultProps: {name: "Line"}
   },
   {
     id: 10 ** 5 + 1,
     type: "circle",
-    name: "Circle",
-    category: "Basic",
+    name: "Круг",
+    category: "Базовые",
     defaultProps: {name: "Circle"}
-  },
-  {
-    id: 10 ** 5 + 2,
-    type: "rectangle",
-    name: "Rectangle",
-    category: "Basic",
-    defaultProps: {name: "Rectangle"}
   },
   {
     id: 10 ** 5 + 3,
     type: "polygon",
-    name: "Polygon",
-    category: "Basic",
+    name: "Многоугольник",
+    category: "Базовые",
     defaultProps: {name: "Polygon"}
   },
   {
     id: 10 ** 5 + 4,
-    type: "path",
-    name: "Path",
-    category: "Basic",
-    defaultProps: {name: "Path"}
-  },
-  {
-    id: 10 ** 5 + 5,
-    type: "button",
-    name: "Button",
-    category: "Basic",
-    defaultProps: { name: "Button" },
-  },
-  {
-    id: 10 ** 5 + 6,
     type: "text",
-    name: "Text",
-    category: "Basic",
-    defaultProps: { text: "Text" },
+    name: "Текст",
+    category: "Базовые",
+    defaultProps: {name: "Text", text: "Text", fontSize: 16, color: "#ffffff", bold: false, align: "left"}
   },
 
-  // INDICATORS
+  // БАЗОВЫЕ — индикаторы
   {
     id: 10 ** 5 + 7,
-    type: "lamp",
-    name: "Lamp",
-    category: "Indicators",
-    defaultProps: { value: false },
+    type: "progress_bar",
+    name: "Прогресс-бар",
+    category: "Базовые",
+    defaultProps: {value: 50, w: 200, h: 20, color: "#3b82f6", bg: "#e5e7eb", textColor: "#ffffff", showPercentage: true},
   },
   {
     id: 10 ** 5 + 8,
-    type: "numeric",
-    name: "Numeric Display",
-    category: "Indicators",
-    defaultProps: { value: 0 },
-  },
-  {
-    id: 10 ** 5 + 9,
-    type: "indicator",
-    name: "Indicator",
-    category: "Indicators",
-    defaultProps: {value: 0}
-  },
-
-  // PROCESS
-  {
-    id: 10 ** 5 + 10,
-    type: "valve",
-    name: "Valve",
-    category: "Process",
-    defaultProps: {},
-  },
-  {
-    id: 10 ** 5 + 11,
-    type: "tank",
-    name: "Tank",
-    category: "Process",
-    defaultProps: { level: 50 },
+    type: "checkbox",
+    name: "Чекбокс",
+    category: "Базовые",
+    defaultProps: {checked: false, label: "Checkbox", w: 160, h: 24, color: "#3b82f6"},
   },
 ];

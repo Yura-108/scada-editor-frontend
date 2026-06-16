@@ -40,7 +40,7 @@ export const MultiSelect = ({ options, selected, onChange, placeholder, icon, di
 
           <div className="flex-1 flex flex-wrap gap-2 overflow-hidden text-left">
             {selected.length === 0 && !isLoading && (
-              <span className="text-gray-400">{placeholder}</span>
+              <span className="text-gray-600 dark:text-gray-400">{placeholder}</span>
             )}
             {isLoading && <span className="text-purple-500 animate-pulse">Загрузка...</span>}
             {!isLoading && selected.map((val) => {
@@ -57,7 +57,7 @@ export const MultiSelect = ({ options, selected, onChange, placeholder, icon, di
             })}
           </div>
 
-          <ChevronDown className="w-5 h-5 text-gray-400 ml-2 shrink-0" />
+          <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400 ml-2 shrink-0" />
         </button>
       </Popover.Trigger>
 
@@ -91,3 +91,4 @@ export const MultiSelect = ({ options, selected, onChange, placeholder, icon, di
     </Popover.Root>
   );
 };
+

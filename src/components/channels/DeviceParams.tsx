@@ -193,7 +193,7 @@ const DeviceParams = () => {
 
   if (!selectedDevice) {
     return (
-      <div className="flex flex-col items-center justify-start mt-10 h-full text-gray-400">
+      <div className="flex flex-col items-center justify-start mt-10 h-full text-gray-600 dark:text-gray-400">
         <AlertCircle className="w-12 h-12 mb-4"/>
         <p className="text-lg">Выберите устройство или канал</p>
       </div>
@@ -202,7 +202,7 @@ const DeviceParams = () => {
 
   if (rawParams.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full text-gray-600 dark:text-gray-400">
         <div className="text-center">
           <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
             <AlertCircle className="w-12 h-12"/>
@@ -229,7 +229,7 @@ const DeviceParams = () => {
         <div className="flex items-center gap-2">
           <button
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
             onClick={() => toggleEditing(selectedDevice)}
           >
@@ -240,7 +240,7 @@ const DeviceParams = () => {
           <button
             disabled={!isEditingDevice(selectedDevice)}
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform shadow-xl',
 
               // активная кнопка
               'bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
@@ -259,7 +259,7 @@ const DeviceParams = () => {
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform',
 
               // базовый стиль (как у первой кнопки)
               'bg-linear-to-r from-purple-600 to-indigo-600 shadow-xl',
@@ -381,7 +381,7 @@ const DeviceParams = () => {
           </label>
           <div
             onContextMenu={(e) => handleContextMenu(e, null)}
-            className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-400 "}
+            className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-600 dark:text-gray-400 "}
           >
             {optionItems.map(p => (
               <div
@@ -411,3 +411,5 @@ const DeviceParams = () => {
 };
 
 export default DeviceParams;
+
+

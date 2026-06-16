@@ -24,7 +24,7 @@ export const DynamicContextMenu = ({ items, children }: DynamicContextMenuProps)
 
       <ContextMenu.Portal>
         <ContextMenu.Content
-          className="min-w-40 bg-white rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 z-[100]"
+          className="min-w-40 bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 z-100"
           //sideOffset={5}
         >
           {items.map((item, index) => (
@@ -34,13 +34,13 @@ export const DynamicContextMenu = ({ items, children }: DynamicContextMenuProps)
               onClick={item.onClick}
               className={`
                 group flex items-center px-3 py-2 text-sm outline-none cursor-default rounded-sm
-                ${item.variant === 'danger' ? 'text-red-600 focus:bg-red-50' : 'text-gray-700 focus:bg-indigo-600 focus:text-white'}
+                ${item.variant === 'danger' ? 'text-red-600 focus:bg-red-50' : 'text-gray-700 focus:bg-indigo-600 focus:text-gray-900 dark:text-white'}
                 data-disabled:opacity-50
               `}
             >
               {item.label}
               {item.shortcut && (
-                <span className="ml-auto pl-4 text-xs opacity-50 group-focus:text-white">
+                <span className="ml-auto pl-4 text-xs opacity-50 group-focus:text-gray-900 dark:text-white">
                   {item.shortcut}
                 </span>
               )}

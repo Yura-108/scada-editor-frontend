@@ -62,7 +62,7 @@ export default function SaveButton() {
       onClick={handleSaveAllDrafts}
       //disabled={!hasChanges || isSaving}
       // className={clsx(
-      //   'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
+      //   'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform',
       //   hasChanges
       //     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl'
       //     : 'bg-gray-400 cursor-not-allowed',

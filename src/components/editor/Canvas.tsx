@@ -1,25 +1,292 @@
 "use client";
 
-import React, {useMemo, useRef, useEffect, useCallback, useState} from "react";
-import {Rnd} from "react-rnd";
+import React, {useMemo, useRef, useEffect, useState} from "react";
 import {useDroppable} from "@dnd-kit/core";
+import {useTheme} from "next-themes";
 import {useEditorStore} from "@/store/useEditorStore";
-import {GRID} from "@/lib/utils";
-import NodeElement from "@/components/editor/NodeElement";
+import {GRID, snap} from "@/lib/utils";
 import {DiagramElement, GroupElement, LeafElement} from "@/types/editorElement.type";
-import {cn} from "@/lib/utils"
 import isIntersecting from "@/lib/isIntersecting";
-import {LinesLayer} from "@/components/editor/LinesLayer";
-import {DynamicContextMenu} from "@/components/ui/ContextMenuRadixUI";
 import {editorElementMenuItems} from "@/constants/contextMenuItems";
 import {getDescendants} from "@/lib/getDescendants";
 import {OpenCreateFaceplateModal} from "@/components/ui/OpenCreateFaceplateModal";
-import {OpenChooseTagModal} from "@/components/ui/OpenChooseTagModal";
+import {handleAddProperty} from "@/lib/handleAddProperty";
+import {getRenderedElement} from "@/lib/getRenderedElement";
+import {Stage, Layer, Rect, Circle, Line, Text, Group} from "react-konva";
+import Konva from "konva";
+import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
+
+const MIN_SIZE = 20;
+
+interface CircleResizeHandleProps {
+  cx: number;
+  cy: number;
+  r: number;
+  elKey: string;
+  snap: (v: number) => number;
+  updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+  circleRef: React.RefObject<Konva.Circle | null>;
+}
+
+function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circleRef }: CircleResizeHandleProps) {
+  const handleRef = useRef<Konva.Circle>(null);
+
+  return (
+    <Circle
+      ref={handleRef}
+      x={cx + r}
+      y={cy}
+      radius={8}
+      fill="transparent"
+      stroke="transparent"
+      hitStrokeWidth={12}
+      draggable
+      onDragStart={(e) => { e.cancelBubble = true; }}
+      onDragMove={(e) => {
+        const dx = e.target.x() - cx;
+        const dy = e.target.y() - cy;
+        const newR = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+        // Зажимаем handle на горизонтальной оси
+        e.target.y(cy);
+        // Обновляем круг императивно — без React ре-рендера
+        circleRef.current?.radius(newR);
+        circleRef.current?.getLayer()?.batchDraw();
+      }}
+      onDragEnd={(e) => {
+        const dx = e.target.x() - cx;
+        const dy = e.target.y() - cy;
+        const newR = Math.max(1, snap(Math.sqrt(dx * dx + dy * dy)));
+        // Сначала обновляем Konva-узлы до снаппленного значения — убираем визуальный прыжок
+        e.target.position({ x: cx + newR, y: cy });
+        circleRef.current?.radius(newR);
+        circleRef.current?.getLayer()?.batchDraw();
+        updateElementVisual(elKey, { radius: newR, w: newR * 2, h: newR * 2 });
+      }}
+      onMouseEnter={e => {
+        const container = e.target.getStage()?.container();
+        if (container) container.style.cursor = "ew-resize";
+      }}
+      onMouseLeave={e => {
+        const container = e.target.getStage()?.container();
+        if (container) container.style.cursor = "default";
+      }}
+    />
+  );
+}
+
+interface ShapeElementProps {
+  el: DiagramElement;
+  isSelected: boolean;
+  snap: (v: number) => number;
+  onElementClick: (key: string, multi: boolean) => void;
+  updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+}
+
+function TextShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const textRef = useRef<Konva.Text>(null);
+  const { resolvedTheme } = useTheme();
+  const textDefaultColor = resolvedTheme === "dark" ? "#ffffff" : "#1a1a1a";
+
+  const pad = 4;
+
+  const fontSize = rendered.fontSize ?? 16;
+  const text = rendered.text ?? "Text";
+  const fontFamily = rendered.fontFamily || "Arial";
+  const fontStyle = rendered.bold ? "bold" : "normal";
+
+  // Измеряем реальный размер текста. Инициализируем через временный узел,
+  // затем обновляем по реальному узлу после каждого рендера Konva.
+  const [selDims, setSelDims] = useState<{ w: number; h: number }>(() => {
+    const tmp = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width: rendered.w || undefined });
+    const dims = { w: tmp.getTextWidth(), h: tmp.height() };
+    tmp.destroy();
+    return dims;
+  });
+
+  useEffect(() => {
+    if (textRef.current) {
+      setSelDims({
+        w: textRef.current.getTextWidth(),
+        h: textRef.current.height(),
+      });
+    }
+  }, [text, fontSize, fontFamily, fontStyle, rendered.w]);
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => {
+        updateElementVisual(el.key, {
+          x: snap(e.target.x()),
+          y: snap(e.target.y()),
+        });
+      }}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+      }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad}
+          y={-pad}
+          width={selDims.w + pad * 2}
+          height={selDims.h + pad * 2}
+          fill="transparent"
+          stroke="#3b82f6"
+          strokeWidth={1.5}
+          dash={[4, 3]}
+          listening={false}
+        />
+      )}
+      <Text
+        ref={textRef}
+        x={0}
+        y={0}
+        text={text}
+        fontSize={fontSize}
+        fontStyle={fontStyle}
+        fontFamily={fontFamily}
+        fill={rendered.color || rendered.textColor || textDefaultColor}
+        align={rendered.align || "left"}
+        width={rendered.w || undefined}
+        listening={true}
+      />
+    </Group>
+  );
+}
+
+function CheckboxShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  const BOX = 18;
+  const pad = 4;
+  const w = rendered.w || 160;
+  const h = Math.max(rendered.h || 24, BOX);
+  const boxY = (h - BOX) / 2;
+  const checked = !!rendered.checked;
+  const label = rendered.label ?? "Checkbox";
+  const accent = rendered.color || rendered.strokeColor || "#3b82f6";
+  const textCol = rendered.textColor || (isDark ? "#ffffff" : "#1a1a1a");
+  const fontSize = rendered.fontSize || 14;
+  const boxBg = isDark ? "#0a0a0a" : "#ffffff";
+
+  // Галочка: три точки образуют ✓
+  const ckPts = [
+    BOX * 0.15, BOX * 0.50,
+    BOX * 0.42, BOX * 0.76,
+    BOX * 0.85, BOX * 0.20,
+  ];
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
+          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
+        />
+      )}
+      {/* Квадрат чекбокса */}
+      <Rect
+        x={0} y={boxY} width={BOX} height={BOX}
+        fill={checked ? accent : boxBg}
+        stroke={accent} strokeWidth={1.5} cornerRadius={3}
+      />
+      {/* Галочка */}
+      {checked && (
+        <Line
+          x={0} y={boxY}
+          points={ckPts}
+          stroke="#ffffff" strokeWidth={2.5}
+          lineCap="round" lineJoin="round" listening={false}
+        />
+      )}
+      {/* Подпись */}
+      {label && (
+        <Text
+          x={BOX + 8} y={0}
+          text={label} fontSize={fontSize}
+          fill={textCol} width={w - BOX - 8} height={h}
+          verticalAlign="middle"
+        />
+      )}
+    </Group>
+  );
+}
+
+function ProgressBarShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+  const rendered = getRenderedElement(el) as LeafElement;
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  const pad = 4;
+  const w = rendered.w || 200;
+  const h = rendered.h || 20;
+  const value = Math.max(0, Math.min(100, Number(rendered.value) || 0));
+  const fillW = (w * value) / 100;
+  const trackColor = rendered.bg || (isDark ? "#3f3f46" : "#e5e7eb");
+  const fillColor = rendered.color || "#3b82f6";
+  const textCol = rendered.textColor || "#ffffff";
+  const showPct = rendered.showPercentage !== false;
+  const r = Math.min(4, h / 2);
+  const fillFull = fillW >= w - 0.5;
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      draggable
+      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <Rect
+          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
+          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
+        />
+      )}
+      {/* Трек (фон) */}
+      <Rect x={0} y={0} width={w} height={h} fill={trackColor} cornerRadius={r} />
+      {/* Заполнение */}
+      {fillW > 0 && (
+        <Rect
+          x={0} y={0} width={fillW} height={h}
+          fill={fillColor}
+          cornerRadius={fillFull ? r : [r, 0, 0, r]}
+        />
+      )}
+      {/* Процент */}
+      {showPct && h >= 12 && (
+        <Text
+          x={0} y={0} width={w} height={h}
+          text={`${Math.round(value)}%`}
+          fontSize={Math.max(10, Math.floor(h * 0.62))}
+          fill={textCol} align="center" verticalAlign="middle"
+          listening={false}
+        />
+      )}
+    </Group>
+  );
+}
+
 
 export default function Canvas() {
   const {
     elements,
-    updateElement,
     selectedIds,
     selectMultiple,
     setCanvasRect,
@@ -28,26 +295,74 @@ export default function Canvas() {
     pasteSelectedElement,
     camera,
     scene,
+    setCameraPan,
+    setCameraZoom,
+    updateElementVisual,
+    activeGroupKey,
+    enterGroup,
+    exitGroup,
+    clearSelection,
   } = useEditorStore();
 
-  console.log(elements);
+  console.log(elements)
+
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const themeColors = {
+    textDefault:     isDark ? "#ffffff" : "#1a1a1a",
+    labelDefault:    isDark ? "#ffffff" : "#000000",
+    strokeDefault:   isDark ? "#9ca3af" : "#6b7280",
+    canvasBg:        isDark ? "#0a0a0a" : "#ffffff",
+    gridLine:        isDark ? "rgba(100,100,120,0.4)" : "rgba(0,0,0,0.07)",
+    anchorFill:      isDark ? "#ffffff" : "#1a1a1a",
+    anchorStroke:    "#3b82f6",
+  };
 
   const CANVAS_WIDTH = 5000;
   const CANVAS_HEIGHT = 5000;
 
-  const [isSelecting, setIsSelecting] = useState<boolean>(false);
-  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
-  const [selectionRect, setSelectionRect] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
+
+  // Custom context menu state for the canvas
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: any[] } | null>(null);
+
+  // Modal state for moving to group
+  const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean, elementKey: string | null }>({
+    isOpen: false,
+    elementKey: null
+  });
 
   const {setNodeRef} = useDroppable({id: "canvas"});
   const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<Konva.Stage>(null);
+  const middlePanRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Обновление размеров и позиции canvas
+  // Middle mouse button pan — native window events so drag works outside canvas bounds
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!middlePanRef.current) return;
+      const dx = e.clientX - middlePanRef.current.x;
+      const dy = e.clientY - middlePanRef.current.y;
+      middlePanRef.current = { x: e.clientX, y: e.clientY };
+      useEditorStore.getState().setCameraPan(dx, dy);
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button === 1 && middlePanRef.current) {
+        middlePanRef.current = null;
+        const container = stageRef.current?.container();
+        if (container) container.style.cursor = "default";
+      }
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
   useEffect(() => {
     const updateRect = () => {
       if (containerRef.current) {
@@ -57,20 +372,79 @@ export default function Canvas() {
 
     updateRect();
     window.addEventListener("resize", updateRect);
-    const resizeObserver = new ResizeObserver(updateRect);
-    if (containerRef.current) resizeObserver.observe(containerRef.current);
-
-    return () => {
-      window.removeEventListener("resize", updateRect);
-      resizeObserver.disconnect();
-    };
+    return () => window.removeEventListener("resize", updateRect);
   }, [setCanvasRect]);
 
-  // Горячие клавиши
+  const rootElements = useMemo(() => elements.filter(el => el.parentKey === String(scene?.id)), [elements, scene]);
+  const elementsMap = useMemo(() => {
+    const map: Record<string, DiagramElement> = {};
+    elements.forEach(el => map[el.key] = el);
+    return map;
+  }, [elements]);
+
+  // Given a clicked element key, resolve what should actually be selected.
+  // In top-level mode: returns the root ancestor (child of the scene).
+  // In group-entered mode: returns the direct child of activeGroupKey,
+  //   or null if the clicked element is outside the active group.
+  const resolveClickTarget = (clickedKey: string): string | null => {
+    const sceneId = String(scene?.id);
+
+    if (!activeGroupKey) {
+      // Walk up to find the root (direct child of scene)
+      let key: string | null = clickedKey;
+      let prev = key;
+      while (key) {
+        const el = elementsMap[key];
+        if (!el) break;
+        if (el.parentKey === sceneId) return key;
+        prev = key;
+        key = el.parentKey;
+      }
+      return prev;
+    }
+
+    // Inside a group: find the direct child of activeGroupKey in the path
+    let key: string | null = clickedKey;
+    while (key) {
+      const el = elementsMap[key];
+      if (!el) return null;
+      if (el.parentKey === activeGroupKey) return key;
+      key = el.parentKey;
+    }
+    return null; // outside the active group
+  };
+
+  const handleElementClick = (clickedKey: string, multi: boolean) => {
+    const target = resolveClickTarget(clickedKey);
+    if (target === null) {
+      exitGroup();
+      return;
+    }
+    if (multi) {
+      selectMultiple([...selectedIds.filter(id => id !== target), target]);
+    } else {
+      selectMultiple([target]);
+    }
+  };
+
+  // Absolute world position of an element, using rendered (override-aware) coords at every level.
+  const getAbsoluteRenderedPos = (el: DiagramElement): {x: number; y: number} => {
+    const rendered = getRenderedElement(el);
+    const parent = el.parentKey ? elementsMap[el.parentKey] : null;
+    if (!parent) return { x: rendered.x ?? 0, y: rendered.y ?? 0 };
+    const parentPos = getAbsoluteRenderedPos(parent);
+    return { x: parentPos.x + (rendered.x ?? 0), y: parentPos.y + (rendered.y ?? 0) };
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (activeGroupKey) exitGroup();
+        else clearSelection();
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         deleteSelectedElement();
@@ -84,335 +458,665 @@ export default function Canvas() {
         pasteSelectedElement();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement]);
+  }, [deleteSelectedElement, copySelectedElement, pasteSelectedElement, activeGroupKey, exitGroup, clearSelection]);
 
-  useEffect(() => {
-    const el = document.getElementById("canvas-viewport");
-    if (!el) return;
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    if (!stage) return;
 
-    const handler = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
+    if (e.evt.ctrlKey) {
+      // Ctrl + Wheel → zoom to cursor point
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
 
-      const {camera, setCameraZoom} = useEditorStore.getState();
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
 
       const zoomSensitivity = 0.001;
-      const delta = -e.deltaY * zoomSensitivity;
-
-      const oldZoom = camera.zoom;
-      const newZoom = Math.min(Math.max(camera.zoom + delta, 0.2), 3);
-
-      if (newZoom === oldZoom) return;
+      const newZoom = Math.min(Math.max(oldScale + (-e.evt.deltaY * zoomSensitivity), 0.2), 3);
 
       setCameraZoom(newZoom);
-    };
-
-    el.addEventListener("wheel", handler, {passive: false});
-
-    return () => el.removeEventListener("wheel", handler);
-  }, []);
-
-  // useEffect(() => {
-  //   const viewportWidth = window.innerWidth;
-  //   const viewportHeight = window.innerHeight;
-  //
-  //   const zoom = useEditorStore.getState().camera.zoom;
-  //
-  //   const centerX = (viewportWidth / 2) - (CANVAS_WIDTH / 2 * zoom);
-  //   const centerY = (viewportHeight / 2) - (CANVAS_HEIGHT / 2 * zoom);
-  //   useEditorStore.setState((state) => ({
-  //     camera: {
-  //       ...state.camera,
-  //       x: centerX,
-  //       y: centerY
-  //     }
-  //   }));
-  // }, []);
-
-  const rootElements = useMemo(
-    () => elements.filter(el => el.parentKey === String(scene?.id)),
-    [elements]
-  );
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".scada-element")) return;
-    if ((e.target as HTMLElement).closest("button")) return;
-
-    const rect = containerRef.current!.getBoundingClientRect();
-
-    const startX = e.clientX - rect.left;
-    const startY = e.clientY - rect.top;
-
-    setIsSelecting(true);
-    setSelectionStart({x: startX, y: startY});
-    setSelectionRect({
-      x: startX,
-      y: startY,
-      width: 0,
-      height: 0,
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isSelecting || !selectionStart) return;
-
-    const rect = containerRef.current!.getBoundingClientRect();
-
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
-
-    const x = Math.min(selectionStart.x, currentX);
-    const y = Math.min(selectionStart.y, currentY);
-    const width = Math.abs(currentX - selectionStart.x);
-    const height = Math.abs(currentY - selectionStart.y);
-
-    setSelectionRect({x, y, width, height});
-  }
-
-  const handleMouseUp = () => {
-    if (!selectionRect) return;
-
-    const selected = elements
-      .filter(el => isIntersecting(selectionRect, el))
-      .map(el => el.key);
-
-    selectMultiple(selected);
-
-    setIsSelecting(false);
-    setSelectionStart(null);
-    setSelectionRect(null);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, elId: string) => {
-    if (!selectedIds.includes(elId)) {
-      handleSelect(elId, e);
-    }
-  };
-
-  const handleSelect = useCallback((id: string, e: React.MouseEvent | MouseEvent) => {
-    if (e.shiftKey) {
-      const newSelection = selectedIds.includes(id)
-        ? selectedIds.filter(i => i !== id)
-        : [...selectedIds, id];
-      selectMultiple(newSelection);
+      setCameraPan(
+        pointer.x - mousePointTo.x * newZoom - camera.x,
+        pointer.y - mousePointTo.y * newZoom - camera.y
+      );
+    } else if (e.evt.shiftKey) {
+      // Shift + Wheel → horizontal pan
+      setCameraPan(-e.evt.deltaY, 0);
     } else {
-      selectMultiple([id]);
-    }
-  }, [selectedIds, selectMultiple]);
-
-  const panZoomHandlers = {
-    // 1. ПЕРЕМЕЩЕНИЕ (PAN)
-    onPointerMove: (e: React.PointerEvent) => {
-      // Проверяем, зажато ли колесико мыши (button 1 или buttons 4)
-      // Либо можно проверять зажатый пробел + левую кнопку
-      if (e.buttons === 4) {
-        const {setCameraPan} = useEditorStore.getState();
-        // Двигаем камеру на столько же, на сколько сдвинулась мышь
-        setCameraPan(e.movementX, e.movementY);
-      }
-    },
-    // Чтобы курсор менялся на «руку» при зажатом колесике
-    onPointerDown: (e: React.PointerEvent) => {
-      if (e.button === 1) { // 1 — это колесико
-        (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
-      }
-    },
-
-    onPointerUp: (e: React.PointerEvent) => {
-      (e.currentTarget as HTMLElement).style.cursor = 'crosshair';
+      // Wheel → pan (deltaX + deltaY covers both mouse wheel and trackpad)
+      setCameraPan(-e.evt.deltaX, -e.evt.deltaY);
     }
   };
 
-  const elementsMap = useMemo(() => {
-    const map: Record<string, DiagramElement> = {};
-    elements.forEach(el => map[el.key] = el);
-    return map;
-  }, [elements]);
+  const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (contextMenu) setContextMenu(null);
+    const clickedOnEmpty = e.target === e.target.getStage();
+    const clickedOnBg = e.target.name() === "grid-bg";
 
-  const renderElement = (el: DiagramElement, isInsideGroup = false) => {
-    if (el.type === 'line') return null;
-    const isSelected = selectedIds.includes(el.key);
-
-    const handleFaceplate = async () => {
-      const rootElement = elements.find(element => element.key === el.key);
-      if (!rootElement) return;
-
-      const allDescendants = getDescendants(rootElement.key, elements);
-
-      const faceplate = [rootElement, ...allDescendants];
-
-      OpenCreateFaceplateModal(faceplate);
+    // Middle click → start panning
+    if (e.evt instanceof MouseEvent && e.evt.button === 1) {
+      middlePanRef.current = { x: e.evt.clientX, y: e.evt.clientY };
+      const container = stageRef.current?.container();
+      if (container) container.style.cursor = "grabbing";
+      return;
     }
 
-    const handleBindTag = () => {
-      if (!el.id) return;
-      OpenChooseTagModal(el.id);
+    if (clickedOnEmpty || clickedOnBg) {
+      if (activeGroupKey) {
+        exitGroup();
+      } else if (!e.evt.shiftKey && !e.evt.ctrlKey) {
+        selectMultiple([]);
+      }
+      const pos = stageRef.current?.getPointerPosition();
+      if (pos && stageRef.current) {
+         setSelectionRect({
+            x: (pos.x - stageRef.current.x()) / stageRef.current.scaleX(),
+            y: (pos.y - stageRef.current.y()) / stageRef.current.scaleX(),
+            width: 0,
+            height: 0
+         });
+      }
     }
+  };
 
-    // Общие пропсы для Rnd
-    const rndProps = {
-      size: { width: el.w, height: el.h },
-      position: { x: el.x, y: el.y },
-      dragGrid: [GRID, GRID] as [number, number],
-      resizeGrid: [GRID, GRID] as [number, number],
-      bounds: "parent",
-      onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, el.key),
-      onDragStop: (_: any, d: any) => updateElement(el.key, { x: d.x, y: d.y }),
-      onResizeStop: (_: any, __: any, ref: any, ___: any, pos: any) =>
-        updateElement(el.key, {
-          w: parseFloat(ref.style.width),
-          h: parseFloat(ref.style.height),
-          x: pos.x,
-          y: pos.y,
-        }),
+  const handleStageMouseMove = () => {
+    if (selectionRect && stageRef.current) {
+        const pos = stageRef.current.getPointerPosition();
+        if (pos) {
+            const rx = (pos.x - stageRef.current.x()) / stageRef.current.scaleX();
+            const ry = (pos.y - stageRef.current.y()) / stageRef.current.scaleX();
+            setSelectionRect(prev => prev ? {
+               x: prev.x,
+               y: prev.y,
+               width: rx - prev.x,
+               height: ry - prev.y
+            } : null);
+        }
+    }
+  };
+
+  const handleStageMouseUp = () => {
+    if (selectionRect) {
+      const sx = Math.min(selectionRect.x, selectionRect.x + selectionRect.width);
+      const sy = Math.min(selectionRect.y, selectionRect.y + selectionRect.height);
+      const sw = Math.abs(selectionRect.width);
+      const sh = Math.abs(selectionRect.height);
+
+      const getSelectionBounds = (el: DiagramElement) => {
+        const rendered = getRenderedElement(el);
+        const absPos  = getAbsoluteRenderedPos(el);
+
+        if (rendered.type === "polygon") {
+          // Вершины хранятся локально внутри polygon Group.
+          // Абсолютная позиция вершины = absPos (позиция Group) + local vertex.
+          const pts: number[] = Array.isArray(rendered.points)
+            ? rendered.points as number[]
+            : (() => { try { return JSON.parse((rendered.points as string | undefined) ?? "[]"); } catch { return []; } })();
+
+          if (pts.length >= 2) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i + 1 < pts.length; i += 2) {
+              minX = Math.min(minX, absPos.x + pts[i]);
+              minY = Math.min(minY, absPos.y + pts[i + 1]);
+              maxX = Math.max(maxX, absPos.x + pts[i]);
+              maxY = Math.max(maxY, absPos.y + pts[i + 1]);
+            }
+            return { x: minX, y: minY, w: Math.max(maxX - minX, 1), h: Math.max(maxY - minY, 1) };
+          }
+        }
+
+        if (rendered.type === "line") {
+          // x1/y1/x2/y2 хранятся в той же системе координат что rendered.x/y (родитель-локальная).
+          // absPos = parentAbs + rendered.x  →  parentAbs = absPos - rendered.x
+          const pax = absPos.x - (rendered.x ?? 0);
+          const pay = absPos.y - (rendered.y ?? 0);
+          const ax1 = pax + (rendered.x1 ?? rendered.x ?? 0);
+          const ay1 = pay + (rendered.y1 ?? rendered.y ?? 0);
+          const ax2 = pax + (rendered.x2 ?? ((rendered.x ?? 0) + 80));
+          const ay2 = pay + (rendered.y2 ?? rendered.y ?? 0);
+          return {
+            x: Math.min(ax1, ax2),
+            y: Math.min(ay1, ay2),
+            w: Math.max(Math.abs(ax2 - ax1), 2),
+            h: Math.max(Math.abs(ay2 - ay1), 2),
+          };
+        }
+
+        return { x: absPos.x, y: absPos.y, w: rendered.w ?? 0, h: rendered.h ?? 0 };
+      };
+
+      const selected = elements
+        .filter(el => isIntersecting(
+          { x: sx, y: sy, width: sw, height: sh },
+          getSelectionBounds(el),
+        ))
+        .map(el => el.key);
+
+      if (selected.length > 0) {
+        selectMultiple([...new Set([...selectedIds, ...selected])]);
+      }
+      setSelectionRect(null);
+    }
+  };
+
+  const closeMenu = () => setContextMenu(null);
+
+  const buildItemMenu = (el: DiagramElement) => {
+    const handleFaceplate = () => {
+      const allDescendants = getDescendants(el.key, elements);
+      OpenCreateFaceplateModal([el, ...allDescendants]);
+      closeMenu();
     };
 
-    if (el.type === "group") {
-      const group = el as GroupElement;
+    return [
+      {label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id},
+      ...editorElementMenuItems.map(item => ({
+        ...item,
+        onClick: () => {
+          if (item.label === 'Переместить в группу') {
+            setMoveToGroupState({ isOpen: true, elementKey: el.key });
+          } else {
+            item.onClick?.();
+          }
+          closeMenu();
+        }
+      })),
+      el.type === "group" ? {label: "Сохранить в палитру", onClick: handleFaceplate} : null
+    ].filter(Boolean);
+  };
+
+  const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault();
+    const pos = stageRef.current?.getPointerPosition();
+    if (!pos) return;
+
+    // Check what we clicked
+    const tg = e.target;
+    if (tg === e.target.getStage() || tg.name() === "grid-bg") {
+       setContextMenu({
+           x: e.evt.clientX,
+           y: e.evt.clientY,
+           items: [
+               { label: "Вставить", onClick: () => { pasteSelectedElement(); closeMenu(); } },
+           ]
+       });
+       return;
+    }
+
+    // Find associated element
+    const elId = tg.attrs.id || tg.parent?.attrs.id || tg.parent?.parent?.attrs.id;
+    if (elId) {
+       selectMultiple([elId]);
+       const el = elementsMap[elId];
+       if (el) {
+           setContextMenu({
+               x: e.evt.clientX,
+               y: e.evt.clientY,
+               items: buildItemMenu(el)
+           });
+       }
+    }
+  };
+  
+
+  const renderAnchor = (x: number, y: number, onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void, key: string) => {
+    return (
+      <Circle
+        key={key}
+         x={x}
+         y={y}
+         radius={5}
+         fill={themeColors.anchorFill}
+         stroke={themeColors.anchorStroke}
+         strokeWidth={2}
+         draggable
+         onDragMove={onDragMove}
+         onDragStart={(e) => { e.cancelBubble = true; }}
+         hitStrokeWidth={10}
+         onMouseEnter={e => {
+            const container = e.target.getStage()?.container();
+            if(container) container.style.cursor = "pointer";
+         }}
+         onMouseLeave={e => {
+            const container = e.target.getStage()?.container();
+            if(container) container.style.cursor = "default";
+         }}
+      />
+    );
+  };
+
+  const renderShapeElement = (el: DiagramElement) => {
+    const isSelected = selectedIds.includes(el.key);
+    const rendered = getRenderedElement(el) as LeafElement;
+
+    if (rendered.type === "polygon") {
+      let pts: number[] = [];
+      const pointsData = rendered.points as string | number[] | undefined;
+
+      if (typeof pointsData === "string") {
+          try { pts = JSON.parse(pointsData); } catch(err) { pts = []; }
+      } else if (Array.isArray(pointsData)) {
+          pts = pointsData;
+      }
+
+      const expectedLen = (rendered.sides || 3) * 2;
+      if (pts.length !== expectedLen) {
+          const sides = rendered.sides || 3;
+          const radius = rendered.radius || 40;
+
+          const cx = rendered.w / 2;
+          const cy = rendered.h / 2;
+
+          pts = [];
+          for (let i = 0; i < sides; i++) {
+              const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+              pts.push(cx + radius * Math.cos(angle));
+              pts.push(cy + radius * Math.sin(angle));
+          }
+      }
 
       return (
-        <DynamicContextMenu
-          key={el.key}
-          items={[
-            {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
-            {label: 'Сохранить в палитру', onClick: handleFaceplate},
-            {label: 'Удалить группу', onClick: () => console.log('Del Group'), variant: 'danger'}
-          ]}
-        >
-          <Rnd
-            {...rndProps}
+          <Group
             key={el.key}
-            cancel=".no-drag, .child-element"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              if (!(e.target as HTMLElement).closest('.child-element')) {
-                handleSelect(el.key, e);
-              }
-            }}
+            id={el.key}
+            x={rendered.x}
+            y={rendered.y}
           >
-            <div
-              className={cn(
-                "w-full h-full relative rounded-lg border-2 p-4 box-border",
-                isSelected ? "border-blue-500 bg-blue-900/30" : "border-blue-700/50 bg-blue-950/20"
-              )}
-              style={{ borderStyle: group.borderStyle || "dashed" }}
-            >
-              {group.children.map((childId) => {
-                const child = elementsMap[childId];
-                if (!child) return null;
-                // Передаем флаг, что элемент внутри группы
-                return renderElement(child, true);
-              })}
-            </div>
-          </Rnd>
-        </DynamicContextMenu>
+           <Line
+             points={pts as number[]}
+             closed={true}
+             fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+             stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+             strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+             draggable
+              onDragEnd={(e) => {
+                  const node = e.target;
+                  const dx = node.x();
+                  const dy = node.y();
+                  node.position({x:0,y:0});
+                  updateElementVisual(el.key, {
+                    x: snap(rendered.x + dx),
+                    y: snap(rendered.y + dy),
+                  });
+              }}
+             onClick={(e) => {
+                e.cancelBubble = true;
+                setContextMenu(null);
+                handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+             }}
+           />
+           {isSelected && (pts as number[]).map((p, i) => {
+              if (i % 2 !== 0) return null; // skip y
+              return renderAnchor(
+                 p, (pts as number[])[i+1],
+                 (e) => {
+                     const cp = [...(pts as number[])];
+                     cp[i] = snap(e.target.x());
+                     cp[i+1] = snap(e.target.y());
+                     e.target.position({ x: cp[i], y: cp[i+1] });
+                     updateElementVisual(el.key, { points: cp });
+                 },
+                 `${el.key}-anc-${i}`
+              );
+           })}
+        </Group>
       );
     }
 
-    // Обычный элемент (лист)
-    const nodeContent = (
-      <Rnd
-        {...rndProps}
-        key={el.key}
-        className={cn("child-element z-10 box-border", isSelected ? "shadow-lg" : "shadow-sm")}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          handleSelect(el.key, e);
-        }}
-      >
-        <NodeElement element={el as LeafElement} isSelected={isSelected} />
-      </Rnd>
-    );
+    if (rendered.type === "circle") {
+       const r = rendered.radius || rendered.w / 2 || 40;
+       const cx = rendered.x + r;
+       const cy = rendered.y + r;
+       const circleRef = React.createRef<Konva.Circle>();
+       return (
+         <Group key={el.key} id={el.key}>
+            <Circle
+               ref={circleRef}
+               x={cx}
+               y={cy}
+               radius={r}
+               fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+               stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+               strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+               draggable
+               onDragEnd={(e) => {
+                   const nx = e.target.x();
+                   const ny = e.target.y();
+                   const dx = nx - cx;
+                   const dy = ny - cy;
+                   e.target.position({x: cx, y: cy});
+                   updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
+               }}
+               onClick={(e) => {
+                   e.cancelBubble = true;
+                   handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+               }}
+            />
+            {isSelected && (
+              <CircleResizeHandle
+                key={`${el.key}-resize`}
+                cx={cx}
+                cy={cy}
+                r={r}
+                elKey={el.key}
+                snap={snap}
+                updateElementVisual={updateElementVisual}
+                circleRef={circleRef}
+              />
+            )}
+         </Group>
+       );
+    }
 
-    if (isInsideGroup) {
-      return nodeContent;
+    if (rendered.type === "line") {
+       const x1 = rendered.x1 ?? rendered.x;
+       const y1 = rendered.y1 ?? rendered.y;
+       const x2 = rendered.x2 ?? rendered.x + 80;
+       const y2 = rendered.y2 ?? rendered.y;
+       return (
+         <Group key={el.key} id={el.key}>
+            <Line
+              points={[x1, y1, x2, y2]}
+              stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+              strokeWidth={rendered.strokeWidth || 2}
+              hitStrokeWidth={Math.max(12, rendered.strokeWidth || 2)}
+              draggable
+              onDragEnd={(e) => {
+                  const dx = e.target.x();
+                  const dy = e.target.y();
+                  e.target.position({x:0, y:0});
+                  updateElementVisual(el.key, {
+                      x1: snap(x1 + dx), y1: snap(y1 + dy),
+                      x2: snap(x2 + dx), y2: snap(y2 + dy),
+                      x: snap((x1 + x2)/2 + dx), y: snap((y1 + y2)/2 + dy),
+                  });
+              }}
+              onClick={(e) => {
+                   e.cancelBubble = true;
+                   handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+              }}
+            />
+            {isSelected && renderAnchor(x1, y1, (e) => {
+                const sx = snap(e.target.x());
+                const sy = snap(e.target.y());
+                e.target.position({ x: sx, y: sy });
+                updateElementVisual(el.key, { x1: sx, y1: sy });
+            }, `${el.key}-anc-1`)}
+            {isSelected && renderAnchor(x2, y2, (e) => {
+                const sx = snap(e.target.x());
+                const sy = snap(e.target.y());
+                e.target.position({ x: sx, y: sy });
+                updateElementVisual(el.key, { x2: sx, y2: sy });
+            }, `${el.key}-anc-2`)}
+         </Group>
+       );
+    }
+
+    if (rendered.type === "text") {
+      return (
+        <TextShapeElement
+          key={el.key}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          onElementClick={handleElementClick}
+          updateElementVisual={updateElementVisual}
+        />
+      );
+    }
+
+    if (rendered.type === "checkbox") {
+      return (
+        <CheckboxShapeElement
+          key={el.key}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          onElementClick={handleElementClick}
+          updateElementVisual={updateElementVisual}
+        />
+      );
+    }
+
+    if (rendered.type === "progress_bar") {
+      return (
+        <ProgressBarShapeElement
+          key={el.key}
+          el={el}
+          isSelected={isSelected}
+          snap={snap}
+          onElementClick={handleElementClick}
+          updateElementVisual={updateElementVisual}
+        />
+      );
     }
 
     return (
-      <DynamicContextMenu key={el.key} items={[
-        {label: 'Добавить свойство', onClick: handleBindTag, disabled: !el.id},
-        ...editorElementMenuItems,
-      ]}>
-        {nodeContent}
-      </DynamicContextMenu>
+      <Group
+         key={el.key}
+         id={el.key}
+         x={rendered.x}
+         y={rendered.y}
+         rotation={rendered.rotate || 0}
+         draggable
+         onDragEnd={(e) => {
+           updateElementVisual(el.key, {
+             x: snap(e.target.x()),
+             y: snap(e.target.y()),
+           });
+         }}
+         onClick={(e) => {
+           e.cancelBubble = true;
+           handleElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+         }}
+      >
+        <Rect
+          width={rendered.w}
+          height={rendered.h}
+          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
+          cornerRadius={rendered.rx || 0}
+        />
+        {rendered.label && (
+           <Text
+             text={rendered.label}
+             width={rendered.w}
+             height={rendered.h}
+             align="center"
+             verticalAlign="middle"
+             fill={rendered.textColor || themeColors.labelDefault}
+           />
+        )}
+
+        {isSelected && renderAnchor(rendered.w, rendered.h, (e) => {
+            updateElementVisual(el.key, { w: Math.max(MIN_SIZE, e.target.x()), h: Math.max(MIN_SIZE, e.target.y()) });
+        }, `${el.key}-anc-se`)}
+      </Group>
     );
   };
 
+  const renderGroup = (group: GroupElement) => {
+    const isSelected = selectedIds.includes(group.key);
+    const isActive = activeGroupKey === group.key;
+    const rendered = getRenderedElement(group);
+
+    return (
+       <Group
+         key={group.key}
+         id={group.key}
+         x={rendered.x}
+         y={rendered.y}
+         draggable
+         onDragStart={(e) => {
+             if (e.target === e.currentTarget && !isSelected) {
+               e.target.stopDrag();
+             }
+         }}
+         onDragEnd={(e) => {
+             if (e.target !== e.currentTarget) return;
+             updateElementVisual(group.key, {
+               x: snap(e.target.x()),
+               y: snap(e.target.y())
+             });
+         }}
+         onDblClick={(e) => {
+           e.cancelBubble = true;
+           const clickedId = (e.target as Konva.Node).attrs.id
+             || (e.target as Konva.Node).parent?.attrs.id
+             || (e.target as Konva.Node).parent?.parent?.attrs.id;
+           const resolved = clickedId ? resolveClickTarget(clickedId) : group.key;
+           if (resolved === group.key) {
+             enterGroup(group.key);
+           }
+         }}
+       >
+         {/* Background rect: hit area + selection/active border */}
+         <Rect
+           x={0}
+           y={0}
+           width={rendered.w}
+           height={rendered.h}
+           fill="transparent"
+           stroke={isActive ? "#f59e0b" : isSelected ? "#3b82f6" : "transparent"}
+           strokeWidth={isActive || isSelected ? 2 : 0}
+           dash={isActive ? [6, 3] : [4, 3]}
+           listening={true}
+           onClick={(e) => {
+             e.cancelBubble = true;
+             handleElementClick(group.key, e.evt.shiftKey || e.evt.ctrlKey);
+           }}
+           onMouseEnter={e => {
+             if (isSelected) {
+               const container = e.target.getStage()?.container();
+               if (container) container.style.cursor = "move";
+             }
+           }}
+           onMouseLeave={e => {
+             const container = e.target.getStage()?.container();
+             if (container) container.style.cursor = "default";
+           }}
+         />
+         {group.children.map(childId => {
+             const child = elementsMap[childId];
+             if (!child) return null;
+             if (child.type === 'group') return renderGroup(child as GroupElement);
+             return renderShapeElement(child);
+         })}
+       </Group>
+    );
+  }
+
   return (
     <div
+      ref={containerRef}
       id="canvas-viewport"
-      className="relative w-full h-full overflow-hidden touch-none bg-neutral-950"
-      {...panZoomHandlers}
+      className="relative w-full h-full overflow-hidden bg-white dark:bg-neutral-950 context-menu-container"
     >
-      <DynamicContextMenu items={[
-        { label: 'Вставить элемент', onClick: () => console.log('Paste') },
-        { label: 'Очистить холст', onClick: () => console.log('Clear'), variant: 'danger' }
-      ]}>
-        <div
-          id="canvas-scene"
-          style={{
-            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
-            transformOrigin: '0 0',
-            width: `${CANVAS_WIDTH}px`,
-            height: `${CANVAS_HEIGHT}px`,
-            overflow: 'visible',
-          }}
-          ref={(node) => {
-            setNodeRef(node);
-            containerRef.current = node;
-          }}
-          className="select-none touch-none"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+      <div
+        ref={setNodeRef}
+        style={{width:"100%", height:"100%"}}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <Stage
+          ref={stageRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          scaleX={camera.zoom}
+          scaleY={camera.zoom}
+          x={camera.x}
+          y={camera.y}
+          onWheel={handleWheel}
+          onMouseDown={handleStageMouseDown}
+          onMouseMove={handleStageMouseMove}
+          onMouseUp={handleStageMouseUp}
+          onContextMenu={handleStageContextMenu}
         >
-          {/* Фоновая сетка */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `
-            linear-gradient(to right, rgba(60,60,70,0.4) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(60,60,70,0.4) 1px, transparent 1px)
-          `,
-              backgroundSize: `${GRID}px ${GRID}px`,
-            }}
-          />
-
-          {/* 1 слой — линии */}
-          <LinesLayer onSelect={handleSelect}/>
-
-          {/* 2 слой — элементы */}
-          {rootElements.map(el => renderElement(el))}
-
-
-          {/* Подсказка, если canvas пустой */}
-          {rootElements.length === 0 && (
-            <div
-              className="absolute inset-0 flex items-center justify-center text-neutral-600 pointer-events-none text-sm">
-              Перетащите элемент из палитры сюда
-            </div>
-          )}
-
-          {/* Рамка выделения */}
-          {selectionRect && (
-            <div
-              className="absolute pointer-events-none"
-              style={{
-                left: selectionRect.x,
-                top: selectionRect.y,
-                width: selectionRect.width,
-                height: selectionRect.height,
-                backgroundColor: "rgb(0, 150, 255, 0.2)",
-                border: "1px solid #0096ff",
-              }}
+          <Layer>
+            <Rect
+               key={`canvas-bg-${resolvedTheme}`}
+               name="canvas-bg"
+               x={-CANVAS_WIDTH/2}
+               y={-CANVAS_HEIGHT/2}
+               width={CANVAS_WIDTH*2}
+               height={CANVAS_HEIGHT*2}
+               fill={themeColors.canvasBg}
+               listening={false}
             />
-          )}
-        </div>
-      </DynamicContextMenu>
-    </div>
-  )
-}
+            <Rect
+               key={`grid-${resolvedTheme}`}
+               name="grid-bg"
+               x={-CANVAS_WIDTH/2}
+               y={-CANVAS_HEIGHT/2}
+               width={CANVAS_WIDTH*2}
+               height={CANVAS_HEIGHT*2}
+               fillPriority="pattern"
+               fillPatternImage={(()=>{
+                  const cvs = document.createElement("canvas");
+                  cvs.width = GRID; cvs.height = GRID;
+                  const ctx = cvs.getContext("2d");
+                  if (ctx) {
+                      ctx.strokeStyle = themeColors.gridLine;
+                      ctx.beginPath();
+                      ctx.moveTo(0,0); ctx.lineTo(GRID,0);
+                      ctx.moveTo(0,0); ctx.lineTo(0,GRID);
+                      ctx.stroke();
+                  }
+                  return cvs as any;
+               })()}
+            />
 
+            {rootElements.map(el => (
+              <React.Fragment key={el.key}>
+                {el.type === 'group' ? renderGroup(el as GroupElement) : renderShapeElement(el)}
+              </React.Fragment>
+            ))}
+
+            {selectionRect && (
+              <Rect
+                x={Math.min(selectionRect.x, selectionRect.x + selectionRect.width)}
+                y={Math.min(selectionRect.y, selectionRect.y + selectionRect.height)}
+                width={Math.abs(selectionRect.width)}
+                height={Math.abs(selectionRect.height)}
+                fill="rgba(0, 150, 255, 0.2)"
+                stroke="#0096ff"
+                strokeWidth={1}
+              />
+            )}
+          </Layer>
+        </Stage>
+      </div>
+
+      {contextMenu && (
+        <div style={{ position: 'absolute', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}>
+          <div className="min-w-40 bg-white dark:bg-neutral-800 rounded-md overflow-hidden p-1 shadow-xl border border-gray-200 dark:border-neutral-700">
+             {contextMenu.items.map((item, idx) => (
+               <div
+                  key={idx}
+                  onClick={item.onClick}
+                  className={`
+                    group flex items-center px-3 py-2 text-sm outline-none cursor-default rounded-sm text-gray-700 dark:text-white hover:bg-indigo-500 hover:text-white
+                  `}
+               >
+                  {item.label}
+               </div>
+             ))}
+          </div>
+        </div>
+      )}
+
+      <MoveToGroupModal
+        isOpen={moveToGroupState.isOpen}
+        elementKey={moveToGroupState.elementKey}
+        onClose={() => setMoveToGroupState({ isOpen: false, elementKey: null })}
+      />
+    </div>
+  );
+}

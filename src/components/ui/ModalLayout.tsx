@@ -59,7 +59,7 @@ export const ModalLayout = ({
             >
                 <div
                     style={{width}}
-                    className="bg-[#1e1e2e] text-white rounded-2xl shadow-2xl p-6 relative"
+                    className="bg-[#1e1e2e] text-gray-900 dark:text-white rounded-2xl shadow-2xl p-6 relative"
                 >
                   {children}
                 </div>

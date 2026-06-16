@@ -3,19 +3,15 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import {LeafElement} from "@/types/editorElement.type";
-
-// SVG-компоненты, которые ожидают { element }
-import { Lamp } from "@/components/SVGComponents/LampSVG";
-import { Button } from "@/components/SVGComponents/ButtonSVG";
-import { Indicator } from "@/components/SVGComponents/IndicatorSVG";
-import Tank from "@/components/SVGComponents/TankSVG";          // ← теперь с element
-import { Valve } from "@/components/SVGComponents/ValveSvg";
-import { Text } from "@/components/SVGComponents/TextSvg";
-import { NumericDisplay } from "@/components/SVGComponents/NumericDisplaySVG";
-import Circle from "@/components/SVGComponents/Circle";
-import Rectangle from "@/components/SVGComponents/Rectangle";
-import Polygon from "@/components/SVGComponents/Polygon";
-import Path from "@/components/SVGComponents/Path";
+import { Button } from "@/components/ui/SVGComponents/ButtonSVG";
+import { ProgressBar } from "@/components/ui/SVGComponents/ProgressBarSVG";
+import { Checkbox } from "@/components/ui/SVGComponents/CheckboxSVG";
+import { Text } from "@/components/ui/SVGComponents/TextSvg";
+import Circle from "@/components/ui/SVGComponents/Circle";
+import Rectangle from "@/components/ui/SVGComponents/Rectangle";
+import Polygon from "@/components/ui/SVGComponents/Polygon";
+import Path from "@/components/ui/SVGComponents/Path";
+import {getRenderedElement} from "@/lib/getRenderedElement";
 
 
 type Props = {
@@ -32,43 +28,33 @@ export default function NodeElement({
     isSelected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950",
   );
 
-  const renderContent = () => {
-    switch (element.type) {
-      // case "line":
-      //   return <Line element={element} />
+  const renderedElement = getRenderedElement(element);
 
+  const renderContent = () => {
+    switch (renderedElement.type) {
       case "rectangle":
-        return <Rectangle element={element} />
+        return <Rectangle element={renderedElement} />
 
       case "circle":
-        return <Circle element={element} />
-
-      case "lamp":
-        return <Lamp element={element} />
+        return <Circle element={renderedElement} />
 
       case "polygon":
-        return <Polygon element={element} />
+        return <Polygon element={renderedElement} />
 
       case "path":
-        return <Path element={element} />
+        return <Path element={renderedElement} />
 
       case "button":
-        return <Button element={element} />
+        return <Button element={renderedElement} />
 
-      case "indicator":
-        return <Indicator element={element} />
+      case "progress_bar":
+        return <ProgressBar element={renderedElement} />
 
-      case "tank":
-        return <Tank element={element} />;  // ← теперь передаём весь element
-
-      case "valve":
-        return <Valve element={element} />;
+      case "checkbox":
+        return <Checkbox element={renderedElement} />
 
       case "text":
-        return <Text element={element} />;
-
-      case "numeric":
-        return <NumericDisplay element={element} />;
+        return <Text element={renderedElement} />
 
       default:
         return (
@@ -85,13 +71,12 @@ export default function NodeElement({
       style={{ background: "transparent" }}
       onDoubleClick={e => console.log(e)}
     >
-      {element.label && element.type !== "text" && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-neutral-900/90 text-neutral-200 text-xs rounded border border-neutral-700 shadow-sm whitespace-nowrap z-10">
+      {element.label && element.type !== "text" && element.type !== "checkbox" && element.type !== "progress_bar" && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-white dark:bg-neutral-900/90 text-neutral-800 dark:text-neutral-200 text-xs rounded border border-neutral-300 dark:border-neutral-700 shadow-sm whitespace-nowrap z-10">
           {element.label}
         </div>
       )}
 
-      {/* Основное содержимое */}
       <div className="w-full h-full flex items-center justify-center p-1 box-border">
         {renderContent()}
       </div>

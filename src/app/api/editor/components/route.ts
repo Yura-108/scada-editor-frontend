@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {protectedRoute} from "@/lib/protected";
+import { log } from 'console';
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -57,14 +58,14 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
       {status: 400}
     );
   }
-  
+
   const response = await fetch(`${BACKEND_URL}/api/editor/components`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: ids,
+    body: JSON.stringify(ids),
   });
 
   const editorElements = await response.json().catch(() => null);

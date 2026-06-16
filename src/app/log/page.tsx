@@ -8,7 +8,7 @@ import LogFilters from "@/components/logs/FilterLogs";
 export default function LogsPage() {
   const {error} = useLogsStore();
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-100 p-8">
       <div className="max-w-5xl mx-auto space-y-6">
 
         <h1 className="text-2xl font-bold">Логи базы каналов</h1>
@@ -31,3 +31,4 @@ export default function LogsPage() {
     </div>
   );
 }
+

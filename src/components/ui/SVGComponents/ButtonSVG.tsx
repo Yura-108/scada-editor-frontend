@@ -23,12 +23,16 @@ export function Button({ element }: ButtonProps) {
   // Внутренние отступы
   const padding = 6;
   const radius = 6;
+  const safeWidth = Math.max(1, w || 0);
+  const safeHeight = Math.max(1, h || 0);
+  const innerWidth = Math.max(0, safeWidth - padding * 2);
+  const innerHeight = Math.max(0, safeHeight - padding * 2);
 
   return (
     <svg
       width="100%"
       height="100%"
-      viewBox={`0 0 ${w} ${h}`}
+      viewBox={`0 0 ${safeWidth} ${safeHeight}`}
       preserveAspectRatio="none"
       style={{ display: "block" }}
       onMouseEnter={() => setHovered(true)}
@@ -57,8 +61,8 @@ export function Button({ element }: ButtonProps) {
       <rect
         x={padding}
         y={pressed ? padding + 2 : padding}
-        width={w - padding * 2}
-        height={h - padding * 2}
+        width={innerWidth}
+        height={innerHeight}
         rx={radius}
         fill={color}
         stroke={hovered ? "#ffffff" : "#222"}
@@ -71,8 +75,8 @@ export function Button({ element }: ButtonProps) {
       <rect
         x={padding}
         y={pressed ? padding + 2 : padding}
-        width={w - padding * 2}
-        height={(h - padding * 2) * 0.45}
+        width={innerWidth}
+        height={Math.max(0, innerHeight * 0.45)}
         rx={radius}
         fill={`url(#btn-grad-${id})`}
         pointerEvents="none"
@@ -80,12 +84,12 @@ export function Button({ element }: ButtonProps) {
 
       {/* Текст */}
       <text
-        x={w / 2}
-        y={h / 2 + (pressed ? 2 : 0)}
+        x={safeWidth / 2}
+        y={safeHeight / 2 + (pressed ? 2 : 0)}
         textAnchor="middle"
         dominantBaseline="middle"
         fill={textColor}
-        fontSize={Math.min(w, h) * 0.22}
+        fontSize={Math.min(safeWidth, safeHeight) * 0.22}
         fontFamily="Arial, sans-serif"
         fontWeight="600"
         style={{ pointerEvents: "none", userSelect: "none" }}

@@ -65,12 +65,12 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Заголовок */}
-        <div className="px-6 py-5 text-lg font-semibold text-white border-b border-white/15 bg-black/10">
+        <div className="px-6 py-5 text-lg font-semibold text-gray-900 dark:text-white border-b border-white/15 bg-black/10">
           Добавление параметра
         </div>
 
         {/* Контент */}
-        <div className="p-6 space-y-5 text-white">
+        <div className="p-6 space-y-5 text-gray-900 dark:text-white">
           {/* Тип */}
           <div>
             <label htmlFor={"typeParam"} className="block mb-1.5 text-sm font-medium opacity-90">
@@ -83,7 +83,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
                 w-full px-4 py-2.5 appearance-none
                 bg-white/10 backdrop-blur-sm
                 border border-white/20 rounded-lg
-                text-white
+                text-gray-900 dark:text-white
                 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/30
                 transition-all duration-200
                 cursor-pointer
@@ -112,7 +112,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
                 w-full px-4 py-2.5
                 bg-white/10 backdrop-blur-sm
                 border border-white/20 rounded-lg
-                text-white placeholder:text-white/50
+                text-gray-900 dark:text-white placeholder:text-gray-900 dark:text-white/50
                 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/30
                 transition-all duration-200
               `}
@@ -128,7 +128,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
             onClick={onClose}
             className={`
               px-5 py-2.5 text-sm font-medium
-              text-white/80 hover:text-white
+              text-gray-900 dark:text-white/80 hover:text-gray-900 dark:text-white
               bg-white/5 hover:bg-white/15
               border border-white/10 hover:border-white/30
               rounded-lg transition-all duration-200
@@ -143,7 +143,7 @@ export function AddParamModal({ open, onClose, onAdd }: AddParamModalProps) {
             className={`
               px-5 py-2.5 text-sm font-medium
               bg-white/20 hover:bg-white/30
-              text-white
+              text-gray-900 dark:text-white
               rounded-lg transition-all duration-200
               disabled:opacity-40 disabled:cursor-not-allowed
               shadow-sm

@@ -47,7 +47,8 @@ export const editorGroupMenuItems: MenuItem[] = [
 ];
 
 export const editorElementMenuItems: MenuItem[] = [
-  { label: 'Копировать', onClick: () => console.log('Ungroup') },
-  { label: 'Удалить', onClick: () => console.log('Del Group'), variant: 'danger' }
-]
+  { label: 'Копировать', onClick: () => console.log('Copy') },
+  { label: 'Переместить в группу', onClick: () => console.log('Move to group') },
+  { label: 'Удалить', onClick: () => console.log('Del Element'), variant: 'danger' }
+];
 

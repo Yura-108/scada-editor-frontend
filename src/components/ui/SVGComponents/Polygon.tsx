@@ -15,7 +15,7 @@ export default function Polygon({ element }: PolygonProps) {
         <polygon
           points={element.points ?? "10,10 90,10 50,90"}
           fill={element.bg ?? "#4b5563"}
-          stroke={element.strokeColor ?? "#9ca3af"}
+          stroke={element.strokeColor ?? "#8a909b"}
           strokeWidth={element.strokeWidth ?? 2}
         />
       </g>

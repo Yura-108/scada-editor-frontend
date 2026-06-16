@@ -10,16 +10,48 @@ export type SceneType = {
   version: number;
 }
 
+// export type Overrides = {
+//   x?: number;
+//   y?: number;
+//   w?: number;
+//   h?: number;
+//   bg?: string;
+//   rotation?: number;
+//   visible?: boolean;
+//   strokeColor?: string;
+//   strokeWidth?: string;
+//   opacity?: number;
+// }
+
+export type ComponentState = {
+  id: string;
+  name: string;
+  overrides: Record<string, unknown>;
+  isDefault?: boolean;
+}
+
+export interface ElementScript {
+  id: string;
+  name: string;
+  content: string;
+}
 
 export type ComponentCreateDto = {
   key: string;
+  id: number | null;
   name: string;
   children: ComponentCreateDto[];
   version: number;
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  image: any;
+  scripts: { name: string; script: string }[];
+  bindings: { component_property_id: number; name: string; script: string }[];
+  states: {
+    name: string;
+    image: string;
+    isDefault: boolean;
+  }[];
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
@@ -33,7 +65,12 @@ export interface BaseCanvasElement {
   children: string[];
   parentId: number | null;
   parentKey: string | null;
+  scripts: ElementScript[];
+  bindings: unknown[];
   properties: PropertyCreateDto[];
+  states: ComponentState[];
+
+
   rotation?: number;
   label?: string;
   visible?: boolean;
@@ -41,26 +78,20 @@ export interface BaseCanvasElement {
 }
 
 export type ElementType =
-  | "lamp"
-  | "button"
-  | "indicator"
-  | "tank"
-  | "valve"
-  | "numeric"
-  | "text"
   | "polygon"
-  | "path"
-  | "rectangle"
   | "circle"
   | "line"
+  | "text"
+  | "group"
   | "custom"
-  //| "svg"         // если есть кастомные SVG
-  //| "input";
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
   color?: string;
+  points?: number[]; // Array of [x1,y1, x2,y2, ...] relative to element x,y or absolute? Let's use absolute or relative depending on implementation
+  sides?: number; // for polygon initial generation
+  radius?: number; // for circle and regular polygon initial generation
   size?: number | "small" | "medium" | "large";
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";
   value?: number | string;
@@ -97,12 +128,11 @@ export interface LeafElement extends BaseCanvasElement {
   flipX?: boolean;
   flipY?: boolean;
   opacity?: number;     // 0-1
-  zIndex?: number;
-  points?: string;
-  unitColor?: string;
+
   fontFamily?: string;
   letterSpacing?: number;
   pressed? : boolean;
+  checked?: boolean;
   d?: string; // SVG path data
   // ... добавляй по мере необходимости
 }

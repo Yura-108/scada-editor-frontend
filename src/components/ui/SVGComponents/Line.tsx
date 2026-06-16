@@ -8,20 +8,17 @@ interface Props {
 }
 
 export const Line = React.memo(function Line({ element, onSelect}: Props) {
-  const { selectedIds, updateElement } = useEditorStore();
+  const { selectedIds, updateElementVisual, camera } = useEditorStore();
   const selected = selectedIds.includes(element.key);
   const [dragging, setDragging] = useState<"start" | "end" | null>(null);
-
-  const onStartDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "start"), []);
-  const onEndDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "end"), []);
-
 
   useEffect(() => {
     if (!dragging) return;
 
     const handlePointerMove = (e: PointerEvent) => {
-      const deltaX = e.movementX;
-      const deltaY = e.movementY;
+      const zoom = camera.zoom || 1;
+      const deltaX = e.movementX / zoom;
+      const deltaY = e.movementY / zoom;
 
       let newX1 = element.x1 ?? 100;
       let newY1 = element.y1 ?? 100;
@@ -36,7 +33,7 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
         newY2 += deltaY;
       }
 
-      updateElement(element.key, {
+      updateElementVisual(element.key, {
         x1: newX1,
         y1: newY1,
         x2: newX2,
@@ -57,8 +54,7 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [dragging, element.x1, element.x2, element.y1, element.y2]);
-
+  }, [camera.zoom, dragging, element.x1, element.x2, element.y1, element.y2, element.key, updateElementVisual]);
 
   const handlePointerDown = (e: React.PointerEvent, point: 'start' | 'end') => {
     e.stopPropagation();
@@ -67,10 +63,12 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
     setDragging(point);
   };
 
-
+  const onStartDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "start"), []);
+  const onEndDown = useCallback((e: React.PointerEvent) => handlePointerDown(e, "end"), []);
 
   return (
     <g
+      className="pointer-events-auto"
       onMouseDown={(e) => {
         e.stopPropagation();
         onSelect(element.key, e)
@@ -81,8 +79,8 @@ export const Line = React.memo(function Line({ element, onSelect}: Props) {
         y1={element.y1}
         x2={element.x2}
         y2={element.y2}
-        stroke="#9ca3af"
-        strokeWidth={2}
+        stroke="#270a1f"
+        strokeWidth={4}
       />
 
       {selected && (

@@ -17,8 +17,8 @@ export function groupPalette(items: PaletteItemType[]) {
 
 export function sortCategories(grouped: Record<string, any[]>) {
   return Object.keys(grouped).sort((a, b) => {
-    if (a === "Основные") return -1;
-    if (b === "Основные") return 1;
+    if (a === "Основные" || a === "Basic") return -1;
+    if (b === "Основные" || b === "Basic") return 1;
     return a.localeCompare(b);
   });
 }

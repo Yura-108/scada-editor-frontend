@@ -4,7 +4,7 @@ import { useLogsStore } from '@/store/useLogsStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
 import { cn } from '@/lib/utils';
-import {toast} from "sonner"; // ← предполагаю, что у тебя есть clsx/tailwind-merge утилита
+import {toast} from "sonner";
 
 export default function LogsList() {
   const { logs, isLoading, getFilteredLogs } = useLogsStore();
@@ -13,7 +13,7 @@ export default function LogsList() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[180px] items-center justify-center text-gray-400">
+      <div className="flex min-h-[180px] items-center justify-center text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-3">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
           Загрузка логов...
@@ -53,11 +53,11 @@ export default function LogsList() {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-800/60 bg-gray-900/40 backdrop-blur-sm">
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white dark:bg-gray-900/40 backdrop-blur-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-          <tr className="border-b border-gray-800/80 bg-gray-800/60 text-xs uppercase tracking-wider text-gray-400">
+          <tr className="border-b border-gray-200 dark:border-gray-800/80 bg-gray-100 dark:bg-gray-800/60 text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">
             <th className="whitespace-nowrap px-5 py-3.5 font-medium">ID</th>
             <th className="whitespace-nowrap px-5 py-3.5 font-medium">Пользователь</th>
             <th className="whitespace-nowrap px-5 py-3.5 font-medium">Сущность</th>
@@ -68,12 +68,12 @@ export default function LogsList() {
           </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-800/40 text-sm text-gray-300">
+          <tbody className="divide-y divide-gray-800/40 text-sm text-gray-700 dark:text-gray-300">
           {filteredLogs.map((log) => (
             <tr
               key={log.id}
               className={cn(
-                'group transition-colors hover:bg-gray-800/40',
+                'group transition-colors hover:bg-gray-100 dark:bg-gray-800/40',
                 log.commandType === 'DELETE' && 'opacity-75',
               )}
             >
@@ -84,7 +84,7 @@ export default function LogsList() {
               </td>
 
               <td className="px-5 py-4">
-                  <span className="inline-flex items-center rounded-full bg-gray-800/70 px-2.5 py-0.5 text-xs font-medium text-gray-300 ring-1 ring-inset ring-gray-700/60">
+                  <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/70 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-700/60">
                     {log.entityType === 'Node' ? 'Устройство' : 'Параметр'} №{log.entityId}
                   </span>
               </td>
@@ -100,7 +100,7 @@ export default function LogsList() {
                   </span>
               </td>
 
-              <td className="whitespace-nowrap px-5 py-4 text-gray-400">
+              <td className="whitespace-nowrap px-5 py-4 text-gray-600 dark:text-gray-400">
                 {new Date(log.createdAt).toLocaleString('ru-RU', {
                   day: '2-digit',
                   month: '2-digit',
@@ -148,10 +148,11 @@ function getCommandBadgeStyle(type: LogEntry['commandType']) {
     case 'CREATE':
       return 'bg-green-950/40 text-green-400 ring-green-500/30';
     case 'UPDATE':
-      return 'bg-amber-950/40 text-amber-400 ring-amber-500/30';
+      return 'bg-white dark:bg-[#0f0f1a]mber-950/40 text-amber-400 ring-amber-500/30';
     case 'DELETE':
       return 'bg-red-950/40 text-red-400 ring-red-500/30';
     default:
-      return 'bg-gray-800 text-gray-300 ring-gray-700';
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-gray-700';
   }
 }
+

@@ -3,7 +3,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import Tree from 'rc-tree';
 import {DataNode, Key} from 'rc-tree/es/interface';
-import {Plus, Router} from 'lucide-react';
+import {Router} from 'lucide-react';
 import {useDeviceStore} from '@/store/useDeviceStore';
 import TitleRenderer from '@/components/ui/TitleRenderer';
 import {DeviceNodeType} from '@/types/nodeTypes';

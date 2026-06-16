@@ -1,4 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
+import {PropertyCreateDto} from "@/types/tags.types";
 
 export interface PaletteItemType {
   id: number;
@@ -16,20 +17,48 @@ export interface PaletteItemResponseDTO {
   rootComponent: ComponentsResponseDTO;
 }
 
-export interface ComponentCreateDTO {
+export type ComponentCreateDTO = {
   key: string;
+  id: number | null;
   name: string;
   type: string;
+  version: number;
   parent_key: string | null;
+  parent_id: number | null;
   children: ComponentCreateDTO[];
-  image: any;
+  scripts: unknown[];
+  bindings: unknown[];
+  states: {
+    name: string;
+    image: string;
+    isDefault: boolean;
+  }[];
+};
+
+export interface PaletteItemCreateDTO {
+  name: string;
+  type: string;
+  rootComponent: ComponentCreateDTO;
+}
+
+export interface ComponentStateResponseDTO {
+  id: number;
+  componentId: number;
+  name: string;
+  image: string;
+  isDefault: boolean;
 }
 
 export interface ComponentsResponseDTO {
   id: number;
-  parent_id: number;
+  key?: string;
   name: string;
   type: string;
+  version: number;
+  parent_id: number | null;
+  scripts?: unknown[];
+  bindings?: unknown[];
+  states: ComponentStateResponseDTO[];
   children: ComponentsResponseDTO[];
-  image: any;
+  properties: PropertyCreateDto[];
 }

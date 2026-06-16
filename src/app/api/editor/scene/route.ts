@@ -3,15 +3,36 @@ import {protectedRoute} from "@/lib/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
-export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
+function parseProjectId(searchParams: URLSearchParams): number | null {
+  const raw = searchParams.get('project_id') ?? searchParams.get('projectId');
+  if (raw === null || raw === '') return null;
 
-  const response = await fetch(`${BACKEND_URL}/api/editor/components/scenes`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  const projectId = Number(raw);
+  if (!Number.isSafeInteger(projectId)) return null;
+
+  return projectId;
+}
+
+export const GET = protectedRoute(async (req: NextRequest, {token}) => {
+  const projectId = parseProjectId(req.nextUrl.searchParams);
+
+  if (projectId === null) {
+    return NextResponse.json(
+      {error: "Параметр project_id обязателен и должен быть целым числом (int64)"},
+      {status: 400}
+    );
+  }
+
+  const response = await fetch(
+    `${BACKEND_URL}/api/editor/components/scenes?project_id=${projectId}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -24,16 +45,20 @@ export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
 });
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
-  const sceneName = await req.json();
+  const scenePayload = await req.json();
 
-  if (!sceneName) {
+  if (!scenePayload?.name) {
     return NextResponse.json(
       {error: "Имя сцены не валидное!"},
       {status: 400}
     );
   }
 
-  console.log(sceneName);
+  const projectId = scenePayload.project_id ?? scenePayload.projectId;
+  const body = {
+    name: scenePayload.name,
+    ...(projectId != null ? {project_id: Number(projectId)} : {}),
+  };
 
   const response = await fetch(`${BACKEND_URL}/api/editor/components/scene`, {
     method: 'POST',
@@ -41,10 +66,10 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(sceneName),
+    body: JSON.stringify(body),
   });
 
   const scene = await response.json().catch(() => null);
 
   return NextResponse.json(scene, {status: 201});
-})
+});
