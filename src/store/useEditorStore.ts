@@ -503,7 +503,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           const newKey = raw.__newKey as string;
 
           const oldParentKey = String(raw.parentKey ?? "");
-          const parentKey = isNullish(raw.parentKey) || !keyMap[oldParentKey]
+          const isTopLevel = isNullish(raw.parentKey) || !keyMap[oldParentKey];
+          const parentKey = isTopLevel
             ? String(scene?.id)
             : keyMap[oldParentKey];
 
@@ -528,7 +529,11 @@ export const useEditorStore = create<EditorState>()(temporal(
             id:          isNullish(raw.id) ? null : Number(raw.id),
             key:         newKey,
             parentKey,
-            parentId:    isNullish(raw.parentId) ? null : Number(raw.parentId),
+            // parentId из чужой сцены/проекта невалиден:
+            //   - верхнеуровневые элементы должны ссылаться на id текущей сцены;
+            //   - дети импортируемых групп ещё не сохранены на сервере → parentId = null
+            //     (группы сами сохранят своих детей на бэкенде, и id появятся при следующей загрузке).
+            parentId:    isTopLevel ? (scene?.id ?? null) : null,
             composition: parseBool(raw.composition, false),
             children,
             scripts:     Array.isArray(raw.scripts)    ? raw.scripts    : [],
