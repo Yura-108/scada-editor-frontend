@@ -193,6 +193,16 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       defaultValue: 50,
     },
     {
+      key: "orientation",
+      label: "Ориентация",
+      type: "select",
+      options: [
+        {label: "Горизонтальная", value: "horizontal"},
+        {label: "Вертикальная", value: "vertical"},
+      ],
+      defaultValue: "horizontal",
+    },
+    {
       key: "label",
       label: "Заголовок",
       type: "text",

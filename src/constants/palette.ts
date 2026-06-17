@@ -37,7 +37,7 @@ export const paletteItems: PaletteItemType[] = [
     type: "progress_bar",
     name: "Прогресс-бар",
     category: "Базовые",
-    defaultProps: {value: 50, w: 200, h: 20, color: "#3b82f6", bg: "#e5e7eb", textColor: "#ffffff", showPercentage: true},
+    defaultProps: {value: 50, w: 200, h: 20, orientation: "horizontal", color: "#3b82f6", bg: "#e5e7eb", textColor: "#ffffff", showPercentage: true},
   },
   {
     id: 10 ** 5 + 8,

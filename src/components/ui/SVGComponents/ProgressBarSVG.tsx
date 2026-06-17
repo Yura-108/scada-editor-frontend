@@ -18,16 +18,52 @@ export function ProgressBar({element}: ProgressBarProps) {
     label = "",
     w,
     h,
+    orientation = "horizontal",
   } = element;
 
   const safeWidth = Math.max(1, w || 0);
   const safeHeight = Math.max(1, h || 0);
   const padding = 4;
-  const trackHeight = Math.max(8, safeHeight - padding * 2 - (label ? 14 : 0) - (showPercentage ? 16 : 0));
-  const trackY = padding + (label ? 14 : 0);
+  const isVertical = orientation === "vertical";
+
+  // Reserve space for label and percentage text
+  const reservedLabelH = label ? 14 : 0;
+  const reservedPctH = showPercentage ? 16 : 0;
+
+  // Track dimensions in the main axis
+  const trackLength = isVertical
+    ? Math.max(8, safeHeight - padding * 2 - reservedLabelH - reservedPctH)
+    : Math.max(8, safeWidth - padding * 2);
+  const trackThickness = isVertical
+    ? Math.max(8, safeWidth - padding * 2 - reservedLabelH - reservedPctH)
+    : Math.max(8, safeHeight - padding * 2 - reservedLabelH - reservedPctH);
+
+  // Track origin
+  const trackX = isVertical
+    ? padding + reservedLabelH
+    : padding;
+  const trackY = isVertical
+    ? padding
+    : padding + reservedLabelH;
+
   const clamped = Math.max(0, Math.min(100, Number(value) || 0));
-  const fillWidth = (Math.max(0, safeWidth - padding * 2) * clamped) / 100;
-  const radius = Math.min(6, trackHeight / 2);
+  const radius = Math.min(6, Math.min(trackLength, trackThickness) / 2);
+
+  const fillLength = (trackLength * clamped) / 100;
+
+  // Fill origin: for vertical, grow from bottom up; for horizontal, from left to right
+  const fillX = isVertical ? trackX : trackX;
+  const fillY = isVertical ? trackY + (trackLength - fillLength) : trackY;
+  const fillW = isVertical ? trackThickness : fillLength;
+  const fillH = isVertical ? fillLength : trackThickness;
+
+  // Corner radii
+  const trackRadius = isVertical
+    ? [radius, radius, radius, radius]
+    : radius;
+  const fillRadius = isVertical
+    ? (clamped >= 100 ? [radius, radius, radius, radius] : [0, 0, radius, radius])
+    : (clamped >= 100 ? radius : [radius, 0, 0, radius]);
 
   return (
     <svg
@@ -39,8 +75,8 @@ export function ProgressBar({element}: ProgressBarProps) {
     >
       {label ? (
         <text
-          x={padding}
-          y={padding + 10}
+          x={isVertical ? padding : padding}
+          y={isVertical ? safeHeight - padding - 4 : padding + 10}
           fill={textColor}
           fontSize={11}
           fontFamily="Arial, sans-serif"
@@ -51,29 +87,29 @@ export function ProgressBar({element}: ProgressBarProps) {
       ) : null}
 
       <rect
-        x={padding}
+        x={trackX}
         y={trackY}
-        width={Math.max(0, safeWidth - padding * 2)}
-        height={trackHeight}
-        rx={radius}
+        width={isVertical ? trackThickness : trackLength}
+        height={isVertical ? trackLength : trackThickness}
+        rx={trackRadius}
         fill={backgroundColor}
         stroke={strokeColor}
         strokeWidth={1}
       />
       <rect
-        x={padding}
-        y={trackY}
-        width={fillWidth}
-        height={trackHeight}
-        rx={radius}
+        x={fillX}
+        y={fillY}
+        width={fillW}
+        height={fillH}
+        rx={fillRadius}
         fill={color}
       />
 
       {showPercentage ? (
         <text
-          x={safeWidth / 2}
-          y={trackY + trackHeight + 14}
-          textAnchor="middle"
+          x={isVertical ? trackX + trackThickness + 4 : safeWidth / 2}
+          y={isVertical ? trackY + trackLength / 2 + 4 : trackY + trackThickness + 14}
+          textAnchor={isVertical ? "start" : "middle"}
           fill={textColor}
           fontSize={11}
           fontFamily="monospace"

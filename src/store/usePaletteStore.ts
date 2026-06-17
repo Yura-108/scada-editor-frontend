@@ -4,6 +4,27 @@ import {paletteItems as paletteItemsStatic} from "@/constants/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
+import {DiagramElement} from "@/types/editorElement.type";
+
+/**
+ * Нормализует шаблон перед сохранением в палитру.
+ * Шаблон НЕ привязан к конкретной сцене, поэтому:
+ *   - корневой элемент получает parentId=null, parentKey=null
+ *   - все остальные элементы получают parentId=null (children не существуют
+ *     на бэкенде отдельно от корня шаблона; их parentKey ссылается на
+ *     локальный ключ элемента внутри дерева шаблона и не трогается).
+ */
+const normalizeTemplateForPalette = (
+  template: DiagramElement[],
+  rootKey: string | undefined,
+): DiagramElement[] => {
+  return template.map(el => {
+    if (el.key === rootKey) {
+      return {...el, parentId: null, parentKey: null};
+    }
+    return {...el, parentId: null};
+  });
+};
 
 type PaletteState = {
   paletteItems: PaletteItemType[];
@@ -53,7 +74,8 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       if (!paletteItem.template) return;
       const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
-      const rootComponent = buildPaletteComponentTree(paletteItem.template, rootElementKey);
+      const normalizedTemplate = normalizeTemplateForPalette(paletteItem.template, rootElementKey);
+      const rootComponent = buildPaletteComponentTree(normalizedTemplate, rootElementKey);
 
       if (!rootComponent) {
         toast.error("Не удалось собрать корневой компонент шаблона");
@@ -95,7 +117,8 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       if (!paletteItem.template) return;
       const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
-      const rootComponent = buildPaletteComponentTree(paletteItem.template, rootElementKey);
+      const normalizedTemplate = normalizeTemplateForPalette(paletteItem.template, rootElementKey);
+      const rootComponent = buildPaletteComponentTree(normalizedTemplate, rootElementKey);
 
       if (!rootComponent) {
         toast.error("Не удалось собрать корневой компонент шаблона");

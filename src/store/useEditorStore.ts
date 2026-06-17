@@ -439,13 +439,18 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
             scripts: Array.isArray((el as DiagramElement).scripts) ? (el as DiagramElement).scripts : [],
             bindings: Array.isArray((el as DiagramElement).bindings) ? (el as DiagramElement).bindings : [],
+            // Дочерние элементы шаблона ещё не сохранены на сервере,
+            // поэтому parentId у них null — бэкенд проставит id при сохранении сцены.
+            parentId: null,
           };
 
           // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
+          //    и привязываем к текущей сцене (parentId = scene.id, parentKey = String(scene.id)).
           if (el.key === root.key) {
             updatedElement.x = x;
             updatedElement.y = y;
             updatedElement.parentKey = String(scene?.id);
+            updatedElement.parentId = scene?.id ?? null;
           }
 
           return updatedElement as DiagramElement;
@@ -620,7 +625,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const newElement: DiagramElement = {
             id: null, key: createUuid(), type, composition,
             x, y, w: 200, h: 20,
-            value: 50, label: "",
+            value: 50, label: "", orientation: "horizontal",
             color: "#3b82f6", bg: "#e5e7eb",
             textColor: "#ffffff", showPercentage: true,
             parentId: scene?.id || null, parentKey: String(scene?.id) || null,

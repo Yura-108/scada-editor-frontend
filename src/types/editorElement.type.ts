@@ -109,6 +109,7 @@ export interface LeafElement extends BaseCanvasElement {
   text?: string;
   rx?: number;                  // скругление углов (border-radius)
   ry?: number;
+  orientation?: "horizontal" | "vertical";  // для progress_bar
 
   // Для line
   x1?: number;
