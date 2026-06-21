@@ -33,10 +33,10 @@ export default async function RootLayout({children}: { children: React.ReactNode
                 className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Cpu className="w-5 h-5 text-gray-900 dark:text-white"/>
               </div>
-              <span
-                className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-gray-400">
-              SCADA
-            </span>
+            {/*  <span*/}
+            {/*    className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-gray-400">*/}
+            {/*  SCADA*/}
+            {/*</span>*/}
             </div>
 
             <HeaderNav/>

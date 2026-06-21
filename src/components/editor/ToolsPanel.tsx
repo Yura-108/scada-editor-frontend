@@ -75,12 +75,13 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         <div className="text-sm font-medium text-neutral-400 pointer-events-auto flex gap-4">
           {currentProject && (
             <span>
-              Проект: <span className="text-neutral-200 font-semibold">{currentProject.name}</span>
+              Проект: <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentProject.name}</span>
             </span>
           )}
           {scene && (
             <span>
-              Сцена: <span className="text-neutral-200 font-semibold">{scene.name}</span>
+              Сцена: <span className="text-gray-900 dark:text-gray-100
+               font-semibold">{scene.name}</span>
             </span>
           )}
         </div>
