@@ -107,7 +107,11 @@ export default function transformElements(
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
       children: [], // Will be populated by children's processing
-      scripts: normalizeArray(el.scripts),
+      scripts: normalizeArray(el.scripts).map((s: Record<string, unknown>) => ({
+        id: s.id != null ? String(s.id) : createUuid(),
+        name: String(s.name ?? ""),
+        content: String(s.content ?? s.script ?? ""),
+      })),
       bindings: normalizeArray(el.bindings),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,

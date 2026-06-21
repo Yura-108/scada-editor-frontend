@@ -215,6 +215,9 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
     return element;
   }
 
+  const defaultState = element.states.find(s => s.isDefault) ?? element.states[0];
+  const inheritedOverrides = defaultState ? { ...defaultState.overrides } : {};
+
   return {
     ...element,
     states: [
@@ -222,7 +225,7 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
       {
         id: forcedId ?? createUuid(),
         name: stateName,
-        overrides: {},
+        overrides: inheritedOverrides,
         isDefault: false,
       },
     ],

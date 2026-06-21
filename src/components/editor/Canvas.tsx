@@ -373,6 +373,8 @@ export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null);
   const middlePanRef = useRef<{ x: number; y: number } | null>(null);
 
+  console.log(elements)
+
   // Middle mouse button pan — native window events so drag works outside canvas bounds
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
