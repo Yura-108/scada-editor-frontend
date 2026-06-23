@@ -21,6 +21,7 @@ export default function EditorPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'z') {
           e.preventDefault();

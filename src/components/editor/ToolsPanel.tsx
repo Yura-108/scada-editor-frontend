@@ -6,6 +6,45 @@ import {openProjectModal} from "@/components/ui/ProjectModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {toast} from "sonner";
 
+function TooltipBtn({
+  icon,
+  label,
+  onClick,
+  disabled,
+  className,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className="relative group/tip">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className={className ?? `flex items-center justify-center w-9 h-9 rounded-xl
+          bg-white/5 border border-white/10 text-gray-900 dark:text-white
+          hover:bg-white/10 hover:border-white/20
+          active:translate-y-0.5 disabled:opacity-20 transition-all`}
+      >
+        {icon}
+      </button>
+      <span className="
+        absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50
+        px-2 py-1 text-xs font-medium rounded-lg whitespace-nowrap
+        bg-gray-900 dark:bg-gray-700 text-white
+        opacity-0 group-hover/tip:opacity-100 pointer-events-none
+        transition-opacity duration-150
+      ">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible: boolean, rightVisible: boolean }) {
   const {selectedIds, exportScene, elements, loadSceneList, createScene, scene, currentProject} = useEditorStore();
   const {loadPaletteItems} = usePaletteStore();
@@ -64,8 +103,8 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
   return (
     <nav
       style={{
-        left: leftVisible ? '288px' : '0px', // 288px = w-72
-        right: rightVisible ? '320px' : '0px', // 320px = w-80
+        left: leftVisible ? '288px' : '0px',
+        right: rightVisible ? '320px' : '0px',
       }}
       className="fixed top-18 z-30 flex gap-3 justify-center items-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
@@ -80,97 +119,45 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           )}
           {scene && (
             <span>
-              Сцена: <span className="text-gray-900 dark:text-gray-100
-               font-semibold">{scene.name}</span>
+              Сцена: <span className="text-gray-900 dark:text-gray-100 font-semibold">{scene.name}</span>
             </span>
           )}
         </div>
       )}
 
-      <div className="flex gap-2 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
+      <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
 
-        <button
-          onClick={handleOpenProject}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <Briefcase size={16} />
-          Проект
-        </button>
+        <TooltipBtn icon={<Briefcase size={16} />} label="Проект" onClick={handleOpenProject} />
+        <TooltipBtn icon={<FilePlus size={16} />} label="Создать сцену" onClick={handleCreateSchema} />
+        <TooltipBtn icon={<FolderOpen size={16} />} label="Загрузить сцену" onClick={handleLoadSchema} />
+        <TooltipBtn icon={<Upload size={16} />} label="Импорт" onClick={handleImport} />
 
-        <button
-          onClick={handleCreateSchema}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <FilePlus size={16} />
-          Создать
-        </button>
+        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
 
-        <button
-          onClick={handleLoadSchema}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <FolderOpen size={16} />
-          Загрузить
-        </button>
-
-        <button
-          onClick={handleImport}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <Upload size={16} />
-          Импорт
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-1"></div>
-
-        <button
+        <TooltipBtn
+          icon={<Group size={16} />}
+          label="Сгруппировать"
           onClick={() => useEditorStore.getState().groupSelected()}
           disabled={selectedIds.length < 2}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <Group size={16} />
-          Сгруппировать
-        </button>
-
-        <button
+        />
+        <TooltipBtn
+          icon={<Ungroup size={16} />}
+          label="Разгруппировать"
           onClick={() => useEditorStore.getState().ungroupSelected()}
           disabled={!selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                 bg-white/5 border border-white/10 text-gray-900 dark:text-white
-                 hover:bg-white/10 hover:border-white/20
-                 active:translate-y-0.5 disabled:opacity-20 transition-all"
-        >
-          <Ungroup size={16} />
-          Разгруппировать
-        </button>
-        <button
+        />
+
+        <TooltipBtn
+          icon={<Save size={16} strokeWidth={2.5} />}
+          label="Сохранить"
           onClick={exportScene}
-          className="
-    flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl
-    bg-primary/10 border border-primary/30 text-primary
-    hover:bg-primary/20 hover:border-primary/40
-    active:translate-y-0.5 transition-all
-  "
-        >
-          <Save size={16} strokeWidth={2.5} />
-          Сохранить
-        </button>
+          className="flex items-center justify-center w-9 h-9 rounded-xl
+            bg-primary/10 border border-primary/30 text-primary
+            hover:bg-primary/20 hover:border-primary/40
+            active:translate-y-0.5 transition-all"
+        />
       </div>
+
       <input
         ref={importInputRef}
         type="file"
@@ -181,4 +168,3 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
     </nav>
   );
 }
-
