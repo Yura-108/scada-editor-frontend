@@ -340,8 +340,6 @@ export default function Canvas() {
     clearSelection,
   } = useEditorStore();
 
-  console.log(elements)
-
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const themeColors = {
@@ -487,11 +485,11 @@ export default function Canvas() {
         e.preventDefault();
         deleteSelectedElement();
       }
-      if (e.ctrlKey && e.key.toLowerCase() === "c") {
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyC") {
         e.preventDefault();
         copySelectedElement();
       }
-      if (e.ctrlKey && e.key.toLowerCase() === "v") {
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyV") {
         e.preventDefault();
         pasteSelectedElement();
       }
@@ -658,8 +656,12 @@ export default function Canvas() {
       ...editorElementMenuItems.map(item => ({
         ...item,
         onClick: () => {
-          if (item.label === 'Переместить в группу') {
+          if (item.label === 'Копировать') {
+            copySelectedElement();
+          } else if (item.label === 'Переместить в группу') {
             setMoveToGroupState({ isOpen: true, elementKey: el.key });
+          } else if (item.label === 'Удалить') {
+            deleteSelectedElement();
           } else {
             item.onClick?.();
           }

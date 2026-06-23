@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(npx tsc:*)",
+      "Bash(xargs grep:*)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Read(//Users/dev/**)"
+    ]
+  }
+}

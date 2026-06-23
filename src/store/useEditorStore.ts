@@ -779,6 +779,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         }
 
         set({ clipboard: elements.filter(el => allKeys.has(el.key)) });
+        toast.success('Скопировано');
       },
       pasteSelectedElement: () => {
         const { clipboard, scene } = get();
@@ -805,8 +806,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             scripts: Array.isArray(el.scripts) ? el.scripts : [],
             bindings: Array.isArray(el.bindings) ? el.bindings : [],
             // Смещаем только корневые элементы
-            x: isRoot ? el.x + 20 : el.x,
-            y: isRoot ? el.y + 20 : el.y,
+            x: isRoot ? el.x + 100 : el.x,
+            y: isRoot ? el.y + 100 : el.y,
           } as DiagramElement;
         });
 
