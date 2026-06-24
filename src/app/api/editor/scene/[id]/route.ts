@@ -23,3 +23,22 @@ export const GET = protectedRoute(async (_req: NextRequest, {token, params}) => 
 
   return NextResponse.json(data);
 });
+
+export const DELETE = protectedRoute(async (_req: NextRequest, {token, params}) => {
+  const {id} = params;
+
+  const response = await fetch(`${BACKEND_URL}/api/editor/components/scene/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Ошибка ${response.status}: ${text}`);
+  }
+
+  return NextResponse.json({success: true});
+});
