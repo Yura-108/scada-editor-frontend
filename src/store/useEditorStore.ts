@@ -41,7 +41,7 @@ type EditorState = {
   currentComponentStateByElementKey: Record<string, string>;
   setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
   clearCurrentComponentStateId: (elementKey: string) => void;
-  clipboard: DiagramElement | null;
+  clipboard: DiagramElement[] | null;
   canvasRect: DOMRect | null;
   connecting: {
     fromNode: string;
@@ -215,6 +215,9 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
     return element;
   }
 
+  const defaultState = element.states.find(s => s.isDefault) ?? element.states[0];
+  const inheritedOverrides = defaultState ? { ...defaultState.overrides } : {};
+
   return {
     ...element,
     states: [
@@ -222,7 +225,7 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
       {
         id: forcedId ?? createUuid(),
         name: stateName,
-        overrides: {},
+        overrides: inheritedOverrides,
         isDefault: false,
       },
     ],
@@ -768,31 +771,53 @@ export const useEditorStore = create<EditorState>()(temporal(
         const { selectedIds, elements } = get();
         if (!selectedIds.length) return;
 
-        // Копируем первый выделенный (самый простой вариант)
-        const element = elements.find(el => el.key === selectedIds[0]);
-        if (!element) return;
+        // Собираем все выделенные элементы и всех их потомков (для групп)
+        const allKeys = new Set<string>();
+        for (const key of selectedIds) {
+          allKeys.add(key);
+          getDescendantKeys(key, elements).forEach(k => allKeys.add(k));
+        }
 
-        set({ clipboard: { ...element } });
-
+        set({ clipboard: elements.filter(el => allKeys.has(el.key)) });
+        toast.success('Скопировано');
       },
       pasteSelectedElement: () => {
-        const {clipboard} = get();
+        const { clipboard, scene } = get();
+        if (!clipboard || !clipboard.length) return;
 
-        if (!clipboard) return;
+        // Новые уникальные ключи для каждого элемента буфера
+        const keyMap: Record<string, string> = {};
+        clipboard.forEach(el => { keyMap[el.key] = createUuid(); });
 
-        const newElement = {
-          ...clipboard,
-          id: null,
-          key: createUuid(),
-          x: clipboard.x + 20,
-          y: clipboard.y + 20,
-          scripts: Array.isArray(clipboard.scripts) ? clipboard.scripts : [],
-          bindings: Array.isArray(clipboard.bindings) ? clipboard.bindings : [],
-        };
+        // "Корневые" элементы — те, чей родитель не входит в буфер обмена
+        const clipboardKeys = new Set(clipboard.map(el => el.key));
+
+        const newElements = clipboard.map(el => {
+          const isRoot = !clipboardKeys.has(el.parentKey ?? '');
+          return {
+            ...el,
+            id: null,
+            key: keyMap[el.key],
+            parentKey: isRoot
+              ? String(scene?.id ?? '')
+              : (keyMap[el.parentKey!] ?? el.parentKey),
+            parentId: isRoot ? (scene?.id ?? null) : null,
+            children: (el.children ?? []).map(childKey => keyMap[childKey] ?? childKey),
+            scripts: Array.isArray(el.scripts) ? el.scripts : [],
+            bindings: Array.isArray(el.bindings) ? el.bindings : [],
+            // Смещаем только корневые элементы
+            x: isRoot ? el.x + 100 : el.x,
+            y: isRoot ? el.y + 100 : el.y,
+          } as DiagramElement;
+        });
+
+        const newRootKeys = newElements
+          .filter(el => el.parentKey === String(scene?.id ?? ''))
+          .map(el => el.key);
 
         set(state => ({
-          elements: [...state.elements, newElement],
-          selectedIds: [newElement.key],
+          elements: [...state.elements, ...newElements],
+          selectedIds: newRootKeys,
         }));
       },
       exportScene: async () => {
@@ -812,11 +837,6 @@ export const useEditorStore = create<EditorState>()(temporal(
             throw new Error(`Ошибка ${res.status}: ${text}`);
           }
 
-          const oldData = await res.json();
-
-          const newData = transformElements(oldData, scene);
-
-          set({elements: newData});
           toast.success("Сохранено успешно!");
         } catch (err: unknown) {
           console.error(err);

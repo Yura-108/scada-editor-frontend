@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 
 export function ModalRoot() {
-  const { open, content, closeModal } = useModalStore();
+  const { open, content, openKey, closeModal } = useModalStore();
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && closeModal()}>
@@ -44,7 +44,9 @@ export function ModalRoot() {
             </button>
           </Dialog.Close>
 
-          {content}
+          <div key={openKey}>
+            {content}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -98,6 +98,16 @@ export const buildPaletteComponentTree = (
         isDefault: state.isDefault ?? index === 0,
       }));
 
+    // Include non-tag properties in the template.
+    // Tag-based properties (tag_id non-empty) are excluded because they reference
+    // specific tags that won't be valid in other scenes where this template is used.
+    // Server-assigned id and component_id are stripped — the server will reassign them.
+    const templateProperties = Array.isArray(element.properties)
+      ? element.properties
+          .filter((p: any) => !p.tag_id)
+          .map(({ id: _id, component_id: _cid, ...rest }: any) => rest)
+      : [];
+
     return {
       id: element.id,
       key: element.key,
@@ -118,6 +128,7 @@ export const buildPaletteComponentTree = (
           }))
         : [],
       states,
+      properties: templateProperties,
     };
   };
 

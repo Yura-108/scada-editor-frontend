@@ -16,13 +16,12 @@ export default function EditorPage() {
 
   const {loadPaletteItems} = usePaletteStore();
 
-  const temporal = useEditorStore.temporal;
-  const {undo, redo} = temporal.getState();
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.ctrlKey || e.metaKey) {
-        if (e.key.toLowerCase() === 'z') {
+        const { undo, redo } = useEditorStore.temporal.getState();
+        if (e.code === 'KeyZ') {
           e.preventDefault();
           if (e.shiftKey) {
             redo();
@@ -30,12 +29,12 @@ export default function EditorPage() {
             undo();
           }
         }
-        if (e.key.toLowerCase() === 'y') {
+        if (e.code === 'KeyY') {
           e.preventDefault();
           redo();
         }
 
-        if (e.key.toLowerCase() === "g") {
+        if (e.code === 'KeyG') {
           e.preventDefault();
           if (e.shiftKey) {
             useEditorStore.getState().ungroupSelected();
@@ -48,7 +47,7 @@ export default function EditorPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo]);
+  }, []);
 
   // Автосохранение каждые 5 секунд при изменении элементов
   // useEffect(() => {

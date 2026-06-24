@@ -3,7 +3,7 @@ import getAbsolutePosition, {getAbsoluteRenderedPosition} from "@/lib/getAbsolut
 import {getElementBounds, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 
-export const GROUP_PADDING = 24;
+export const GROUP_PADDING = 20;
 
 export type ElementBounds = ReturnType<typeof getElementBounds>;
 

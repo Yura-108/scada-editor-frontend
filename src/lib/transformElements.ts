@@ -68,12 +68,23 @@ export default function transformElements(
     // We cannot rely on api id because it might be 0 or non-unique across different types.
     const elementKey = el.key && el.key !== "0" ? el.key : createUuid();
 
-    const normalizedStates = (el.states ?? []).map((state, index) => ({
-      id: state.id != null ? String(state.id) : createUuid(),
-      name: state.name,
-      overrides: parseStateImage(state.image),
-      isDefault: state.isDefault ?? index === 0,
-    }));
+    // Positional keys that groups always store in BASE, never in overrides.
+    // After reload they must be stripped from overrides so getRenderedElement
+    // doesn't shadow the base values that recomputeAncestorBounds updates.
+    const GROUP_POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
+
+    const normalizedStates = (el.states ?? []).map((state, index) => {
+      const overrides = parseStateImage(state.image);
+      const finalOverrides = el.type === "group"
+        ? Object.fromEntries(Object.entries(overrides).filter(([k]) => !GROUP_POSITIONAL_KEYS.has(k)))
+        : overrides;
+      return {
+        id: state.id != null ? String(state.id) : createUuid(),
+        name: state.name,
+        overrides: finalOverrides,
+        isDefault: state.isDefault ?? index === 0,
+      };
+    });
 
     const defaultState =
       normalizedStates.find(state => state.isDefault) ??
@@ -107,7 +118,11 @@ export default function transformElements(
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
       children: [], // Will be populated by children's processing
-      scripts: normalizeArray(el.scripts),
+      scripts: normalizeArray(el.scripts).map((s: Record<string, unknown>) => ({
+        id: s.id != null ? String(s.id) : createUuid(),
+        name: String(s.name ?? ""),
+        content: String(s.content ?? s.script ?? ""),
+      })),
       bindings: normalizeArray(el.bindings),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
