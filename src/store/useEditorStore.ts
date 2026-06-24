@@ -72,6 +72,7 @@ type EditorState = {
   importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
   loadScene: (id: number) => Promise<void>;
   createScene: () => Promise<void>;
+  deleteScene: (id: number) => Promise<void>;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
@@ -838,6 +839,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           }
 
           toast.success("Сохранено успешно!");
+          if (scene?.id) {
+            await get().loadScene(scene.id);
+          }
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка экспорта сцены"));
@@ -954,6 +958,25 @@ export const useEditorStore = create<EditorState>()(temporal(
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка создания сцены"));
+        }
+      },
+      deleteScene: async (id: number) => {
+        try {
+          const res = await fetch(`/api/editor/scene/${id}`, {method: 'DELETE'});
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+          set(state => ({
+            sceneList: state.sceneList.filter(s => s.id !== id),
+            ...(state.scene?.id === id
+              ? {scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}}
+              : {}),
+          }));
+          toast.success('Сцена удалена');
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, 'Ошибка удаления сцены'));
         }
       },
       groupSelected: () => {

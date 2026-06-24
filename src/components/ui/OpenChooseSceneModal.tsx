@@ -1,17 +1,9 @@
 "use client";
 
 import {useModalStore} from "@/store/modalStore";
-import * as Select from "@radix-ui/react-select";
 import {cn} from "@/lib/utils";
-import {ChevronDown} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import SelectItem from "./SelectItem";
-import {
-  selectContentClassName,
-  selectIconClassName,
-  selectScrollButtonClassName,
-  selectTriggerClassName,
-} from "@/components/ui/selectStyles";
+import {X} from "lucide-react";
 import {useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePaletteStore} from "@/store/usePaletteStore";
@@ -19,18 +11,30 @@ import {toast} from "sonner";
 
 interface Props {
   onLoadAction: (value: number) => void;
+  onDeleteAction: (id: number) => Promise<void>;
   sceneList: {id: number; name: string}[];
   projectName?: string;
 }
 
-export function ChooseSceneContent({onLoadAction, sceneList, projectName}: Props) {
+export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, projectName}: Props) {
   const {closeModal} = useModalStore.getState();
-  const [selectedValue, setSelectedValue] = useState<string>(String(sceneList[0]?.id ?? ""));
+  const [localList, setLocalList] = useState(sceneList);
+  const [selectedId, setSelectedId] = useState<number | null>(sceneList[0]?.id ?? null);
 
   const handleConfirm = () => {
-    if (!selectedValue) return;
-    onLoadAction(Number(selectedValue));
+    if (selectedId === null) return;
+    onLoadAction(selectedId);
     closeModal();
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    const ok = window.confirm('Вы уверены, что хотите удалить эту сцену? Это действие необратимо.');
+    if (!ok) return;
+    await onDeleteAction(id);
+    const next = localList.filter(s => s.id !== id);
+    setLocalList(next);
+    if (selectedId === id) setSelectedId(next[0]?.id ?? null);
   };
 
   return (
@@ -45,44 +49,34 @@ export function ChooseSceneContent({onLoadAction, sceneList, projectName}: Props
           : "Загрузите одну из сохранённых сцен."}
       </Dialog.Description>
 
-      {sceneList.length === 0 ? (
+      {localList.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           В этом проекте пока нет схем. Создайте новую через кнопку «Создать» на панели инструментов.
         </p>
       ) : (
-        <Select.Root
-          value={selectedValue}
-          onValueChange={setSelectedValue}
-        >
-          <Select.Trigger className={selectTriggerClassName}>
-            <Select.Value placeholder="Выберите сцену..." />
-            <Select.Icon>
-              <ChevronDown className={selectIconClassName} />
-            </Select.Icon>
-          </Select.Trigger>
-
-          <Select.Portal>
-            <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
-              <Select.ScrollUpButton className={selectScrollButtonClassName}>
-                <ChevronDown className="h-4 w-4 rotate-180" />
-              </Select.ScrollUpButton>
-
-              <Select.Viewport className="p-1.5">
-                <Select.Group>
-                  {sceneList.map((scene) => (
-                    <SelectItem key={scene.id} value={String(scene.id)}>
-                      {scene.name}
-                    </SelectItem>
-                  ))}
-                </Select.Group>
-              </Select.Viewport>
-
-              <Select.ScrollDownButton className={selectScrollButtonClassName}>
-                <ChevronDown className="h-4 w-4" />
-              </Select.ScrollDownButton>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
+        <ul className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
+          {localList.map(scene => (
+            <li
+              key={scene.id}
+              onClick={() => setSelectedId(scene.id)}
+              className={cn(
+                "flex items-center justify-between px-3 py-2.5 cursor-pointer text-sm transition-colors",
+                selectedId === scene.id
+                  ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                  : "hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
+              )}
+            >
+              <span className="truncate">{scene.name}</span>
+              <button
+                onClick={(e) => handleDelete(e, scene.id)}
+                className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
+                title="Удалить сцену"
+              >
+                <X size={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="mt-8 flex gap-3 justify-end">
@@ -92,10 +86,11 @@ export function ChooseSceneContent({onLoadAction, sceneList, projectName}: Props
         >
           Отмена
         </button>
-        {sceneList.length > 0 && (
+        {localList.length > 0 && (
           <button
             onClick={handleConfirm}
-            className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all"
+            disabled={selectedId === null}
+            className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Выбрать
           </button>
@@ -107,7 +102,7 @@ export function ChooseSceneContent({onLoadAction, sceneList, projectName}: Props
 
 export function openChooseSceneModal() {
   const {openModal} = useModalStore.getState();
-  const {loadScene, sceneList, currentProject} = useEditorStore.getState();
+  const {loadScene, sceneList, currentProject, deleteScene} = useEditorStore.getState();
   const {loadPaletteItems} = usePaletteStore.getState();
 
   const handleLoadScene = async (id: number) => {
@@ -123,6 +118,7 @@ export function openChooseSceneModal() {
   openModal(
     <ChooseSceneContent
       onLoadAction={handleLoadScene}
+      onDeleteAction={deleteScene}
       sceneList={sceneList}
       projectName={currentProject?.name}
     />
