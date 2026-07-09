@@ -43,7 +43,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1">
+      <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
         Создание устройства
       </Dialog.Title>
 
@@ -54,7 +54,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
       <div className="space-y-5">
         {/* Выбор типа (Select) */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
             Тип устройства
           </label>
           <Select.Root
@@ -69,7 +69,11 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
             </Select.Trigger>
 
             <Select.Portal>
-              <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
+              <Select.Content
+                position="popper"
+                sideOffset={6}
+                className={selectContentClassName}
+              >
                 <Select.Viewport className="p-1.5">
                   <Select.Group>
                     {templateList.map((template) => (
@@ -84,9 +88,9 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
           </Select.Root>
         </div>
 
-        {/* Поле ввода значения (Input) */}
+        {/* Поле ввода */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
             Название устройства
           </label>
           <div className="relative">
@@ -96,35 +100,46 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Введите текст..."
               className={cn(
-                "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3.5",
-                "text-gray-100 placeholder:text-gray-600 outline-hidden",
-                "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-                "transition-all shadow-sm"
+                "w-full rounded-xl border bg-white dark:bg-gray-900",
+                "border-gray-300 dark:border-gray-700",
+                "text-gray-900 dark:text-gray-100",
+                "placeholder:text-gray-500 dark:placeholder:text-gray-500",
+                "hover:border-gray-400 dark:hover:border-gray-600",
+                "focus:border-indigo-500 dark:focus:border-indigo-500",
+                "focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/30",
+                "transition-all shadow-sm py-3.5 px-4"
               )}
             />
-            <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-600 pointer-events-none" />
+            <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* Кнопки внизу */}
+      {/* Кнопки */}
       <div className="mt-8 flex gap-3 justify-end">
         <button
           onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800
-          hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600
-            transition-colors text-gray-700 dark:text-gray-300"
+          className="px-5 py-2.5 rounded-lg font-medium
+          bg-gray-100 dark:bg-gray-800
+          hover:bg-gray-200 dark:hover:bg-gray-700
+          border border-gray-300 dark:border-gray-700
+          hover:border-gray-400 dark:hover:border-gray-600
+          text-gray-700 dark:text-gray-300
+          transition-colors"
         >
           Отмена
         </button>
+
         <button
           onClick={handleConfirm}
           disabled={!inputValue.trim()}
           className="px-6 py-2.5 rounded-lg font-medium
           bg-linear-to-r from-indigo-600 to-blue-600
           hover:from-indigo-500 hover:to-blue-500
-          disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500
-          text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
+          disabled:from-gray-300 disabled:to-gray-400
+          disabled:text-gray-500 dark:disabled:from-gray-700 dark:disabled:to-gray-600
+          text-white shadow-lg shadow-indigo-500/30
+          transition-all disabled:shadow-none disabled:cursor-not-allowed"
         >
           Создать
         </button>

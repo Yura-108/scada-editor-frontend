@@ -9,7 +9,7 @@ export default function Workspace() {
   const { nodes } = useDeviceStore();
 
   return (
-    <div className="min-h-screen bg-gray-300 text-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
       <main className="container mx-auto flex flex-col md:flex-row justify-around pt-8 pb-20 gap-6 px-4">
         {nodes && (
           <aside className="transition-all duration-300 ease-in-out basis-full md:basis-[25%] lg:basis-[20%]">

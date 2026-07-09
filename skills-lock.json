@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "claude-automation-recommender": {
+      "source": "smithery.ai",
+      "sourceType": "well-known",
+      "computedHash": "d8d53f9b67da49216256ed79ed38057ef1ee760bd499cf413107ae7504aedafd"
+    }
+  }
+}

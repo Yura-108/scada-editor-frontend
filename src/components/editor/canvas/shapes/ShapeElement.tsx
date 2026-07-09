@@ -1,0 +1,295 @@
+"use client";
+
+import React from "react";
+import { Group, Rect, Circle, Line, Text } from "react-konva";
+import Konva from "konva";
+import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { getRenderedElement } from "@/lib/getRenderedElement";
+import { EditorRenderContext, MIN_SIZE } from "../types";
+import { Anchor } from "./Anchor";
+import { CircleResizeHandle } from "./CircleResizeHandle";
+import { TextShapeElement } from "./TextShapeElement";
+import { CheckboxShapeElement } from "./CheckboxShapeElement";
+import { ProgressBarShapeElement } from "./ProgressBarShapeElement";
+
+interface ShapeElementProps {
+  el: DiagramElement;
+  ctx: EditorRenderContext;
+}
+
+/** Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect). */
+export function ShapeElement({ el, ctx }: ShapeElementProps) {
+  const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
+  const isSelected = ctx.selectedIds.includes(el.key);
+  const rendered = getRenderedElement(el) as LeafElement;
+
+  if (rendered.type === "polygon") {
+    let pts: number[] = [];
+    const pointsData = rendered.points as string | number[] | undefined;
+
+    if (typeof pointsData === "string") {
+      try { pts = JSON.parse(pointsData); } catch { pts = []; }
+    } else if (Array.isArray(pointsData)) {
+      pts = pointsData;
+    }
+
+    const expectedLen = (rendered.sides || 3) * 2;
+    if (pts.length !== expectedLen) {
+      const sides = rendered.sides || 3;
+      const radius = rendered.radius || 40;
+
+      const cx = rendered.w / 2;
+      const cy = rendered.h / 2;
+
+      pts = [];
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+        pts.push(cx + radius * Math.cos(angle));
+        pts.push(cy + radius * Math.sin(angle));
+      }
+    }
+
+    return (
+      <Group key={el.key} id={el.key} x={rendered.x} y={rendered.y}>
+        <Line
+          points={pts as number[]}
+          closed={true}
+          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+          draggable
+          onDragEnd={(e) => {
+            const node = e.target;
+            const dx = node.x();
+            const dy = node.y();
+            node.position({ x: 0, y: 0 });
+            updateElementVisual(el.key, {
+              x: snap(rendered.x + dx),
+              y: snap(rendered.y + dy),
+            });
+          }}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            closeMenu();
+            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+          }}
+        />
+        {isSelected && (pts as number[]).map((p, i) => {
+          if (i % 2 !== 0) return null; // skip y
+          return (
+            <Anchor
+              key={`${el.key}-anc-${i}`}
+              x={p}
+              y={(pts as number[])[i + 1]}
+              themeColors={themeColors}
+              onDragMove={(e) => {
+                const cp = [...(pts as number[])];
+                cp[i] = snap(e.target.x());
+                cp[i + 1] = snap(e.target.y());
+                e.target.position({ x: cp[i], y: cp[i + 1] });
+                updateElementVisual(el.key, { points: cp });
+              }}
+            />
+          );
+        })}
+      </Group>
+    );
+  }
+
+  if (rendered.type === "circle") {
+    const r = rendered.radius || rendered.w / 2 || 40;
+    const cx = rendered.x + r;
+    const cy = rendered.y + r;
+    const circleRef = React.createRef<Konva.Circle>();
+    return (
+      <Group key={el.key} id={el.key}>
+        <Circle
+          ref={circleRef}
+          x={cx}
+          y={cy}
+          radius={r}
+          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+          draggable
+          onDragEnd={(e) => {
+            const nx = e.target.x();
+            const ny = e.target.y();
+            const dx = nx - cx;
+            const dy = ny - cy;
+            e.target.position({ x: cx, y: cy });
+            updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
+          }}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+          }}
+        />
+        {isSelected && (
+          <CircleResizeHandle
+            key={`${el.key}-resize`}
+            cx={cx}
+            cy={cy}
+            r={r}
+            elKey={el.key}
+            snap={snap}
+            updateElementVisual={updateElementVisual}
+            circleRef={circleRef}
+          />
+        )}
+      </Group>
+    );
+  }
+
+  if (rendered.type === "line") {
+    const x1 = rendered.x1 ?? rendered.x;
+    const y1 = rendered.y1 ?? rendered.y;
+    const x2 = rendered.x2 ?? rendered.x + 80;
+    const y2 = rendered.y2 ?? rendered.y;
+    return (
+      <Group key={el.key} id={el.key}>
+        <Line
+          points={[x1, y1, x2, y2]}
+          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          strokeWidth={rendered.strokeWidth || 2}
+          hitStrokeWidth={Math.max(12, rendered.strokeWidth || 2)}
+          draggable
+          onDragEnd={(e) => {
+            const dx = e.target.x();
+            const dy = e.target.y();
+            e.target.position({ x: 0, y: 0 });
+            updateElementVisual(el.key, {
+              x1: snap(x1 + dx), y1: snap(y1 + dy),
+              x2: snap(x2 + dx), y2: snap(y2 + dy),
+              x: snap((x1 + x2) / 2 + dx), y: snap((y1 + y2) / 2 + dy),
+            });
+          }}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+          }}
+        />
+        {isSelected && (
+          <Anchor
+            key={`${el.key}-anc-1`}
+            x={x1}
+            y={y1}
+            themeColors={themeColors}
+            onDragMove={(e) => {
+              const sx = snap(e.target.x());
+              const sy = snap(e.target.y());
+              e.target.position({ x: sx, y: sy });
+              updateElementVisual(el.key, { x1: sx, y1: sy });
+            }}
+          />
+        )}
+        {isSelected && (
+          <Anchor
+            key={`${el.key}-anc-2`}
+            x={x2}
+            y={y2}
+            themeColors={themeColors}
+            onDragMove={(e) => {
+              const sx = snap(e.target.x());
+              const sy = snap(e.target.y());
+              e.target.position({ x: sx, y: sy });
+              updateElementVisual(el.key, { x2: sx, y2: sy });
+            }}
+          />
+        )}
+      </Group>
+    );
+  }
+
+  if (rendered.type === "text") {
+    return (
+      <TextShapeElement
+        el={el}
+        isSelected={isSelected}
+        snap={snap}
+        onElementClick={onElementClick}
+        updateElementVisual={updateElementVisual}
+      />
+    );
+  }
+
+  if (rendered.type === "checkbox") {
+    return (
+      <CheckboxShapeElement
+        el={el}
+        isSelected={isSelected}
+        snap={snap}
+        onElementClick={onElementClick}
+        updateElementVisual={updateElementVisual}
+      />
+    );
+  }
+
+  if (rendered.type === "progress_bar") {
+    return (
+      <ProgressBarShapeElement
+        el={el}
+        isSelected={isSelected}
+        snap={snap}
+        onElementClick={onElementClick}
+        updateElementVisual={updateElementVisual}
+      />
+    );
+  }
+
+  return (
+    <Group
+      key={el.key}
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      rotation={rendered.rotate || 0}
+      draggable
+      onDragEnd={(e) => {
+        updateElementVisual(el.key, {
+          x: snap(e.target.x()),
+          y: snap(e.target.y()),
+        });
+      }}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
+      }}
+    >
+      <Rect
+        width={rendered.w}
+        height={rendered.h}
+        fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
+        stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+        strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
+        cornerRadius={rendered.rx || 0}
+      />
+      {rendered.label && (
+        <Text
+          text={rendered.label}
+          width={rendered.w}
+          height={rendered.h}
+          align="center"
+          verticalAlign="middle"
+          fill={rendered.textColor || themeColors.labelDefault}
+        />
+      )}
+
+      {isSelected && (
+        <Anchor
+          key={`${el.key}-anc-se`}
+          x={rendered.w}
+          y={rendered.h}
+          themeColors={themeColors}
+          onDragMove={(e) => {
+            const nw = Math.max(MIN_SIZE, snap(e.target.x()));
+            const nh = Math.max(MIN_SIZE, snap(e.target.y()));
+            // Привязываем сам хендл к сетке — даёт «щёлкающую» обратную связь по grid.
+            e.target.position({ x: nw, y: nh });
+            updateElementVisual(el.key, { w: nw, h: nh });
+          }}
+        />
+      )}
+    </Group>
+  );
+}

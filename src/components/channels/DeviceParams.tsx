@@ -229,7 +229,7 @@ const DeviceParams = () => {
         <div className="flex items-center gap-2">
           <button
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
             )}
             onClick={() => toggleEditing(selectedDevice)}
           >
@@ -240,7 +240,7 @@ const DeviceParams = () => {
           <button
             disabled={!isEditingDevice(selectedDevice)}
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform shadow-xl',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
 
               // активная кнопка
               'bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
@@ -259,7 +259,7 @@ const DeviceParams = () => {
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
             className={clsx(
-              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-gray-900 dark:text-white transition-all transform',
+              'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
 
               // базовый стиль (как у первой кнопки)
               'bg-linear-to-r from-purple-600 to-indigo-600 shadow-xl',
@@ -388,7 +388,7 @@ const DeviceParams = () => {
                 key={p.key}
                 onContextMenu={(e) => handleContextMenu(e, p.key)}
                 className={clsx(
-                  "text-black px-2 py-1 cursor-pointer transition-all duration-150 \n" +
+                  "text-gray-700 dark:text-gray-300 px-2 py-1 cursor-pointer transition-all duration-150 \n" +
                   "    border-l-0 hover:border-l-4 hover:border-blue-500",
                   contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
                 )}
