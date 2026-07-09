@@ -19,7 +19,8 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies}; ['next','react','react-konva','konva','zustand','zundo','@dnd-kit/core','sonner','next-themes','react-hook-form','zod','tailwindcss'].forEach\\(k=>d[k]&&console.log\\(k, d[k]\\)\\)\")",
       "Bash(npx eslint *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 25 http://localhost:3000/editor)",
-      "Bash(xargs wc -l)"
+      "Bash(xargs wc -l)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('name:',p.name,'version:',p.version\\); console.log\\('--deps--'\\); console.log\\(Object.entries\\(p.dependencies\\).map\\(\\([k,v]\\)=>k+' '+v\\).join\\('\\\\n'\\)\\); console.log\\('--devDeps--'\\); console.log\\(Object.entries\\(p.devDependencies||{}\\).map\\(\\([k,v]\\)=>k+' '+v\\).join\\('\\\\n'\\)\\)\")"
     ]
   }
 }

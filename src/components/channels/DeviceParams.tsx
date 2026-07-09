@@ -11,6 +11,7 @@ import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
 import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
+import {useUnlockEditingOnUnload} from "@/lib/useUnlockEditingOnUnload";
 
 const DeviceParams = () => {
   const {
@@ -24,6 +25,10 @@ const DeviceParams = () => {
     toggleEditing,
     getParamsTypes,
   } = useDeviceStore();
+
+  // Снятие redis-локов при перезагрузке/закрытии вкладки (sendBeacon).
+  // SPA-навигацию закрывает cleanup-эффект ниже.
+  useUnlockEditingOnUnload();
 
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
