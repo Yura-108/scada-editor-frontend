@@ -124,7 +124,7 @@ const DeviceTreePanel = () => {
 
   return (
     <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
-      <div className="px-6 py-4 border-b bg-linear-to-r from-purple-50 to-indigo-50">
+      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <Router className={'w-6 h-6 text-purple-600'}/>
           Дерево устройств

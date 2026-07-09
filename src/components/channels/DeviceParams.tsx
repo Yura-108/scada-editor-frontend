@@ -220,7 +220,7 @@ const DeviceParams = () => {
   return (
     <div className="min-h-screen flex flex-col bg-linear-to-b from-gray-50 to-white rounded-2xl shadow-xl">
       {/* Заголовок */}
-      <div className="px-6 py-4 border-b bg-linear-to-r from-purple-50 to-indigo-50 rounded-2xl">
+      <div className="px-6 py-4  bg-linear-to-r rom-purple-100 to-indigo-200 rounded-2xl">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <Settings className="w-6 h-6 text-purple-600"/>
           Параметры

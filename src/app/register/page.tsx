@@ -153,7 +153,7 @@ export default function RegisterForm() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-5 rounded-2xl bg-linear-to-r from-purple-600 to-pink-600 text-gray-900 dark:text-white text-xl font-bold hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full py-5 rounded-2xl bg-linear-to-r from-purple-600 to-pink-600 text-white text-xl font-bold hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">

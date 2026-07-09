@@ -159,8 +159,8 @@ src/
 # 1. Установить зависимости
 npm install
 
-# 2. Создать .env.local (см. раздел ниже)
-cp .env.example .env.local   # если файла-примера нет — создайте вручную
+# 2. Создать .env.local из примера (см. раздел ниже)
+cp .env.example .env.local
 
 # 3. Запустить dev-сервер (Turbopack)
 npm run dev
