@@ -6,7 +6,17 @@
       "Bash(xargs grep:*)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Read(//Users/dev/**)"
+      "Read(//Users/dev/**)",
+      "WebSearch",
+      "WebFetch(domain:ccusage.com)",
+      "PowerShell(npm *)",
+      "PowerShell(pip install *)",
+      "PowerShell($cs = \"$env:APPDATA\\\\Python\\\\Python314\\\\Scripts\\\\cs.exe\"; & $cs --version; \"----- render test -----\"; & $cs render)",
+      "Bash(git stash *)",
+      "Bash(npx --no-install tsx --version)",
+      "Bash(node -e \"try{console.log\\('esbuild pkg:', require.resolve\\('esbuild'\\)\\)}catch\\(e\\){console.log\\('esbuild not resolvable'\\)}\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --retry 40 --retry-connrefused --retry-delay 1 --max-time 120 http://localhost:3999/editor)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies}; ['next','react','react-konva','konva','zustand','zundo','@dnd-kit/core','sonner','next-themes','react-hook-form','zod','tailwindcss'].forEach\\(k=>d[k]&&console.log\\(k, d[k]\\)\\)\")"
     ]
   }
 }

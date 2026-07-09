@@ -11,7 +11,6 @@ import {
   resolveParentAbsolute,
 } from "@/lib/groupLayout";
 import {buildComponentTree} from "@/lib/buildComponentTree";
-import {getComposition} from "@/lib/getComposition";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
@@ -28,7 +27,6 @@ type EditorState = {
   currentProject: EditorProject | null;
   projectList: EditorProject[];
   loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
-  loadScenesForProject: (projectId: number) => Promise<{id: number; name: string}[] | void>;
   loadProjectList: () => Promise<EditorProject[] | void>;
   createProject: (name: string) => Promise<EditorProject | void>;
   setCurrentProject: (project: EditorProject | null) => void;
@@ -71,11 +69,13 @@ type EditorState = {
   exportScene: () => void;
   importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
   loadScene: (id: number) => Promise<void>;
-  createScene: () => Promise<void>;
+  createScene: (name?: string) => Promise<{id: number; name: string} | void>;
   deleteScene: (id: number) => Promise<void>;
 
   groupSelected: () => void;
   ungroupSelected: () => void;
+  createComponentFromGroup: (groupKey: string, name?: string) => void;
+  disassembleComponent: (componentKey: string) => void;
   moveElementToGroup: (elementKey: string, targetGroupKey: string) => void;
 
   // removeElements: (ids: string[]) => void;
@@ -85,6 +85,55 @@ const isGroup = (el: DiagramElement) => el.type === "group";
 
 const isComplex = (el: DiagramElement) =>
   elementRegistry[el.type as ElementType]?.complex ?? false;
+
+/** Логический компонент: промоутнутая группа или сложный элемент (button/custom). Участвует в children. */
+const isComponentEl = (el: DiagramElement) => el.isComponent === true || isComplex(el);
+
+/** Листовой примитив-рисунок (line/circle/rect/polygon/text/...). При промоуте уходит в composition. */
+const isLeafPrimitive = (el: DiagramElement) => !isComplex(el) && el.type !== "group";
+
+/**
+ * `layoutGroupFromBounds` кладёт ВСЕ переданные ключи в `children`. Эта функция
+ * переразбивает состав контейнера по роли: примитивы → composition, компоненты → children.
+ */
+const resplitContainer = (
+  elements: DiagramElement[],
+  containerKey: string,
+  memberKeys: string[],
+): DiagramElement[] => {
+  const byKey = new Map(elements.map(el => [el.key, el] as const));
+  const children: string[] = [];
+  const composition: string[] = [];
+  for (const k of memberKeys) {
+    const m = byKey.get(k);
+    if (!m) continue;
+    if (isLeafPrimitive(m)) composition.push(k);
+    else children.push(k);
+  }
+  return elements.map(el =>
+    el.key === containerKey ? ({...el, children, composition} as DiagramElement) : el,
+  );
+};
+
+/**
+ * Сцена принадлежит текущему выбранному проекту, если:
+ *  - выбран какой-то проект (currentProject !== null),
+ *  - сцена задана,
+ *  - сцена содержит project_id, совпадающий с currentProject.id.
+ *
+ * Если бэкенд не прислал project_id (старая версия / нестандартный ответ),
+ * считаем, что иерархия не нарушена — но записываем project_id из
+ * currentProject, чтобы последующие проверки были детерминированными.
+ */
+const sceneBelongsToCurrentProject = (
+  scene: SceneType | null,
+  currentProject: {id: number; name: string} | null,
+): boolean => {
+  if (!currentProject) return false;
+  if (!scene) return false;
+  if (scene.project_id == null) return true;
+  return scene.project_id === currentProject.id;
+};
 
 /**
  * После перемещения/ресайза элемента пересчитывает x/y/w/h всех групп-предков
@@ -119,7 +168,7 @@ const recomputeAncestorBounds = (
     const group = result.find(el => el.key === groupKey);
     if (!group || group.type !== "group") continue;
 
-    const childKeySet = new Set(group.children);
+    const childKeySet = new Set([...group.children, ...(group.composition ?? [])]);
     if (!childKeySet.size) continue;
 
     // Считаем абсолютные границы всех детей в актуальном state (result уже обновлён)
@@ -199,7 +248,7 @@ const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
 
     if (!current) continue;
 
-    for (const childKey of current.children ?? []) {
+    for (const childKey of [...(current.children ?? []), ...(current.composition ?? [])]) {
       if (result.has(childKey)) continue;
 
       result.add(childKey);
@@ -422,7 +471,13 @@ export const useEditorStore = create<EditorState>()(temporal(
         };
       }),
       addTemplate: (screenX, screenY, template) => {
-        const {scene} = get();
+        const {scene, currentProject} = get();
+
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+          toast.error("Нельзя добавить шаблон: сцена не принадлежит выбранному проекту");
+          return;
+        }
+
         const x = snap(screenX);
         const y = snap(screenY);
 
@@ -441,6 +496,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             key: keyMap[el.key],
             parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
             children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
+            composition: el.composition ? el.composition.map(k => keyMap[k] || k) : [],
             scripts: Array.isArray((el as DiagramElement).scripts) ? (el as DiagramElement).scripts : [],
             bindings: Array.isArray((el as DiagramElement).bindings) ? (el as DiagramElement).bindings : [],
             // Дочерние элементы шаблона ещё не сохранены на сервере,
@@ -466,7 +522,12 @@ export const useEditorStore = create<EditorState>()(temporal(
 
       },
       importElementsFromJson: (rawElements) => {
-        const { scene } = get();
+        const {scene, currentProject} = get();
+
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+          toast.error("Нельзя импортировать: сцена не принадлежит выбранному проекту");
+          return;
+        }
 
         const CANVAS_W = 5000;
         const CANVAS_H = 5000;
@@ -521,6 +582,10 @@ export const useEditorStore = create<EditorState>()(temporal(
             ? (raw.children as string[]).map(ck => keyMap[ck] ?? ck)
             : [];
 
+          const composition = Array.isArray(raw.composition)
+            ? (raw.composition as string[]).map(ck => keyMap[ck] ?? ck)
+            : [];
+
           const states = Array.isArray(raw.states)
             ? (raw.states as Record<string, unknown>[]).map(s => ({
                 id: isNullish(s.id) ? createUuid() : String(s.id),
@@ -543,7 +608,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             //   - дети импортируемых групп ещё не сохранены на сервере → parentId = null
             //     (группы сами сохранят своих детей на бэкенде, и id появятся при следующей загрузке).
             parentId:    isTopLevel ? (scene?.id ?? null) : null,
-            composition: parseBool(raw.composition, false),
+            composition,
+            isComponent: parseBool(raw.isComponent, false),
             children,
             scripts:     Array.isArray(raw.scripts)    ? raw.scripts    : [],
             bindings:    Array.isArray(raw.bindings)   ? raw.bindings   : [],
@@ -564,11 +630,16 @@ export const useEditorStore = create<EditorState>()(temporal(
         set(state => ({ elements: [...state.elements, ...imported] }));
       },
       addElementAt: (screenX, screenY, type) => {
-        const {scene} = get();
+        const {scene, currentProject} = get();
         const rect = get().canvasRect;
         if (!rect) return;
 
-        const composition = getComposition(type);
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+          toast.error("Нельзя добавить элемент: сцена не принадлежит выбранному проекту");
+          return;
+        }
+
+        const composition: string[] = [];
 
         const x = snap(screenX);
         const y = snap(screenY);
@@ -581,8 +652,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             composition,
             x,
             y,
-            x1: x - 50,
-            x2: x + 50,
+            x1: x - 40,
+            x2: x + 40,
             y1: y,
             y2: y,
             w: 80,
@@ -727,11 +798,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         const { selectedIds, elements } = get();
         if (!selectedIds.length) return;
 
-        const selectedGroups = elements.filter(el => selectedIds.includes(el.key) && el.type === "group");
+        // Каскад: удаляем выделенные + всех их потомков (children и composition, любой глубины).
+        const descendantKeys = selectedIds.flatMap(key => getDescendantKeys(key, elements));
 
-        const childrenIds = selectedGroups.flatMap(group => "children" in group ? group.children : []);
-
-        const idsToDelete = new Set([...selectedIds, ...childrenIds]);
+        const idsToDelete = new Set([...selectedIds, ...descendantKeys]);
 
         // Собираем только id, которые существуют (не null/undefined)
         const ids = elements
@@ -804,6 +874,7 @@ export const useEditorStore = create<EditorState>()(temporal(
               : (keyMap[el.parentKey!] ?? el.parentKey),
             parentId: isRoot ? (scene?.id ?? null) : null,
             children: (el.children ?? []).map(childKey => keyMap[childKey] ?? childKey),
+            composition: (el.composition ?? []).map(k => keyMap[k] ?? k),
             scripts: Array.isArray(el.scripts) ? el.scripts : [],
             bindings: Array.isArray(el.bindings) ? el.bindings : [],
             // Смещаем только корневые элементы
@@ -823,7 +894,12 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       exportScene: async () => {
         try {
-          const {elements, scene} = get();
+          const {elements, scene, currentProject} = get();
+
+          if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+            toast.error("Сцена не принадлежит выбранному проекту");
+            return;
+          }
 
           const payload = buildComponentTree(elements, String(scene?.id));
 
@@ -863,9 +939,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
         }
-      },
-      loadScenesForProject: async (projectId: number) => {
-        return get().loadSceneList(projectId);
       },
       loadProjectList: async () => {
         try {
@@ -909,10 +982,27 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error(getErrorMessage(err, "Ошибка создания проекта"));
         }
       },
-      setCurrentProject: (project) => set({currentProject: project}),
+      setCurrentProject: (project) => set(() => ({
+        currentProject: project,
+        // Иерархия Проект -> Схема -> Элементы: при смене/снятии проекта
+        // обязаны сбросить всё, что привязано к предыдущему проекту.
+        scene: null,
+        elements: [],
+        sceneList: [],
+        selectedIds: [],
+        activeGroupKey: null,
+        currentComponentStateByElementKey: {},
+      })),
       loadScene: async (id) => {
         try {
-          const res = await fetch(`/api/editor/scene/${id}`);
+          const {currentProject} = get();
+          if (!currentProject) {
+            toast.error("Сначала выберите проект");
+            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+            return;
+          }
+
+          const res = await fetch(`/api/editor/scene/${id}?project_id=${currentProject.id}`);
 
           if (!res.ok) {
             const text = await res.text();
@@ -921,6 +1011,13 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const scene = await res.json();
           const newElements = transformElements(scene?.children ?? [], scene);
+
+          // Иерархия: сцена обязана принадлежать выбранному проекту.
+          if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+            toast.error("Сцена не принадлежит выбранному проекту");
+            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+            return;
+          }
 
           set({scene, elements: newElements, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
 
@@ -931,7 +1028,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
         }
       },
-      createScene: async () => {
+      createScene: async (name?: string) => {
         try {
           const {currentProject} = get();
           if (!currentProject) {
@@ -939,10 +1036,12 @@ export const useEditorStore = create<EditorState>()(temporal(
             return;
           }
 
-          const name = prompt("Название сцены");
-          if (!name) return;
+          // Если имя не передано из UI (например, нажата кнопка «Создать сцену»
+          // в ToolsPanel), спрашиваем через window.prompt.
+          const sceneName = (name ?? prompt("Название сцены"))?.trim();
+          if (!sceneName) return;
 
-          const payload = {name, project_id: currentProject.id};
+          const payload = {name: sceneName, project_id: currentProject.id};
 
           const res = await fetch("/api/editor/scene", {
             method: "POST",
@@ -950,11 +1049,23 @@ export const useEditorStore = create<EditorState>()(temporal(
             body: JSON.stringify(payload),
           });
 
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
           const newScene = await res.json();
 
-          set({scene: newScene, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+          set({
+            scene: newScene,
+            sceneList: [...get().sceneList, {id: newScene.id, name: newScene.name}],
+            selectedIds: [],
+            activeGroupKey: null,
+            currentComponentStateByElementKey: {},
+          });
 
           toast.success("Сцена создана");
+          return {id: newScene.id, name: newScene.name};
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка создания сцены"));
@@ -962,7 +1073,16 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       deleteScene: async (id: number) => {
         try {
-          const res = await fetch(`/api/editor/scene/${id}`, {method: 'DELETE'});
+          const {currentProject} = get();
+          if (!currentProject) {
+            toast.error("Сначала выберите проект");
+            return;
+          }
+
+          const res = await fetch(
+            `/api/editor/scene/${id}?project_id=${currentProject.id}`,
+            {method: 'DELETE'},
+          );
           if (!res.ok) {
             const text = await res.text();
             throw new Error(`Ошибка ${res.status}: ${text}`);
@@ -1079,7 +1199,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           y: box.absY - parentAbs.y,
           w: box.w,
           h: box.h,
-          composition: true,
+          composition: [],
           children: selectedKeys,
           parentId: newGroupParentId,
           parentKey: commonParentKey,
@@ -1191,32 +1311,122 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: [...retainedSelectedIds, ...newlySelectedIds],
         });
       },
+      createComponentFromGroup: (groupKey, name) => {
+        set(state => {
+          const elements = state.elements;
+          const group = elements.find(el => el.key === groupKey);
+          if (!group || group.type !== "group") return {};
+
+          const primitiveKeys: string[] = [];
+          const componentKeys: string[] = [];
+          const dissolvedGroupKeys = new Set<string>();
+          // key -> накопленный сдвиг для перевода в координатное пространство компонента
+          const offsetByKey = new Map<string, {dx: number; dy: number}>();
+          const reparent = new Set<string>();
+
+          // Обходим поддерево: примитивы (в т.ч. из вложенных «глупых» групп) → composition,
+          // компоненты → children; обычные под-группы расформировываем, накапливая их смещение.
+          const walk = (containerKey: string, dx: number, dy: number) => {
+            for (const kid of elements.filter(e => e.parentKey === containerKey)) {
+              if (isLeafPrimitive(kid)) {
+                primitiveKeys.push(kid.key);
+                offsetByKey.set(kid.key, {dx, dy});
+                reparent.add(kid.key);
+              } else if (isComponentEl(kid)) {
+                componentKeys.push(kid.key);
+                offsetByKey.set(kid.key, {dx, dy});
+                reparent.add(kid.key);
+              } else {
+                // обычная под-группа: узел исчезает, дети поднимаются в компонент
+                dissolvedGroupKeys.add(kid.key);
+                walk(kid.key, dx + kid.x, dy + kid.y);
+              }
+            }
+          };
+          walk(groupKey, 0, 0);
+
+          const shift = (el: DiagramElement): DiagramElement => {
+            const off = offsetByKey.get(el.key) ?? {dx: 0, dy: 0};
+            const leaf = el as import("@/types/editorElement.type").LeafElement;
+            return {
+              ...el,
+              parentKey: groupKey,
+              parentId: group.id,
+              x: el.x + off.dx,
+              y: el.y + off.dy,
+              ...(leaf.x1 !== undefined ? {x1: leaf.x1 + off.dx} : {}),
+              ...(leaf.y1 !== undefined ? {y1: leaf.y1 + off.dy} : {}),
+              ...(leaf.x2 !== undefined ? {x2: leaf.x2 + off.dx} : {}),
+              ...(leaf.y2 !== undefined ? {y2: leaf.y2 + off.dy} : {}),
+            } as DiagramElement;
+          };
+
+          const updated = elements
+            .filter(el => !dissolvedGroupKeys.has(el.key))
+            .map(el => {
+              if (el.key === groupKey) {
+                return {
+                  ...el,
+                  isComponent: true,
+                  composition: primitiveKeys,
+                  children: componentKeys,
+                  label: name ?? el.label ?? "Компонент",
+                } as DiagramElement;
+              }
+              if (reparent.has(el.key)) return shift(el);
+              return el;
+            });
+
+          return {elements: updated, selectedIds: [groupKey]};
+        });
+      },
+      disassembleComponent: (componentKey) => {
+        set(state => {
+          const group = state.elements.find(el => el.key === componentKey);
+          if (!group || group.type !== "group") return {};
+
+          const composition = group.composition ?? [];
+          return {
+            elements: state.elements.map(el =>
+              el.key === componentKey
+                ? ({
+                    ...el,
+                    isComponent: false,
+                    children: [...el.children, ...composition],
+                    composition: [],
+                  } as DiagramElement)
+                : el,
+            ),
+          };
+        });
+      },
       moveElementToGroup: (elementKey, targetGroupKey) => {
-        const { elements } = get();
+        const { elements, scene } = get();
         const element = elements.find(el => el.key === elementKey);
         const targetGroup = elements.find(el => el.key === targetGroupKey);
 
         if (!element || !targetGroup || targetGroup.type !== "group") return;
 
         const oldParentKey = element.parentKey;
-        const {scene} = get();
 
-        const targetChildKeys = [
-          ...new Set([...(targetGroup.children ?? []), elementKey]),
+        // Полный состав целевого контейнера + перемещаемый — для расчёта рамки.
+        const targetMemberKeys = [
+          ...new Set([
+            ...(targetGroup.children ?? []),
+            ...(targetGroup.composition ?? []),
+            elementKey,
+          ]),
         ];
-        const targetBoundsByKey = snapshotBounds(elements, targetChildKeys);
+        const targetBoundsByKey = snapshotBounds(elements, targetMemberKeys);
 
+        // Убираем перемещаемый из ОБОИХ списков старого родителя.
         let updatedElements = elements.map(el => {
           if (el.key === oldParentKey && el.type === "group" && oldParentKey !== targetGroupKey) {
             return {
               ...el,
-              children: el.children.filter(childKey => childKey !== elementKey),
-            };
-          }
-          if (el.key === targetGroupKey) {
-            const nextChildren = [...(el.children ?? [])];
-            if (!nextChildren.includes(elementKey)) nextChildren.push(elementKey);
-            return {...el, children: nextChildren};
+              children: el.children.filter(k => k !== elementKey),
+              composition: (el.composition ?? []).filter(k => k !== elementKey),
+            } as DiagramElement;
           }
           return el;
         });
@@ -1224,27 +1434,35 @@ export const useEditorStore = create<EditorState>()(temporal(
         updatedElements = layoutGroupFromBounds(
           updatedElements,
           targetGroupKey,
-          targetChildKeys,
+          targetMemberKeys,
           targetBoundsByKey,
           GROUP_PADDING,
           scene?.id,
         );
+
+        // layoutGroupFromBounds сложил все ключи в children — переразбиваем по роли.
+        updatedElements = resplitContainer(updatedElements, targetGroupKey, targetMemberKeys);
 
         if (oldParentKey && oldParentKey !== targetGroupKey) {
           const oldGroup = updatedElements.find(
             el => el.key === oldParentKey && el.type === "group",
           ) as GroupElement | undefined;
 
-          if (oldGroup?.children.length) {
-            const oldBoundsByKey = snapshotBounds(updatedElements, oldGroup.children);
+          const oldMembers = oldGroup
+            ? [...oldGroup.children, ...(oldGroup.composition ?? [])]
+            : [];
+
+          if (oldMembers.length) {
+            const oldBoundsByKey = snapshotBounds(updatedElements, oldMembers);
             updatedElements = layoutGroupFromBounds(
               updatedElements,
               oldParentKey,
-              oldGroup.children,
+              oldMembers,
               oldBoundsByKey,
               GROUP_PADDING,
               scene?.id,
             );
+            updatedElements = resplitContainer(updatedElements, oldParentKey, oldMembers);
           }
         }
 

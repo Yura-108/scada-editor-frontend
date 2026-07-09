@@ -8,6 +8,7 @@ export type SceneType = {
   image: string | null;
   children: string[];
   version: number;
+  project_id?: number;
 }
 
 // export type Overrides = {
@@ -61,7 +62,10 @@ export interface BaseCanvasElement {
   y: number;
   w: number;
   h: number;
-  composition: boolean;
+  /** Ключи примитивов-членов (рисунок компонента, z-order). Пусто у обычных элементов и «глупых» групп. */
+  composition: string[];
+  /** true, если группа промоутнута в логический компонент («Создать компонент»). */
+  isComponent?: boolean;
   children: string[];
   parentId: number | null;
   parentKey: string | null;

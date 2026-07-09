@@ -12,14 +12,23 @@ import {toast} from "sonner";
 interface Props {
   onLoadAction: (value: number) => void;
   onDeleteAction: (id: number) => Promise<void>;
+  onCreateAction?: (name: string) => Promise<{id: number; name: string} | null>;
   sceneList: {id: number; name: string}[];
   projectName?: string;
 }
 
-export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, projectName}: Props) {
+export function ChooseSceneContent({
+  onLoadAction,
+  onDeleteAction,
+  onCreateAction,
+  sceneList,
+  projectName,
+}: Props) {
   const {closeModal} = useModalStore.getState();
   const [localList, setLocalList] = useState(sceneList);
   const [selectedId, setSelectedId] = useState<number | null>(sceneList[0]?.id ?? null);
+  const [newName, setNewName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleConfirm = () => {
     if (selectedId === null) return;
@@ -37,6 +46,26 @@ export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, pro
     if (selectedId === id) setSelectedId(next[0]?.id ?? null);
   };
 
+  const handleCreate = async () => {
+    if (!onCreateAction) return;
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+
+    setIsCreating(true);
+    try {
+      const created = await onCreateAction(trimmed);
+      if (!created) return;
+      setNewName("");
+      setLocalList(prev => {
+        if (prev.some(s => s.id === created.id)) return prev;
+        return [...prev, {id: created.id, name: created.name}];
+      });
+      setSelectedId(created.id);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <>
       <Dialog.Title className="text-xl font-semibold mb-1">
@@ -45,13 +74,13 @@ export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, pro
 
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         {projectName
-          ? `Схемы проекта «${projectName}».`
-          : "Загрузите одну из сохранённых сцен."}
+          ? `Схемы проекта «${projectName}». Выберите существующую или создайте новую.`
+          : "Загрузите одну из сохранённых сцен или создайте новую."}
       </Dialog.Description>
 
       {localList.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          В этом проекте пока нет схем. Создайте новую через кнопку «Создать» на панели инструментов.
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+          В этом проекте пока нет схем. Создайте первую ниже.
         </p>
       ) : (
         <ul className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -79,6 +108,32 @@ export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, pro
         </ul>
       )}
 
+      {onCreateAction && (
+        <div className="mt-4 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Имя новой схемы"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleCreate();
+            }}
+            className={cn(
+              "flex-1 rounded-xl border border-gray-300 dark:border-gray-700/80",
+              "bg-white dark:bg-gray-900/60 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100",
+              "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+            )}
+          />
+          <button
+            onClick={() => void handleCreate()}
+            disabled={!newName.trim() || isCreating}
+            className="px-4 py-2.5 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors"
+          >
+            {isCreating ? "Создание..." : "Создать"}
+          </button>
+        </div>
+      )}
+
       <div className="mt-8 flex gap-3 justify-end">
         <button
           onClick={closeModal}
@@ -102,12 +157,31 @@ export function ChooseSceneContent({onLoadAction, onDeleteAction, sceneList, pro
 
 export function openChooseSceneModal() {
   const {openModal} = useModalStore.getState();
-  const {loadScene, sceneList, currentProject, deleteScene} = useEditorStore.getState();
+  const {loadScene, sceneList, currentProject, deleteScene, createScene} = useEditorStore.getState();
   const {loadPaletteItems} = usePaletteStore.getState();
 
   const handleLoadScene = async (id: number) => {
     await loadScene(id);
     await loadPaletteItems();
+  };
+
+  // Возвращаем null, если сцена не создана — тогда модалка не закрывается
+  // и пользователь может поправить имя.
+  const handleCreateScene = async (
+    name: string,
+  ): Promise<{id: number; name: string} | null> => {
+    if (!currentProject) {
+      toast.info("Сначала выберите проект");
+      return null;
+    }
+
+    const created = await createScene(name);
+    if (!created) {
+      toast.error("Не удалось создать сцену");
+      return null;
+    }
+
+    return created;
   };
 
   if (!currentProject) {
@@ -119,6 +193,7 @@ export function openChooseSceneModal() {
     <ChooseSceneContent
       onLoadAction={handleLoadScene}
       onDeleteAction={deleteScene}
+      onCreateAction={handleCreateScene}
       sceneList={sceneList}
       projectName={currentProject?.name}
     />

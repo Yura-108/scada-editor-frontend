@@ -15,6 +15,7 @@ import {getRenderedElement} from "@/lib/getRenderedElement";
 import {Stage, Layer, Rect, Circle, Line, Text, Group} from "react-konva";
 import Konva from "konva";
 import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
+import { AddComponentModal } from "@/components/ui/AddComponentModal";
 
 const MIN_SIZE = 20;
 
@@ -55,7 +56,7 @@ function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circl
       onDragEnd={(e) => {
         const dx = e.target.x() - cx;
         const dy = e.target.y() - cy;
-        const newR = Math.max(1, snap(Math.sqrt(dx * dx + dy * dy)));
+        const newR = Math.max(GRID, snap(Math.sqrt(dx * dx + dy * dy)));
         // Сначала обновляем Konva-узлы до снаппленного значения — убираем визуальный прыжок
         e.target.position({ x: cx + newR, y: cy });
         circleRef.current?.radius(newR);
@@ -340,6 +341,8 @@ export default function Canvas() {
     clearSelection,
   } = useEditorStore();
 
+  console.log(elements)
+
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const themeColors = {
@@ -364,6 +367,12 @@ export default function Canvas() {
   const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean, elementKey: string | null }>({
     isOpen: false,
     elementKey: null
+  });
+
+  // Modal state for adding an existing component into a component
+  const [addComponentState, setAddComponentState] = useState<{ isOpen: boolean, targetKey: string | null }>({
+    isOpen: false,
+    targetKey: null
   });
 
   const {setNodeRef} = useDroppable({id: "canvas"});
@@ -651,6 +660,21 @@ export default function Canvas() {
       closeMenu();
     };
 
+    const isPlainGroup = el.type === "group" && !el.isComponent;
+    const isComponent = el.type === "group" && !!el.isComponent;
+
+    const handleCreateComponent = () => {
+      const name = prompt("Название компонента", el.label || "Компонент");
+      if (name === null) { closeMenu(); return; }
+      useEditorStore.getState().createComponentFromGroup(el.key, name.trim() || undefined);
+      closeMenu();
+    };
+
+    const handleDisassemble = () => {
+      useEditorStore.getState().disassembleComponent(el.key);
+      closeMenu();
+    };
+
     return [
       {label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id},
       ...editorElementMenuItems.map(item => ({
@@ -668,6 +692,9 @@ export default function Canvas() {
           closeMenu();
         }
       })),
+      isPlainGroup ? {label: "Создать компонент", onClick: handleCreateComponent} : null,
+      isComponent ? {label: "Добавить компонент", onClick: () => { setAddComponentState({ isOpen: true, targetKey: el.key }); closeMenu(); }} : null,
+      isComponent ? {label: "Разобрать компонент", onClick: handleDisassemble} : null,
       el.type === "group" ? {label: "Сохранить в палитру", onClick: handleFaceplate} : null
     ].filter(Boolean);
   };
@@ -977,7 +1004,11 @@ export default function Canvas() {
         )}
 
         {isSelected && renderAnchor(rendered.w, rendered.h, (e) => {
-            updateElementVisual(el.key, { w: Math.max(MIN_SIZE, e.target.x()), h: Math.max(MIN_SIZE, e.target.y()) });
+            const nw = Math.max(MIN_SIZE, snap(e.target.x()));
+            const nh = Math.max(MIN_SIZE, snap(e.target.y()));
+            // Привязываем сам хендл к сетке — даёт «щёлкающую» обратную связь по grid.
+            e.target.position({ x: nw, y: nh });
+            updateElementVisual(el.key, { w: nw, h: nh });
         }, `${el.key}-anc-se`)}
       </Group>
     );
@@ -1044,7 +1075,7 @@ export default function Canvas() {
              if (container) container.style.cursor = "default";
            }}
          />
-         {group.children.map(childId => {
+         {[...(group.composition ?? []), ...group.children].map(childId => {
              const child = elementsMap[childId];
              if (!child) return null;
              if (child.type === 'group') return renderGroup(child as GroupElement);
@@ -1156,6 +1187,12 @@ export default function Canvas() {
         isOpen={moveToGroupState.isOpen}
         elementKey={moveToGroupState.elementKey}
         onClose={() => setMoveToGroupState({ isOpen: false, elementKey: null })}
+      />
+
+      <AddComponentModal
+        isOpen={addComponentState.isOpen}
+        targetKey={addComponentState.targetKey}
+        onClose={() => setAddComponentState({ isOpen: false, targetKey: null })}
       />
     </div>
   );

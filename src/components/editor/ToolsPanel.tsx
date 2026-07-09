@@ -50,6 +50,13 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
   const {loadPaletteItems} = usePaletteStore();
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  // Иерархия Проект -> Схема -> Элементы: блокируем операции над сценой,
+  // если она не принадлежит выбранному проекту (или проект/сцена не выбраны).
+  const sceneBelongsToProject = !!currentProject
+    && !!scene
+    && (scene.project_id == null || scene.project_id === currentProject.id);
+  const canEdit = sceneBelongsToProject;
+
   const handleOpenProject = () => {
     openProjectModal();
   };
@@ -69,12 +76,21 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
       toast.info("Сначала загрузите или создайте сцену");
       return;
     }
+    if (!sceneBelongsToProject) {
+      toast.error("Сцена не принадлежит выбранному проекту");
+      return;
+    }
     importInputRef.current?.click();
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!sceneBelongsToProject) {
+      toast.error("Сцена не принадлежит выбранному проекту");
+      e.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -130,7 +146,10 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         <TooltipBtn icon={<Briefcase size={16} />} label="Проект" onClick={handleOpenProject} />
         <TooltipBtn icon={<FilePlus size={16} />} label="Создать сцену" onClick={handleCreateSchema} />
         <TooltipBtn icon={<FolderOpen size={16} />} label="Загрузить сцену" onClick={handleLoadSchema} />
-        <TooltipBtn icon={<Upload size={16} />} label="Импорт" onClick={handleImport} />
+        <TooltipBtn
+          icon={<Upload size={16} />} label="Импорт" onClick={handleImport}
+          disabled={!canEdit}
+        />
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
 
@@ -138,25 +157,33 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
           icon={<Group size={16} />}
           label="Сгруппировать"
           onClick={() => useEditorStore.getState().groupSelected()}
-          disabled={selectedIds.length < 2}
+          disabled={!canEdit || selectedIds.length < 2}
         />
         <TooltipBtn
           icon={<Ungroup size={16} />}
           label="Разгруппировать"
           onClick={() => useEditorStore.getState().ungroupSelected()}
-          disabled={!selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
+          disabled={!canEdit || !selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
         />
 
         <TooltipBtn
           icon={<Save size={16} strokeWidth={2.5} />}
           label="Сохранить"
           onClick={exportScene}
+          disabled={!canEdit}
           className="flex items-center justify-center w-9 h-9 rounded-xl
             bg-primary/10 border border-primary/30 text-primary
             hover:bg-primary/20 hover:border-primary/40
-            active:translate-y-0.5 transition-all"
+            active:translate-y-0.5 transition-all
+            disabled:opacity-20 disabled:cursor-not-allowed"
         />
       </div>
+
+      {scene && currentProject && !sceneBelongsToProject && (
+        <div className="text-xs font-medium text-red-500 dark:text-red-400 pointer-events-auto">
+          Сцена не принадлежит проекту «{currentProject.name}». Выберите сцену из списка.
+        </div>
+      )}
 
       <input
         ref={importInputRef}

@@ -72,16 +72,29 @@ export default function transformElements(
     // After reload they must be stripped from overrides so getRenderedElement
     // doesn't shadow the base values that recomputeAncestorBounds updates.
     const GROUP_POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
+    // Структурные ключи компонента в image (не визуальные overrides).
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent"]);
+
+    // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
+    const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
+    const defaultStateIdx = Math.max(0, (el.states ?? []).findIndex(s => s.isDefault));
+    const defaultRawImage = rawStateImages[defaultStateIdx] ?? rawStateImages[0] ?? {};
+    const isComponentFlag = Boolean(defaultRawImage.isComponent);
+    const compositionDescriptors: Record<string, unknown>[] = Array.isArray(defaultRawImage.composition)
+      ? (defaultRawImage.composition as Record<string, unknown>[])
+      : [];
 
     const normalizedStates = (el.states ?? []).map((state, index) => {
-      const overrides = parseStateImage(state.image);
-      const finalOverrides = el.type === "group"
-        ? Object.fromEntries(Object.entries(overrides).filter(([k]) => !GROUP_POSITIONAL_KEYS.has(k)))
-        : overrides;
+      const parsed = parseStateImage(state.image);
+      // Структурные ключи убираем из visual overrides всегда.
+      let overrides = Object.fromEntries(Object.entries(parsed).filter(([k]) => !STRUCTURAL_KEYS.has(k)));
+      if (el.type === "group") {
+        overrides = Object.fromEntries(Object.entries(overrides).filter(([k]) => !GROUP_POSITIONAL_KEYS.has(k)));
+      }
       return {
         id: state.id != null ? String(state.id) : createUuid(),
         name: state.name,
-        overrides: finalOverrides,
+        overrides,
         isDefault: state.isDefault ?? index === 0,
       };
     });
@@ -104,16 +117,69 @@ export default function transformElements(
     const resolvedParentId = el.parent_id ?? fallbackParentId ?? scene?.id ?? null;
     const resolvedParentKey = fallbackParentKey ?? (scene?.key ?? String(scene?.id ?? ""));
 
+    // Распаковка запечённых примитивов composition в плоские элементы редактора.
+    const compositionKeys: string[] = [];
+    const compositionElements: DiagramElement[] = [];
+
+    compositionDescriptors.forEach((desc, i) => {
+      const primKey = typeof desc.key === "string" && desc.key ? desc.key : createUuid();
+      const primType = String(desc.type ?? "rectangle");
+
+      // Состояния примитива восстанавливаем из composition[i] каждого состояния контейнера.
+      const primStates = (el.states ?? []).map((cs, ci) => {
+        const rawImg = rawStateImages[ci] ?? {};
+        const compArr = Array.isArray(rawImg.composition) ? (rawImg.composition as Record<string, unknown>[]) : [];
+        const d = compArr[i] ?? desc;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { type: _t, key: _k, ...overrides } = d;
+        return {
+          id: createUuid(),
+          name: cs.name,
+          overrides,
+          isDefault: cs.isDefault ?? ci === 0,
+        };
+      });
+
+      const primDefault = primStates.find(s => s.isDefault) ?? primStates[0];
+      const primOverrides = (primDefault?.overrides ?? {}) as Record<string, unknown>;
+
+      compositionElements.push({
+        id: null,
+        key: primKey,
+        type: primType,
+        x: toFiniteNumber(primOverrides.x, 0),
+        y: toFiniteNumber(primOverrides.y, 0),
+        w: toFiniteNumber(primOverrides.w, 80),
+        h: toFiniteNumber(primOverrides.h, 80),
+        composition: [],
+        ...primOverrides,
+        states: primStates.length
+          ? primStates
+          : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+        parentId: null,
+        parentKey: elementKey,
+        children: [],
+        scripts: [],
+        bindings: [],
+        properties: [],
+        label: String(desc.label ?? ""),
+      } as DiagramElement);
+
+      compositionKeys.push(primKey);
+    });
+
     const flattenedElement = {
       id: el.id,
       key: elementKey,
       type: el.type,
-      x: toFiniteNumber(image.x, 0),
-      y: toFiniteNumber(image.y, 0),
-      w: toFiniteNumber(image.w, 80),
-      h: toFiniteNumber(image.h, 80),
-      composition: Boolean(image.composition),
+      // Базовые координаты берём из НЕобрезанного image (для групп/компонентов overrides очищены).
+      x: toFiniteNumber(defaultRawImage.x, 0),
+      y: toFiniteNumber(defaultRawImage.y, 0),
+      w: toFiniteNumber(defaultRawImage.w, 80),
+      h: toFiniteNumber(defaultRawImage.h, 80),
       ...(image || {}),
+      composition: compositionKeys,
+      isComponent: isComponentFlag,
       states: normalizedStates,
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
@@ -151,6 +217,7 @@ export default function transformElements(
 
     return [
       flattenedElement as DiagramElement,
+      ...compositionElements,
       ...childResults,
     ];
   };

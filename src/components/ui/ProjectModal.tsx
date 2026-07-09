@@ -17,9 +17,9 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 
 async function selectProjectAndOpenScenes(projectId: number, projectName: string) {
-  const {setCurrentProject, loadScenesForProject} = useEditorStore.getState();
+  const {setCurrentProject, loadSceneList} = useEditorStore.getState();
   setCurrentProject({id: projectId, name: projectName});
-  await loadScenesForProject(projectId);
+  await loadSceneList(projectId);
   useModalStore.getState().closeModal();
   openChooseSceneModal();
 }
