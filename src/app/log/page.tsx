@@ -11,7 +11,7 @@ export default function LogsPage() {
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-100 p-8">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        <h1 className="text-2xl font-bold">Логи базы каналов</h1>
+        <h1 className="text-2xl font-bold text-black dark:text-white">Логи базы каналов</h1>
 
         {/* Панель управления (фильтры) */}
         <Filter />

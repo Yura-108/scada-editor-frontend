@@ -285,6 +285,18 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
 const getErrorMessage = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
+/**
+ * Единый «замок» на ВСЕ сохранения сцены (ручное + авто + повторные клики).
+ *
+ * Бэкенд апсертит по `id` (вариант А), а новые элементы уходят с `id = null`.
+ * Пока первое сохранение не завершилось перезагрузкой (`loadScene` подтягивает
+ * присвоенные сервером id), второй параллельный POST снова отправит `id = null`
+ * и сервер создаст ДУБЛИ. Поэтому сериализуем сохранения: пока идёт одно —
+ * второе не стартует, а reload после каждого сейва гарантирует, что следующий
+ * POST пойдёт уже с id (update, а не insert).
+ */
+let saveInFlight: Promise<boolean> | null = null;
+
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       scene: null,
@@ -893,56 +905,81 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
       },
       exportScene: async (opts) => {
-        try {
-          const {elements, scene, currentProject} = get();
+        // Сериализуем все сохранения через общий замок (см. `saveInFlight`),
+        // иначе два параллельных POST с id=null создадут дубли на сервере.
+        // Автосейв не встаёт в очередь — просто пропускает тик (поймает
+        // изменения на следующем).
+        if (opts?.silent && saveInFlight) return false;
+        // Ручное сохранение дожидается текущего сейва, чтобы затем сохранить
+        // уже актуальное (и id-сверенное после reload) состояние. Между выходом
+        // из цикла и присвоением замка ниже нет `await`, поэтому два вызова не
+        // могут захватить его одновременно.
+        while (saveInFlight) {
+          await saveInFlight.catch(() => {});
+        }
 
-          if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-            if (!opts?.silent) toast.error("Сцена не принадлежит выбранному проекту");
+        const run = (async (): Promise<boolean> => {
+          try {
+            const {elements, scene, currentProject} = get();
+
+            if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+              if (!opts?.silent) toast.error("Сцена не принадлежит выбранному проекту");
+              return false;
+            }
+
+            const payload = buildComponentTree(elements, String(scene?.id));
+
+            const res = await fetch("/api/editor/components", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(`Ошибка ${res.status}: ${text}`);
+            }
+
+            if (!opts?.silent) toast.success("Сохранено успешно!");
+
+            if (scene?.id) {
+              // loadScene заменяет elements серверными (уже с id) и сбрасывает
+              // выделение/активную группу/состояния. При keepView (автосейв)
+              // снимаем их до перезагрузки и восстанавливаем по ключам после —
+              // чтобы автосейв не «дёргал» пользователя. Reload здесь обязателен:
+              // он подтягивает присвоенные сервером id, без которых следующее
+              // сохранение снова вставит дубли (вариант А).
+              const prevSelected = opts?.keepView ? get().selectedIds : null;
+              const prevActive = opts?.keepView ? get().activeGroupKey : null;
+              const prevStates = opts?.keepView ? get().currentComponentStateByElementKey : null;
+
+              await get().loadScene(scene.id);
+
+              if (opts?.keepView) {
+                const keys = new Set(get().elements.map(el => el.key));
+                set({
+                  selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
+                  activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
+                  currentComponentStateByElementKey: Object.fromEntries(
+                    Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),
+                  ),
+                });
+              }
+            }
+
+            return true;
+          } catch (err: unknown) {
+            console.error(err);
+            toast.error(getErrorMessage(err, opts?.silent ? "Автосохранение не удалось" : "Ошибка экспорта сцены"));
             return false;
           }
+        })();
 
-          const payload = buildComponentTree(elements, String(scene?.id));
-
-          const res = await fetch("/api/editor/components", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload),
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Ошибка ${res.status}: ${text}`);
-          }
-
-          if (!opts?.silent) toast.success("Сохранено успешно!");
-
-          if (scene?.id) {
-            // loadScene заменяет elements и сбрасывает выделение/активную группу/состояния.
-            // При keepView (автосохранение) снимаем их до перезагрузки и восстанавливаем
-            // по ключам после — чтобы автосейв не «дёргал» пользователя.
-            const prevSelected = opts?.keepView ? get().selectedIds : null;
-            const prevActive = opts?.keepView ? get().activeGroupKey : null;
-            const prevStates = opts?.keepView ? get().currentComponentStateByElementKey : null;
-
-            await get().loadScene(scene.id);
-
-            if (opts?.keepView) {
-              const keys = new Set(get().elements.map(el => el.key));
-              set({
-                selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
-                activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
-                currentComponentStateByElementKey: Object.fromEntries(
-                  Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),
-                ),
-              });
-            }
-          }
-
-          return true;
-        } catch (err: unknown) {
-          console.error(err);
-          toast.error(getErrorMessage(err, opts?.silent ? "Автосохранение не удалось" : "Ошибка экспорта сцены"));
-          return false;
+        saveInFlight = run;
+        try {
+          return await run;
+        } finally {
+          if (saveInFlight === run) saveInFlight = null;
         }
       },
       loadSceneList: async (projectId: number) => {
