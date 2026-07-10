@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {toast} from "sonner";
 
 export default function LogsList() {
-  const { logs, isLoading, getFilteredLogs } = useLogsStore();
+  const { logs, isLoading, getFilteredLogs, fetchLogs } = useLogsStore();
 
   const filteredLogs = getFilteredLogs();
 
@@ -31,20 +31,31 @@ export default function LogsList() {
     );
   }
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async (log: LogEntry) => {
     try {
-      const res = await fetch('/api/logs/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(id),
-      });
+      // Если запись входит в пакет (устройство + его параметры),
+      // отменяем весь пакет разом по batchId. Иначе — откат одной записи.
+      const res = log.batchId != null
+        ? await fetch(`/api/logs/batch/${log.batchId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : await fetch('/api/logs/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(log.id),
+          });
 
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Ошибка при попытке отката');
       }
 
-      toast.success(`Действие #${id} успешно отменено!`);
+      toast.success(`Действие #${log.id} успешно отменено!`);
+
+      // Обновляем список логов после отмены, чтобы изменения
+      // применились без перезагрузки страницы
+      await fetchLogs();
 
     } catch (err: any) {
       toast.error(err.message || 'Не удалось выполнить отмену');
@@ -124,7 +135,7 @@ export default function LogsList() {
 
               <td className="px-5 py-4 text-center">
                 <button
-                  onClick={() => handleCancel(log.id)}
+                  onClick={() => handleCancel(log)}
                   className={cn(
                     'inline-flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium transition-all',
                     'text-red-400/80 hover:bg-red-950/30 hover:text-red-300 active:scale-95',

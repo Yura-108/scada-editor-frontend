@@ -27,7 +27,8 @@
       "PowerShell(npx eslint src/constants/contextMenuItems.tsx src/components/ui/OpenCreateContainerModal.tsx src/store/useDeviceStore.ts src/components/ui/ContextMenu.tsx src/components/channels/DeviceTreePanel.tsx)",
       "PowerShell($out = Receive-Job -Name scadadev -Keep 2>$null | Out-String; if\\([string]::IsNullOrWhiteSpace\\($out\\)\\){ Write-Output \"[no output captured yet]\" } else { $out })",
       "PowerShell($ok=$false; for\\($i=0;$i -lt 20;$i++\\){ try{ $r=Invoke-WebRequest -Uri \"http://localhost:3111/channels\" -UseBasicParsing -TimeoutSec 8 -MaximumRedirection 0 -ErrorAction Stop; Write-Output \\(\"STATUS=\"+$r.StatusCode\\); $ok=$true; break }catch{ $resp=$_.Exception.Response; if\\($resp\\){ Write-Output \\(\"STATUS=\"+[int]$resp.StatusCode\\); $ok=$true; break } else { Start-Sleep -Seconds 3 } } }; Write-Output \"reachable=$ok\")",
-      "PowerShell(Stop-Job *)"
+      "PowerShell(Stop-Job *)",
+      "Bash(node *)"
     ]
   }
 }
