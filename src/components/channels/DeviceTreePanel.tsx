@@ -136,7 +136,7 @@ const DeviceTreePanel = () => {
       </div>
 
       <div
-        className="flex-1 overflow-y-auto custom-scrollbar p-2"
+        className="flex-1 overflow-y-auto custom-scrollbar px-2 py-4"
         onContextMenu={(e) => handleContextMenu(e, null)}
       >
         <Tree
@@ -171,7 +171,7 @@ const DeviceTreePanel = () => {
           <ContextMenu
             menu={contextMenu}
             items={nodeMenuItems}
-            onAction={(action) => handleContextAction(action, contextMenu.key ?? '')}
+            onAction={(action) => handleContextAction(action, contextMenu.key)}
             onClose={() => setContextMenu(null)}/>
         )}
       </div>

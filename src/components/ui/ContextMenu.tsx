@@ -69,20 +69,51 @@ const ContextMenu = <T extends string = string>({
 
   if (!menu.visible) return null;
 
+  const menuKey = menu.key;
+
+  // Меню дерева устройств содержит пункты площадки/проекта; меню параметров — нет.
+  // Логику по уровням применяем только к дереву, чтобы не сломать меню параметров.
+  const isDeviceMenu = items.some(
+    (i) => i.key === 'add_site' || i.key === 'add_project' || i.key === 'exit_edit'
+  );
+
   const visibleItems = items.filter(item => {
-    if (typeof menu.key === 'string') {
-      if (isEditingDevice(menu.key)) {
-        return (
-          item.key !== 'edit' &&
-          !(menu.key.startsWith('cha') && item.key === 'add')
-        );
+    if (isDeviceMenu) {
+      // Корень дерева (ПКМ по пустой области) — только «Добавить площадку»
+      if (menuKey === null) {
+        return item.key === 'add_site';
       }
 
-      return item.key === 'edit';
+      // Выбран узел: пункт добавления зависит от уровня вложенности
+      const level = menuKey.split('.').length; // 1 — площадка, 2 — проект, 3+ — узел
+      const isChannel = menuKey.startsWith('cha');
+      const editing = isEditingDevice(menuKey);
+
+      switch (item.key) {
+        case 'add_site':
+          return false; // площадку добавляют только из корня
+        case 'add_project':
+          return level === 1; // проект — под площадкой
+        case 'add':
+          return level >= 2 && !isChannel; // узел — под проектом/узлом, но не под каналом
+        case 'edit':
+          return !editing;
+        case 'exit_edit':
+        case 'delete':
+          return editing;
+        default:
+          return false;
+      }
     }
 
+    // Прочие меню (например, параметры) — прежнее поведение
+    if (typeof menuKey === 'string') {
+      if (isEditingDevice(menuKey)) {
+        return item.key !== 'edit' && !(menuKey.startsWith('cha') && item.key === 'add');
+      }
+      return item.key === 'edit';
+    }
     return item.key === 'add';
-
   });
 
   if (visibleItems.length === 0) return null;

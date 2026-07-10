@@ -2,12 +2,24 @@ import {Edit3, Plus, Trash2} from "lucide-react";
 import {ContextMenuItem} from "@/types/contextMenu.type";
 import {MenuItem} from "@/components/ui/ContextMenuRadixUI";
 
-export type DeviceAction = 'add' | 'delete' | 'edit';
+export type DeviceAction = 'add' | 'add_site' | 'add_project' | 'delete' | 'edit';
 
 export const nodeMenuItems: ContextMenuItem<DeviceAction>[] = [
   {
+    key: 'add_site',
+    label: 'Добавить площадку',
+    icon: <Plus className="w-4 h-4" />,
+    action: 'add_site',
+  },
+  {
+    key: 'add_project',
+    label: 'Добавить проект',
+    icon: <Plus className="w-4 h-4" />,
+    action: 'add_project',
+  },
+  {
     key: 'add',
-    label: 'Добавить Узел',
+    label: 'Добавить узел',
     icon: <Plus className="w-4 h-4" />,
     action: 'add',
     //hidden: key?.startsWith('cha'), // скрываем "Добавить" у дочерних

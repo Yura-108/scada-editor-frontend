@@ -10,11 +10,15 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {ElementType} from "@/types/editorElement.type";
 import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
+import {useAutoSaveScene} from "@/lib/useAutoSaveScene";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const {loadPaletteItems} = usePaletteStore();
+
+  // Автосохранение сцены раз в минуту (только при изменениях, тихо, без сброса выделения).
+  useAutoSaveScene();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,15 +52,6 @@ export default function EditorPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  // Автосохранение каждые 5 секунд при изменении элементов
-  // useEffect(() => {
-  //   const timeout = setTimeout(() => {
-  //     exportScene();
-  //   }, 5000);
-  //
-  //   return () => clearTimeout(timeout);
-  // }, [elements, exportScene]);
 
   useEffect(() => {
     // Automatically load palette items on mount if they haven't been loaded

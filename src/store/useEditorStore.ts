@@ -66,7 +66,7 @@ type EditorState = {
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
-  exportScene: () => void;
+  exportScene: (opts?: { silent?: boolean; keepView?: boolean }) => Promise<boolean>;
   importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
   loadScene: (id: number) => Promise<void>;
   createScene: (name?: string) => Promise<{id: number; name: string} | void>;
@@ -892,13 +892,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           selectedIds: newRootKeys,
         }));
       },
-      exportScene: async () => {
+      exportScene: async (opts) => {
         try {
           const {elements, scene, currentProject} = get();
 
           if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-            toast.error("Сцена не принадлежит выбранному проекту");
-            return;
+            if (!opts?.silent) toast.error("Сцена не принадлежит выбранному проекту");
+            return false;
           }
 
           const payload = buildComponentTree(elements, String(scene?.id));
@@ -914,13 +914,35 @@ export const useEditorStore = create<EditorState>()(temporal(
             throw new Error(`Ошибка ${res.status}: ${text}`);
           }
 
-          toast.success("Сохранено успешно!");
+          if (!opts?.silent) toast.success("Сохранено успешно!");
+
           if (scene?.id) {
+            // loadScene заменяет elements и сбрасывает выделение/активную группу/состояния.
+            // При keepView (автосохранение) снимаем их до перезагрузки и восстанавливаем
+            // по ключам после — чтобы автосейв не «дёргал» пользователя.
+            const prevSelected = opts?.keepView ? get().selectedIds : null;
+            const prevActive = opts?.keepView ? get().activeGroupKey : null;
+            const prevStates = opts?.keepView ? get().currentComponentStateByElementKey : null;
+
             await get().loadScene(scene.id);
+
+            if (opts?.keepView) {
+              const keys = new Set(get().elements.map(el => el.key));
+              set({
+                selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
+                activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
+                currentComponentStateByElementKey: Object.fromEntries(
+                  Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),
+                ),
+              });
+            }
           }
+
+          return true;
         } catch (err: unknown) {
           console.error(err);
-          toast.error(getErrorMessage(err, "Ошибка экспорта сцены"));
+          toast.error(getErrorMessage(err, opts?.silent ? "Автосохранение не удалось" : "Ошибка экспорта сцены"));
+          return false;
         }
       },
       loadSceneList: async (projectId: number) => {

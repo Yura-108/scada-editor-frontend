@@ -169,7 +169,7 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         <TooltipBtn
           icon={<Save size={16} strokeWidth={2.5} />}
           label="Сохранить"
-          onClick={exportScene}
+          onClick={() => exportScene()}
           disabled={!canEdit}
           className="flex items-center justify-center w-9 h-9 rounded-xl
             bg-primary/10 border border-primary/30 text-primary

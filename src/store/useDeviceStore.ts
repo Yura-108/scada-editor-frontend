@@ -8,6 +8,7 @@ import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
 import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
+import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenCreateContainerModal";
 interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];
@@ -274,6 +275,13 @@ export const useDeviceStore = create<DeviceStoreState>()(
           if (confirm('Удалить этот узел и все дочерние?')) {
             await get().removeDevice(nodeKey);
           }
+        }
+        if (action === 'add_site') {
+          OpenCreateSiteModal();
+        }
+        if (action === 'add_project') {
+          if (!nodeKey) return;
+          OpenCreateProjectModal(nodeKey);
         }
         if (action === 'add') {
           await get().loadDeviceTemplateList();
