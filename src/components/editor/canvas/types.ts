@@ -33,6 +33,10 @@ export interface ShapeElementProps {
   snap: (v: number) => number;
   onElementClick: (key: string, multi: boolean) => void;
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+  /** true, если этот текстовый элемент сейчас редактируется инлайн (Konva-текст прячется под textarea). */
+  isEditing?: boolean;
+  /** Запускает инлайн-редактирование текста (двойной клик). */
+  onStartTextEdit?: (key: string) => void;
 }
 
 /**
@@ -50,4 +54,8 @@ export interface EditorRenderContext {
   enterGroup: (key: string) => void;
   resolveClickTarget: (key: string) => string | null;
   closeMenu: () => void;
+  /** Ключ текстового элемента, редактируемого сейчас инлайн (или null). */
+  editingTextKey: string | null;
+  /** Запускает инлайн-редактирование текста по двойному клику. */
+  onStartTextEdit: (key: string) => void;
 }

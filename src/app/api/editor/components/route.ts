@@ -43,8 +43,19 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     body: JSON.stringify(canvasScreen),
   });
 
-  const editorElements = await response.json().catch(() => null);
+  // Бэкенд мог отклонить сохранение (например, невалидный payload). Раньше прокси
+  // ВСЕГДА возвращал 201, поэтому клиент считал сохранение успешным, перезагружал
+  // сцену и получал пустой ответ — затирая холст несохранёнными данными.
+  // Пробрасываем реальный статус и тело ошибки, чтобы exportScene не перезагружал сцену.
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    return new NextResponse(text || JSON.stringify({error: `Ошибка ${response.status}`}), {
+      status: response.status,
+      headers: {"Content-Type": response.headers.get("content-type") ?? "application/json"},
+    });
+  }
 
+  const editorElements = await response.json().catch(() => null);
 
   return NextResponse.json(editorElements, {status: 201});
 })
@@ -67,6 +78,15 @@ export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
     },
     body: JSON.stringify(ids),
   });
+
+  // Как и в POST: не маскируем ошибку бэкенда статусом 201 — пробрасываем реальный ответ.
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    return new NextResponse(text || JSON.stringify({error: `Ошибка ${response.status}`}), {
+      status: response.status,
+      headers: {"Content-Type": response.headers.get("content-type") ?? "application/json"},
+    });
+  }
 
   const editorElements = await response.json().catch(() => null);
 

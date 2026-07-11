@@ -1,6 +1,7 @@
 'use client';
 
 import { useLogsStore } from '@/store/useLogsStore';
+import { useDeviceStore } from '@/store/useDeviceStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,8 @@ export default function LogsList() {
 
       toast.success(`Действие #${log.id} успешно отменено!`);
       await fetchLogs();
+      // Помечаем базу каналов устаревшей — при следующем входе в /channels она пере-синхронизируется.
+      useDeviceStore.getState().markStale();
 
     } catch (err: any) {
       toast.error(err.message || 'Не удалось выполнить отмену');

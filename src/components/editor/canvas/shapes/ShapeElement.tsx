@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Group, Rect, Circle, Line, Text } from "react-konva";
+import { Group, Rect, Circle, Line, Text, Arrow } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
@@ -11,6 +11,11 @@ import { CircleResizeHandle } from "./CircleResizeHandle";
 import { TextShapeElement } from "./TextShapeElement";
 import { CheckboxShapeElement } from "./CheckboxShapeElement";
 import { ProgressBarShapeElement } from "./ProgressBarShapeElement";
+import { ButtonShapeElement } from "./ButtonShapeElement";
+import { ToggleShapeElement } from "./ToggleShapeElement";
+import { SliderShapeElement } from "./SliderShapeElement";
+import { DropdownShapeElement } from "./DropdownShapeElement";
+import { InputShapeElement } from "./InputShapeElement";
 
 interface ShapeElementProps {
   el: DiagramElement;
@@ -146,13 +151,34 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
     const y1 = rendered.y1 ?? rendered.y;
     const x2 = rendered.x2 ?? rendered.x + 80;
     const y2 = rendered.y2 ?? rendered.y;
+
+    const lineStroke = isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault);
+    const lineWidth = rendered.strokeWidth || 2;
+    // Стиль пунктира: "5 5" / "10 5 2 5" → [5,5] / [10,5,2,5]; пусто → сплошная.
+    const dashArr = (() => {
+      const parts = (rendered.strokeDasharray || "").trim().split(/\s+/).map(Number);
+      const nums = parts.filter((n) => Number.isFinite(n) && n >= 0);
+      return nums.length ? nums : undefined;
+    })();
+    const arrowStart = !!rendered.arrowStart;
+    const arrowEnd = !!rendered.arrowEnd;
+    // Размер наконечника зависит от толщины линии.
+    const pointerLength = Math.max(8, lineWidth * 2.5);
+    const pointerWidth = Math.max(7, lineWidth * 2.2);
+
     return (
       <Group key={el.key} id={el.key}>
-        <Line
+        <Arrow
           points={[x1, y1, x2, y2]}
-          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
-          strokeWidth={rendered.strokeWidth || 2}
-          hitStrokeWidth={Math.max(12, rendered.strokeWidth || 2)}
+          stroke={lineStroke}
+          fill={lineStroke}
+          strokeWidth={lineWidth}
+          dash={dashArr}
+          pointerAtBeginning={arrowStart}
+          pointerAtEnding={arrowEnd}
+          pointerLength={pointerLength}
+          pointerWidth={pointerWidth}
+          hitStrokeWidth={Math.max(12, lineWidth)}
           draggable
           onDragEnd={(e) => {
             const dx = e.target.x();
@@ -206,8 +232,10 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
       <TextShapeElement
         el={el}
         isSelected={isSelected}
+        isEditing={ctx.editingTextKey === el.key}
         snap={snap}
         onElementClick={onElementClick}
+        onStartTextEdit={ctx.onStartTextEdit}
         updateElementVisual={updateElementVisual}
       />
     );
@@ -235,6 +263,26 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
         updateElementVisual={updateElementVisual}
       />
     );
+  }
+
+  if (rendered.type === "button") {
+    return <ButtonShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "toggle") {
+    return <ToggleShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "slider") {
+    return <SliderShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "dropdown") {
+    return <DropdownShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "input") {
+    return <InputShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
   }
 
   return (

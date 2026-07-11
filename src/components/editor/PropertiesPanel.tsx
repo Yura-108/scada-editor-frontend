@@ -105,6 +105,19 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  const handleSelectChange = (key: string, value: string) => {
+    // Смена ориентации прогресс-бара меняет местами w/h, чтобы вертикальный бар был
+    // реально узким и высоким, а не оставался в приплюснутой коробке (ключ orientation
+    // есть только у прогресс-бара). w/h — позиционные поля, рамки групп пересчитаются.
+    if (key === "orientation" && value !== renderedElementValues.orientation) {
+      const curW = Number(renderedElementValues.w) || 0;
+      const curH = Number(renderedElementValues.h) || 0;
+      updateElementVisual(element.key, { orientation: value as "horizontal" | "vertical", w: curH, h: curW });
+      return;
+    }
+    updateElementVisual(element.key, { [key]: value });
+  };
+
   const renderPropertyInput = (property: PropertySchema, index: number) => {
     const rawValue = renderedElementValues[property.key];
     const uniqueKey = `${element.id}-${property.key}-${index}`;
@@ -209,9 +222,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               id={`prop-${property.key}`}
               className={cn(baseInputClasses, "appearance-none pr-8")}
               value={selectValue}
-              onChange={(e) =>
-                updateElementVisual(element.key, {[property.key]: e.target.value})
-              }
+              onChange={(e) => handleSelectChange(property.key, e.target.value)}
             >
               {property.options?.map((opt) => (
                 <option key={opt.value} value={opt.value}>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import StartMenu from '@/components/channels/StartMenu';
 import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
 import { useDeviceStore } from '@/store/useDeviceStore';
@@ -7,6 +8,12 @@ import DeviceParams from '@/components/channels/DeviceParams';
 
 export default function Workspace() {
   const { nodes } = useDeviceStore();
+
+  // При входе в базу каналов подхватываем изменения (например, отмену действия в логах),
+  // если данные были помечены устаревшими.
+  useEffect(() => {
+    void useDeviceStore.getState().refreshIfStale();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">

@@ -15,14 +15,15 @@ export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, upd
   const BOX = 18;
   const pad = 4;
   const w = rendered.w || 160;
-  const h = Math.max(rendered.h || 24, BOX);
+  const h = Math.max(rendered.h || 20, BOX);
   const boxY = (h - BOX) / 2;
   const checked = !!rendered.checked;
   const label = rendered.label ?? "Checkbox";
-  const accent = rendered.color || rendered.strokeColor || "#3b82f6";
+  const accent = rendered.color || "#3b82f6";            // Цвет при отметке (заливка + акцент)
+  const boxStroke = rendered.strokeColor || accent;       // Цвет рамки (независимо от акцента)
+  const boxBg = rendered.backgroundColor || (isDark ? "#0a0a0a" : "#ffffff"); // Фон квадрата (когда снят)
   const textCol = rendered.textColor || (isDark ? "#ffffff" : "#1a1a1a");
   const fontSize = rendered.fontSize || 14;
-  const boxBg = isDark ? "#0a0a0a" : "#ffffff";
 
   // Галочка: три точки образуют ✓
   const ckPts = [
@@ -37,6 +38,10 @@ export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, upd
       x={rendered.x}
       y={rendered.y}
       draggable
+      onDragMove={(e) => {
+        // Живой снаппинг во время перетаскивания — элемент чётко «щёлкает» по клеткам сетки.
+        e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });
+      }}
       onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
       onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
     >
@@ -50,7 +55,7 @@ export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, upd
       <Rect
         x={0} y={boxY} width={BOX} height={BOX}
         fill={checked ? accent : boxBg}
-        stroke={accent} strokeWidth={1.5} cornerRadius={3}
+        stroke={boxStroke} strokeWidth={1.5} cornerRadius={3}
       />
       {/* Галочка */}
       {checked && (

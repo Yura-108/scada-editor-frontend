@@ -696,7 +696,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (type === 'checkbox') {
           const newElement: DiagramElement = {
             id: null, key: createUuid(), type, composition,
-            x, y, w: 160, h: 24,
+            x, y, w: 160, h: 20,
             checked: false, label: "Checkbox",
             color: "#3b82f6", strokeColor: "#3b82f6",
             bg: "transparent",
@@ -713,8 +713,78 @@ export const useEditorStore = create<EditorState>()(temporal(
             id: null, key: createUuid(), type, composition,
             x, y, w: 200, h: 20,
             value: 50, label: "", orientation: "horizontal",
-            color: "#3b82f6", bg: "#e5e7eb",
+            color: "#3b82f6", backgroundColor: "#e5e7eb",
             textColor: "#ffffff", showPercentage: true,
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'button') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 120, h: 40,
+            label: "Кнопка", color: "#3b82f6", textColor: "#ffffff",
+            rx: 6, pressed: false, enabled: true, bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'toggle') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 40, h: 20,
+            checked: false, label: "",
+            color: "#22c55e", backgroundColor: "#9ca3af", textColor: "#e5e7eb", bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'slider') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 160, h: 20,
+            value: 50, min: 0, max: 100,
+            color: "#3b82f6", backgroundColor: "#d1d5db", bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'dropdown') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 160, h: 40,
+            value: "Выбор",
+            backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a", bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'input') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 160, h: 40,
+            value: "", placeholder: "Введите...",
+            backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a", bg: "transparent",
             parentId: scene?.id || null, parentKey: String(scene?.id) || null,
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
@@ -1117,6 +1187,10 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           set({
             scene: newScene,
+            // Новая сцена пуста: сбрасываем элементы предыдущей сцены, иначе они
+            // останутся на холсте с parentKey от СТАРОЙ сцены (неверная вложенность,
+            // а при сохранении окажутся отфильтрованы и потеряны).
+            elements: [],
             sceneList: [...get().sceneList, {id: newScene.id, name: newScene.name}],
             selectedIds: [],
             activeGroupKey: null,

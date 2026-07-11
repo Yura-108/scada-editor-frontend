@@ -13,6 +13,13 @@ interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];
 
+  // Какой rootPath сейчас загружен (для повторной синхронизации с бэкендом).
+  loadedRootPath: string[] | null;
+  // Данные базы каналов устарели и требуют пере-загрузки (например, после отмены действия в логах).
+  isStale: boolean;
+  markStale: () => void;
+  refreshIfStale: () => Promise<void>;
+
   contextMenu: ContextMenuType | null;
   editingDevices: Array<string>;
   startEditing: (keys: string[]) => Promise<void>;
@@ -43,12 +50,26 @@ export const useDeviceStore = create<DeviceStoreState>()(
     (set, get) => ({
       nodes: [],
       params: [],
+      loadedRootPath: null,
+      isStale: false,
       contextMenu: null,
       paramsTypes: [],
       deviceTemplateList: [],
       editingDevices: [],
       setContextMenu: (menu) => set({contextMenu: menu}),
       selectedDevice: null,
+      markStale: () => set({isStale: true}),
+      refreshIfStale: async () => {
+        const {isStale, loadedRootPath} = get();
+        // Грузим только если данные вообще были загружены и помечены устаревшими.
+        if (!isStale || !loadedRootPath?.length) return;
+        try {
+          await get().loadNodes(loadedRootPath); // loadNodes сам сбросит isStale: false
+        } catch (e) {
+          console.error('Не удалось обновить базу каналов после отмены:', e);
+          // isStale остаётся true — повторим при следующем входе
+        }
+      },
       getParamsTypes: async () => {
         const res = await fetch('/api/device/param/layout');
         const data: { descriptions: DeviceParamsLayoutType[] } = await res.json();
@@ -94,11 +115,24 @@ export const useDeviceStore = create<DeviceStoreState>()(
             };
           });
 
+          // Гарантируем, что выбранные проекты присутствуют в дереве, даже если они пустые —
+          // чтобы пустой проект всё равно отображался и в него можно было добавлять узлы.
+          const existingKeys = new Set(processedNodes.map((n) => n.key));
+          rootPath.forEach((projectKey) => {
+            if (existingKeys.has(projectKey)) return;
+            const parts = projectKey.split('.');
+            const title = parts.pop() || '';
+            const parentKey = parts.join('.');
+            processedNodes.push({key: projectKey, title, parentKey});
+          });
+
           const uniqueParams = Array.from(new Map(allParams.map(p => [p.key, p])).values());
 
           set({
             nodes: processedNodes,
             params: uniqueParams,
+            loadedRootPath: rootPath,
+            isStale: false,
           });
         } catch (error) {
           throw error;

@@ -16,6 +16,7 @@ import { AddComponentModal } from "@/components/ui/AddComponentModal";
 
 import { ShapeElement } from "./canvas/shapes/ShapeElement";
 import { GroupNode } from "./canvas/shapes/GroupNode";
+import { TextEditorOverlay } from "./canvas/shapes/TextEditorOverlay";
 import { CanvasContextMenu } from "./canvas/CanvasContextMenu";
 import { buildItemMenu } from "./canvas/buildItemMenu";
 import { useThemeColors } from "./canvas/useThemeColors";
@@ -40,6 +41,7 @@ export default function Canvas() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: CanvasMenuItem[] } | null>(null);
   const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean; elementKey: string | null }>({ isOpen: false, elementKey: null });
   const [addComponentState, setAddComponentState] = useState<{ isOpen: boolean; targetKey: string | null }>({ isOpen: false, targetKey: null });
+  const [editingTextKey, setEditingTextKey] = useState<string | null>(null);
 
   const { setNodeRef } = useDroppable({ id: "canvas" });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,7 @@ export default function Canvas() {
   const ctx: EditorRenderContext = {
     selectedIds, activeGroupKey, elementsMap, themeColors, snap,
     updateElementVisual, onElementClick: handleElementClick, enterGroup, resolveClickTarget, closeMenu,
+    editingTextKey, onStartTextEdit: setEditingTextKey,
   };
 
   return (
@@ -178,6 +181,14 @@ export default function Canvas() {
           </Layer>
         </Stage>
       </div>
+
+      {editingTextKey && (
+        <TextEditorOverlay
+          elementKey={editingTextKey}
+          elementsMap={elementsMap}
+          onClose={() => setEditingTextKey(null)}
+        />
+      )}
 
       <CanvasContextMenu menu={contextMenu} />
 

@@ -22,9 +22,9 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
       {status: 400}
     );
   }
-
+  console.log(projectId)
   const response = await fetch(
-    `${BACKEND_URL}/api/editor/components/scenes?project_id=${projectId}`,
+    `${BACKEND_URL}/api/editor/components/scenes?projectId=${projectId}`,
     {
       method: 'GET',
       headers: {

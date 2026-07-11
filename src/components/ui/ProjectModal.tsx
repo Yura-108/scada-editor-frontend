@@ -16,10 +16,22 @@ import {useState, useEffect} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 
-async function selectProjectAndOpenScenes(projectId: number, projectName: string) {
+async function selectProjectAndOpenScenes(
+  projectId: number,
+  projectName: string,
+  opts?: {skipSceneFetch?: boolean},
+) {
   const {setCurrentProject, loadSceneList} = useEditorStore.getState();
+  // setCurrentProject сбрасывает sceneList в [] — сцены прошлого проекта не должны утечь.
   setCurrentProject({id: projectId, name: projectName});
-  await loadSceneList(projectId);
+  // Для ТОЛЬКО ЧТО созданного проекта сцен ещё нет — не запрашиваем их с бэкенда.
+  // Иначе для «пустого» project_id бэкенд может вернуть чужие сцены, и модалка выбора
+  // сцены покажет схемы другого проекта (после выбора откроется «другой проект»).
+  // sceneList уже [] после setCurrentProject, поэтому откроется пустой список с
+  // предложением создать первую схему — что и делает проект непустым.
+  if (!opts?.skipSceneFetch) {
+    await loadSceneList(projectId);
+  }
   useModalStore.getState().closeModal();
   openChooseSceneModal();
 }
@@ -58,7 +70,8 @@ export function ProjectContent() {
       const created = await createProject(trimmed);
       if (!created) return;
       setNewName("");
-      await selectProjectAndOpenScenes(created.id, created.name);
+      // Новый проект ещё не содержит схем — пропускаем загрузку списка сцен.
+      await selectProjectAndOpenScenes(created.id, created.name, {skipSceneFetch: true});
     } finally {
       setIsCreating(false);
     }
@@ -70,7 +83,6 @@ export function ProjectContent() {
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         Выберите существующий проект или создайте новый. После выбора откроется список схем проекта.
       </Dialog.Description>
-
       {projectList.length > 0 ? (
         <Select.Root value={selectedValue} onValueChange={setSelectedValue}>
           <Select.Trigger className={selectTriggerClassName}>
@@ -139,7 +151,7 @@ export function ProjectContent() {
         <button
           onClick={() => void handleConfirm()}
           disabled={projectList.length === 0 || !selectedValue}
-          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-40"
+          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-40"
         >
           Выбрать
         </button>

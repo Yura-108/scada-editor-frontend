@@ -18,25 +18,27 @@ export function ProgressBarShapeElement({ el, isSelected, snap, onElementClick, 
   const value = Math.max(0, Math.min(100, Number(rendered.value) || 0));
   const isVertical = rendered.orientation === "vertical";
 
-  // For vertical: fill grows along height; for horizontal: along width
-  const trackLength = isVertical ? h : w;
-  const fillLength = (trackLength * value) / 100;
-  const thickness = isVertical ? w : h;
-
-  const trackColor = rendered.bg || (isDark ? "#3f3f46" : "#e5e7eb");
+  const trackColor = rendered.backgroundColor || rendered.bg || (isDark ? "#3f3f46" : "#e5e7eb");
   const fillColor = rendered.color || "#3b82f6";
   const textCol = rendered.textColor || "#ffffff";
+  const strokeCol = rendered.strokeColor;
   const showPct = rendered.showPercentage !== false;
-  const r = Math.min(4, Math.min(trackLength, thickness) / 2);
-  const fillFull = fillLength >= trackLength - 0.5;
 
-  // Position of the fill rect
-  const fillX = isVertical ? 0 : 0;
-  const fillY = isVertical ? (trackLength - fillLength) : 0;
-  const fillW = isVertical ? thickness : fillLength;
-  const fillH = isVertical ? fillLength : thickness;
+  const length = isVertical ? h : w;
+  const thickness = isVertical ? w : h;
+  const fillLength = (length * value) / 100;
+  const fillFull = fillLength >= length - 0.5;
+  const r = Math.min(4, thickness / 2);
 
-  // Corner radii: rounded only on the leading edge of the fill
+  const pct = `${Math.round(value)}%`;
+  const labelText = (rendered.label ?? "").toString().trim();
+  const displayText = showPct ? (labelText ? `${labelText} ${pct}` : pct) : labelText;
+
+  // Уменьшили размер шрифта и высоту бокса текста, чтобы текст гарантированно помещался внутри бара
+  const textBoxHeight = Math.max(8, Math.floor(thickness * 0.78));
+  const fontSize = Math.max(9, Math.floor(textBoxHeight * 0.78));
+  const showText = !!displayText && thickness >= 12;
+
   const fillRadius = fillFull
     ? r
     : isVertical
@@ -58,42 +60,49 @@ export function ProgressBarShapeElement({ el, isSelected, snap, onElementClick, 
           fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
         />
       )}
+
       {/* Трек (фон) */}
       <Rect x={0} y={0} width={w} height={h} fill={trackColor} cornerRadius={r} />
+
       {/* Заполнение */}
       {fillLength > 0 && (
+        isVertical ? (
+          <Rect x={0} y={h - fillLength} width={w} height={fillLength} fill={fillColor} cornerRadius={fillRadius} />
+        ) : (
+          <Rect x={0} y={0} width={fillLength} height={h} fill={fillColor} cornerRadius={fillRadius} />
+        )
+      )}
+
+      {/* Рамка */}
+      {strokeCol && (
         <Rect
-          x={fillX} y={fillY} width={fillW} height={fillH}
-          fill={fillColor}
-          cornerRadius={fillRadius}
+          x={0} y={0} width={w} height={h}
+          fill="transparent" stroke={strokeCol} strokeWidth={rendered.strokeWidth ?? 1}
+          cornerRadius={r} listening={false}
         />
       )}
-      {/* Процент */}
-      {showPct && (
-        isVertical ? (
-          // Vertical: rotate text 90deg around the track center
-          thickness >= 12 && (
-            <Text
-              x={-h / 2} y={thickness / 2 - (Math.max(10, Math.floor(thickness * 0.62)))}
-              width={h} height={thickness}
-              rotation={-90}
-              text={`${Math.round(value)}%`}
-              fontSize={Math.max(10, Math.floor(thickness * 0.62))}
-              fill={textCol} align="center" verticalAlign="middle"
-              listening={false}
-            />
-          )
-        ) : (
-          h >= 12 && (
-            <Text
-              x={0} y={0} width={w} height={h}
-              text={`${Math.round(value)}%`}
-              fontSize={Math.max(10, Math.floor(h * 0.62))}
-              fill={textCol} align="center" verticalAlign="middle"
-              listening={false}
-            />
-          )
-        )
+
+      {/* Текст */}
+      {showText && (
+        <Group
+          x={w / 2}
+          y={h / 2}
+          rotation={isVertical ? -90 : 0}
+          listening={false}
+        >
+          <Text
+            x={-length / 2}
+            y={-textBoxHeight / 2}           // ← изменено
+            width={length}
+            height={textBoxHeight}           // ← изменено (меньше толщины)
+            text={displayText}
+            fontSize={fontSize}
+            fill={textCol}
+            align="center"
+            verticalAlign="middle"
+            listening={false}
+          />
+        </Group>
       )}
     </Group>
   );

@@ -88,6 +88,15 @@ export type ElementType =
   | "text"
   | "group"
   | "custom"
+  | "rectangle"
+  | "path"
+  | "progress_bar"
+  | "checkbox"
+  | "button"
+  | "toggle"
+  | "slider"
+  | "dropdown"
+  | "input"
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
@@ -101,6 +110,10 @@ export interface LeafElement extends BaseCanvasElement {
   value?: number | string;
   unit?: string;
   precision?: number;
+  min?: number;                 // slider: минимум шкалы
+  max?: number;                 // slider: максимум шкалы
+  placeholder?: string;         // input: текст-подсказка
+  enabled?: boolean;            // button: активна ли кнопка
   level?: number;
   fluidColor?: string;
   strokeColor?: string;
@@ -111,6 +124,9 @@ export interface LeafElement extends BaseCanvasElement {
   fontSize?: number;
   bold?: boolean;
   text?: string;
+  /** Текст: true/undefined — ширина по содержимому (перенос только по Enter);
+   *  false — фиксированная ширина `w` с переносом по словам (после растягивания). */
+  autoWidth?: boolean;
   rx?: number;                  // скругление углов (border-radius)
   ry?: number;
   orientation?: "horizontal" | "vertical";  // для progress_bar

@@ -1,7 +1,7 @@
 import {ElementType, PropertySchema} from "@/types/editorElement.type";
 
 export const elementRegistry: Record<ElementType, { complex: boolean }> = {
-  button: { complex: true },
+  button: { complex: false },
   progress_bar: { complex: false },
   checkbox: { complex: false },
   text: { complex: false },
@@ -10,6 +10,11 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   rectangle: { complex: false },
   circle: { complex: false },
   line: { complex: false },
+  group: { complex: false },
+  toggle: { complex: false },
+  slider: { complex: false },
+  dropdown: { complex: false },
+  input: { complex: false },
   custom: {complex: true},
 };
 
@@ -316,45 +321,41 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     },
   ],
   button: [
-    {
-      key: "color",
-      label: "Button Color",
-      type: "color",
-      defaultValue: "#FF4D4F",
-    },
-    {
-      key: "label",
-      label: "Button Label",
-      type: "text",
-      defaultValue: "Btn",
-    },
-    {
-      key: "textColor",
-      label: "Text Color",
-      type: "color",
-      defaultValue: "#ffffff",
-    },
-    {
-      key: "size",
-      label: "Size (px)",
-      type: "number",
-      min: 30,
-      max: 120,
-      defaultValue: 50,
-    },
-    {
-      key: "pressed",
-      label: "Pressed State (preview)",
-      type: "boolean",
-      defaultValue: false,
-    },
-    {
-      key: "enabled",
-      label: "Enabled",
-      type: "boolean",
-      defaultValue: true,
-    },
+    { key: "color", label: "Цвет фона", type: "color", defaultValue: "#3b82f6" },
+    { key: "label", label: "Текст", type: "text", defaultValue: "Кнопка" },
+    { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#ffffff" },
+    { key: "rx", label: "Скругление углов", type: "number", min: 0, max: 40, defaultValue: 6 },
+    { key: "pressed", label: "Нажата (превью)", type: "boolean", defaultValue: false },
+    { key: "enabled", label: "Активна", type: "boolean", defaultValue: true },
   ],
+  toggle: [
+    { key: "checked", label: "Включен", type: "boolean", defaultValue: false },
+    { key: "label", label: "Подпись", type: "text", defaultValue: "" },
+    { key: "color", label: "Цвет (вкл)", type: "color", defaultValue: "#22c55e" },
+    { key: "backgroundColor", label: "Цвет (выкл)", type: "color", defaultValue: "#9ca3af" },
+    { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#e5e7eb" },
+  ],
+  slider: [
+    { key: "value", label: "Значение", type: "number", defaultValue: 50 },
+    { key: "min", label: "Минимум", type: "number", defaultValue: 0 },
+    { key: "max", label: "Максимум", type: "number", defaultValue: 100 },
+    { key: "color", label: "Цвет заполнения", type: "color", defaultValue: "#3b82f6" },
+    { key: "backgroundColor", label: "Цвет трека", type: "color", defaultValue: "#d1d5db" },
+  ],
+  dropdown: [
+    { key: "value", label: "Значение", type: "text", defaultValue: "Выбор" },
+    { key: "backgroundColor", label: "Цвет фона", type: "color", defaultValue: "#ffffff" },
+    { key: "strokeColor", label: "Цвет рамки", type: "color", defaultValue: "#9ca3af" },
+    { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#1a1a1a" },
+  ],
+  input: [
+    { key: "value", label: "Значение", type: "text", defaultValue: "" },
+    { key: "placeholder", label: "Подсказка", type: "text", defaultValue: "Введите..." },
+    { key: "backgroundColor", label: "Цвет фона", type: "color", defaultValue: "#ffffff" },
+    { key: "strokeColor", label: "Цвет рамки", type: "color", defaultValue: "#9ca3af" },
+    { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#1a1a1a" },
+  ],
+  group: [],
   custom: [
 
   ]
