@@ -945,9 +945,25 @@ export const useEditorStore = create<EditorState>()(temporal(
         // "Корневые" элементы — те, чей родитель не входит в буфер обмена
         const clipboardKeys = new Set(clipboard.map(el => el.key));
 
+        // Смещение вставки (вправо-вниз), кратно сетке. Позиция элемента может лежать
+        // как в базовых полях, так и в overrides состояния (перемещённые листья), а у
+        // линий — в x1/y1/x2/y2. Поэтому сдвигаем ВСЕ позиционные поля везде, где они есть,
+        // иначе часть элементов вставляется поверх оригинала.
+        const PASTE_OFFSET = 60;
+        const shiftPositions = (obj: Record<string, unknown>): Record<string, unknown> => {
+          const o = { ...obj };
+          for (const k of ['x', 'x1', 'x2'] as const) {
+            if (typeof o[k] === 'number') o[k] = (o[k] as number) + PASTE_OFFSET;
+          }
+          for (const k of ['y', 'y1', 'y2'] as const) {
+            if (typeof o[k] === 'number') o[k] = (o[k] as number) + PASTE_OFFSET;
+          }
+          return o;
+        };
+
         const newElements = clipboard.map(el => {
           const isRoot = !clipboardKeys.has(el.parentKey ?? '');
-          return {
+          const remapped = {
             ...el,
             id: null,
             key: keyMap[el.key],
@@ -959,10 +975,17 @@ export const useEditorStore = create<EditorState>()(temporal(
             composition: (el.composition ?? []).map(k => keyMap[k] ?? k),
             scripts: Array.isArray(el.scripts) ? el.scripts : [],
             bindings: Array.isArray(el.bindings) ? el.bindings : [],
-            // Смещаем только корневые элементы
-            x: isRoot ? el.x + 100 : el.x,
-            y: isRoot ? el.y + 100 : el.y,
           } as DiagramElement;
+
+          // Смещаем только корневые (дочерние двигаются вместе с родителем).
+          if (!isRoot) return remapped;
+
+          const shifted = shiftPositions(remapped as unknown as Record<string, unknown>) as unknown as DiagramElement;
+          shifted.states = (remapped.states ?? []).map(s => ({
+            ...s,
+            overrides: shiftPositions(s.overrides ?? {}),
+          }));
+          return shifted;
         });
 
         const newRootKeys = newElements
@@ -1607,6 +1630,11 @@ export const useEditorStore = create<EditorState>()(temporal(
       partialize: (state) => ({
         elements: state.elements,
       }),
+      // Пишем в историю ТОЛЬКО когда реально изменился массив elements.
+      // Иначе zundo фиксирует снапшот на каждый set() (камера/зум/пан, выделение и т.п.)
+      // и стек заполняется «пустыми» дублями — Ctrl+Z приходится жать много раз.
+      // Все мутации элементов создают новый массив, поэтому сравнения по ссылке достаточно.
+      equality: (a, b) => a.elements === b.elements,
     }
   )
 );

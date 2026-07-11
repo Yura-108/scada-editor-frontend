@@ -75,10 +75,14 @@ export default function EditorPage() {
               const localX = translatedRect.left - canvasRect.left;
               const localY = translatedRect.top - canvasRect.top;
 
+              // Проверяем попадание точки сброса в видимую область холста в ЭКРАННЫХ
+              // координатах (а не в мировых). Раньше проверялись мировые координаты [0,5000],
+              // из-за чего элементы, брошенные далеко от центра после панорамирования/зума,
+              // ошибочно отбрасывались. Мировые координаты для размещения не ограничиваем.
+              if (localX < 0 || localY < 0 || localX > canvasRect.width || localY > canvasRect.height) return;
+
               const worldX = (localX - camera.x) / camera.zoom;
               const worldY = (localY - camera.y) / camera.zoom;
-
-              if (worldX < 0 || worldY < 0 || worldX > 5000 || worldY > 5000) return;
 
               const type = active.data.current?.type as ElementType;
               const templateData = active.data.current?.template;
