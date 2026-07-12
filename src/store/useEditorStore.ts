@@ -51,6 +51,16 @@ type EditorState = {
   camera: {x: number, y: number, zoom: number};
   setCameraPan: (dx: number, dy: number) => void;
   setCameraZoom: (newZoom: number) => void;
+  setCamera: (x: number, y: number, zoom: number) => void;
+
+  /** Сдвиг всех верхнеуровневых выделенных на dx/dy (стрелки, мульти-drag). excludeKey — уже сдвинут сам. */
+  moveSelectedBy: (dx: number, dy: number, excludeKey?: string) => void;
+  /** Дубликат выделения со смещением (Ctrl+D); клоны попадают в корень сцены, как при вставке. */
+  duplicateSelected: () => void;
+  /** Выделить все элементы текущего скоупа (активная группа или корень сцены), Ctrl+A. */
+  selectAllInScope: () => void;
+  bringToFront: (key: string) => void;
+  sendToBack: (key: string) => void;
 
   setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
@@ -107,6 +117,53 @@ const shiftElementPositions = (el: DiagramElement, dx: number, dy: number): Diag
     overrides: shiftPositionKeys(s.overrides ?? {}, dx, dy),
   }));
   return shifted;
+};
+
+/**
+ * Клонирует набор элементов (с потомками) с ремапом ключей и смещением корней
+ * вправо-вниз. Корни клона реparent'ятся в корень сцены. Общая база для
+ * вставки (Ctrl+V) и дублирования (Ctrl+D).
+ */
+const cloneElementsWithOffset = (
+  source: DiagramElement[],
+  scene: SceneType | null,
+  offset = 60,
+): {newElements: DiagramElement[]; newRootKeys: string[]} => {
+  // Новые уникальные ключи для каждого элемента набора
+  const keyMap: Record<string, string> = {};
+  source.forEach(el => { keyMap[el.key] = createUuid(); });
+
+  // "Корневые" элементы — те, чей родитель не входит в набор
+  const sourceKeys = new Set(source.map(el => el.key));
+
+  const newElements = source.map(el => {
+    const isRoot = !sourceKeys.has(el.parentKey ?? '');
+    const remapped = {
+      ...el,
+      id: null,
+      key: keyMap[el.key],
+      parentKey: isRoot
+        ? String(scene?.id ?? '')
+        : (keyMap[el.parentKey!] ?? el.parentKey),
+      parentId: isRoot ? (scene?.id ?? null) : null,
+      children: (el.children ?? []).map(childKey => keyMap[childKey] ?? childKey),
+      composition: (el.composition ?? []).map(k => keyMap[k] ?? k),
+      scripts: Array.isArray(el.scripts) ? el.scripts : [],
+      bindings: Array.isArray(el.bindings) ? el.bindings : [],
+    } as DiagramElement;
+
+    // Смещаем только корневые (дочерние двигаются вместе с родителем);
+    // сдвигаются все позиционные поля — см. shiftElementPositions.
+    if (!isRoot) return remapped;
+
+    return shiftElementPositions(remapped, offset, offset);
+  });
+
+  const newRootKeys = newElements
+    .filter(el => el.parentKey === String(scene?.id ?? ''))
+    .map(el => el.key);
+
+  return {newElements, newRootKeys};
 };
 
 const isComplex = (el: DiagramElement) =>
@@ -356,6 +413,73 @@ export const useEditorStore = create<EditorState>()(temporal(
         set(state => ({
           camera: {...state.camera, zoom: newZoom}
         }))
+      },
+      setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
+      moveSelectedBy: (dx, dy, excludeKey) => {
+        if (!dx && !dy) return;
+        const {selectedIds, elements, scene} = get();
+        if (!selectedIds.length) return;
+
+        const byKey = new Map(elements.map(el => [el.key, el] as const));
+        const selectedSet = new Set(selectedIds);
+
+        // Двигаем только верхнеуровневые выделенные: элемент с выделенным предком
+        // едет вместе с ним, отдельный сдвиг задвоил бы перемещение.
+        const hasSelectedAncestor = (el: DiagramElement): boolean => {
+          let pk = el.parentKey;
+          while (pk) {
+            if (selectedSet.has(pk)) return true;
+            pk = byKey.get(pk)?.parentKey ?? null;
+          }
+          return false;
+        };
+
+        const keysToMove = selectedIds
+          .filter(k => k !== excludeKey)
+          .filter(k => {
+            const el = byKey.get(k);
+            return !!el && !hasSelectedAncestor(el);
+          });
+        if (!keysToMove.length) return;
+
+        const moveSet = new Set(keysToMove);
+        let next = elements.map(el => moveSet.has(el.key) ? shiftElementPositions(el, dx, dy) : el);
+        for (const k of keysToMove) {
+          next = recomputeAncestorBounds(next, k, scene?.id);
+        }
+        set({elements: next});
+      },
+      selectAllInScope: () => {
+        const {elements, scene, activeGroupKey} = get();
+        const scopeKey = activeGroupKey ?? String(scene?.id ?? "");
+        const keys = elements.filter(el => String(el.parentKey) === scopeKey).map(el => el.key);
+        if (keys.length) set({selectedIds: keys});
+      },
+      bringToFront: (key) => {
+        const {elements} = get();
+        const el = elements.find(e => e.key === key);
+        if (!el) return;
+        // Порядок отрисовки: верхний уровень — порядок плоского массива;
+        // внутри контейнера — порядок composition/children родителя. Двигаем в обоих местах.
+        const moveToEnd = (arr: string[]) => arr.includes(key) ? [...arr.filter(k => k !== key), key] : arr;
+        const next = [...elements.filter(e => e.key !== key), el].map(e =>
+          e.key === el.parentKey
+            ? {...e, children: moveToEnd(e.children), composition: moveToEnd(e.composition ?? [])} as DiagramElement
+            : e,
+        );
+        set({elements: next});
+      },
+      sendToBack: (key) => {
+        const {elements} = get();
+        const el = elements.find(e => e.key === key);
+        if (!el) return;
+        const moveToStart = (arr: string[]) => arr.includes(key) ? [key, ...arr.filter(k => k !== key)] : arr;
+        const next = [el, ...elements.filter(e => e.key !== key)].map(e =>
+          e.key === el.parentKey
+            ? {...e, children: moveToStart(e.children), composition: moveToStart(e.composition ?? [])} as DiagramElement
+            : e,
+        );
+        set({elements: next});
       },
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
@@ -1017,42 +1141,28 @@ export const useEditorStore = create<EditorState>()(temporal(
         const { clipboard, scene } = get();
         if (!clipboard || !clipboard.length) return;
 
-        // Новые уникальные ключи для каждого элемента буфера
-        const keyMap: Record<string, string> = {};
-        clipboard.forEach(el => { keyMap[el.key] = createUuid(); });
+        const {newElements, newRootKeys} = cloneElementsWithOffset(clipboard, scene);
 
-        // "Корневые" элементы — те, чей родитель не входит в буфер обмена
-        const clipboardKeys = new Set(clipboard.map(el => el.key));
+        set(state => ({
+          elements: [...state.elements, ...newElements],
+          selectedIds: newRootKeys,
+        }));
+      },
+      duplicateSelected: () => {
+        const { selectedIds, elements, scene } = get();
+        if (!selectedIds.length) return;
 
-        // Смещение вставки (вправо-вниз), кратно сетке; сдвиг всех позиционных полей —
-        // см. shiftElementPositions (иначе часть элементов вставляется поверх оригинала).
-        const PASTE_OFFSET = 60;
+        // Выделенные + все их потомки (как в copySelectedElement), но без буфера обмена.
+        const allKeys = new Set<string>();
+        for (const key of selectedIds) {
+          allKeys.add(key);
+          getDescendantKeys(key, elements).forEach(k => allKeys.add(k));
+        }
 
-        const newElements = clipboard.map(el => {
-          const isRoot = !clipboardKeys.has(el.parentKey ?? '');
-          const remapped = {
-            ...el,
-            id: null,
-            key: keyMap[el.key],
-            parentKey: isRoot
-              ? String(scene?.id ?? '')
-              : (keyMap[el.parentKey!] ?? el.parentKey),
-            parentId: isRoot ? (scene?.id ?? null) : null,
-            children: (el.children ?? []).map(childKey => keyMap[childKey] ?? childKey),
-            composition: (el.composition ?? []).map(k => keyMap[k] ?? k),
-            scripts: Array.isArray(el.scripts) ? el.scripts : [],
-            bindings: Array.isArray(el.bindings) ? el.bindings : [],
-          } as DiagramElement;
-
-          // Смещаем только корневые (дочерние двигаются вместе с родителем).
-          if (!isRoot) return remapped;
-
-          return shiftElementPositions(remapped, PASTE_OFFSET, PASTE_OFFSET);
-        });
-
-        const newRootKeys = newElements
-          .filter(el => el.parentKey === String(scene?.id ?? ''))
-          .map(el => el.key);
+        const {newElements, newRootKeys} = cloneElementsWithOffset(
+          elements.filter(el => allKeys.has(el.key)),
+          scene,
+        );
 
         set(state => ({
           elements: [...state.elements, ...newElements],

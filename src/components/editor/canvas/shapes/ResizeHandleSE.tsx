@@ -18,6 +18,7 @@ export function ResizeHandleSE({ w, h, snap, onResize, lockH }: Props) {
   const hy = lockH ? h / 2 : h;
   return (
     <Rect
+      name="resize-handle"
       x={w}
       y={hy}
       width={8}

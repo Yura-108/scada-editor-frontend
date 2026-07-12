@@ -107,6 +107,7 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
       {/* Ручка растягивания ширины (как в Figma — тянем правый край, текст переносится по словам). */}
       {isSelected && !isEditing && (
         <Rect
+          name="resize-handle"
           x={boxW}
           y={boxH / 2}
           width={8}

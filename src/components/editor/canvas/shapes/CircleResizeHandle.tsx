@@ -21,6 +21,7 @@ export function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual
   return (
     <Circle
       ref={handleRef}
+      name="resize-handle"
       x={cx + r}
       y={cy}
       radius={8}

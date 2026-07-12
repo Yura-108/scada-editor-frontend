@@ -311,6 +311,46 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {/* Визуальные параметры */}
         {activeTab === "visual" && (
           <div className="space-y-5">
+            {/* Геометрия: точное позиционирование (координаты локальны родителю).
+                У линии позиция кодируется концами x1/y1/x2/y2, а не x/y/w/h. */}
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 mb-2 uppercase tracking-wider">
+                Геометрия
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                {(element.type === "line"
+                  ? [
+                      {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
+                      {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
+                    ]
+                  : [
+                      {key: "x", label: "X"}, {key: "y", label: "Y"},
+                      {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
+                    ]
+                ).map((field) => (
+                  <div key={field.key} className="space-y-1.5">
+                    <label
+                      htmlFor={`geom-${field.key}`}
+                      className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
+                    >
+                      {field.label}
+                    </label>
+                    <input
+                      id={`geom-${field.key}`}
+                      type="number"
+                      className={baseInputClasses}
+                      value={getNumberValue(renderedElementValues[field.key])}
+                      step={1}
+                      onChange={(e) =>
+                        updateElementVisual(element.key, {[field.key]: Number(e.target.value) || 0})
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700 mt-5" />
+            </div>
+
             {/* Обычные параметры - два в ряд */}
             <div className="grid grid-cols-2 gap-4">
               {schema

@@ -81,8 +81,29 @@ leaves whose live position sits in overrides.
   `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`.
 - Handles: `Anchor.tsx` (vertex/resize, needs `themeColors`), `CircleResizeHandle.tsx`,
   `ResizeHandleSE.tsx` (shared corner/right-edge box handle, self-contained blue square).
-- Stage interaction/pan/zoom/marquee: `canvas/hooks/useStageInteractions.ts`. Hotkeys:
-  `canvas/hooks/useEditorHotkeys.ts` (Esc/Delete/Ctrl+C/V — **already ignores input/textarea**).
+- Stage interaction/pan/zoom/marquee: `canvas/hooks/useStageInteractions.ts` — marquee is
+  **scoped** to the current level (`activeGroupKey` ?? scene root), so it never selects a group
+  and its children together. Hotkeys: `canvas/hooks/useEditorHotkeys.ts` (Esc / Delete /
+  Ctrl+C/V/D/A / arrow-nudge ±GRID, Shift=±1px — **ignores input/textarea/contentEditable**);
+  Ctrl+Z/Y live in `EditorClient.tsx`.
+- **Multi-drag** lives at the Stage level in `Canvas.tsx` (Konva drag events bubble):
+  a drag session starts when the resolved target is one of ≥2 selected keys; other top-level
+  selected nodes are moved **imperatively** during dragmove and committed via store
+  `moveSelectedBy(dx, dy, excludeKey)` on dragend (their Konva positions are restored first —
+  line/circle groups have no controlled x/y, React wouldn't reset them). Every resize/vertex
+  handle MUST carry `name="resize-handle"` — that's what excludes it from starting a session.
+- **Z-order**: render order = flat-array order (top level) + parent `composition`/`children`
+  order (nested). `bringToFront`/`sendToBack` reorder both; context-menu items in
+  `buildItemMenu.ts`. Note composition always renders below children inside a component.
+- Zoom UI: `canvas/ZoomControls.tsx` (±20% around viewport center, fit-to-content, 100%);
+  absolute camera setter `setCamera(x, y, zoom)` in the store. Zoom clamp [0.2, 3].
+- **Hover highlight** (Figma-style "what click will select"): Stage `onMouseOver` resolves the
+  target via `resolveClickTarget` → `hoveredKey` (Canvas state); drawn as ONE overlay `Rect`
+  in the Layer (group frame for groups, rendered bounds for leaves). Deliberately NOT passed
+  through ctx/shape props — that would re-render the whole memoized scene on every mouse move.
+  Any future per-element hover effect must follow the same single-overlay pattern.
+- Properties panel has a «Геометрия» block: numeric X/Y/W/H (lines: X1/Y1/X2/Y2), writes via
+  `updateElementVisual` (coords are parent-local).
 - Pure geometry helpers live in `src/lib/editor/`.
 
 ## Snapping (GRID = 20)

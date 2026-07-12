@@ -148,7 +148,12 @@ export function useStageInteractions({
     const sw = Math.abs(selectionRect.width);
     const sh = Math.abs(selectionRect.height);
 
+    // Кандидаты — только текущий скоуп (активная группа или корень сцены):
+    // иначе рамка выбирала бы и группу, и её детей одновременно.
+    const scopeKey = activeGroupKey ?? String(useEditorStore.getState().scene?.id ?? "");
+
     const selected = elements
+      .filter(el => String(el.parentKey) === scopeKey)
       .filter(el => isIntersecting(
         { x: sx, y: sy, width: sw, height: sh },
         getSelectionBounds(el, elementsMap),

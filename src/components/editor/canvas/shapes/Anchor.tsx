@@ -16,6 +16,7 @@ interface AnchorProps {
 export function Anchor({ x, y, onDragMove, themeColors }: AnchorProps) {
   return (
     <Circle
+      name="resize-handle"
       x={x}
       y={y}
       radius={5}

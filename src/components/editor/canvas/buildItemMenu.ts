@@ -42,6 +42,8 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
 
   const items: (CanvasMenuItem | null)[] = [
     { label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id },
+    { label: "На передний план", onClick: () => { useEditorStore.getState().bringToFront(el.key); closeMenu(); } },
+    { label: "На задний план", onClick: () => { useEditorStore.getState().sendToBack(el.key); closeMenu(); } },
     ...editorElementMenuItems.map(item => ({
       label: item.label,
       onClick: () => {
