@@ -83,6 +83,32 @@ type EditorState = {
 
 const isGroup = (el: DiagramElement) => el.type === "group";
 
+/**
+ * Сдвигает все позиционные поля (x, y, x1, y1, x2, y2) объекта на dx/dy.
+ * Позиция элемента может лежать как в базовых полях, так и в overrides состояния
+ * (перемещённые листья), а у линий — в x1/y1/x2/y2. Поэтому сдвигаем везде, где есть.
+ */
+const shiftPositionKeys = (obj: Record<string, unknown>, dx: number, dy: number): Record<string, unknown> => {
+  const o = {...obj};
+  for (const k of ['x', 'x1', 'x2'] as const) {
+    if (typeof o[k] === 'number') o[k] = (o[k] as number) + dx;
+  }
+  for (const k of ['y', 'y1', 'y2'] as const) {
+    if (typeof o[k] === 'number') o[k] = (o[k] as number) + dy;
+  }
+  return o;
+};
+
+/** Сдвигает элемент на dx/dy: базовые поля + позиционные ключи в overrides всех состояний. */
+const shiftElementPositions = (el: DiagramElement, dx: number, dy: number): DiagramElement => {
+  const shifted = shiftPositionKeys(el as unknown as Record<string, unknown>, dx, dy) as unknown as DiagramElement;
+  shifted.states = (el.states ?? []).map(s => ({
+    ...s,
+    overrides: shiftPositionKeys(s.overrides ?? {}, dx, dy),
+  }));
+  return shifted;
+};
+
 const isComplex = (el: DiagramElement) =>
   elementRegistry[el.type as ElementType]?.complex ?? false;
 
@@ -152,12 +178,16 @@ const recomputeAncestorBounds = (
   const sceneIdStr = String(sceneId ?? "");
   const totalPadding = GROUP_PADDING + RECOMPUTE_EXTRA_PADDING;
 
+  // Индекс key→element: функция сидит на горячем пути drag'а, линейные find'ы
+  // в циклах давали O(n²) на каждый сдвиг. Пересобираем после каждого map ниже.
+  let byKey = new Map(result.map(el => [el.key, el] as const));
+
   // Собираем цепочку групп-предков снизу вверх
   const ancestorGroupKeys: string[] = [];
-  const movedEl = result.find(el => el.key === movedKey);
+  const movedEl = byKey.get(movedKey);
   let parentKey = movedEl?.parentKey ?? null;
   while (parentKey && parentKey !== sceneIdStr) {
-    const parent = result.find(el => el.key === parentKey);
+    const parent = byKey.get(parentKey);
     if (!parent || parent.type !== "group") break;
     ancestorGroupKeys.push(parent.key);
     parentKey = parent.parentKey ?? null;
@@ -165,7 +195,7 @@ const recomputeAncestorBounds = (
 
   // Пересчитываем от самого глубокого предка к корневому
   for (const groupKey of ancestorGroupKeys) {
-    const group = result.find(el => el.key === groupKey);
+    const group = byKey.get(groupKey);
     if (!group || group.type !== "group") continue;
 
     const childKeySet = new Set([...group.children, ...(group.composition ?? [])]);
@@ -174,7 +204,7 @@ const recomputeAncestorBounds = (
     // Считаем абсолютные границы всех детей в актуальном state (result уже обновлён)
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const childKey of childKeySet) {
-      const child = result.find(el => el.key === childKey);
+      const child = byKey.get(childKey);
       if (!child) continue;
       const b = getElementBoundsRendered(child, result);
       minX = Math.min(minX, b.minX);
@@ -233,6 +263,9 @@ const recomputeAncestorBounds = (
 
       return el;
     });
+
+    // result пересобран — обновляем индекс для следующего предка в цепочке.
+    byKey = new Map(result.map(el => [el.key, el] as const));
   }
 
   return result;
@@ -241,10 +274,11 @@ const recomputeAncestorBounds = (
 const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
   const result = new Set<string>();
   const queue = [rootKey];
+  const byKey = new Map(elements.map(el => [el.key, el] as const));
 
   while (queue.length) {
     const currentKey = queue.shift()!;
-    const current = elements.find(el => el.key === currentKey);
+    const current = byKey.get(currentKey);
 
     if (!current) continue;
 
@@ -335,9 +369,9 @@ export const useEditorStore = create<EditorState>()(temporal(
           const existingRootState = root.states.find(s => s.name === stateName);
           rootStateId = existingRootState?.id ?? createUuid();
 
-          const keysToUpdate = root.type === "group"
-            ? [elementKey, ...getDescendantKeys(elementKey, state.elements)]
-            : [elementKey];
+          // Потомки (children + composition) есть не только у групп, но и у complex-компонентов
+          // (button/custom); для листа getDescendantKeys вернёт пустой список.
+          const keysToUpdate = [elementKey, ...getDescendantKeys(elementKey, state.elements)];
 
           return {
             elements: state.elements.map(el => keysToUpdate.includes(el.key)
@@ -369,10 +403,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             return nextMap;
           }
 
-          if (root.type !== "group") {
-            return nextMap;
-          }
-
+          // Каскад по имени состояния — для любого контейнера (группа или complex-компонент);
+          // у листа потомков нет, цикл ниже просто не выполнится.
           const descendantKeys = getDescendantKeys(elementKey, state.elements);
 
           for (const childKey of descendantKeys) {
@@ -837,6 +869,10 @@ export const useEditorStore = create<EditorState>()(temporal(
 
           const newProperty: PropertyCreateDto = await res.json();
 
+          // Свойство уже создано на сервере — не пишем эту мутацию в историю undo,
+          // иначе Ctrl+Z уберёт его только на клиенте (рассинхрон с бэкендом).
+          const temporal = useEditorStore.temporal.getState();
+          temporal.pause();
           set(state => ({
             elements: state.elements.map(el =>
               el.id === payload.component_id
@@ -844,6 +880,7 @@ export const useEditorStore = create<EditorState>()(temporal(
                 : el
             )
           }));
+          temporal.resume();
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка при добавлении свойства"));
@@ -863,6 +900,9 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const updatedProperty: PropertyCreateDto = await res.json();
 
+        // Серверная мутация — вне истории undo (см. addTags).
+        const temporal = useEditorStore.temporal.getState();
+        temporal.pause();
         set(state => ({
           elements: state.elements.map(el =>
             el.id === payload.component_id
@@ -875,9 +915,10 @@ export const useEditorStore = create<EditorState>()(temporal(
               : el
           )
         }));
+        temporal.resume();
       },
       deleteSelectedElement: async () => {
-        const { selectedIds, elements } = get();
+        const { selectedIds, elements, activeGroupKey, scene } = get();
         if (!selectedIds.length) return;
 
         // Каскад: удаляем выделенные + всех их потомков (children и composition, любой глубины).
@@ -891,13 +932,48 @@ export const useEditorStore = create<EditorState>()(temporal(
           .map(el => el.id)
           .filter((id): id is number => id !== null && id !== undefined);
 
+        // Снапшот для отката, если сервер не сможет удалить.
+        const prevElements = elements;
+        const prevStateMap = get().currentComponentStateByElementKey;
+
+        // Уцелевшие родители удаляемых: чистим их children/composition от висячих ключей
+        // и пересчитываем рамки (иначе рамка остаётся растянутой под удалённое).
+        const parentKeysToClean = new Set(
+          elements
+            .filter(el => idsToDelete.has(el.key) && el.parentKey && !idsToDelete.has(el.parentKey))
+            .map(el => el.parentKey!)
+        );
+
+        let nextElements = elements
+          .filter(el => !idsToDelete.has(el.key))
+          .map(el =>
+            parentKeysToClean.has(el.key)
+              ? {
+                  ...el,
+                  children: el.children.filter(k => !idsToDelete.has(k)),
+                  composition: (el.composition ?? []).filter(k => !idsToDelete.has(k)),
+                } as DiagramElement
+              : el
+          );
+
+        for (const parentKey of parentKeysToClean) {
+          const parent = nextElements.find(el => el.key === parentKey);
+          if (!parent || parent.type !== "group") continue;
+          const firstMember = [...(parent.children ?? []), ...(parent.composition ?? [])][0];
+          if (firstMember) {
+            nextElements = recomputeAncestorBounds(nextElements, firstMember, scene?.id);
+          }
+        }
+
         // Локально удаляем выделенные элементы (даже если у них не было id)
         set({
-          elements: elements.filter(el => !idsToDelete.has(el.key)),
+          elements: nextElements,
           selectedIds: [],
           currentComponentStateByElementKey: Object.fromEntries(
-            Object.entries(get().currentComponentStateByElementKey).filter(([elementKey]) => !idsToDelete.has(elementKey))
+            Object.entries(prevStateMap).filter(([elementKey]) => !idsToDelete.has(elementKey))
           ),
+          // Если удалили группу, внутри которой находились — выходим из неё.
+          ...(activeGroupKey && idsToDelete.has(activeGroupKey) ? {activeGroupKey: null} : {}),
         });
 
         // Отправляем DELETE на сервер только для тех элементов, у которых есть id
@@ -917,7 +993,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           }
         } catch (err) {
           console.error('Ошибка при удалении:', err);
-          toast.error('Не удалось удалить элементы на сервере. Попробуйте снова.');
+          // Откат: сервер не удалил — возвращаем элементы, иначе после автосейва
+          // неудавшееся удаление станет «постоянным» (тихий рассинхрон клиент/сервер).
+          set({elements: prevElements, currentComponentStateByElementKey: prevStateMap});
+          toast.error('Не удалось удалить элементы на сервере. Изменения отменены.');
         }
       },
       copySelectedElement: () => {
@@ -945,21 +1024,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         // "Корневые" элементы — те, чей родитель не входит в буфер обмена
         const clipboardKeys = new Set(clipboard.map(el => el.key));
 
-        // Смещение вставки (вправо-вниз), кратно сетке. Позиция элемента может лежать
-        // как в базовых полях, так и в overrides состояния (перемещённые листья), а у
-        // линий — в x1/y1/x2/y2. Поэтому сдвигаем ВСЕ позиционные поля везде, где они есть,
-        // иначе часть элементов вставляется поверх оригинала.
+        // Смещение вставки (вправо-вниз), кратно сетке; сдвиг всех позиционных полей —
+        // см. shiftElementPositions (иначе часть элементов вставляется поверх оригинала).
         const PASTE_OFFSET = 60;
-        const shiftPositions = (obj: Record<string, unknown>): Record<string, unknown> => {
-          const o = { ...obj };
-          for (const k of ['x', 'x1', 'x2'] as const) {
-            if (typeof o[k] === 'number') o[k] = (o[k] as number) + PASTE_OFFSET;
-          }
-          for (const k of ['y', 'y1', 'y2'] as const) {
-            if (typeof o[k] === 'number') o[k] = (o[k] as number) + PASTE_OFFSET;
-          }
-          return o;
-        };
 
         const newElements = clipboard.map(el => {
           const isRoot = !clipboardKeys.has(el.parentKey ?? '');
@@ -980,12 +1047,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           // Смещаем только корневые (дочерние двигаются вместе с родителем).
           if (!isRoot) return remapped;
 
-          const shifted = shiftPositions(remapped as unknown as Record<string, unknown>) as unknown as DiagramElement;
-          shifted.states = (remapped.states ?? []).map(s => ({
-            ...s,
-            overrides: shiftPositions(s.overrides ?? {}),
-          }));
-          return shifted;
+          return shiftElementPositions(remapped, PASTE_OFFSET, PASTE_OFFSET);
         });
 
         const newRootKeys = newElements
@@ -1134,17 +1196,21 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error(getErrorMessage(err, "Ошибка создания проекта"));
         }
       },
-      setCurrentProject: (project) => set(() => ({
-        currentProject: project,
-        // Иерархия Проект -> Схема -> Элементы: при смене/снятии проекта
-        // обязаны сбросить всё, что привязано к предыдущему проекту.
-        scene: null,
-        elements: [],
-        sceneList: [],
-        selectedIds: [],
-        activeGroupKey: null,
-        currentComponentStateByElementKey: {},
-      })),
+      setCurrentProject: (project) => {
+        set(() => ({
+          currentProject: project,
+          // Иерархия Проект -> Схема -> Элементы: при смене/снятии проекта
+          // обязаны сбросить всё, что привязано к предыдущему проекту.
+          scene: null,
+          elements: [],
+          sceneList: [],
+          selectedIds: [],
+          activeGroupKey: null,
+          currentComponentStateByElementKey: {},
+        }));
+        // История undo принадлежала прошлому проекту — иначе Ctrl+Z «воскресит» его элементы.
+        useEditorStore.temporal.getState().clear();
+      },
       loadScene: async (id) => {
         try {
           const {currentProject} = get();
@@ -1178,6 +1244,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
           // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
           set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+        } finally {
+          // Загрузка сцены — новая точка отсчёта: чистим историю undo, иначе Ctrl+Z
+          // «воскресит» элементы прошлой сцены (с чужим parentKey и id:null → дубли на сервере).
+          useEditorStore.temporal.getState().clear();
         }
       },
       createScene: async (name?: string) => {
@@ -1219,6 +1289,9 @@ export const useEditorStore = create<EditorState>()(temporal(
             activeGroupKey: null,
             currentComponentStateByElementKey: {},
           });
+
+          // Новая сцена — новая точка отсчёта для undo.
+          useEditorStore.temporal.getState().clear();
 
           toast.success("Сцена создана");
           return {id: newScene.id, name: newScene.name};
@@ -1281,20 +1354,34 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (simple.length > 0 && complex.length === 0 && groups.length === 1) {
           const targetGroup = groups[0] as GroupElement;
           const simpleKeys = simple.map(s => s.key);
-          const allChildKeys = [
-            ...new Set([...(targetGroup.children ?? []), ...simpleKeys]),
+          // ВАЖНО: включаем composition (запечённые примитивы компонента) в состав —
+          // иначе рамка считается без них, а их локальные координаты не компенсируются
+          // при сдвиге origin группы.
+          const allMemberKeys = [
+            ...new Set([
+              ...(targetGroup.children ?? []),
+              ...(targetGroup.composition ?? []),
+              ...simpleKeys,
+            ]),
           ];
 
-          const boundsByKey = snapshotBounds(elements, allChildKeys);
+          const boundsByKey = snapshotBounds(elements, allMemberKeys);
 
-          const updatedElements = layoutGroupFromBounds(
+          let updatedElements = layoutGroupFromBounds(
             elements,
             targetGroup.key,
-            allChildKeys,
+            allMemberKeys,
             boundsByKey,
             GROUP_PADDING,
             scene?.id,
           );
+
+          // layoutGroupFromBounds кладёт ВСЕХ членов в children. Для компонента
+          // переразбиваем состав по роли: примитивы → composition, компоненты → children,
+          // иначе примитивы сериализуются как вложенные компоненты (порча данных).
+          if (isComponentEl(targetGroup)) {
+            updatedElements = resplitContainer(updatedElements, targetGroup.key, allMemberKeys);
+          }
 
           set({
             elements: updatedElements,
@@ -1307,7 +1394,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         const newGroupId = createUuid();
         const selectedKeys = topLevelSelected.map(el => el.key);
         const parentKeys = [...new Set(topLevelSelected.map(el => el.parentKey).filter(Boolean))];
-        const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : String(scene?.id) || null;
+        // Без сцены фолбэк — null (а не литерал "undefined" от String(undefined)).
+        const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : (scene ? String(scene.id) : null);
         const commonParentElement = commonParentKey
           ? elements.find(el => el.key === commonParentKey && el.type === "group") as GroupElement | undefined
           : undefined;
@@ -1374,17 +1462,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           }],
         };
 
-        console.log(
-          updatedElements
-            .filter(el => selectedKeys.includes(el.key))
-            .map(el => ({
-              key: el.key,
-              parentKey: el.parentKey,
-              x: el.x,
-              y: el.y,
-            }))
-        );
-
         set({
           elements: [...updatedElements, group],
           selectedIds: [newGroupId],
@@ -1417,41 +1494,52 @@ export const useEditorStore = create<EditorState>()(temporal(
             x: groupX,
             y: groupY,
             parentKey: grandParentKey,
-            children: groupChildrenIds
           } = group;
 
-          newlySelectedIds.push(...groupChildrenIds);
+          // Члены группы — и children (компоненты/узлы), и composition (примитивы компонента).
+          const memberKeys = [...(group.children ?? []), ...(group.composition ?? [])];
+          newlySelectedIds.push(...memberKeys);
 
-          // Шаг А: Обновляем детей разбиваемой группы
+          // Шаг А: Обновляем ВСЕХ членов разбиваемой группы (по parentKey — покрывает
+          // и children, и composition). Прибавляем координаты исчезающей группы, причём
+          // сдвигаем и базовые поля, и позиционные ключи в overrides состояний:
+          // у перемещённого внутри группы листа актуальная позиция живёт в overrides,
+          // и сдвиг только базового x/y «телепортирует» его на старое место.
           updatedElements = updatedElements.map((el) => {
             if (el.parentKey === groupId) {
               return {
-                ...el,
-                // Секрет плавности: прибавляем относительные координаты исчезающей группы
-                // к координатам её ребенка. Визуально он останется на том же пикселе.
-                x: el.x + groupX,
-                y: el.y + groupY,
-                // Ребенок переходит под крыло "дедушки" (если группа сама была внутри группы)
+                ...shiftElementPositions(el, groupX, groupY),
+                // Член переходит под крыло "дедушки" (если группа сама была внутри группы)
                 parentKey: grandParentKey,
               };
             }
             return el;
           });
 
-          // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки")
+          // Шаг Б: Если удаляемая группа лежала ВНУТРИ другой группы ("дедушки") —
+          // вливаем членов в прародителя с учётом роли (примитивы → composition,
+          // компоненты → children), иначе примитивы-члены осиротеют.
           if (grandParentKey) {
-            updatedElements = updatedElements.map((el) => {
-              if (el.key === grandParentKey && el.type === "group") {
-                return {
-                  ...el,
-                  children: [
-                    ...el.children.filter((key) => key !== groupId), // убираем ID удаленной группы
-                    ...groupChildrenIds,                           // добавляем ID её "выпавших" детей
-                  ],
-                };
+            const grandParent = updatedElements.find(
+              (el) => el.key === grandParentKey && el.type === "group",
+            );
+            if (grandParent) {
+              const mergedMemberKeys = [
+                ...grandParent.children.filter((key) => key !== groupId),
+                ...(grandParent.composition ?? []).filter((key) => key !== groupId),
+                ...memberKeys,
+              ];
+              if (isComponentEl(grandParent)) {
+                updatedElements = resplitContainer(updatedElements, grandParentKey, mergedMemberKeys);
+              } else {
+                // «Глупая» группа держит всё в children.
+                updatedElements = updatedElements.map((el) =>
+                  el.key === grandParentKey
+                    ? {...el, children: mergedMemberKeys, composition: []}
+                    : el,
+                );
               }
-              return el;
-            });
+            }
           }
         });
 

@@ -22,7 +22,6 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
       {status: 400}
     );
   }
-  console.log(projectId)
   const response = await fetch(
     `${BACKEND_URL}/api/editor/components/scenes?projectId=${projectId}`,
     {
@@ -68,6 +67,17 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     },
     body: JSON.stringify(body),
   });
+
+  // Пробрасываем реальный статус бэкенда — иначе клиент получает 201 с мусором
+  // вместо сцены и store указывает на несуществующую сцену.
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Неизвестная ошибка");
+
+    return NextResponse.json(
+      {error: `Ошибка ${response.status}: ${errorText}`},
+      {status: response.status}
+    );
+  }
 
   const scene = await response.json().catch(() => null);
 

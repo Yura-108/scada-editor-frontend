@@ -58,4 +58,11 @@ export interface EditorRenderContext {
   editingTextKey: string | null;
   /** Запускает инлайн-редактирование текста по двойному клику. */
   onStartTextEdit: (key: string) => void;
+  /**
+   * Активное состояние по ключу элемента. Фигуры читают состояние через
+   * getRenderedElement (getState()), но это поле ОБЯЗАНО быть в контексте:
+   * оно меняет identity ctx при переключении состояния и «пробивает» React.memo
+   * фигур — иначе смена состояния не перерисуется.
+   */
+  currentComponentStateByElementKey: Record<string, string>;
 }

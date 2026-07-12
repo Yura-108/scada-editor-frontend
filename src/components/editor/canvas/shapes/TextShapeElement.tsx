@@ -123,7 +123,10 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
             // Хендл держим на правом крае по центру высоты — «щёлкающая» обратная связь по сетке.
             e.target.position({ x: nw, y: boxH / 2 });
             // Растягивание => переход в режим фиксированной ширины (перенос по словам).
-            updateElementVisual(el.key, { w: nw, autoWidth: false });
+            // Пишем в стор только при смене снапнутого значения — не на каждый пиксель.
+            if (nw !== rendered.w || rendered.autoWidth !== false) {
+              updateElementVisual(el.key, { w: nw, autoWidth: false });
+            }
           }}
           onDblClick={(e) => {
             // Двойной клик по хендлу — вернуть ширину «по содержимому» (как в Figma).

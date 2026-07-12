@@ -34,6 +34,7 @@ export default function Canvas() {
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
+    canvasRect, currentComponentStateByElementKey,
   } = useEditorStore();
 
   const { resolvedTheme, themeColors } = useThemeColors();
@@ -112,11 +113,20 @@ export default function Canvas() {
     });
   };
 
-  const ctx: EditorRenderContext = {
+  // Стабильный ctx (useMemo) — ключ к мемоизации фигур: пан/зум/маркиз/меню не меняют
+  // его identity, и React.memo пропускает ре-рендер всей сцены. currentComponentStateByElementKey
+  // в deps обязателен: переключение состояния меняет ctx и «пробивает» memo (getRenderedElement
+  // читает состояние нереактивно через getState()).
+  const ctx: EditorRenderContext = useMemo(() => ({
     selectedIds, activeGroupKey, elementsMap, themeColors, snap,
     updateElementVisual, onElementClick: handleElementClick, enterGroup, resolveClickTarget, closeMenu,
     editingTextKey, onStartTextEdit: setEditingTextKey,
-  };
+    currentComponentStateByElementKey,
+  }), [
+    selectedIds, activeGroupKey, elementsMap, themeColors,
+    updateElementVisual, handleElementClick, enterGroup, resolveClickTarget, closeMenu,
+    editingTextKey, currentComponentStateByElementKey,
+  ]);
 
   return (
     <div
@@ -127,8 +137,12 @@ export default function Canvas() {
       <div ref={setNodeRef} style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
         <Stage
           ref={stageRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          // Stage — строго под размер видимой области (canvasRect), НЕ 5000×5000:
+          // Konva аллоцирует канвасы width×height×DPR на слой (+hit-канвас) — фикс. 5000×5000
+          // съедал сотни МБ и превышал лимит canvas в Safari. «Мир» 5000×5000 остаётся
+          // виртуальным — его даёт трансформ камеры (x/y/scale).
+          width={canvasRect?.width ?? 800}
+          height={canvasRect?.height ?? 600}
           scaleX={camera.zoom}
           scaleY={camera.zoom}
           x={camera.x}

@@ -33,7 +33,8 @@ export function ResizeHandleSE({ w, h, snap, onResize, lockH }: Props) {
         const nw = Math.max(MIN_SIZE, snap(e.target.x()));
         const nh = lockH ? h : Math.max(MIN_SIZE, snap(e.target.y()));
         e.target.position({ x: nw, y: lockH ? h / 2 : nh });
-        onResize(nw, nh);
+        // Пишем в стор только при смене снапнутого значения — не на каждый пиксель.
+        if (nw !== w || nh !== h) onResize(nw, nh);
       }}
       onMouseEnter={(e) => {
         const c = e.target.getStage()?.container();

@@ -14,7 +14,7 @@ interface GroupNodeProps {
 }
 
 /** Рендерит группу/компонент и рекурсивно её состав: composition (примитивы) + children (компоненты). */
-export function GroupNode({ group, ctx }: GroupNodeProps) {
+function GroupNodeBase({ group, ctx }: GroupNodeProps) {
   const { snap, updateElementVisual, onElementClick, resolveClickTarget, enterGroup, elementsMap } = ctx;
   const isSelected = ctx.selectedIds.includes(group.key);
   const isActive = ctx.activeGroupKey === group.key;
@@ -86,3 +86,6 @@ export function GroupNode({ group, ctx }: GroupNodeProps) {
     </Group>
   );
 }
+
+/** Мемоизировано по той же схеме, что и ShapeElement (стабильный ctx из Canvas). */
+export const GroupNode = React.memo(GroupNodeBase);

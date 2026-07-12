@@ -130,8 +130,9 @@ export default function transformElements(
         const rawImg = rawStateImages[ci] ?? {};
         const compArr = Array.isArray(rawImg.composition) ? (rawImg.composition as Record<string, unknown>[]) : [];
         const d = compArr[i] ?? desc;
+        // scripts/bindings/properties — данные примитива, не визуальные overrides.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { type: _t, key: _k, ...overrides } = d;
+        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, ...overrides } = d;
         return {
           id: createUuid(),
           name: cs.name,
@@ -159,9 +160,15 @@ export default function transformElements(
         parentId: null,
         parentKey: elementKey,
         children: [],
-        scripts: [],
-        bindings: [],
-        properties: [],
+        // Данные примитива (теги/скрипты/биндинги) восстанавливаем из дескриптора —
+        // buildShapeDescriptor запекает их при сохранении (симметрия round-trip).
+        scripts: normalizeArray(desc.scripts as Record<string, unknown>[]).map((s) => ({
+          id: s.id != null ? String(s.id) : createUuid(),
+          name: String(s.name ?? ""),
+          content: String(s.content ?? s.script ?? ""),
+        })),
+        bindings: normalizeArray(desc.bindings as unknown[]),
+        properties: normalizeArray(desc.properties as unknown[]) as DiagramElement["properties"],
         label: String(desc.label ?? ""),
       } as DiagramElement);
 

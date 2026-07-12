@@ -5,11 +5,12 @@ import {useEditorStore} from "@/store/useEditorStore";
 import React, {useState} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
-import {getRenderedElement} from "@/lib/getRenderedElement";
 
 export default function WorkSpace() {
-  const {elements, selectedIds, updateElement} = useEditorStore();
-  const selectedElement = elements.find(el => el.key === selectedIds[0]);
+  // Точечные селекторы вместо подписки на весь стор: иначе каждый тик пана/зума
+  // ре-рендерил WorkSpace и каскадом весь Canvas со всеми фигурами.
+  const selectedIds = useEditorStore(s => s.selectedIds);
+  const selectedElement = useEditorStore(s => s.elements.find(el => el.key === s.selectedIds[0]));
 
   const [leftVisible, setLeftVisible] = useState(true);
   const [rightVisible, setRightVisible] = useState(true);

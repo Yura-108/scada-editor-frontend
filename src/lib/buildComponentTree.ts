@@ -39,6 +39,11 @@ const buildShapeDescriptor = (
     key: primitive.key,
     ...base,
     ...(state?.overrides ?? {}),
+    // Данные примитива (теги/скрипты/биндинги) — иначе теряются при round-trip:
+    // buildBaseImage их удаляет, а unbake восстанавливал бы пустые массивы.
+    ...(primitive.scripts?.length ? {scripts: primitive.scripts} : {}),
+    ...(Array.isArray(primitive.bindings) && primitive.bindings.length ? {bindings: primitive.bindings} : {}),
+    ...(primitive.properties?.length ? {properties: primitive.properties} : {}),
   };
 };
 

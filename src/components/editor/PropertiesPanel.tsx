@@ -21,13 +21,12 @@ type TabType = "visual" | "states" | "properties" | "scripts";
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const [activeTab, setActiveTab] = useState<TabType>("visual");
-  const {
-    updateElement,
-    updateElementVisual,
-    addComponentStateToSubtree,
-    setCurrentComponentStateId,
-    currentComponentStateByElementKey
-  } = useEditorStore();
+  // Точечные селекторы: подписка на весь стор ре-рендерила панель на каждый тик пана/зума.
+  const updateElement = useEditorStore(s => s.updateElement);
+  const updateElementVisual = useEditorStore(s => s.updateElementVisual);
+  const addComponentStateToSubtree = useEditorStore(s => s.addComponentStateToSubtree);
+  const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
+  const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
 
   const currentComponentStateId = element
     ? (currentComponentStateByElementKey[element.key] ?? element.states.find(s => s.isDefault)?.id ?? element.states[0]?.id)

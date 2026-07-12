@@ -23,7 +23,7 @@ interface ShapeElementProps {
 }
 
 /** Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect). */
-export function ShapeElement({ el, ctx }: ShapeElementProps) {
+function ShapeElementBase({ el, ctx }: ShapeElementProps) {
   const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
   const isSelected = ctx.selectedIds.includes(el.key);
   const rendered = getRenderedElement(el) as LeafElement;
@@ -88,11 +88,16 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
               y={(pts as number[])[i + 1]}
               themeColors={themeColors}
               onDragMove={(e) => {
-                const cp = [...(pts as number[])];
-                cp[i] = snap(e.target.x());
-                cp[i + 1] = snap(e.target.y());
-                e.target.position({ x: cp[i], y: cp[i + 1] });
-                updateElementVisual(el.key, { points: cp });
+                const sx = snap(e.target.x());
+                const sy = snap(e.target.y());
+                e.target.position({ x: sx, y: sy });
+                // Пишем в стор только при пересечении шага сетки.
+                if (sx !== (pts as number[])[i] || sy !== (pts as number[])[i + 1]) {
+                  const cp = [...(pts as number[])];
+                  cp[i] = sx;
+                  cp[i + 1] = sy;
+                  updateElementVisual(el.key, { points: cp });
+                }
               }}
             />
           );
@@ -205,7 +210,8 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
               const sx = snap(e.target.x());
               const sy = snap(e.target.y());
               e.target.position({ x: sx, y: sy });
-              updateElementVisual(el.key, { x1: sx, y1: sy });
+              // Пишем в стор только при пересечении шага сетки.
+              if (sx !== x1 || sy !== y1) updateElementVisual(el.key, { x1: sx, y1: sy });
             }}
           />
         )}
@@ -219,7 +225,8 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
               const sx = snap(e.target.x());
               const sy = snap(e.target.y());
               e.target.position({ x: sx, y: sy });
-              updateElementVisual(el.key, { x2: sx, y2: sy });
+              // Пишем в стор только при пересечении шага сетки.
+              if (sx !== x2 || sy !== y2) updateElementVisual(el.key, { x2: sx, y2: sy });
             }}
           />
         )}
@@ -334,10 +341,19 @@ export function ShapeElement({ el, ctx }: ShapeElementProps) {
             const nh = Math.max(MIN_SIZE, snap(e.target.y()));
             // Привязываем сам хендл к сетке — даёт «щёлкающую» обратную связь по grid.
             e.target.position({ x: nw, y: nh });
-            updateElementVisual(el.key, { w: nw, h: nh });
+            // Пишем в стор только при пересечении шага сетки — не на каждый пиксель mousemove.
+            if (nw !== rendered.w || nh !== rendered.h) {
+              updateElementVisual(el.key, { w: nw, h: nh });
+            }
           }}
         />
       )}
     </Group>
   );
 }
+
+/**
+ * Мемоизировано: ctx собирается в Canvas через useMemo, поэтому пан/зум/маркиз/меню
+ * не меняют его identity — вся сцена пропускает ре-рендер (иначе O(N) на каждый тик колеса).
+ */
+export const ShapeElement = React.memo(ShapeElementBase);
