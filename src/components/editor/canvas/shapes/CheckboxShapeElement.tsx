@@ -37,6 +37,7 @@ export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, upd
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragMove={(e) => {
         // Живой снаппинг во время перетаскивания — элемент чётко «щёлкает» по клеткам сетки.

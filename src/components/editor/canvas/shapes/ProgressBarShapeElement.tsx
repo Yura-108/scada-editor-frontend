@@ -50,6 +50,7 @@ export function ProgressBarShapeElement({ el, isSelected, snap, onElementClick, 
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
       onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}

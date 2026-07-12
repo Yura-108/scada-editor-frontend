@@ -6,6 +6,7 @@ import { Group, Rect, Text } from "react-konva";
 import Konva from "konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
+import { useEditorStore } from "@/store/useEditorStore";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 
@@ -106,44 +107,73 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
 
       {/* Ручка растягивания ширины (как в Figma — тянем правый край, текст переносится по словам). */}
       {isSelected && !isEditing && (
-        <Rect
-          name="resize-handle"
-          x={boxW}
-          y={boxH / 2}
-          width={8}
-          height={8}
-          offsetX={4}
-          offsetY={4}
-          fill="#ffffff"
-          stroke="#3b82f6"
-          strokeWidth={1.5}
-          draggable
-          onDragStart={(e) => { e.cancelBubble = true; }}
-          onDragMove={(e) => {
-            const nw = Math.max(MIN_SIZE, snap(e.target.x()));
-            // Хендл держим на правом крае по центру высоты — «щёлкающая» обратная связь по сетке.
-            e.target.position({ x: nw, y: boxH / 2 });
-            // Растягивание => переход в режим фиксированной ширины (перенос по словам).
-            // Пишем в стор только при смене снапнутого значения — не на каждый пиксель.
-            if (nw !== rendered.w || rendered.autoWidth !== false) {
-              updateElementVisual(el.key, { w: nw, autoWidth: false });
-            }
-          }}
-          onDblClick={(e) => {
-            // Двойной клик по хендлу — вернуть ширину «по содержимому» (как в Figma).
-            e.cancelBubble = true;
-            updateElementVisual(el.key, { autoWidth: true });
-          }}
-          onMouseEnter={(e) => {
-            const c = e.target.getStage()?.container();
-            if (c) c.style.cursor = "ew-resize";
-          }}
-          onMouseLeave={(e) => {
-            const c = e.target.getStage()?.container();
-            if (c) c.style.cursor = "default";
-          }}
+        <TextWidthHandle
+          boxW={boxW}
+          boxH={boxH}
+          elKey={el.key}
+          currentW={rendered.w}
+          isAutoWidth={rendered.autoWidth !== false}
+          snap={snap}
+          updateElementVisual={updateElementVisual}
         />
       )}
     </Group>
+  );
+}
+
+/**
+ * Ручка ширины текста — отдельный компонент: локальная подписка на zoom даёт
+ * экранно-постоянный размер, не ре-рендеря сам текст (ручка есть только у выделенного).
+ */
+function TextWidthHandle({ boxW, boxH, elKey, currentW, isAutoWidth, snap, updateElementVisual }: {
+  boxW: number;
+  boxH: number;
+  elKey: string;
+  currentW: number;
+  isAutoWidth: boolean;
+  snap: (v: number) => number;
+  updateElementVisual: (key: string, props: Record<string, unknown>) => void;
+}) {
+  const zoom = useEditorStore(s => s.camera.zoom);
+  const size = 8 / zoom;
+
+  return (
+    <Rect
+      name="resize-handle"
+      x={boxW}
+      y={boxH / 2}
+      width={size}
+      height={size}
+      offsetX={size / 2}
+      offsetY={size / 2}
+      fill="#ffffff"
+      stroke="#3b82f6"
+      strokeWidth={1.5 / zoom}
+      draggable
+      onDragStart={(e) => { e.cancelBubble = true; }}
+      onDragMove={(e) => {
+        const nw = Math.max(MIN_SIZE, snap(e.target.x()));
+        // Хендл держим на правом крае по центру высоты — «щёлкающая» обратная связь по сетке.
+        e.target.position({ x: nw, y: boxH / 2 });
+        // Растягивание => переход в режим фиксированной ширины (перенос по словам).
+        // Пишем в стор только при смене снапнутого значения — не на каждый пиксель.
+        if (nw !== currentW || isAutoWidth) {
+          updateElementVisual(elKey, { w: nw, autoWidth: false });
+        }
+      }}
+      onDblClick={(e) => {
+        // Двойной клик по хендлу — вернуть ширину «по содержимому» (как в Figma).
+        e.cancelBubble = true;
+        updateElementVisual(elKey, { autoWidth: true });
+      }}
+      onMouseEnter={(e) => {
+        const c = e.target.getStage()?.container();
+        if (c) c.style.cursor = "ew-resize";
+      }}
+      onMouseLeave={(e) => {
+        const c = e.target.getStage()?.container();
+        if (c) c.style.cursor = "default";
+      }}
+    />
   );
 }

@@ -5,7 +5,6 @@ import { Group, Rect, Text } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
-import { ResizeHandleSE } from "./ResizeHandleSE";
 
 export function ButtonShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
@@ -26,6 +25,7 @@ export function ButtonShapeElement({ el, isSelected, snap, onElementClick, updat
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       opacity={enabled ? 1 : 0.5}
       draggable
       onDragMove={(e) => {
@@ -48,9 +48,7 @@ export function ButtonShapeElement({ el, isSelected, snap, onElementClick, updat
         text={label} fontSize={fontSize} fill={textColor}
         align="center" verticalAlign="middle" listening={false}
       />
-      {isSelected && (
-        <ResizeHandleSE w={w} h={h} snap={snap} onResize={(nw, nh) => updateElementVisual(el.key, { w: nw, h: nh })} />
-      )}
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
     </Group>
   );
 }

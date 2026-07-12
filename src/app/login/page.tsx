@@ -60,7 +60,7 @@ export default function LoginPage() {
           {/* Заголовок */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-indigo-500 to-purple-600 rounded-full mb-4">
-              <LogIn className="w-8 h-8 text-gray-900 dark:text-white" />
+              <LogIn className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-800">С возвращением!</h1>
             <p className="text-gray-600 mt-2">Войдите в свой аккаунт</p>

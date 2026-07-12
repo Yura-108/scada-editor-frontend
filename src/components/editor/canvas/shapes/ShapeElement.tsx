@@ -5,7 +5,7 @@ import { Group, Rect, Circle, Line, Text, Arrow } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
-import { EditorRenderContext, MIN_SIZE } from "../types";
+import { EditorRenderContext } from "../types";
 import { Anchor } from "./Anchor";
 import { CircleResizeHandle } from "./CircleResizeHandle";
 import { TextShapeElement } from "./TextShapeElement";
@@ -25,7 +25,9 @@ interface ShapeElementProps {
 /** Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect). */
 function ShapeElementBase({ el, ctx }: ShapeElementProps) {
   const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
-  const isSelected = ctx.selectedIds.includes(el.key);
+  // Когда к элементу прицеплен Transformer, его рамка заменяет собственную
+  // пунктирную рамку фигуры (двойная рамка выглядит грязно).
+  const isSelected = ctx.selectedIds.includes(el.key) && el.key !== ctx.transformerKey;
   const rendered = getRenderedElement(el) as LeafElement;
 
   if (rendered.type === "polygon") {
@@ -330,24 +332,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
         />
       )}
 
-      {isSelected && (
-        <Anchor
-          key={`${el.key}-anc-se`}
-          x={rendered.w}
-          y={rendered.h}
-          themeColors={themeColors}
-          onDragMove={(e) => {
-            const nw = Math.max(MIN_SIZE, snap(e.target.x()));
-            const nh = Math.max(MIN_SIZE, snap(e.target.y()));
-            // Привязываем сам хендл к сетке — даёт «щёлкающую» обратную связь по grid.
-            e.target.position({ x: nw, y: nh });
-            // Пишем в стор только при пересечении шага сетки — не на каждый пиксель mousemove.
-            if (nw !== rendered.w || nh !== rendered.h) {
-              updateElementVisual(el.key, { w: nw, h: nh });
-            }
-          }}
-        />
-      )}
+      {/* Ресайз/поворот одиночного выделения делает SelectionTransformer (Canvas). */}
     </Group>
   );
 }

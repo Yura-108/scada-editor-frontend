@@ -102,6 +102,32 @@ leaves whose live position sits in overrides.
   in the Layer (group frame for groups, rendered bounds for leaves). Deliberately NOT passed
   through ctx/shape props — that would re-render the whole memoized scene on every mouse move.
   Any future per-element hover effect must follow the same single-overlay pattern.
+- **Transformer** (`canvas/shapes/SelectionTransformer.tsx`): single selection of box types only
+  (`NON_TRANSFORMABLE` in Canvas = group/text/circle/line/polygon keep specialized handles).
+  On transformend scale is converted to w/h and RESET to 1; rotation commits to `rotate` —
+  every transformable shape's root Group MUST render `rotation={rendered.rotate || 0}` or the
+  imperative rotation desyncs. x/y/w/h snap to grid only when rotation === 0. Anchors are small
+  round dots (6/zoom) with `padding` so they sit OUTSIDE the widget; the shape's own dashed
+  selection rect is suppressed via `ctx.transformerKey` (in ShapeElement dispatcher) — one
+  border, not two.
+- **Colors**: all color props go through `src/components/ui/ColorField.tsx` (picker + hex input
+  + «прозрачный» button). `"transparent"` is a valid stored color value — Konva renders it as
+  fully transparent; renderers' `rendered.color || fallback` chains treat it as truthy (kept).
+- **Smart guides** (`src/lib/editor/smartGuides.ts` + guide session in Canvas): on dragstart
+  collect edge/center lines of same-parent non-selected neighbors; on dragmove magnet the
+  dragged node (`e.target` — may be the inner Arrow/Circle, not the id-Group) within a
+  screen-constant threshold (6/zoom) and draw the matched lines. Final commit still grid-snaps
+  (shapes' own dragEnd), so guides matter most for off-grid neighbors mid-drag.
+- **Align/distribute**: store `alignSelected(mode)` / `distributeSelected(axis)` over
+  `topLevelSelectedKeys` + `applyShifts` (shared module helpers); buttons live in ToolsPanel.
+- **Multi-edit**: `updateElementVisual` delegates to `updateElementsVisual(keys, patch)` (one
+  set() = one undo step for N elements); `MultiPropertiesPanel` (right panel at ≥2 selected)
+  edits the intersection of the selected types' schemas. `LayersPanel` is the «Слои» tab of the
+  left panel (tree = children+composition, composition rows dimmed).
+- **Screen-constant handles**: Anchor / CircleResizeHandle / TextWidthHandle subscribe to
+  `camera.zoom` LOCALLY (`useEditorStore(s => s.camera.zoom)`) and divide sizes by zoom —
+  never put zoom into ctx (would re-render the whole scene per zoom tick). The Transformer
+  gets `zoom` as a prop from Canvas (it re-renders with camera anyway).
 - Properties panel has a «Геометрия» block: numeric X/Y/W/H (lines: X1/Y1/X2/Y2), writes via
   `updateElementVisual` (coords are parent-local).
 - Pure geometry helpers live in `src/lib/editor/`.

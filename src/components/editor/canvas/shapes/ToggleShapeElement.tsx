@@ -27,6 +27,7 @@ export function ToggleShapeElement({ el, isSelected, snap, onElementClick, updat
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragMove={(e) => {
         if (e.target === e.currentTarget) e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });

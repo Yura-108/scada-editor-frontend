@@ -5,7 +5,6 @@ import { Group, Rect, Circle } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
-import { ResizeHandleSE } from "./ResizeHandleSE";
 
 export function SliderShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
@@ -32,6 +31,7 @@ export function SliderShapeElement({ el, isSelected, snap, onElementClick, updat
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragMove={(e) => {
         if (e.target === e.currentTarget) e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });
@@ -52,9 +52,7 @@ export function SliderShapeElement({ el, isSelected, snap, onElementClick, updat
       <Rect x={0} y={trackY} width={knobCX} height={trackH} cornerRadius={trackH / 2} fill={color} />
       {/* Ползунок */}
       <Circle x={knobCX} y={h / 2} radius={knobR} fill="#ffffff" stroke={color} strokeWidth={2} />
-      {isSelected && (
-        <ResizeHandleSE w={w} h={h} snap={snap} lockH onResize={(nw) => updateElementVisual(el.key, { w: nw })} />
-      )}
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
     </Group>
   );
 }

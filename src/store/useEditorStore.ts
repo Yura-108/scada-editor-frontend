@@ -61,10 +61,16 @@ type EditorState = {
   selectAllInScope: () => void;
   bringToFront: (key: string) => void;
   sendToBack: (key: string) => void;
+  /** Выравнивание верхнеуровневых выделенных (≥2) по краю/центру общей рамки. */
+  alignSelected: (mode: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom') => void;
+  /** Распределение верхнеуровневых выделенных (≥3) с равными зазорами по оси. */
+  distributeSelected: (axis: 'h' | 'v') => void;
 
   setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
   updateElementVisual: (id: string, data: Partial<DiagramElement>) => void;
+  /** Мульти-версия updateElementVisual: один шаг undo для всех ключей. */
+  updateElementsVisual: (keys: string[], data: Partial<DiagramElement>) => void;
   select: (id: string | null) => void;
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
@@ -117,6 +123,43 @@ const shiftElementPositions = (el: DiagramElement, dx: number, dy: number): Diag
     overrides: shiftPositionKeys(s.overrides ?? {}, dx, dy),
   }));
   return shifted;
+};
+
+/**
+ * Верхнеуровневые выделенные: без выделенного предка (элемент с выделенным
+ * предком едет вместе с ним, отдельный сдвиг задвоил бы перемещение).
+ */
+const topLevelSelectedKeys = (selectedIds: string[], elements: DiagramElement[]): string[] => {
+  const byKey = new Map(elements.map(el => [el.key, el] as const));
+  const selectedSet = new Set(selectedIds);
+  const hasSelectedAncestor = (el: DiagramElement): boolean => {
+    let pk = el.parentKey;
+    while (pk) {
+      if (selectedSet.has(pk)) return true;
+      pk = byKey.get(pk)?.parentKey ?? null;
+    }
+    return false;
+  };
+  return selectedIds.filter(k => {
+    const el = byKey.get(k);
+    return !!el && !hasSelectedAncestor(el);
+  });
+};
+
+/** Применяет индивидуальные сдвиги к элементам и пересчитывает рамки их предков. */
+const applyShifts = (
+  elements: DiagramElement[],
+  shifts: Map<string, {dx: number; dy: number}>,
+  sceneId: number | null | undefined,
+): DiagramElement[] => {
+  let next = elements.map(el => {
+    const s = shifts.get(el.key);
+    return s && (s.dx || s.dy) ? shiftElementPositions(el, s.dx, s.dy) : el;
+  });
+  for (const k of shifts.keys()) {
+    next = recomputeAncestorBounds(next, k, sceneId);
+  }
+  return next;
 };
 
 /**
@@ -420,34 +463,75 @@ export const useEditorStore = create<EditorState>()(temporal(
         const {selectedIds, elements, scene} = get();
         if (!selectedIds.length) return;
 
-        const byKey = new Map(elements.map(el => [el.key, el] as const));
-        const selectedSet = new Set(selectedIds);
-
-        // Двигаем только верхнеуровневые выделенные: элемент с выделенным предком
-        // едет вместе с ним, отдельный сдвиг задвоил бы перемещение.
-        const hasSelectedAncestor = (el: DiagramElement): boolean => {
-          let pk = el.parentKey;
-          while (pk) {
-            if (selectedSet.has(pk)) return true;
-            pk = byKey.get(pk)?.parentKey ?? null;
-          }
-          return false;
-        };
-
-        const keysToMove = selectedIds
-          .filter(k => k !== excludeKey)
-          .filter(k => {
-            const el = byKey.get(k);
-            return !!el && !hasSelectedAncestor(el);
-          });
+        const keysToMove = topLevelSelectedKeys(selectedIds, elements).filter(k => k !== excludeKey);
         if (!keysToMove.length) return;
 
-        const moveSet = new Set(keysToMove);
-        let next = elements.map(el => moveSet.has(el.key) ? shiftElementPositions(el, dx, dy) : el);
-        for (const k of keysToMove) {
-          next = recomputeAncestorBounds(next, k, scene?.id);
+        const shifts = new Map(keysToMove.map(k => [k, {dx, dy}] as const));
+        set({elements: applyShifts(elements, shifts, scene?.id)});
+      },
+      alignSelected: (mode) => {
+        const {selectedIds, elements, scene} = get();
+        const keys = topLevelSelectedKeys(selectedIds, elements);
+        if (keys.length < 2) return;
+
+        const byKey = new Map(elements.map(el => [el.key, el] as const));
+        const boundsByKey = new Map(keys.map(k => [k, getElementBoundsRendered(byKey.get(k)!, elements)] as const));
+        const bs = [...boundsByKey.values()].filter(b => isFinite(b.minX));
+        if (bs.length < 2) return;
+
+        // Цель — край/центр общей рамки выделения.
+        const isH = mode === 'left' || mode === 'hcenter' || mode === 'right';
+        const min = Math.min(...bs.map(b => isH ? b.minX : b.minY));
+        const max = Math.max(...bs.map(b => isH ? b.maxX : b.maxY));
+        const target = mode === 'left' || mode === 'top' ? min
+          : mode === 'right' || mode === 'bottom' ? max
+          : (min + max) / 2;
+
+        const shifts = new Map<string, {dx: number; dy: number}>();
+        for (const k of keys) {
+          const b = boundsByKey.get(k)!;
+          if (!isFinite(b.minX)) continue;
+          const cur = mode === 'left' ? b.minX
+            : mode === 'right' ? b.maxX
+            : mode === 'hcenter' ? (b.minX + b.maxX) / 2
+            : mode === 'top' ? b.minY
+            : mode === 'bottom' ? b.maxY
+            : (b.minY + b.maxY) / 2;
+          const d = target - cur;
+          if (d) shifts.set(k, isH ? {dx: d, dy: 0} : {dx: 0, dy: d});
         }
-        set({elements: next});
+        if (!shifts.size) return;
+        set({elements: applyShifts(elements, shifts, scene?.id)});
+      },
+      distributeSelected: (axis) => {
+        const {selectedIds, elements, scene} = get();
+        const keys = topLevelSelectedKeys(selectedIds, elements);
+        if (keys.length < 3) return;
+
+        const byKey = new Map(elements.map(el => [el.key, el] as const));
+        const items = keys
+          .map(k => ({key: k, b: getElementBoundsRendered(byKey.get(k)!, elements)}))
+          .filter(it => isFinite(it.b.minX))
+          .sort((a, b) => axis === 'h' ? a.b.minX - b.b.minX : a.b.minY - b.b.minY);
+        if (items.length < 3) return;
+
+        // Равные зазоры: крайние остаются на месте, промежуточные раскладываются между ними.
+        const size = (b: (typeof items)[0]['b']) => axis === 'h' ? b.maxX - b.minX : b.maxY - b.minY;
+        const start = axis === 'h' ? items[0].b.minX : items[0].b.minY;
+        const end = axis === 'h' ? items[items.length - 1].b.maxX : items[items.length - 1].b.maxY;
+        const sumSizes = items.reduce((acc, it) => acc + size(it.b), 0);
+        const gap = (end - start - sumSizes) / (items.length - 1);
+
+        const shifts = new Map<string, {dx: number; dy: number}>();
+        let pos = start;
+        for (const it of items) {
+          const cur = axis === 'h' ? it.b.minX : it.b.minY;
+          const d = pos - cur;
+          if (d) shifts.set(it.key, axis === 'h' ? {dx: d, dy: 0} : {dx: 0, dy: d});
+          pos += size(it.b) + gap;
+        }
+        if (!shifts.size) return;
+        set({elements: applyShifts(elements, shifts, scene?.id)});
       },
       selectAllInScope: () => {
         const {elements, scene, activeGroupKey} = get();
@@ -554,12 +638,16 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         return {currentComponentStateByElementKey: next};
       }),
-       updateElementVisual: (key, updates) => {
+       updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
+       // Мульти-версия: один set() (= один шаг undo) для всех ключей.
+       updateElementsVisual: (keys, updates) => {
+         if (!keys.length) return;
          const { currentComponentStateByElementKey } = get();
+         const keySet = new Set(keys);
 
          set(state => {
            const updatedElements = state.elements.map(el => {
-             if (el.key !== key) return el;
+             if (!keySet.has(el.key)) return el;
 
              // Валидация: гарантируем минимальные размеры для групп и элементов
              const MIN_SIZE = 20;
@@ -576,7 +664,7 @@ export const useEditorStore = create<EditorState>()(temporal(
                return { ...el, ...validatedUpdates } as DiagramElement;
              }
 
-             const currentComponentStateId = currentComponentStateByElementKey[key]
+             const currentComponentStateId = currentComponentStateByElementKey[el.key]
                ?? el.states.find(s => s.isDefault)?.id
                ?? el.states[0]?.id;
 
@@ -607,7 +695,11 @@ export const useEditorStore = create<EditorState>()(temporal(
            const POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
            const hasPositionalChange = Object.keys(updates).some(k => POSITIONAL_KEYS.has(k));
            if (hasPositionalChange) {
-             return { elements: recomputeAncestorBounds(updatedElements, key, state.scene?.id) };
+             let result = updatedElements;
+             for (const key of keys) {
+               result = recomputeAncestorBounds(result, key, state.scene?.id);
+             }
+             return { elements: result };
            }
 
            return { elements: updatedElements };

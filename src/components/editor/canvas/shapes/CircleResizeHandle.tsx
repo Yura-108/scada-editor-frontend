@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
 import { GRID } from "@/lib/utils";
+import { useEditorStore } from "@/store/useEditorStore";
 
 interface CircleResizeHandleProps {
   cx: number;
@@ -17,6 +18,8 @@ interface CircleResizeHandleProps {
 
 export function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circleRef }: CircleResizeHandleProps) {
   const handleRef = useRef<Konva.Circle>(null);
+  // Экранно-постоянный размер ручки (см. Anchor).
+  const zoom = useEditorStore(s => s.camera.zoom);
 
   return (
     <Circle
@@ -24,10 +27,10 @@ export function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual
       name="resize-handle"
       x={cx + r}
       y={cy}
-      radius={8}
+      radius={8 / zoom}
       fill="transparent"
       stroke="transparent"
-      hitStrokeWidth={12}
+      hitStrokeWidth={12 / zoom}
       draggable
       onDragStart={(e) => { e.cancelBubble = true; }}
       onDragMove={(e) => {

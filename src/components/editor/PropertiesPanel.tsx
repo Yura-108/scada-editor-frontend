@@ -8,6 +8,7 @@ import {Plus} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
+import {ColorField} from "@/components/ui/ColorField";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
@@ -193,24 +194,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
 
       case "color":
         return (
-          <div key={uniqueKey} className="space-y-1.5">
-            {label}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-md border border-gray-300 dark:border-neutral-600 shadow-sm shrink-0 ring-1 ring-neutral-700/50"
-                style={{backgroundColor: colorValue}}
-              />
-              <input
-                id={`prop-${property.key}`}
-                type="color"
-                className={cn(baseInputClasses, "h-9 p-1 cursor-pointer")}
-                value={colorValue}
-                onChange={(e) =>
-                  updateElementVisual(element.key, {[property.key]: e.target.value})
-                }
-              />
-            </div>
-          </div>
+          <ColorField
+            key={uniqueKey}
+            id={`prop-${property.key}`}
+            label={property.label}
+            value={colorValue}
+            onChange={(v) => updateElementVisual(element.key, {[property.key]: v})}
+            inputClassName={baseInputClasses}
+          />
         );
 
       case "select":
@@ -326,6 +317,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   : [
                       {key: "x", label: "X"}, {key: "y", label: "Y"},
                       {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
+                      ...(element.type !== "group" ? [{key: "rotate", label: "Поворот°"}] : []),
                     ]
                 ).map((field) => (
                   <div key={field.key} className="space-y-1.5">

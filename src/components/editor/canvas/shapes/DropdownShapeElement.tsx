@@ -5,7 +5,6 @@ import { Group, Rect, Text, Line } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
-import { ResizeHandleSE } from "./ResizeHandleSE";
 
 export function DropdownShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
@@ -29,6 +28,7 @@ export function DropdownShapeElement({ el, isSelected, snap, onElementClick, upd
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragMove={(e) => {
         if (e.target === e.currentTarget) e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });
@@ -46,9 +46,7 @@ export function DropdownShapeElement({ el, isSelected, snap, onElementClick, upd
       <Rect x={0} y={0} width={w} height={h} fill={bg} stroke={stroke} strokeWidth={1} cornerRadius={6} />
       <Text x={12} y={0} width={w - 34} height={h} text={value} fontSize={fontSize} fill={textCol} verticalAlign="middle" wrap="none" ellipsis listening={false} />
       <Line points={chevron} stroke={textCol} strokeWidth={1.5} lineCap="round" lineJoin="round" listening={false} />
-      {isSelected && (
-        <ResizeHandleSE w={w} h={h} snap={snap} onResize={(nw, nh) => updateElementVisual(el.key, { w: nw, h: nh })} />
-      )}
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
     </Group>
   );
 }

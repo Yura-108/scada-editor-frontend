@@ -65,4 +65,10 @@ export interface EditorRenderContext {
    * фигур — иначе смена состояния не перерисуется.
    */
   currentComponentStateByElementKey: Record<string, string>;
+  /**
+   * Ключ элемента, к которому прицеплен SelectionTransformer (или null).
+   * Такая фигура НЕ рисует собственную пунктирную рамку выделения —
+   * иначе двойная рамка (своя + трансформера) выглядит грязно.
+   */
+  transformerKey: string | null;
 }

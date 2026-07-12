@@ -5,7 +5,6 @@ import { Group, Rect, Text } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
-import { ResizeHandleSE } from "./ResizeHandleSE";
 
 export function InputShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
@@ -27,6 +26,7 @@ export function InputShapeElement({ el, isSelected, snap, onElementClick, update
       id={el.key}
       x={rendered.x}
       y={rendered.y}
+      rotation={rendered.rotate || 0}
       draggable
       onDragMove={(e) => {
         if (e.target === e.currentTarget) e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });
@@ -48,9 +48,7 @@ export function InputShapeElement({ el, isSelected, snap, onElementClick, update
         fill={hasValue ? textCol : "#9ca3af"}
         verticalAlign="middle" wrap="none" ellipsis listening={false}
       />
-      {isSelected && (
-        <ResizeHandleSE w={w} h={h} snap={snap} onResize={(nw, nh) => updateElementVisual(el.key, { w: nw, h: nh })} />
-      )}
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
     </Group>
   );
 }
