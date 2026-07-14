@@ -81,5 +81,14 @@ body {
   background: #525252;
 }
 
+/* Скрытый скролл-бар (для полосы вкладок, прокрутка стрелками) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE и Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 
 
