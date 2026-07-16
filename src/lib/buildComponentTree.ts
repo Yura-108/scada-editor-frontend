@@ -1,4 +1,28 @@
 import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
+import {BindingDto} from "@/types/binding.types";
+
+/**
+ * id первого серверного свойства-тега элемента — для DTO-поля
+ * `component_property_id` (контракт требует число; 0 = «нет свойства»).
+ */
+const firstTagPropertyId = (el: DiagramElement): number => {
+  const prop = (el.properties ?? []).find(p => p.property_type === "Тег" && typeof p.id === "number");
+  return prop?.id ?? 0;
+};
+
+/**
+ * TagBinding → DTO: биндинг целиком уезжает JSON-строкой в опак-поле `script`
+ * (как states[].image — без изменения контракта бэкенда). Обратный путь —
+ * parseBindings при загрузке.
+ */
+const encodeBindings = (el: DiagramElement): BindingDto[] =>
+  Array.isArray(el.bindings)
+    ? el.bindings.map(b => ({
+        component_property_id: firstTagPropertyId(el),
+        name: b.name ?? "",
+        script: JSON.stringify(b),
+      }))
+    : [];
 
 const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
   const visualProps = {...el} as Record<string, unknown>;
@@ -104,16 +128,7 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     scripts: Array.isArray(element.scripts)
       ? element.scripts.map((s) => ({name: s.name, script: s.content}))
       : [],
-    bindings: Array.isArray(element.bindings)
-      ? element.bindings.map((b) => ({
-          component_property_id:
-            typeof b === "object" && b !== null && "component_property_id" in b
-              ? Number((b as {component_property_id: number}).component_property_id) || 0
-              : 0,
-          name: typeof b === "object" && b !== null && "name" in b ? String((b as {name: string}).name) : "",
-          script: typeof b === "object" && b !== null && "script" in b ? String((b as {script: string}).script) : "",
-        }))
-      : [],
+    bindings: encodeBindings(element),
     states,
   };
 };
@@ -169,13 +184,7 @@ export const buildPaletteComponentTree = (
       scripts: Array.isArray(element.scripts)
         ? element.scripts.map((s: any) => ({ name: s.name, script: s.content }))
         : [],
-      bindings: Array.isArray(element.bindings)
-        ? element.bindings.map((b: any) => ({
-            component_property_id: b.component_property_id || 0,
-            name: b.name || "",
-            script: b.script || ""
-          }))
-        : [],
+      bindings: encodeBindings(element),
       states,
       properties: templateProperties,
     };

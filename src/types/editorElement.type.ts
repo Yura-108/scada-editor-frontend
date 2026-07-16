@@ -1,4 +1,5 @@
 import {PropertyCreateDto} from "@/types/tags.types";
+import {TagBinding} from "@/types/binding.types";
 
 export type SceneType = {
   id: number;
@@ -70,7 +71,7 @@ export interface BaseCanvasElement {
   parentId: number | null;
   parentKey: string | null;
   scripts: ElementScript[];
-  bindings: unknown[];
+  bindings: TagBinding[];
   properties: PropertyCreateDto[];
   states: ComponentState[];
 

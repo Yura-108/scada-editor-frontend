@@ -122,16 +122,40 @@ const DeviceTreePanel = () => {
     return roots;
   }, [handleContextMenu, nodes]);
 
+  // Ключи — это пути через точку (площадка.проект.устройство.канал), а тип узла
+  // определяется его глубиной: L1 — площадка, L2 — проект, L3 — устройство,
+  // L4+ — подустройства (узлы с детьми) и каналы/сигналы (листья).
+  const {deviceCount, channelCount} = useMemo(() => {
+    // Узел — лист, если ни один другой узел не ссылается на него как на родителя.
+    const parentKeys = new Set(nodes.map((n) => n.parentKey).filter(Boolean));
+    const depthOf = (key: string) => key.split('.').length;
+
+    let devices = 0;
+    let channels = 0;
+    nodes.forEach((n) => {
+      const depth = depthOf(n.key);
+      const isLeaf = !parentKeys.has(n.key);
+
+      if (depth >= 4 && isLeaf) {
+        channels += 1; // конечный сигнал/канал
+      } else if (depth >= 3) {
+        devices += 1; // главное устройство или подустройство
+      }
+      // depth 1..2 — площадка/проект, в счётчики не входят
+    });
+
+    return {deviceCount: devices, channelCount: channels};
+  }, [nodes]);
+
   return (
-    <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div className="h-[60vh] md:h-[calc(100vh-4rem)] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
       <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <Router className={'w-6 h-6 text-purple-600'}/>
           Дерево устройств
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          {nodes.filter((n) => !n.parentKey).length} устройств •{' '}
-          {nodes.filter((n) => n.key.startsWith('cha')).length} каналов
+          {deviceCount} устройств • {channelCount} каналов
         </p>
       </div>
 

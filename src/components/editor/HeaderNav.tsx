@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import {cn} from "@/lib/utils";
-import {HashIcon, Layout, Scroll} from "lucide-react";
+import {Activity, HashIcon, Layout, Scroll} from "lucide-react";
 import {usePathname} from "next/navigation";
 
 const navItems = [
@@ -11,6 +11,11 @@ const navItems = [
     name: "Редактор схем",
     href: "/editor",
     icon: Layout,
+  },
+  {
+    name: "Монитор",
+    href: "/monitor",
+    icon: Activity,
   },
   {
     name: "База каналов",

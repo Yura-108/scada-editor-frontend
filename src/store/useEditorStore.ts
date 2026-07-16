@@ -15,6 +15,7 @@ import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
+import {TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {getElementBoundsRendered} from "@/lib/getElementBounds";
@@ -39,6 +40,24 @@ type EditorState = {
   currentComponentStateByElementKey: Record<string, string>;
   setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
   clearCurrentComponentStateId: (elementKey: string) => void;
+
+  /**
+   * Рантайм-оверрайды визуальных свойств (setProp из биндингов монитора).
+   * Живут ПОВЕРХ state.overrides в getRenderedElement и никогда не пишутся
+   * в elements — не попадают ни в undo, ни в автосейв.
+   */
+  runtimeOverridesByElementKey: Record<string, Record<string, unknown>>;
+  /**
+   * Применяет батч рантайм-изменений одним set(): переключения состояний
+   * (по ИМЕНИ, с каскадом на поддерево) + патчи визуальных свойств.
+   * Если фактических изменений нет — set() не вызывается вовсе.
+   */
+  applyRuntimeBatch: (batch: {
+    stateNameByKey?: Record<string, string>;
+    propsByKey?: Record<string, Record<string, unknown>>;
+  }) => void;
+  /** Сброс всех рантайм-карт (выход из монитора). */
+  clearRuntime: () => void;
   clipboard: DiagramElement[] | null;
   canvasRect: DOMRect | null;
   connecting: {
@@ -78,6 +97,10 @@ type EditorState = {
   addElementAt: (x: number, y: number, type: ElementType) => void;
   addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
   editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
+  /** CRUD биндингов (JS-скрипты монитора) — design-time правки, попадают в undo. */
+  addBinding: (elementKey: string, binding: TagBinding) => void;
+  updateBinding: (elementKey: string, bindingId: string, patch: Partial<Omit<TagBinding, "v" | "id">>) => void;
+  removeBinding: (elementKey: string, bindingId: string) => void;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
@@ -394,6 +417,43 @@ const getDescendantKeys = (rootKey: string, elements: DiagramElement[]) => {
   return [...result];
 };
 
+/**
+ * Каскад активного состояния по ИМЕНИ вниз по поддереву (children + composition).
+ * Пишет в переданную карту nextMap (elementKey → stateId) и возвращает её же.
+ * Общая база для ручного переключения (StateSelect) и рантайм-батча монитора.
+ */
+const cascadeStateByName = (
+  elements: DiagramElement[],
+  nextMap: Record<string, string>,
+  rootKey: string,
+  stateId: string,
+): Record<string, string> => {
+  nextMap[rootKey] = stateId;
+
+  const root = elements.find(el => el.key === rootKey);
+  if (!root) return nextMap;
+
+  const rootStateName = root.states.find(s => s.id === stateId)?.name;
+  if (!rootStateName) return nextMap;
+
+  const byKey = new Map(elements.map(el => [el.key, el] as const));
+  for (const childKey of getDescendantKeys(rootKey, elements)) {
+    const child = byKey.get(childKey);
+    if (!child) continue;
+
+    const matchedState = child.states.find(s => s.name === rootStateName);
+    if (matchedState) {
+      nextMap[childKey] = matchedState.id;
+      continue;
+    }
+
+    const defaultState = child.states.find(s => s.isDefault) ?? child.states[0];
+    nextMap[childKey] = defaultState?.id ?? stateId;
+  }
+
+  return nextMap;
+};
+
 const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?: string) => {
   if (element.states.some(state => state.name === stateName)) {
     return element;
@@ -442,6 +502,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectedIds: [],
       activeGroupKey: null,
       currentComponentStateByElementKey: {},
+      runtimeOverridesByElementKey: {},
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -591,52 +652,64 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         return rootStateId;
       },
+      // Каскад по имени состояния — для любого контейнера (группа или complex-компонент);
+      // у листа потомков нет, каскад просто не сработает (см. cascadeStateByName).
       setCurrentComponentStateId: (elementKey, componentState) => set(state => ({
-        currentComponentStateByElementKey: (() => {
-          const root = state.elements.find(el => el.key === elementKey);
-          if (!root) {
-            return {
-              ...state.currentComponentStateByElementKey,
-              [elementKey]: componentState,
-            };
-          }
-
-          const nextMap = {
-            ...state.currentComponentStateByElementKey,
-            [elementKey]: componentState,
-          };
-
-          const rootStateName = root.states.find(s => s.id === componentState)?.name;
-          if (!rootStateName) {
-            return nextMap;
-          }
-
-          // Каскад по имени состояния — для любого контейнера (группа или complex-компонент);
-          // у листа потомков нет, цикл ниже просто не выполнится.
-          const descendantKeys = getDescendantKeys(elementKey, state.elements);
-
-          for (const childKey of descendantKeys) {
-            const child = state.elements.find(el => el.key === childKey);
-            if (!child) continue;
-
-            const matchedState = child.states.find(s => s.name === rootStateName);
-            if (matchedState) {
-              nextMap[childKey] = matchedState.id;
-              continue;
-            }
-
-            const defaultState = child.states.find(s => s.isDefault) ?? child.states[0];
-            nextMap[childKey] = defaultState?.id ?? componentState;
-          }
-
-          return nextMap;
-        })(),
+        currentComponentStateByElementKey: cascadeStateByName(
+          state.elements,
+          {...state.currentComponentStateByElementKey},
+          elementKey,
+          componentState,
+        ),
       })),
       clearCurrentComponentStateId: (elementKey) => set(state => {
         const next = {...state.currentComponentStateByElementKey};
         delete next[elementKey];
 
         return {currentComponentStateByElementKey: next};
+      }),
+      applyRuntimeBatch: ({stateNameByKey, propsByKey}) => {
+        const state = get();
+        const patch: Partial<EditorState> = {};
+
+        // 1) Переключения состояний: имя → id на корне, каскад по имени на поддерево.
+        if (stateNameByKey && Object.keys(stateNameByKey).length) {
+          const byKey = new Map(state.elements.map(el => [el.key, el] as const));
+          const nextMap = {...state.currentComponentStateByElementKey};
+          for (const [elementKey, stateName] of Object.entries(stateNameByKey)) {
+            const el = byKey.get(elementKey);
+            const stateId = el?.states.find(s => s.name === stateName)?.id;
+            // Нет состояния с таким именем — интент биндинга не применим, пропускаем.
+            if (!stateId) continue;
+            cascadeStateByName(state.elements, nextMap, elementKey, stateId);
+          }
+          const changed = Object.keys(nextMap).some(
+            k => nextMap[k] !== state.currentComponentStateByElementKey[k],
+          );
+          if (changed) patch.currentComponentStateByElementKey = nextMap;
+        }
+
+        // 2) Патчи визуальных свойств — только в рантайм-карту, elements не трогаем.
+        if (propsByKey && Object.keys(propsByKey).length) {
+          let changed = false;
+          const nextOverrides = {...state.runtimeOverridesByElementKey};
+          for (const [elementKey, props] of Object.entries(propsByKey)) {
+            const prev = nextOverrides[elementKey] ?? {};
+            const merged = {...prev, ...props};
+            if (Object.keys(props).some(k => !Object.is(prev[k], props[k]))) {
+              nextOverrides[elementKey] = merged;
+              changed = true;
+            }
+          }
+          if (changed) patch.runtimeOverridesByElementKey = nextOverrides;
+        }
+
+        // Ничего фактически не изменилось — не дёргаем ни стор, ни рендер.
+        if (Object.keys(patch).length) set(patch);
+      },
+      clearRuntime: () => set({
+        runtimeOverridesByElementKey: {},
+        currentComponentStateByElementKey: {},
       }),
        updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
        // Мульти-версия: один set() (= один шаг undo) для всех ключей.
@@ -1133,6 +1206,34 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
         temporal.resume();
       },
+      // Биндинги — клиентские данные (уезжают на сервер только с сохранением сцены),
+      // поэтому их правки, в отличие от addTags/editProperty, ДОЛЖНЫ попадать в undo.
+      addBinding: (elementKey, binding) => set(state => ({
+        elements: state.elements.map(el =>
+          el.key === elementKey
+            ? {...el, bindings: [...(el.bindings ?? []), binding]} as DiagramElement
+            : el
+        ),
+      })),
+      updateBinding: (elementKey, bindingId, patch) => set(state => ({
+        elements: state.elements.map(el =>
+          el.key === elementKey
+            ? {
+                ...el,
+                bindings: (el.bindings ?? []).map(b =>
+                  b.id === bindingId ? {...b, ...patch} : b
+                ),
+              } as DiagramElement
+            : el
+        ),
+      })),
+      removeBinding: (elementKey, bindingId) => set(state => ({
+        elements: state.elements.map(el =>
+          el.key === elementKey
+            ? {...el, bindings: (el.bindings ?? []).filter(b => b.id !== bindingId)} as DiagramElement
+            : el
+        ),
+      })),
       deleteSelectedElement: async () => {
         const { selectedIds, elements, activeGroupKey, scene } = get();
         if (!selectedIds.length) return;

@@ -13,12 +13,13 @@ import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/lib/createUuid";
+import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
 
 interface PropertiesPanelProps {
   element: DiagramElement | null;
 }
 
-type TabType = "visual" | "states" | "properties" | "scripts";
+type TabType = "visual" | "states" | "properties" | "scripts" | "bindings";
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const [activeTab, setActiveTab] = useState<TabType>("visual");
@@ -293,6 +294,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
           >
             Скрипты
           </button>
+          <button
+            onClick={() => setActiveTab("bindings")}
+            className={cn(tabButtonClasses(activeTab === "bindings"), "col-span-2")}
+          >
+            Привязки
+          </button>
         </div>
       </div>
 
@@ -488,6 +495,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               Добавить скрипт
             </button>
           </div>
+        )}
+
+        {/* Привязки (JS-скрипты режима монитора) */}
+        {activeTab === "bindings" && (
+          <BindingsTab element={element} addButtonClasses={baseAddButtonClasses} />
         )}
 
       </div>

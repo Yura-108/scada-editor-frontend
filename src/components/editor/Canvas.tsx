@@ -37,13 +37,22 @@ const CANVAS_HEIGHT = 5000;
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "line", "polygon"]);
 
-export default function Canvas() {
+interface CanvasProps {
+  /**
+   * Режим монитора: сцена только отображается. Layer выключается из hit-графа
+   * Konva (listening=false) — клики/drag/dblclick по фигурам не работают,
+   * маркиз/хоткеи/контекст-меню отключены; пан/зум камеры остаются.
+   */
+  readOnly?: boolean;
+}
+
+export default function Canvas({ readOnly = false }: CanvasProps) {
   const {
     elements, selectedIds, selectMultiple, setCanvasRect,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
-    canvasRect, currentComponentStateByElementKey,
+    canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
   } = useEditorStore();
 
@@ -62,6 +71,7 @@ export default function Canvas() {
 
   useCanvasRect(containerRef, setCanvasRect);
   useEditorHotkeys({
+    enabled: !readOnly,
     activeGroupKey, exitGroup, clearSelection, deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     duplicateSelected, selectAllInScope, moveSelectedBy,
   });
@@ -92,6 +102,7 @@ export default function Canvas() {
     stageRef, camera, setCameraPan, setCameraZoom,
     elements, elementsMap, selectedIds, selectMultiple,
     activeGroupKey, exitGroup, closeMenu,
+    readOnly,
   });
 
   // ---- Мульти-drag: тянем один выделенный элемент — остальные едут следом. ----
@@ -307,6 +318,7 @@ export default function Canvas() {
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
+    if (readOnly) return;
     const tg = e.target;
 
     if (tg === e.target.getStage() || tg.name() === "grid-bg") {
@@ -348,11 +360,12 @@ export default function Canvas() {
     updateElementVisual, onElementClick: handleElementClick, enterGroup, resolveClickTarget, closeMenu,
     editingTextKey, onStartTextEdit: setEditingTextKey,
     currentComponentStateByElementKey,
+    runtimeOverridesByElementKey,
     transformerKey: transformTarget?.key ?? null,
   }), [
     selectedIds, activeGroupKey, elementsMap, themeColors,
     updateElementVisual, handleElementClick, enterGroup, resolveClickTarget, closeMenu,
-    editingTextKey, currentComponentStateByElementKey, transformTarget,
+    editingTextKey, currentComponentStateByElementKey, runtimeOverridesByElementKey, transformTarget,
   ]);
 
   return (
@@ -382,10 +395,12 @@ export default function Canvas() {
           onDragStart={handleStageDragStart}
           onDragMove={handleStageDragMove}
           onDragEnd={handleStageDragEnd}
-          onMouseOver={handleStageMouseOver}
+          onMouseOver={readOnly ? undefined : handleStageMouseOver}
           onMouseLeave={() => setHoveredKey(null)}
         >
-          <Layer>
+          {/* readOnly (монитор): слой вне hit-графа Konva — фигуры не кликаются
+              и не драгаются, при этом пан/зум Stage работают как обычно. */}
+          <Layer listening={!readOnly}>
             <Rect
               key={`canvas-bg-${resolvedTheme}`}
               name="canvas-bg"
@@ -451,7 +466,7 @@ export default function Canvas() {
             )}
 
             {/* Transformer: 8 ручек + поворот для одиночного бокс-элемента */}
-            {transformTarget && (
+            {transformTarget && !readOnly && (
               <SelectionTransformer
                 element={transformTarget}
                 stageRef={stageRef}
