@@ -98,6 +98,10 @@ export type ElementType =
   | "slider"
   | "dropdown"
   | "input"
+  | "gauge"
+  | "table"
+  | "trend"
+  | "chart"
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
@@ -156,6 +160,32 @@ export interface LeafElement extends BaseCanvasElement {
   pressed? : boolean;
   checked?: boolean;
   d?: string; // SVG path data
+
+  // gauge
+  showValue?: boolean;
+  arcStart?: number;
+  arcEnd?: number;
+
+  // table
+  rows?: number;
+  cols?: number;
+  headerText?: string;
+  showHeader?: boolean;
+  alternateRow?: boolean;
+  alternateColor?: string;
+  headerColor?: string;
+
+  // trend / chart
+  lineColor?: string;
+  gridColor?: string;
+  showGrid?: boolean;
+  showDots?: boolean;
+  filled?: boolean;
+  fillColor?: string;
+  title?: string;
+  chartType?: string;
+  barColor?: string;
+  showValues?: boolean;
   // ... добавляй по мере необходимости
 }
 

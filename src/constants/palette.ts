@@ -83,4 +83,34 @@ export const paletteItems: PaletteItemType[] = [
     category: "Управление",
     defaultProps: {value: "", placeholder: "Введите...", w: 160, h: 40, backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a"},
   },
+
+  // ВИЗУАЛИЗАЦИЯ
+  {
+    id: 10 ** 5 + 15,
+    type: "gauge",
+    name: "Гаус",
+    category: "Визуализация",
+    defaultProps: {value: 60, min: 0, max: 100, unit: "", w: 200, h: 200, color: "#3b82f6", backgroundColor: "#1e293b", strokeColor: "#475569", textColor: "#f8fafc", showValue: true, arcStart: -220, arcEnd: 40},
+  },
+  {
+    id: 10 ** 5 + 16,
+    type: "table",
+    name: "Таблица",
+    category: "Визуализация",
+    defaultProps: {rows: 4, cols: 3, headerText: "Таблица", w: 300, h: 160, backgroundColor: "#1e293b", headerColor: "#334155", strokeColor: "#475569", textColor: "#f8fafc", fontSize: 12, showHeader: true, alternateRow: true, alternateColor: "#0f172a"},
+  },
+  {
+    id: 10 ** 5 + 17,
+    type: "trend",
+    name: "Тренды",
+    category: "Визуализация",
+    defaultProps: {w: 300, h: 160, lineColor: "#3b82f6", backgroundColor: "#1e293b", strokeColor: "#475569", textColor: "#94a3b8", gridColor: "#1e3a5f", showGrid: true, showDots: false, filled: false, fillColor: "#1d4ed8", title: "Тренд", min: 0, max: 100},
+  },
+  {
+    id: 10 ** 5 + 18,
+    type: "chart",
+    name: "График",
+    category: "Визуализация",
+    defaultProps: {chartType: "bar", w: 300, h: 200, barColor: "#3b82f6", backgroundColor: "#1e293b", strokeColor: "#475569", textColor: "#94a3b8", gridColor: "#1e3a5f", showGrid: true, showValues: true, orientation: "vertical", title: "График"},
+  },
 ];

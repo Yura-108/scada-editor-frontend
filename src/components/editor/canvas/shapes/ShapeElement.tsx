@@ -16,6 +16,10 @@ import { ToggleShapeElement } from "./ToggleShapeElement";
 import { SliderShapeElement } from "./SliderShapeElement";
 import { DropdownShapeElement } from "./DropdownShapeElement";
 import { InputShapeElement } from "./InputShapeElement";
+import { GaugeShapeElement } from "./GaugeShapeElement";
+import { TableShapeElement } from "./TableShapeElement";
+import { TrendShapeElement } from "./TrendShapeElement";
+import { ChartShapeElement } from "./ChartShapeElement";
 
 interface ShapeElementProps {
   el: DiagramElement;
@@ -292,6 +296,22 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
 
   if (rendered.type === "input") {
     return <InputShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "gauge") {
+    return <GaugeShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "table") {
+    return <TableShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "trend") {
+    return <TrendShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "chart") {
+    return <ChartShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
   }
 
   return (
