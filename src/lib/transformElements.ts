@@ -1,5 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/lib/createUuid";
+import {parseBindings} from "@/lib/parseBindings";
 
 type BackendStateDto = {
   id?: number | string;
@@ -167,7 +168,9 @@ export default function transformElements(
           name: String(s.name ?? ""),
           content: String(s.content ?? s.script ?? ""),
         })),
-        bindings: normalizeArray(desc.bindings as unknown[]),
+        // Composition-дескриптор хранит TagBinding[] сырыми объектами; parseBindings
+        // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
+        bindings: parseBindings(desc.bindings),
         properties: normalizeArray(desc.properties as unknown[]) as DiagramElement["properties"],
         label: String(desc.label ?? ""),
       } as DiagramElement);
@@ -196,7 +199,8 @@ export default function transformElements(
         name: String(s.name ?? ""),
         content: String(s.content ?? s.script ?? ""),
       })),
-      bindings: normalizeArray(el.bindings),
+      // Top-level биндинги едут через DTO-обёртку {name, script: JSON} — распаковываем.
+      bindings: parseBindings(el.bindings),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
     };

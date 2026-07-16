@@ -18,6 +18,8 @@ interface StageInteractionsDeps {
   activeGroupKey: string | null;
   exitGroup: () => void;
   closeMenu: () => void;
+  /** Режим монитора: без маркиза и сброса выделения; пан/зум остаются. */
+  readOnly?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function useStageInteractions({
   activeGroupKey,
   exitGroup,
   closeMenu,
+  readOnly = false,
 }: StageInteractionsDeps) {
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
   const middlePanRef = useRef<{ x: number; y: number } | null>(null);
@@ -110,6 +113,10 @@ export function useStageInteractions({
       if (container) container.style.cursor = "grabbing";
       return;
     }
+
+    // Монитор: клики по холсту ничего не выделяют и не рисуют маркиз
+    // (средняя кнопка — панорамирование — обработана выше).
+    if (readOnly) return;
 
     if (clickedOnEmpty || clickedOnBg) {
       if (activeGroupKey) {

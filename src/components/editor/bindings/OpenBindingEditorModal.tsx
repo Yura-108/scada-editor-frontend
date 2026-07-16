@@ -1,0 +1,286 @@
+import React, {useMemo, useRef, useState} from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import CodeMirror, {EditorView} from "@uiw/react-codemirror";
+import {javascript} from "@codemirror/lang-javascript";
+import {Play, Tag} from "lucide-react";
+import {useModalStore} from "@/store/modalStore";
+import {useEditorStore} from "@/store/useEditorStore";
+import {cn} from "@/lib/utils";
+import {createUuid} from "@/lib/createUuid";
+import {DiagramElement} from "@/types/editorElement.type";
+import {TagBinding} from "@/types/binding.types";
+import {collectTagScope} from "@/lib/runtime/bindingScope";
+import {compileBinding, executeBinding, type BindingIntent} from "@/lib/runtime/executeBinding";
+import {getRenderedElement} from "@/lib/getRenderedElement";
+
+interface BindingEditorProps {
+  element: DiagramElement;
+  /** Существующий биндинг для редактирования; не задан — создание нового. */
+  binding?: TagBinding;
+}
+
+const buildTemplate = (tagName: string | undefined, stateNames: string[]) => {
+  const name = tagName ?? "ИМЯ_ТЕГА";
+  const alarm = stateNames.find(s => s !== "Нормальное") ?? "Авария";
+  const normal = stateNames.includes("Нормальное") ? "Нормальное" : (stateNames[0] ?? "Нормальное");
+  return `if (${name}.V > 100) {\n  setState("${alarm}")\n} else {\n  setState("${normal}")\n}\n`;
+};
+
+type TestResult =
+  | {kind: "ok"; intents: BindingIntent[]}
+  | {kind: "error"; message: string}
+  | null;
+
+function BindingEditorModalContent({element, binding}: BindingEditorProps) {
+  const closeModal = useModalStore(s => s.closeModal);
+
+  const scope = useMemo(() => collectTagScope(element.properties), [element.properties]);
+  const stateNames = useMemo(() => element.states.map(s => s.name), [element.states]);
+
+  const [name, setName] = useState(binding?.name ?? "");
+  const [code, setCode] = useState(
+    binding?.code ?? buildTemplate(scope.names[0], stateNames),
+  );
+  const [mockValues, setMockValues] = useState<Record<string, string>>({});
+  const [testResult, setTestResult] = useState<TestResult>(null);
+
+  const viewRef = useRef<EditorView | null>(null);
+
+  const insertAtCursor = (text: string) => {
+    const view = viewRef.current;
+    if (!view) {
+      setCode(c => c + text);
+      return;
+    }
+    const {from, to} = view.state.selection.main;
+    view.dispatch({
+      changes: {from, to, insert: text},
+      selection: {anchor: from + text.length},
+    });
+    view.focus();
+  };
+
+  const runTest = () => {
+    const draft: TagBinding = {
+      v: 1,
+      id: binding?.id ?? "test",
+      name: name || "тест",
+      enabled: true,
+      code,
+    };
+    const compiled = compileBinding(element.key, draft, scope);
+    if ("error" in compiled) {
+      setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
+      return;
+    }
+    const values = new Map<string, string>();
+    for (const tagName of scope.names) {
+      const raw = mockValues[tagName];
+      if (raw !== undefined && raw !== "") values.set(scope.tagIdByName[tagName], raw);
+    }
+    const res = executeBinding(compiled, values, getRenderedElement(element));
+    if ("error" in res) {
+      setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
+    } else {
+      setTestResult({kind: "ok", intents: res.intents});
+    }
+  };
+
+  const handleSave = () => {
+    if (!name.trim() || !code.trim()) return;
+    const store = useEditorStore.getState();
+    if (binding) {
+      store.updateBinding(element.key, binding.id, {name: name.trim(), code});
+    } else {
+      store.addBinding(element.key, {
+        v: 1,
+        id: createUuid(),
+        name: name.trim(),
+        enabled: true,
+        code,
+      });
+    }
+    closeModal();
+  };
+
+  const inputClasses = cn(
+    "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5",
+    "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-none",
+    "hover:border-gray-400 dark:hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
+    "transition-all shadow-sm",
+  );
+
+  const chipClasses = cn(
+    "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full cursor-pointer",
+    "bg-indigo-950/60 text-indigo-300 border border-indigo-800/40 hover:bg-indigo-900/70 transition-colors",
+  );
+
+  return (
+    <>
+      <Dialog.Title className="text-xl font-semibold mb-1">
+        {binding ? "Редактирование привязки" : "Новая привязка"}
+      </Dialog.Title>
+      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+        JavaScript-код исполняется в мониторе при изменении тегов. В скоупе — свойства-теги
+        элемента (объект <code>{"{V, RAW}"}</code>) и API: <code>setState(&quot;Имя&quot;)</code>,{" "}
+        <code>setProp(&quot;color&quot;, значение)</code>, <code>self</code>.
+      </Dialog.Description>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+            Название привязки
+          </label>
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Например, Авария по уровню"
+            className={inputClasses}
+          />
+        </div>
+
+        {/* Доступные теги и состояния — клик вставляет в код */}
+        <div className="space-y-2">
+          {scope.names.length === 0 ? (
+            <div className="text-sm text-amber-600 dark:text-amber-400">
+              У элемента нет свойств-тегов — код не получит данных.
+              Сначала добавьте свойство-тег на вкладке «Свойства».
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500 uppercase tracking-wider">Теги:</span>
+              {scope.names.map(tagName => (
+                <span
+                  key={tagName}
+                  className={chipClasses}
+                  title={scope.tagIdByName[tagName]}
+                  onClick={() => insertAtCursor(`${tagName}.V`)}
+                >
+                  <Tag size={12} />
+                  {tagName}
+                </span>
+              ))}
+            </div>
+          )}
+          {scope.invalidNames.length > 0 && (
+            <div className="text-xs text-amber-600 dark:text-amber-400">
+              Имена свойств {scope.invalidNames.map(n => `«${n}»`).join(", ")} нельзя использовать
+              в коде (не являются JS-идентификаторами) — переименуйте свойство.
+            </div>
+          )}
+          {stateNames.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500 uppercase tracking-wider">Состояния:</span>
+              {stateNames.map(stateName => (
+                <span
+                  key={stateName}
+                  className={cn(chipClasses, "bg-blue-950/60 text-blue-300 border-blue-800/40 hover:bg-blue-900/70")}
+                  onClick={() => insertAtCursor(`setState("${stateName}")`)}
+                >
+                  {stateName}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+            Код (JavaScript)
+          </label>
+          <div className="border border-gray-300 dark:border-gray-700/80 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/70">
+            <CodeMirror
+              value={code}
+              height="220px"
+              extensions={[javascript()]}
+              onChange={value => setCode(value)}
+              onCreateEditor={view => { viewRef.current = view; }}
+              theme="dark"
+            />
+          </div>
+        </div>
+
+        {/* Тест-прогон с мок-значениями */}
+        {scope.names.length > 0 && (
+          <div className="rounded-xl border border-gray-300 dark:border-gray-700/80 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Тест-прогон
+              </span>
+              <button
+                onClick={runTest}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/80 hover:bg-emerald-600 text-white transition-colors"
+              >
+                <Play size={12} />
+                Выполнить
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {scope.names.map(tagName => (
+                <div key={tagName} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 dark:text-gray-400 font-mono shrink-0">{tagName} =</span>
+                  <input
+                    type="text"
+                    className={cn(inputClasses, "px-2 py-1 text-xs rounded-lg")}
+                    placeholder="значение"
+                    value={mockValues[tagName] ?? ""}
+                    onChange={e => setMockValues(v => ({...v, [tagName]: e.target.value}))}
+                  />
+                </div>
+              ))}
+            </div>
+            {testResult && (
+              <div
+                className={cn(
+                  "text-xs rounded-lg px-3 py-2 font-mono whitespace-pre-wrap",
+                  testResult.kind === "error"
+                    ? "bg-red-950/40 text-red-300"
+                    : "bg-emerald-950/40 text-emerald-300",
+                )}
+              >
+                {testResult.kind === "error"
+                  ? testResult.message
+                  : testResult.intents.length
+                    ? testResult.intents
+                        .map(i => i.kind === "state"
+                          ? `setState("${i.stateName}")`
+                          : `setProp("${i.key}", ${JSON.stringify(i.value)})`)
+                        .join("\n")
+                    : "Код выполнен, интентов нет (ни setState, ни setProp не вызваны)"}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 flex gap-3 justify-end">
+        <button
+          onClick={closeModal}
+          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800
+          hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600
+          transition-colors text-gray-800 dark:text-gray-300"
+        >
+          Отмена
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || !code.trim()}
+          className="px-6 py-2.5 rounded-lg font-medium
+          bg-linear-to-r from-indigo-600 to-blue-600
+          hover:from-indigo-500 hover:to-blue-500
+          disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 disabled:text-gray-500
+          text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
+        >
+          Сохранить
+        </button>
+      </div>
+    </>
+  );
+}
+
+export function openBindingEditorModal(props: BindingEditorProps) {
+  const {openModal} = useModalStore.getState();
+  openModal(<BindingEditorModalContent {...props} />);
+}

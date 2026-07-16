@@ -66,6 +66,12 @@ export interface EditorRenderContext {
    */
   currentComponentStateByElementKey: Record<string, string>;
   /**
+   * Рантайм-оверрайды монитора. Как и currentComponentStateByElementKey,
+   * фигуры читают их через getRenderedElement (getState()), но поле обязано
+   * быть в контексте — тик рантайма меняет identity ctx и «пробивает» React.memo.
+   */
+  runtimeOverridesByElementKey: Record<string, Record<string, unknown>>;
+  /**
    * Ключ элемента, к которому прицеплен SelectionTransformer (или null).
    * Такая фигура НЕ рисует собственную пунктирную рамку выделения —
    * иначе двойная рамка (своя + трансформера) выглядит грязно.

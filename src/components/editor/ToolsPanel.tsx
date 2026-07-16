@@ -127,7 +127,7 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         left: leftVisible ? '288px' : '0px',
         right: rightVisible ? '320px' : '0px',
       }}
-      className="fixed top-18 z-30 flex gap-3 justify-center items-center px-4 py-2
+      className="fixed top-30 z-30 flex gap-3 justify-center items-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
       {/* Проект и сцена */}

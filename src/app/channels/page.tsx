@@ -19,7 +19,7 @@ export default function Workspace() {
     <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
       <main className="container mx-auto flex flex-col md:flex-row justify-around pt-8 pb-20 gap-6 px-8">
         {nodes && (
-          <aside className="transition-all duration-300 ease-in-out basis-full md:basis-[25%] lg:basis-[20%]">
+          <aside className="transition-all duration-300 ease-in-out basis-full md:basis-[25%] lg:basis-[20%] md:sticky md:top-8 md:self-start">
             <DeviceTreePanel />
           </aside>
         )}

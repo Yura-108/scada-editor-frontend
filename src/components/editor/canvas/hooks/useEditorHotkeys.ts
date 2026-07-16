@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { GRID } from "@/lib/utils";
 
 interface EditorHotkeysDeps {
+  /** false — хоткеи не вешаются вовсе (режим монитора). По умолчанию true. */
+  enabled?: boolean;
   activeGroupKey: string | null;
   exitGroup: () => void;
   clearSelection: () => void;
@@ -19,6 +21,7 @@ interface EditorHotkeysDeps {
  * сетки, с Shift — на 1px). Undo/Redo (Ctrl+Z/Y) живут в EditorClient.
  */
 export function useEditorHotkeys({
+  enabled = true,
   activeGroupKey,
   exitGroup,
   clearSelection,
@@ -30,6 +33,7 @@ export function useEditorHotkeys({
   moveSelectedBy,
 }: EditorHotkeysDeps) {
   useEffect(() => {
+    if (!enabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.target instanceof HTMLElement && e.target.isContentEditable) return;
@@ -74,6 +78,7 @@ export function useEditorHotkeys({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    enabled,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     duplicateSelected, selectAllInScope, moveSelectedBy,
     activeGroupKey, exitGroup, clearSelection,
