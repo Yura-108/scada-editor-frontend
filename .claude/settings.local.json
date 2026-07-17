@@ -55,7 +55,9 @@
       "Bash(curl -s -c 'C:\\\\Users\\\\Notebook\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Work-scada-editor-frontend\\\\053d89f8-1707-4b21-b5e3-299ab79a2056\\\\scratchpad/cookies.txt' -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{\"login\":\"claude-probe\",\"password\":\"Probe12345!\"}' -o /dev/null -w 'login: %{http_code}\\\\n')",
       "Bash(curl -s -b 'C:\\\\Users\\\\Notebook\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Work-scada-editor-frontend\\\\053d89f8-1707-4b21-b5e3-299ab79a2056\\\\scratchpad/cookies.txt' http://localhost:3000/api/editor/scene/912?project_id=911)",
       "Bash(curl -s -b 'C:\\\\Users\\\\Notebook\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Work-scada-editor-frontend\\\\053d89f8-1707-4b21-b5e3-299ab79a2056\\\\scratchpad/cookies.txt' -o /dev/null -w 'GET /monitor → %{http_code} \\(%{time_total}s\\)\\\\n' http://localhost:3000/monitor)",
-      "Bash(curl -s -b 'C:\\\\Users\\\\Notebook\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Work-scada-editor-frontend\\\\053d89f8-1707-4b21-b5e3-299ab79a2056\\\\scratchpad/cookies.txt' -o /dev/null -w 'GET /editor → %{http_code} \\(%{time_total}s\\)\\\\n' http://localhost:3000/editor)"
+      "Bash(curl -s -b 'C:\\\\Users\\\\Notebook\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Work-scada-editor-frontend\\\\053d89f8-1707-4b21-b5e3-299ab79a2056\\\\scratchpad/cookies.txt' -o /dev/null -w 'GET /editor → %{http_code} \\(%{time_total}s\\)\\\\n' http://localhost:3000/editor)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl *)"
     ]
   }
 }

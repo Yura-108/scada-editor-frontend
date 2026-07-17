@@ -30,6 +30,15 @@ export const paletteItems: PaletteItemType[] = [
     category: "Базовые",
     defaultProps: {name: "Text", text: "Text", fontSize: 16, color: "#ffffff", bold: false, align: "left"}
   },
+  {
+    id: 10 ** 5 + 5,
+    type: "image",
+    name: "Картинка",
+    category: "Базовые",
+    // При перетаскивании на холст открывается проводник для выбора файла
+    // (см. обработчик drop в EditorClient) — src проставляется после выбора.
+    defaultProps: {name: "Image", objectFit: "contain"}
+  },
 
   // БАЗОВЫЕ — индикаторы
   {

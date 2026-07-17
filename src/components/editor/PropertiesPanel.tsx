@@ -4,13 +4,14 @@ import React, {useState, useMemo} from "react";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
-import {Plus} from "lucide-react";
+import {Plus, AlertTriangle} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
 import {ColorField} from "@/components/ui/ColorField";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useDeviceStore} from "@/store/useDeviceStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/lib/createUuid";
 import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
@@ -29,6 +30,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const addComponentStateToSubtree = useEditorStore(s => s.addComponentStateToSubtree);
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
   const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
+  // База каналов подгружена, если в дереве устройств есть узлы (глобальный стор,
+  // наполняется при заходе в раздел «База каналов»). Без неё не из чего выбрать тег.
+  const isChannelBaseLoaded = useDeviceStore(s => s.nodes.length > 0);
 
   const currentComponentStateId = element
     ? (currentComponentStateByElementKey[element.key] ?? element.states.find(s => s.isDefault)?.id ?? element.states[0]?.id)
@@ -105,6 +109,17 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     const parsed = Number(rawValue);
     return Number.isFinite(parsed) ? parsed : fallback;
   };
+
+  // Добавлять свойства можно только сохранённому элементу (у него есть id на
+  // сервере — свойства создаются серверным роутом по component_id) и при
+  // загруженной базе каналов (дерево устройств нужно, чтобы выбрать тег).
+  const isElementSaved = element.id != null;
+  const canAddProperty = isElementSaved && isChannelBaseLoaded;
+  const addPropertyHint = !isElementSaved && !isChannelBaseLoaded
+    ? "Сначала сохраните сцену и откройте раздел «База каналов»: свойства добавляются только сохранённым элементам, а для выбора тега нужно загруженное дерево устройств."
+    : !isElementSaved
+      ? "Сначала сохраните сцену — свойство можно добавить только сохранённому элементу (он ещё не создан на сервере)."
+      : "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
 
   const handleSelectChange = (key: string, value: string) => {
     // Смена ориентации прогресс-бара меняет местами w/h, чтобы вертикальный бар был
@@ -433,9 +448,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               </div>
             )}
 
+            {!canAddProperty && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>{addPropertyHint}</span>
+              </div>
+            )}
+
             <button
-              className={baseAddButtonClasses}
-              onClick={() => handleAddProperty(element?.id)}
+              className={canAddProperty
+                ? baseAddButtonClasses
+                : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"}
+              onClick={() => canAddProperty && handleAddProperty(element.id)}
+              disabled={!canAddProperty}
+              title={canAddProperty ? undefined : addPropertyHint}
             >
               <Plus size={18}/>
               Добавить свойство

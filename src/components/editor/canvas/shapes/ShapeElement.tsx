@@ -16,6 +16,7 @@ import { ToggleShapeElement } from "./ToggleShapeElement";
 import { SliderShapeElement } from "./SliderShapeElement";
 import { DropdownShapeElement } from "./DropdownShapeElement";
 import { InputShapeElement } from "./InputShapeElement";
+import { ImageShapeElement } from "./ImageShapeElement";
 
 interface ShapeElementProps {
   el: DiagramElement;
@@ -292,6 +293,10 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
 
   if (rendered.type === "input") {
     return <InputShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+  }
+
+  if (rendered.type === "image") {
+    return <ImageShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
   }
 
   return (

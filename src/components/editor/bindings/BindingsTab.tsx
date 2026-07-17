@@ -5,6 +5,7 @@ import {Pencil, Plus, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
+import {hasSavedTagProperty} from "@/lib/runtime/bindingScope";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 
 interface BindingsTabProps {
@@ -22,6 +23,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
   const removeBinding = useEditorStore(s => s.removeBinding);
 
   const bindings = element.bindings ?? [];
+  const canSave = hasSavedTagProperty(element.properties);
 
   return (
     <div className="space-y-3">
@@ -32,6 +34,14 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
         JavaScript-скрипты, исполняемые в режиме монитора при изменении значений тегов
         (переключают состояние или меняют свойства элемента).
       </p>
+
+      {!canSave && (
+        <div className="text-xs text-amber-600 dark:text-amber-400">
+          У элемента нет сохранённого свойства-тега — новую привязку сохранить не получится
+          (бэкенд требует её на конкретное свойство этого элемента). Сначала добавьте
+          свойство-тег на вкладке «Свойства».
+        </div>
+      )}
 
       {bindings.length === 0 ? (
         <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">

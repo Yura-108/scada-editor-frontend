@@ -28,6 +28,16 @@ export interface TagScope {
 }
 
 /**
+ * У элемента есть хотя бы одно СОХРАНЁННОЕ на сервере свойство-тег (числовой id).
+ * Бэкенд требует, чтобы `bindings[].component_property_id` ссылался на существующее
+ * свойство ИМЕННО этого компонента — иначе весь сейв сцены падает 400 (проверено
+ * 16.07.2026: "Binding requires component_property_id" / "does not belong to component X").
+ * UI обязан блокировать сохранение биндинга, пока это не так.
+ */
+export const hasSavedTagProperty = (properties: PropertyCreateDto[] | undefined): boolean =>
+  (properties ?? []).some(p => p.property_type === "Тег" && typeof p.id === "number");
+
+/**
  * Скоуп биндинга: свойства-теги элемента (`property_type === "Тег"`, tag_id непустой).
  * Имя каждого свойства становится переменной в коде биндинга: `Test.V > 100`.
  */

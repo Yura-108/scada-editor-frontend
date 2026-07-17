@@ -94,7 +94,7 @@ type EditorState = {
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
   addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
-  addElementAt: (x: number, y: number, type: ElementType) => void;
+  addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
   addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
   editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
   /** CRUD биндингов (JS-скрипты монитора) — design-time правки, попадают в undo. */
@@ -478,6 +478,21 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
 
 const getErrorMessage = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
+
+/**
+ * Бэкенд отдаёт ошибки JSON-телом `{status, message, error, timestamp}`
+ * (Spring `ErrorResponse`). Достаём `message` — иначе тост показывает
+ * пользователю сырой JSON-блоб, который легко принять за «ничего не произошло».
+ */
+const parseBackendErrorMessage = (status: number, text: string): string => {
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed?.message === "string" && parsed.message) return parsed.message;
+  } catch {
+    // тело не JSON — покажем как есть (обрезано)
+  }
+  return `Ошибка ${status}${text ? `: ${text.slice(0, 200)}` : ""}`;
+};
 
 /**
  * Единый «замок» на ВСЕ сохранения сцены (ручное + авто + повторные клики).
@@ -962,7 +977,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         set(state => ({ elements: [...state.elements, ...imported] }));
       },
-      addElementAt: (screenX, screenY, type) => {
+      addElementAt: (screenX, screenY, type, extraProps) => {
         const {scene, currentProject} = get();
         const rect = get().canvasRect;
         if (!rect) return;
@@ -1108,6 +1123,26 @@ export const useEditorStore = create<EditorState>()(temporal(
             backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a", bg: "transparent",
             parentId: scene?.id || null, parentKey: String(scene?.id) || null,
             children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
+        if (type === 'image') {
+          // Дроп создаёт элемент СРАЗУ (плейсхолдер), src заполняется обработчиком
+          // после выбора файла в проводнике — по этому же key (extraProps.key).
+          const key = typeof extraProps?.key === 'string' ? extraProps.key : createUuid();
+          const src = typeof extraProps?.src === 'string' ? extraProps.src : "";
+          const w = typeof extraProps?.w === 'number' ? extraProps.w : 120;
+          const h = typeof extraProps?.h === 'number' ? extraProps.h : 120;
+          const newElement: DiagramElement = {
+            id: null, key, type, composition,
+            x, y, w, h,
+            src, objectFit: "contain", bg: "transparent",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            label: "Картинка",
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
           set(state => ({ elements: [...state.elements, newElement] }));
@@ -1395,7 +1430,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
             if (!res.ok) {
               const text = await res.text();
-              throw new Error(`Ошибка ${res.status}: ${text}`);
+              throw new Error(parseBackendErrorMessage(res.status, text));
             }
 
             if (!opts?.silent) toast.success("Сохранено успешно!");

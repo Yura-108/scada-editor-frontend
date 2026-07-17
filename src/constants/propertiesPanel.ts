@@ -15,6 +15,7 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   slider: { complex: false },
   dropdown: { complex: false },
   input: { complex: false },
+  image: { complex: false },
   custom: {complex: true},
 };
 
@@ -354,6 +355,19 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     { key: "backgroundColor", label: "Цвет фона", type: "color", defaultValue: "#ffffff" },
     { key: "strokeColor", label: "Цвет рамки", type: "color", defaultValue: "#9ca3af" },
     { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#1a1a1a" },
+  ],
+  image: [
+    {
+      key: "objectFit",
+      label: "Вписывание",
+      type: "select",
+      options: [
+        { label: "Вписать (по размеру)", value: "contain" },
+        { label: "Заполнить (обрезка)", value: "cover" },
+        { label: "Растянуть", value: "fill" },
+      ],
+      defaultValue: "contain",
+    },
   ],
   group: [],
   custom: [

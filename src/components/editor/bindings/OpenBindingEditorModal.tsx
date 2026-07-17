@@ -9,7 +9,7 @@ import {cn} from "@/lib/utils";
 import {createUuid} from "@/lib/createUuid";
 import {DiagramElement} from "@/types/editorElement.type";
 import {TagBinding} from "@/types/binding.types";
-import {collectTagScope} from "@/lib/runtime/bindingScope";
+import {collectTagScope, hasSavedTagProperty} from "@/lib/runtime/bindingScope";
 import {compileBinding, executeBinding, type BindingIntent} from "@/lib/runtime/executeBinding";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 
@@ -36,6 +36,9 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
 
   const scope = useMemo(() => collectTagScope(element.properties), [element.properties]);
   const stateNames = useMemo(() => element.states.map(s => s.name), [element.states]);
+  // Бэкенд требует ссылку на СВОЁ сохранённое свойство-тег при сохранении сцены —
+  // без него POST всей сцены падает 400 (см. hasSavedTagProperty).
+  const canSave = useMemo(() => hasSavedTagProperty(element.properties), [element.properties]);
 
   const [name, setName] = useState(binding?.name ?? "");
   const [code, setCode] = useState(
@@ -87,7 +90,7 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
   };
 
   const handleSave = () => {
-    if (!name.trim() || !code.trim()) return;
+    if (!name.trim() || !code.trim() || !canSave) return;
     const store = useEditorStore.getState();
     if (binding) {
       store.updateBinding(element.key, binding.id, {name: name.trim(), code});
@@ -141,13 +144,27 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
           />
         </div>
 
+        {/* Жёсткий блок: без своего сохранённого свойства-тега бэкенд не даст
+            сохранить сцену вообще (падает 400 на ВЕСЬ POST, не только на этот
+            биндинг) — поэтому это не совет, а обязательное условие для Save. */}
+        {!canSave && (
+          <div className="rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+            У элемента нет ни одного сохранённого свойства с типом «Тег» — бэкенд не позволит
+            сохранить сцену с такой привязкой (весь сейв целиком откатится с ошибкой).
+            Сначала добавьте свойство-тег на вкладке «Свойства» (оно уходит на сервер сразу же),
+            затем возвращайтесь сюда — привязка сохранится.
+          </div>
+        )}
+
         {/* Доступные теги и состояния — клик вставляет в код */}
         <div className="space-y-2">
           {scope.names.length === 0 ? (
-            <div className="text-sm text-amber-600 dark:text-amber-400">
-              У элемента нет свойств-тегов — код не получит данных.
-              Сначала добавьте свойство-тег на вкладке «Свойства».
-            </div>
+            canSave && (
+              <div className="text-sm text-amber-600 dark:text-amber-400">
+                Имя свойства-тега непригодно для кода (см. предупреждение ниже) — код не сможет
+                сослаться на него по имени, но привязка сохранится.
+              </div>
+            )
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-500 uppercase tracking-wider">Теги:</span>
@@ -266,7 +283,8 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
         </button>
         <button
           onClick={handleSave}
-          disabled={!name.trim() || !code.trim()}
+          disabled={!name.trim() || !code.trim() || !canSave}
+          title={!canSave ? "У элемента нет сохранённого свойства-тега — см. предупреждение выше" : undefined}
           className="px-6 py-2.5 rounded-lg font-medium
           bg-linear-to-r from-indigo-600 to-blue-600
           hover:from-indigo-500 hover:to-blue-500

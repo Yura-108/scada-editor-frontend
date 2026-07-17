@@ -11,6 +11,8 @@ import {ElementType} from "@/types/editorElement.type";
 import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene} from "@/lib/useAutoSaveScene";
+import {pickImageFile, fitImageSize} from "@/lib/pickImageFile";
+import {createUuid} from "@/lib/createUuid";
 
 export default function EditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -89,6 +91,18 @@ export default function EditorPage() {
 
               if (type === 'custom') {
                 useEditorStore.getState().addTemplate(worldX, worldY, templateData);
+              } else if (type === 'image') {
+                // Создаём элемент-плейсхолдер СРАЗУ в точке сброса (не зависит от
+                // тайминга проводника), затем открываем проводник и заполняем src
+                // по этому же key. Отмена — остаётся плейсхолдер (двойной клик выберет).
+                const key = createUuid();
+                useEditorStore.getState().addElementAt(worldX, worldY, 'image', {key});
+                void (async () => {
+                  const src = await pickImageFile();
+                  if (!src) return;
+                  const {w, h} = await fitImageSize(src, 240);
+                  useEditorStore.getState().updateElementVisual(key, {src, w, h});
+                })();
               } else {
                 useEditorStore.getState().addElementAt(worldX, worldY, type);
               }

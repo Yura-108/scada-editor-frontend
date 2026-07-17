@@ -98,6 +98,7 @@ export type ElementType =
   | "slider"
   | "dropdown"
   | "input"
+  | "image"
 
 // Простой элемент (листовой)
 export interface LeafElement extends BaseCanvasElement {
@@ -156,6 +157,8 @@ export interface LeafElement extends BaseCanvasElement {
   pressed? : boolean;
   checked?: boolean;
   d?: string; // SVG path data
+  src?: string;                 // image: data URL выбранной картинки
+  objectFit?: "contain" | "cover" | "fill";  // image: вписывание картинки в рамку
   // ... добавляй по мере необходимости
 }
 

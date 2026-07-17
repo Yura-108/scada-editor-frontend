@@ -78,6 +78,8 @@ export interface TagBinding {
 
 **Гейт**: вопрос №2 Java-команде (см. WP6) — бэк не должен компилировать `bindings[].script` как Java.
 
+**⚠ Обнаружено 16.07.2026 (реальный баг, не гипотеза)**: бэкенд ТРЕБУЕТ, чтобы `component_property_id` ссылался на существующее свойство ИМЕННО этого компонента — `0`/`null` → `400 "Binding requires component_property_id"`, id чужого компонента → `400 "Binding targets property N which does not belong to component M"`. Раз весь `POST /api/editor/components` — один атомарный запрос на всю сцену, попытка сохранить биндинг на элементе БЕЗ своего сохранённого свойства-тега рушит **весь сейв сцены целиком** (не только этот биндинг) — и ошибка тонет в сыром JSON-тосте (`Ошибка 400: {...}`), выглядя как «изменения не сохраняются». Исправлено: `hasSavedTagProperty()` (`src/lib/runtime/bindingScope.ts`) гейтит кнопку «Сохранить» в модалке биндинга и предупреждает в `BindingsTab`; `parseBackendErrorMessage()` в `exportScene` достаёт `message` из JSON-тела бэкенда вместо сырого блоба.
+
 ## WP2. UI создания биндингов (пункт «UI биндингов»)
 
 - `src/components/editor/PropertiesPanel.tsx`: 5-я вкладка **«Привязки»** (расширить `TabType` стр. 21 и полосу вкладок ~274–292).

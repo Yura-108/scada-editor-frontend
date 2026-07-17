@@ -193,7 +193,7 @@ export default function WorkSpace() {
         {/* Кнопка СВЕРНУТЬ левую панель */}
         <button
           onClick={() => setLeftVisible(false)}
-          className={`absolute top-[50%] -right-8 p-2 text-neutral-600 dark:text-neutral-400 hover:text-gray-900 dark:text-white transition-opacity ${
+          className={`absolute top-[50%] -right-8 p-2 text-neutral-600 dark:text-neutral-400 hover:text-gray-900 transition-opacity ${
             leftShown ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
