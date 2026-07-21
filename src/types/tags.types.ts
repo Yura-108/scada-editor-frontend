@@ -8,6 +8,8 @@ export interface PropertyCreateRequestDto {
   default_value: string;
   logging: boolean;
   onChange: string;
+  access_level: number;
+  OnCanChange: string;
 }
 
 export interface PropertyCreateDto extends PropertyCreateRequestDto {

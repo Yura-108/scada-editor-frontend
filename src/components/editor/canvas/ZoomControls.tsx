@@ -8,14 +8,22 @@ interface ZoomControlsProps {
   onZoomBy: (factor: number) => void;
   onFit: () => void;
   onReset: () => void;
+  /**
+   * Смещение справа (px), чтобы панель зума не пряталась под правой боковой
+   * панелью редактора (в мониторе панелей нет — 0). Базовый отступ 16px добавляется сверху.
+   */
+  rightOffset?: number;
 }
 
 /** Панель зума в углу холста: −/+, текущий %, «вписать сцену», «100%». */
-export function ZoomControls({ zoom, onZoomBy, onFit, onReset }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomBy, onFit, onReset, rightOffset = 0 }: ZoomControlsProps) {
   const btn = "p-1.5 rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors";
 
   return (
-    <div className="absolute bottom-4 right-4 z-30 flex items-center gap-0.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur px-1.5 py-1 shadow-lg select-none">
+    <div
+      style={{ right: rightOffset + 16 }}
+      className="absolute bottom-4 z-30 flex items-center gap-0.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur px-1.5 py-1 shadow-lg select-none transition-[right] duration-300 ease-in-out"
+    >
       <button className={btn} onClick={() => onZoomBy(1 / 1.2)} title="Уменьшить">
         <Minus size={16} />
       </button>

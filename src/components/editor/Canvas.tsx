@@ -29,6 +29,7 @@ import { useThemeColors } from "./canvas/useThemeColors";
 import { useCanvasRect } from "./canvas/hooks/useCanvasRect";
 import { useEditorHotkeys } from "./canvas/hooks/useEditorHotkeys";
 import { useStageInteractions } from "./canvas/hooks/useStageInteractions";
+import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 
 const CANVAS_WIDTH = 5000;
@@ -44,9 +45,14 @@ interface CanvasProps {
    * маркиз/хоткеи/контекст-меню отключены; пан/зум камеры остаются.
    */
   readOnly?: boolean;
+  /**
+   * Ширина открытой правой боковой панели (px) — на неё сдвигается панель зума,
+   * чтобы не прятаться под панелью. В мониторе панелей нет → 0.
+   */
+  controlsRightInset?: number;
 }
 
-export default function Canvas({ readOnly = false }: CanvasProps) {
+export default function Canvas({ readOnly = false, controlsRightInset = 0 }: CanvasProps) {
   const {
     elements, selectedIds, selectMultiple, setCanvasRect,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
@@ -487,6 +493,10 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
               />
             )}
           </Layer>
+
+          {/* Монитор: отдельный слой кликов по элементам с обработчиками событий
+              (основной слой в readOnly не слушает — интерактив только здесь). */}
+          {readOnly && <MonitorInteractionLayer elements={elements} elementsMap={elementsMap} />}
         </Stage>
       </div>
 
@@ -503,6 +513,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
         onZoomBy={zoomBy}
         onFit={zoomFit}
         onReset={() => setCamera(0, 0, 1)}
+        rightOffset={controlsRightInset}
       />
 
       <CanvasContextMenu menu={contextMenu} />

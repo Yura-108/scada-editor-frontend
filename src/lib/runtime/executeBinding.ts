@@ -21,8 +21,10 @@ export interface CompiledBinding {
   elementKey: string;
   binding: TagBinding;
   scope: TagScope;
-  /** tag_id-ы, изменение которых запускает биндинг (triggers либо весь скоуп). */
+  /** tag_id-ы, изменение которых запускает биндинг (triggers либо весь тег-скоуп). */
   triggerTagIds: string[];
+  /** propertyId-ы свойств-ссылок: их изменение (properties[]) также запускает биндинг. */
+  triggerPropertyIds: number[];
   fn: (...args: unknown[]) => unknown;
 }
 
@@ -45,12 +47,16 @@ export const compileBinding = (
     const fn = new Function(...scope.names, "setState", "setProp", "self", binding.code) as
       (...args: unknown[]) => unknown;
 
-    const scopeTagIds = scope.names.map(n => scope.tagIdByName[n]);
+    const scopeTagIds = scope.names
+      .map(n => scope.tagIdByName[n])
+      .filter((t): t is string => typeof t === "string");
     const triggerTagIds = binding.triggers?.length
       ? binding.triggers.filter(t => scopeTagIds.includes(t))
       : scopeTagIds;
+    // Свойства-ссылки триггерят биндинг всегда (сужения по triggers пока нет).
+    const triggerPropertyIds = Object.values(scope.propertyIdByName);
 
-    return {elementKey, binding, scope, triggerTagIds, fn};
+    return {elementKey, binding, scope, triggerTagIds, triggerPropertyIds, fn};
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
   }
@@ -61,13 +67,16 @@ export type ExecuteResult =
   | {error: string};
 
 /**
- * Исполняет скомпилированный биндинг над текущими значениями тегов.
- * Интенты собираются коллекторами; «последний вызов выигрывает» по цели
- * (одно состояние на элемент, одно значение на свойство).
+ * Исполняет скомпилированный биндинг над текущими значениями тегов и свойств.
+ * Значения тегов берутся из `valuesByTagId` (ключ — tag_id), значения свойств
+ * других компонентов — из `valuesByPropertyId` (ключ — propertyId). Интенты
+ * собираются коллекторами; «последний вызов выигрывает» по цели (одно состояние
+ * на элемент, одно значение на свойство).
  */
 export const executeBinding = (
   cb: CompiledBinding,
   valuesByTagId: ReadonlyMap<string, string>,
+  valuesByPropertyId: ReadonlyMap<number, string>,
   self?: unknown,
 ): ExecuteResult => {
   let stateIntent: {kind: "state"; stateName: string} | null = null;
@@ -84,9 +93,12 @@ export const executeBinding = (
     }
   };
 
-  const args = cb.scope.names.map(name =>
-    buildTagObject(valuesByTagId.get(cb.scope.tagIdByName[name])),
-  );
+  const args = cb.scope.names.map(name => {
+    if (name in cb.scope.tagIdByName) {
+      return buildTagObject(valuesByTagId.get(cb.scope.tagIdByName[name]));
+    }
+    return buildTagObject(valuesByPropertyId.get(cb.scope.propertyIdByName[name]));
+  });
 
   try {
     cb.fn(...args, setState, setProp, self ?? null);

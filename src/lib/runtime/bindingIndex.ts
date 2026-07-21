@@ -1,16 +1,20 @@
 import type {DiagramElement} from "@/types/editorElement.type";
-import {collectTagScope} from "@/lib/runtime/bindingScope";
+import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
 
 export interface BindingIndex {
   /** tag_id → биндинги, которые он триггерит (O(1)-маршрутизация входящего значения). */
   byTagId: Map<string, CompiledBinding[]>;
+  /** propertyId → биндинги, которые он триггерит (маршрутизация properties[] UPDATE). */
+  byPropertyId: Map<number, CompiledBinding[]>;
   /** Все скомпилированные биндинги (для сида/повторного прогона). */
   all: CompiledBinding[];
   /** binding.id → сообщение ошибки компиляции (для индикации во вкладке «Привязки»). */
   compileErrors: Map<string, string>;
   /** Все tag_id, задействованные скомпилированными биндингами. */
   tagIds: Set<string>;
+  /** Все propertyId, задействованные скомпилированными биндингами. */
+  propertyIds: Set<number>;
 }
 
 /**
@@ -20,19 +24,23 @@ export interface BindingIndex {
  */
 export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   const byTagId = new Map<string, CompiledBinding[]>();
+  const byPropertyId = new Map<number, CompiledBinding[]>();
   const all: CompiledBinding[] = [];
   const compileErrors = new Map<string, string>();
   const tagIds = new Set<string>();
+  const propertyIds = new Set<number>();
 
   for (const el of elements) {
     const bindings = el.bindings ?? [];
     if (!bindings.length) continue;
 
-    const scope = collectTagScope(el.properties);
+    // Тег-скоуп общий для элемента; свойства-ссылки — пер-биндинговые.
+    const tagScope = collectTagScope(el.properties);
 
     for (const binding of bindings) {
       if (!binding.enabled) continue;
 
+      const scope = withPropertyRefs(tagScope, binding.propertyRefs);
       const compiled = compileBinding(el.key, binding, scope);
       if ("error" in compiled) {
         compileErrors.set(binding.id, compiled.error);
@@ -47,13 +55,20 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
         if (list) list.push(compiled);
         else byTagId.set(tagId, [compiled]);
       }
+      for (const propertyId of compiled.triggerPropertyIds) {
+        propertyIds.add(propertyId);
+        const list = byPropertyId.get(propertyId);
+        if (list) list.push(compiled);
+        else byPropertyId.set(propertyId, [compiled]);
+      }
     }
   }
 
   console.log(
-    `[monitor:engine] индекс собран: биндингов ${all.length}, ошибок компиляции ${compileErrors.size}, отслеживаемых тегов ${tagIds.size}`,
+    `[monitor:engine] индекс собран: биндингов ${all.length}, ошибок компиляции ${compileErrors.size}, отслеживаемых тегов ${tagIds.size}, свойств ${propertyIds.size}`,
   );
   if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
+  if (propertyIds.size) console.table([...propertyIds].map(propertyId => ({propertyId})));
 
-  return {byTagId, all, compileErrors, tagIds};
+  return {byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds};
 };

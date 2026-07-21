@@ -88,7 +88,7 @@ export default function WorkSpace() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "editor":
-        return <EditorPanel />;
+        return <EditorPanel rightInset={rightShown ? RIGHT_ASIDE_WIDTH : 0} />;
       case "recipes":
         return <RecipesPanel />;
       case "lineParams":
@@ -122,48 +122,48 @@ export default function WorkSpace() {
 
         {/* Полоса вкладок: под header, между боковыми панелями. Не влезающие вкладки
             скрыты (overflow скрыт), переключение — стрелками. */}
-        <div
-          style={{
-            marginLeft: leftShown ? LEFT_ASIDE_WIDTH : 0,
-            marginRight: rightShown ? RIGHT_ASIDE_WIDTH : 0,
-          }}
-          className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md relative z-10 flex items-center transition-[margin] duration-300 ease-in-out"
-        >
-          {/* Кнопка прокрутки влево */}
-          <button
-            onClick={() => scrollTabs('left')}
-            className="shrink-0 p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
+        {/*<div*/}
+        {/*  style={{*/}
+        {/*    marginLeft: leftShown ? LEFT_ASIDE_WIDTH : 0,*/}
+        {/*    marginRight: rightShown ? RIGHT_ASIDE_WIDTH : 0,*/}
+        {/*  }}*/}
+        {/*  className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md relative z-10 flex items-center transition-[margin] duration-300 ease-in-out"*/}
+        {/*>*/}
+        {/*  /!* Кнопка прокрутки влево *!/*/}
+        {/*  <button*/}
+        {/*    onClick={() => scrollTabs('left')}*/}
+        {/*    className="shrink-0 p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors"*/}
+        {/*  >*/}
+        {/*    <ChevronLeft size={20} />*/}
+        {/*  </button>*/}
 
-          {/* Контейнер вкладок с прокруткой (скролл-бар скрыт) */}
-          <div
-            ref={tabsContainerRef}
-            className="flex-1 overflow-x-auto scrollbar-hide"
-          >
-            <div className="flex w-max">
-              {tabButton("editor", "Редактор")}
-              {tabButton("recipes", "Рецепты")}
-              {tabButton("lineParams", "Параметры линии")}
-              {tabButton("stationParams", "Параметры станции")}
-              {tabButton("pidController", "ПИД регулятор")}
-              {tabButton("lineBinding", "Обвязка линии")}
-              {tabButton("signals", "Сигналы")}
-              {tabButton("alarmLog", "Журнал аварий")}
-              {tabButton("reports", "Отчеты")}
-              {tabButton("help", "Справка")}
-            </div>
-          </div>
+        {/*  /!* Контейнер вкладок с прокруткой (скролл-бар скрыт) *!/*/}
+        {/*  <div*/}
+        {/*    ref={tabsContainerRef}*/}
+        {/*    className="flex-1 overflow-x-auto scrollbar-hide"*/}
+        {/*  >*/}
+        {/*    <div className="flex w-max">*/}
+        {/*      {tabButton("editor", "Редактор")}*/}
+        {/*      {tabButton("recipes", "Рецепты")}*/}
+        {/*      {tabButton("lineParams", "Параметры линии")}*/}
+        {/*      {tabButton("stationParams", "Параметры станции")}*/}
+        {/*      {tabButton("pidController", "ПИД регулятор")}*/}
+        {/*      {tabButton("lineBinding", "Обвязка линии")}*/}
+        {/*      {tabButton("signals", "Сигналы")}*/}
+        {/*      {tabButton("alarmLog", "Журнал аварий")}*/}
+        {/*      {tabButton("reports", "Отчеты")}*/}
+        {/*      {tabButton("help", "Справка")}*/}
+        {/*    </div>*/}
+        {/*  </div>*/}
 
-          {/* Кнопка прокрутки вправо */}
-          <button
-            onClick={() => scrollTabs('right')}
-            className="shrink-0 p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        {/*  /!* Кнопка прокрутки вправо *!/*/}
+        {/*  <button*/}
+        {/*    onClick={() => scrollTabs('right')}*/}
+        {/*    className="shrink-0 p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors"*/}
+        {/*  >*/}
+        {/*    <ChevronRight size={20} />*/}
+        {/*  </button>*/}
+        {/*</div>*/}
 
         {/* Содержимое вкладки: занимает всё оставшееся место.
             Для «Редактора» — Canvas между панелями; для остальных — чистый элемент вкладки. */}

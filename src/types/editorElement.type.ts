@@ -1,5 +1,5 @@
 import {PropertyCreateDto} from "@/types/tags.types";
-import {TagBinding} from "@/types/binding.types";
+import {ElementEvents, TagBinding} from "@/types/binding.types";
 
 export type SceneType = {
   id: number;
@@ -74,6 +74,8 @@ export interface BaseCanvasElement {
   bindings: TagBinding[];
   properties: PropertyCreateDto[];
   states: ComponentState[];
+  /** Обработчики событий (onClick/onDoubleClick) — JS, исполняются в мониторе. */
+  events?: ElementEvents;
 
 
   rotation?: number;

@@ -15,12 +15,13 @@ import {useDeviceStore} from "@/store/useDeviceStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/lib/createUuid";
 import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
+import {EventsTab} from "@/components/editor/events/EventsTab";
 
 interface PropertiesPanelProps {
   element: DiagramElement | null;
 }
 
-type TabType = "visual" | "states" | "properties" | "scripts" | "bindings";
+type TabType = "visual" | "states" | "properties" | "scripts" | "bindings" | "events";
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const [activeTab, setActiveTab] = useState<TabType>("visual");
@@ -311,9 +312,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
           </button>
           <button
             onClick={() => setActiveTab("bindings")}
-            className={cn(tabButtonClasses(activeTab === "bindings"), "col-span-2")}
+            className={tabButtonClasses(activeTab === "bindings")}
           >
             Привязки
+          </button>
+          <button
+            onClick={() => setActiveTab("events")}
+            className={tabButtonClasses(activeTab === "events")}
+          >
+            События
           </button>
         </div>
       </div>
@@ -527,6 +534,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {activeTab === "bindings" && (
           <BindingsTab element={element} addButtonClasses={baseAddButtonClasses} />
         )}
+
+        {/* События (onClick/onDoubleClick — JS режима монитора) */}
+        {activeTab === "events" && <EventsTab element={element} />}
 
       </div>
     </div>

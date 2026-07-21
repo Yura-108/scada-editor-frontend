@@ -26,6 +26,17 @@ const propertyTypeOptions: Array<{ value: PropertyType; label: string }> = [
   { value: "Локальный", label: "Локальный" },
 ];
 
+const valueTypeOptions: Array<{ value: string; label: string }> = [
+  { value: "string", label: "string" },
+  { value: "integer", label: "integer" },
+  { value: "float", label: "float" },
+  { value: "boolean", label: "boolean" },
+  { value: "date", label: "date" },
+];
+
+const ACCESS_LEVEL_MIN = 0;
+const ACCESS_LEVEL_MAX = 10;
+
 export function AddPropertyContent({ component_id, property }: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
@@ -41,6 +52,8 @@ export function AddPropertyContent({ component_id, property }: Props) {
   const [defaultValue, setDefaultValue] = useState(property?.default_value || "");
   const [logging, setLogging] = useState(property?.logging || false);
   const [onChange, setOnChange] = useState(property?.onChange || "");
+  const [accessLevel, setAccessLevel] = useState(property?.access_level ?? ACCESS_LEVEL_MIN);
+  const [onCanChange, setOnCanChange] = useState(property?.OnCanChange || "");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -51,6 +64,8 @@ export function AddPropertyContent({ component_id, property }: Props) {
     setDefaultValue(property?.default_value || "");
     setLogging(property?.logging || false);
     setOnChange(property?.onChange || "");
+    setAccessLevel(property?.access_level ?? ACCESS_LEVEL_MIN);
+    setOnCanChange(property?.OnCanChange || "");
   }, [property]);
 
   const isTagType = propertyType === "Тег";
@@ -74,6 +89,8 @@ export function AddPropertyContent({ component_id, property }: Props) {
         default_value: defaultValue,
         logging,
         onChange: onChange.trim(),
+        access_level: accessLevel,
+        OnCanChange: onCanChange.trim(),
       };
 
       if (property?.id) {
@@ -175,13 +192,27 @@ export function AddPropertyContent({ component_id, property }: Props) {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
               Тип значения
             </label>
-            <input
-              type="text"
-              value={valueType}
-              onChange={(e) => setValueType(e.target.value)}
-              placeholder="string, number, boolean..."
-              className={inputClass}
-            />
+            <Select.Root value={valueType} onValueChange={setValueType}>
+              <Select.Trigger className={cn(selectTriggerClassName, inputClass)}>
+                <Select.Value placeholder="Выберите тип значения" />
+                <Select.Icon>
+                  <ChevronDown className={selectIconClassName} />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
+                  <Select.Viewport className="p-1.5">
+                    <Select.Group>
+                      {valueTypeOptions.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </Select.Group>
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           </div>
         </div>
 
@@ -219,6 +250,25 @@ export function AddPropertyContent({ component_id, property }: Props) {
           </div>
         </div>
 
+        {/* Уровень доступа */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+            Уровень доступа
+          </label>
+          <input
+            type="number"
+            min={ACCESS_LEVEL_MIN}
+            max={ACCESS_LEVEL_MAX}
+            value={accessLevel}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              if (Number.isNaN(value)) return;
+              setAccessLevel(Math.min(ACCESS_LEVEL_MAX, Math.max(ACCESS_LEVEL_MIN, value)));
+            }}
+            className={inputClass}
+          />
+        </div>
+
         {/* onChange */}
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
@@ -229,6 +279,23 @@ export function AddPropertyContent({ component_id, property }: Props) {
               value={onChange}
               onChange={(e) => setOnChange(e.target.value)}
               placeholder="Код/описание обработчика изменения"
+              rows={5}
+              className={cn(inputClass, "min-h-28 resize-y pr-11")}
+            />
+            <TextCursorInput className="absolute right-4 top-4 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* OnCanChange */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+            OnCanChange
+          </label>
+          <div className="relative">
+            <textarea
+              value={onCanChange}
+              onChange={(e) => setOnCanChange(e.target.value)}
+              placeholder="Код/описание обработчика проверки возможности изменения"
               rows={5}
               className={cn(inputClass, "min-h-28 resize-y pr-11")}
             />

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useEditorStore } from "@/store/useEditorStore";
 import type { DiagramElement } from "@/types/editorElement.type";
 
-const AUTOSAVE_INTERVAL_MS = 60_000; // раз в минуту
+const AUTOSAVE_INTERVAL_MS = 10 * 60_000; // раз в 10 минут
 
 /**
  * Автосохранение сцены редактора раз в минуту.

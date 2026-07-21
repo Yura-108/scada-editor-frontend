@@ -74,7 +74,9 @@ export default function transformElements(
     // doesn't shadow the base values that recomputeAncestorBounds updates.
     const GROUP_POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
     // Структурные ключи компонента в image (не визуальные overrides).
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent"]);
+    // events держим только на base-элементе (не в per-state overrides), иначе
+    // stale-значение в overrides перекрывало бы правку и уезжало бы в сейв.
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "events"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -131,9 +133,9 @@ export default function transformElements(
         const rawImg = rawStateImages[ci] ?? {};
         const compArr = Array.isArray(rawImg.composition) ? (rawImg.composition as Record<string, unknown>[]) : [];
         const d = compArr[i] ?? desc;
-        // scripts/bindings/properties — данные примитива, не визуальные overrides.
+        // scripts/bindings/properties/events — данные примитива, не визуальные overrides.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, ...overrides } = d;
+        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, ...overrides } = d;
         return {
           id: createUuid(),
           name: cs.name,
@@ -172,6 +174,7 @@ export default function transformElements(
         // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
         bindings: parseBindings(desc.bindings),
         properties: normalizeArray(desc.properties as unknown[]) as DiagramElement["properties"],
+        ...(desc.events ? {events: desc.events as DiagramElement["events"]} : {}),
         label: String(desc.label ?? ""),
       } as DiagramElement);
 
@@ -188,6 +191,8 @@ export default function transformElements(
       w: toFiniteNumber(defaultRawImage.w, 80),
       h: toFiniteNumber(defaultRawImage.h, 80),
       ...(image || {}),
+      // events восстанавливаем из НЕобрезанного image (в overrides их нет — см. STRUCTURAL_KEYS).
+      ...(defaultRawImage.events ? {events: defaultRawImage.events as DiagramElement["events"]} : {}),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,

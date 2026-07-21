@@ -127,7 +127,7 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         left: leftVisible ? '288px' : '0px',
         right: rightVisible ? '320px' : '0px',
       }}
-      className="fixed top-30 z-30 flex gap-3 justify-center items-center px-4 py-2
+      className="fixed top-16 z-30 flex gap-3 justify-center items-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
       {/* Проект и сцена */}
@@ -174,46 +174,46 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
 
         {/* Выравнивание (≥2 выделенных) и распределение (≥3) */}
-        <TooltipBtn
-          icon={<AlignStartVertical size={16} />} label="По левому краю"
-          onClick={() => useEditorStore.getState().alignSelected('left')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignCenterVertical size={16} />} label="По центру (гориз.)"
-          onClick={() => useEditorStore.getState().alignSelected('hcenter')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignEndVertical size={16} />} label="По правому краю"
-          onClick={() => useEditorStore.getState().alignSelected('right')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignStartHorizontal size={16} />} label="По верхнему краю"
-          onClick={() => useEditorStore.getState().alignSelected('top')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignCenterHorizontal size={16} />} label="По центру (верт.)"
-          onClick={() => useEditorStore.getState().alignSelected('vcenter')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignEndHorizontal size={16} />} label="По нижнему краю"
-          onClick={() => useEditorStore.getState().alignSelected('bottom')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignHorizontalSpaceBetween size={16} />} label="Распределить по горизонтали"
-          onClick={() => useEditorStore.getState().distributeSelected('h')}
-          disabled={!canEdit || selectedIds.length < 3}
-        />
-        <TooltipBtn
-          icon={<AlignVerticalSpaceBetween size={16} />} label="Распределить по вертикали"
-          onClick={() => useEditorStore.getState().distributeSelected('v')}
-          disabled={!canEdit || selectedIds.length < 3}
-        />
+      {/*  <TooltipBtn*/}
+      {/*  icon={<AlignStartVertical size={16} />} label="По левому краю"*/}
+      {/*  onClick={() => useEditorStore.getState().alignSelected('left')}*/}
+      {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*/>*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignCenterVertical size={16} />} label="По центру (гориз.)"*/}
+      {/*    onClick={() => useEditorStore.getState().alignSelected('hcenter')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignEndVertical size={16} />} label="По правому краю"*/}
+      {/*    onClick={() => useEditorStore.getState().alignSelected('right')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignStartHorizontal size={16} />} label="По верхнему краю"*/}
+      {/*    onClick={() => useEditorStore.getState().alignSelected('top')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignCenterHorizontal size={16} />} label="По центру (верт.)"*/}
+      {/*    onClick={() => useEditorStore.getState().alignSelected('vcenter')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignEndHorizontal size={16} />} label="По нижнему краю"*/}
+      {/*    onClick={() => useEditorStore.getState().alignSelected('bottom')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 2}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignHorizontalSpaceBetween size={16} />} label="Распределить по горизонтали"*/}
+      {/*    onClick={() => useEditorStore.getState().distributeSelected('h')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 3}*/}
+      {/*  />*/}
+      {/*  <TooltipBtn*/}
+      {/*    icon={<AlignVerticalSpaceBetween size={16} />} label="Распределить по вертикали"*/}
+      {/*    onClick={() => useEditorStore.getState().distributeSelected('v')}*/}
+      {/*    disabled={!canEdit || selectedIds.length < 3}*/}
+      {/*  />*/}
 
         <TooltipBtn
           icon={<Save size={16} strokeWidth={2.5} />}

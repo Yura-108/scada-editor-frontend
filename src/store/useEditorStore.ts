@@ -726,9 +726,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         runtimeOverridesByElementKey: {},
         currentComponentStateByElementKey: {},
       }),
-       updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
-       // Мульти-версия: один set() (= один шаг undo) для всех ключей.
-       updateElementsVisual: (keys, updates) => {
+      updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
+      // Мульти-версия: один set() (= один шаг undo) для всех ключей.
+      updateElementsVisual: (keys, updates) => {
          if (!keys.length) return;
          const { currentComponentStateByElementKey } = get();
          const keySet = new Set(keys);

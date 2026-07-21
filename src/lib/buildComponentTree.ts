@@ -2,12 +2,18 @@ import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
 import {BindingDto} from "@/types/binding.types";
 
 /**
- * id первого серверного свойства-тега элемента — для DTO-поля
- * `component_property_id` (контракт требует число; 0 = «нет свойства»).
+ * id свойства элемента для DTO-поля `component_property_id` (контракт требует
+ * число, ссылающееся на существующее свойство ИМЕННО этого компонента; 0 = «нет»).
+ * Предпочитаем свойство-тег (исторически), но для биндингов на свойства других
+ * компонентов у хоста тег-свойства может не быть — тогда годится любое сохранённое
+ * свойство (проверить на бэкенде, что не-тег id принимается — см. план, Risks).
  */
-const firstTagPropertyId = (el: DiagramElement): number => {
-  const prop = (el.properties ?? []).find(p => p.property_type === "Тег" && typeof p.id === "number");
-  return prop?.id ?? 0;
+const firstSavedPropertyId = (el: DiagramElement): number => {
+  const props = el.properties ?? [];
+  const tagProp = props.find(p => p.property_type === "Тег" && typeof p.id === "number");
+  if (tagProp) return tagProp.id;
+  const anyProp = props.find(p => typeof p.id === "number");
+  return anyProp?.id ?? 0;
 };
 
 /**
@@ -18,7 +24,7 @@ const firstTagPropertyId = (el: DiagramElement): number => {
 const encodeBindings = (el: DiagramElement): BindingDto[] =>
   Array.isArray(el.bindings)
     ? el.bindings.map(b => ({
-        component_property_id: firstTagPropertyId(el),
+        component_property_id: firstSavedPropertyId(el),
         name: b.name ?? "",
         script: JSON.stringify(b),
       }))
