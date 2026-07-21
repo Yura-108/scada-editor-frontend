@@ -94,6 +94,7 @@ type EditorState = {
   selectMultiple: (ids: string[]) => void;
   clearSelection: () => void;
   addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
+  removeComponentStateFromSubtree: (elementKey: string, stateName: string) => void;
   addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
   addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
   editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
@@ -666,6 +667,63 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
 
         return rootStateId;
+      },
+      // Удаление состояния каскадом по имени — симметрично добавлению: убираем
+      // состояние с этим именем у корня и всех потомков (children + composition).
+      // Состояние по умолчанию удалить нельзя. Указатели текущего состояния,
+      // смотревшие на удалённое, сбрасываются на состояние по умолчанию.
+      removeComponentStateFromSubtree: (elementKey, stateName) => {
+        set(state => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root) return {};
+
+          // Нельзя удалить дефолтное состояние (и несуществующее — нечего удалять).
+          const target = root.states.find(s => s.name === stateName);
+          if (!target || target.isDefault) return {};
+
+          const keysToUpdate = new Set(
+            [elementKey, ...getDescendantKeys(elementKey, state.elements)]
+          );
+
+          // id удаляемых состояний по всему поддереву — чтобы сбросить указатели.
+          const removedStateIds = new Set<string>();
+          for (const el of state.elements) {
+            if (!keysToUpdate.has(el.key)) continue;
+            for (const s of el.states) {
+              if (s.name === stateName && !s.isDefault) removedStateIds.add(s.id);
+            }
+          }
+
+          const nextElements = state.elements.map(el => {
+            if (!keysToUpdate.has(el.key)) return el;
+            // Дефолтное состояние с тем же именем не трогаем (страховка).
+            const filtered = el.states.filter(s => s.name !== stateName || s.isDefault);
+            if (filtered.length === el.states.length) return el;
+
+            return {...el, states: filtered} as DiagramElement;
+          });
+
+          // Сброс указателей текущего состояния на дефолт там, где смотрели на удалённое.
+          const byKey = new Map(nextElements.map(el => [el.key, el] as const));
+          const nextCurrent = {...state.currentComponentStateByElementKey};
+          let currentChanged = false;
+          for (const [key, stateId] of Object.entries(nextCurrent)) {
+            if (!removedStateIds.has(stateId)) continue;
+            const el = byKey.get(key);
+            const fallback = el?.states.find(s => s.isDefault)?.id ?? el?.states[0]?.id;
+            if (fallback) {
+              nextCurrent[key] = fallback;
+            } else {
+              delete nextCurrent[key];
+            }
+            currentChanged = true;
+          }
+
+          return {
+            elements: nextElements,
+            ...(currentChanged ? {currentComponentStateByElementKey: nextCurrent} : {}),
+          };
+        });
       },
       // Каскад по имени состояния — для любого контейнера (группа или complex-компонент);
       // у листа потомков нет, каскад просто не сработает (см. cascadeStateByName).

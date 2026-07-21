@@ -4,7 +4,7 @@ import React, {useState, useMemo} from "react";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
-import {Plus, AlertTriangle} from "lucide-react";
+import {Plus, AlertTriangle, Trash2} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
@@ -29,6 +29,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const updateElement = useEditorStore(s => s.updateElement);
   const updateElementVisual = useEditorStore(s => s.updateElementVisual);
   const addComponentStateToSubtree = useEditorStore(s => s.addComponentStateToSubtree);
+  const removeComponentStateFromSubtree = useEditorStore(s => s.removeComponentStateFromSubtree);
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
   const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
   // База каналов подгружена, если в дереве устройств есть узлы (глобальный стор,
@@ -90,6 +91,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     if (createdStateId) {
       setCurrentComponentStateId(element.key, createdStateId);
     }
+  }
+
+  const removeComponentState = (stateName: string) => {
+    if (!window.confirm(`Удалить состояние «${stateName}»? Его визуальные настройки будут потеряны.`)) {
+      return;
+    }
+    removeComponentStateFromSubtree(element.key, stateName);
   }
 
   const handleAddScript = () => {
@@ -405,6 +413,38 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                 Состояние:
               </h4>
               <StateSelect elementKey={element.key} states={element.states}/>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Список состояний
+              </h4>
+              <div className="space-y-1.5">
+                {element.states.map(state => (
+                  <div
+                    key={state.id}
+                    className="flex items-center gap-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white/60 dark:bg-neutral-900/60 px-3 py-1.5"
+                  >
+                    <span className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                      {state.name}
+                    </span>
+                    {state.isDefault && (
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                        по умолчанию
+                      </span>
+                    )}
+                    {!state.isDefault && (
+                      <button
+                        className="ml-auto p-1 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Удалить состояние"
+                        onClick={() => removeComponentState(state.name)}
+                      >
+                        <Trash2 size={14}/>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <button
