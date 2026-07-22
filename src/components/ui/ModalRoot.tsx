@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 
 export function ModalRoot() {
-  const { open, content, openKey, closeModal } = useModalStore();
+  const { open, content, variant, openKey, closeModal } = useModalStore();
+  const fullscreen = variant === "fullscreen";
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && closeModal()}>
@@ -25,7 +26,11 @@ export function ModalRoot() {
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
             // flex-col + max-h: контент не вылезает за экран, а внутренняя область
             // прокручивается — нижние кнопки всегда доступны (см. div ниже).
-            "flex flex-col w-[95vw] max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white",
+            "flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white",
+            fullscreen
+              // Почти во весь экран — для редакторов кода нужно много места.
+              ? "w-[98vw] h-[96vh] max-w-none"
+              : "w-[95vw] max-w-4xl max-h-[92vh]",
             "border border-gray-200 dark:border-gray-800/70 shadow-2xl shadow-black/50",
             // анимация (можно оставить framer-motion, но Radix тоже хорошо анимирует)
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -45,10 +50,18 @@ export function ModalRoot() {
             </button>
           </Dialog.Close>
 
-          {/* Прокручиваемая область: padding здесь, чтобы скролл-бар был у края */}
-          <div key={openKey} className="overflow-y-auto p-6 sm:p-8">
-            {content}
-          </div>
+          {fullscreen ? (
+            // Полноэкранный режим: контент сам управляет своей раскладкой (flex h-full),
+            // чтобы редактор кода растянулся на всю доступную высоту.
+            <div key={openKey} className="flex-1 min-h-0 flex flex-col p-6 sm:p-8">
+              {content}
+            </div>
+          ) : (
+            // Прокручиваемая область: padding здесь, чтобы скролл-бар был у края
+            <div key={openKey} className="overflow-y-auto p-6 sm:p-8">
+              {content}
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

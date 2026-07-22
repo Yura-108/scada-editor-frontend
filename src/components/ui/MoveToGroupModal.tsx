@@ -34,17 +34,14 @@ export const MoveToGroupModal = ({
     [elements, elementKey]
   );
 
-  // Сброс и установка значения при открытии модалки
+  // Сброс/установка значения при каждом открытии модалки (не при изменении списка групп).
   useEffect(() => {
-    if (isOpen) {
-      if (groups.length > 0) {
-        setSelectedGroupKey(groups[0].key);
-      } else {
-        setSelectedGroupKey("");
-      }
+    if (isOpen && groups.length > 0) {
+      setSelectedGroupKey(groups[0].key);
     } else {
       setSelectedGroupKey("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleConfirm = () => {
@@ -81,7 +78,7 @@ export const MoveToGroupModal = ({
               <SelectValue placeholder="Выберите группу..." />
             </SelectTrigger>
 
-            <SelectContent className="bg-neutral-800">
+            <SelectContent>
               {groups.length > 0 ? (
                 groups.map((group) => (
                   <SelectItem key={group.key} value={group.key}>
@@ -105,7 +102,7 @@ export const MoveToGroupModal = ({
           </Select>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-neutral-700">
           <button
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"

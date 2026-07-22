@@ -87,7 +87,7 @@ export const AddComponentModal = ({
               <SelectValue placeholder="Выберите компонент..." />
             </SelectTrigger>
 
-            <SelectContent className="bg-neutral-800">
+            <SelectContent>
               {candidates.length > 0 ? (
                 candidates.map((c) => (
                   <SelectItem key={c.key} value={c.key}>
@@ -108,7 +108,7 @@ export const AddComponentModal = ({
           </Select>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-neutral-700">
           <button
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"

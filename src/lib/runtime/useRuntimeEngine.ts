@@ -8,7 +8,7 @@ import {executeBinding, type CompiledBinding} from "@/lib/runtime/executeBinding
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
 import {setRuntimeEventHandler} from "@/lib/runtime/runtimeEventBus";
-import {openRuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
+import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import type {ElementEventName} from "@/types/binding.types";
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
@@ -58,6 +58,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   const valuesByPropRef = useRef(new Map<number, string>());
   const errorCountRef = useRef(new Map<string, number>());
   const disabledRef = useRef(new Set<string>());
+  // Активное WS-соединение — чтобы обработчик клика (runScript) мог послать ACTION.
+  const connRef = useRef<RuntimeConnection | null>(null);
 
   const flush = useCallback(() => {
     const idx = indexRef.current;
@@ -187,7 +189,25 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       console.warn(`[monitor:event] ${event} «${el.label ?? el.key}» не скомпилирован: ${compiled.error}`);
       return;
     }
-    const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el));
+    // Мост к серверному Java-скрипту: onClick вызывает runScript("Имя") → находим
+    // скрипт компонента по имени и шлём ACTION по WS. sendAction ждёт ЧИСЛОВОЙ
+    // серверный id — ElementScript.id это String(серверный id) после loadScene
+    // (см. transformElements); если id не число (напр. uuid), команду не шлём.
+    const runScript = (name: string) => {
+      const script = el.scripts?.find(s => s.name === name);
+      if (!script) {
+        console.warn(`[monitor:event] runScript: скрипт «${name}» не найден у «${el.label ?? el.key}»`);
+        return;
+      }
+      const scriptId = Number(script.id);
+      if (!Number.isFinite(scriptId)) {
+        console.warn(`[monitor:event] runScript: у скрипта «${name}» нет числового серверного id (${script.id})`);
+        return;
+      }
+      connRef.current?.sendAction(scriptId);
+    };
+
+    const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el), runScript);
     if ("error" in res) {
       console.warn(`[monitor:event] ${event} ошибка исполнения: ${res.error}`);
       return;
@@ -244,6 +264,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         setStatus(s);
       },
     });
+    connRef.current = conn;
 
     // Именно interval, а не rAF: rAF замерзает в фоновой вкладке, значения
     // копились бы без применения. Плюс мгновенный догон при возврате на вкладку.
@@ -258,6 +279,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
       conn.close();
+      connRef.current = null;
       pendingRef.current = new Map();
       valuesRef.current = new Map();
       pendingPropsRef.current = new Map();

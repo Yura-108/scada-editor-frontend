@@ -36,7 +36,12 @@
       "Bash(docker *)",
       "Bash(grep -E \"\\\\.ts$\")",
       "Bash(echo \"exit: $?\")",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(cp \"D:/Work/scada-editor-frontend/src/lib/formatCode.ts\" fc.ts)",
+      "Bash(npx --yes tsc fc.ts --module commonjs --target es2019 --skipLibCheck --outDir out)",
+      "Bash(\"D:/Work/scada-editor-frontend/node_modules/.bin/tsc\" fc.ts --module commonjs --target es2019 --skipLibCheck --outDir out)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/eslint src/components/ui/OpenScriptEditorModal.tsx src/components/editor/events/OpenEventScriptModal.tsx src/components/editor/bindings/OpenBindingEditorModal.tsx src/components/ui/codeModalParts.tsx src/lib/formatCode.ts src/store/modalStore.ts src/components/ui/ModalRoot.tsx)"
     ]
   }
 }

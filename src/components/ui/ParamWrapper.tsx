@@ -2,6 +2,7 @@ import {clsx} from "clsx";
 import React, {ReactNode} from "react";
 import {DeviceParamsType} from "@/types/nodeTypes";
 import {X} from "lucide-react";
+import {resolveParamWidget} from "@/lib/paramWidget";
 
 interface IParamWrapper {
   param: DeviceParamsType;
@@ -18,7 +19,7 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
         hasChanged
           ? 'border-purple-400 ring-4 ring-purple-100'
           : 'border-gray-300 hover:border-gray-400',
-        param.type === 'textarea'
+        resolveParamWidget(param.type) === 'textarea'
           ? 'col-span-2'
           : 'col-span-1'
       )}

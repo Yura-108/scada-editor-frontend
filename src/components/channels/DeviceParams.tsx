@@ -12,6 +12,7 @@ import debounce from 'lodash/debounce';
 import { isEditingDevice } from "@/lib/useIsEditingDevice";
 import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
 import {useUnlockEditingOnUnload} from "@/lib/useUnlockEditingOnUnload";
+import {resolveParamWidget, isParamChecked} from "@/lib/paramWidget";
 
 const DeviceParams = () => {
   const {
@@ -35,8 +36,8 @@ const DeviceParams = () => {
   }, [selectedDevice, params, getParams]);
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
-  const optionItems = rawParams.filter(param => param.type === 'option');
-  const normalParams = rawParams.filter(param => param.type !== 'option');
+  const optionItems = rawParams.filter(param => resolveParamWidget(param.type) === 'option');
+  const normalParams = rawParams.filter(param => resolveParamWidget(param.type) !== 'option');
 
   const [editedParams, setEditedParams] = useState<Map<string, string>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
@@ -314,6 +315,8 @@ const DeviceParams = () => {
               const keyStr = String(param.key);
               const value = editedParams.get(keyStr) ?? param.value ?? '';
               const hasChanged = (param.value || '') !== value;
+              const widget = resolveParamWidget(param.type);
+              const checked = isParamChecked(value);
 
               return (
                 <ParamWrapper
@@ -322,7 +325,7 @@ const DeviceParams = () => {
                   hasChanged={hasChanged}
                   onRemove={handleRemoveParam}
                 >
-                  {param.type === 'input' && (
+                  {widget === 'input' && (
                     <input
                       type="text"
                       value={value}
@@ -332,7 +335,7 @@ const DeviceParams = () => {
                     />
                   )}
 
-                  {param.type === 'textarea' && (
+                  {widget === 'textarea' && (
                     <textarea
                       value={value}
                       onChange={(e) => handleChange(keyStr, e.target.value)}
@@ -342,22 +345,20 @@ const DeviceParams = () => {
                     />
                   )}
 
-                  {param.type === 'checkbox' && (
+                  {widget === 'checkbox' && (
                     <div className="flex items-center gap-4">
                       <input
                         type="checkbox"
                         id={`cb-${param.key}`}
-                        checked={value === '1' || value === 'true' || value === 'on'}
-                        onChange={(e) => handleChange(keyStr, e.target.checked ? '1' : '0')}
-                        className="w-6 h-6 rounded border-gray-300 hover:border-gray-400 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                        checked={checked}
+                        onChange={(e) => handleChange(keyStr, e.target.checked ? 'true' : 'false')}
+                        className="w-5 h-5 accent-purple-600 cursor-pointer"
                       />
                       <label
                         htmlFor={`cb-${param.key}`}
                         className="text-lg font-medium text-gray-700 cursor-pointer"
                       >
-                        {value === '1' || value === 'true' || value === 'on'
-                          ? 'Включено'
-                          : 'Выключено'}
+                        {checked ? 'Включено' : 'Выключено'}
                       </label>
                     </div>
                   )}

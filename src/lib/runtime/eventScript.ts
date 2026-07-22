@@ -42,6 +42,7 @@ export const compileEventScript = (
       "setProp",
       "setState",
       "self",
+      "runScript",
       handler.code,
     ) as (...args: unknown[]) => unknown;
     return {elementKey, scope, fn};
@@ -54,12 +55,16 @@ export const compileEventScript = (
  * Исполняет скомпилированный обработчик над текущими значениями тегов/свойств.
  * Возвращает записи в свойства (для маршрутизации на биндинги) и интенты
  * setProp/setState на сам элемент. «Последний вызов выигрывает» по цели.
+ *
+ * `runScript(name)` — мост к серверному Java-скрипту (запись тега в ПЛК): в мониторе
+ * колбэк шлёт ACTION по WS; в тест-прогоне редактора параметр не передаётся (no-op).
  */
 export const executeEventScript = (
   cb: CompiledEventScript,
   valuesByTagId: ReadonlyMap<string, string>,
   valuesByPropertyId: ReadonlyMap<number, string>,
   self?: unknown,
+  runScript?: (name: string) => void,
 ): EventExecResult => {
   const writes = new Map<number, PropertyWrite>();
   let stateIntent: {kind: "state"; stateName: string} | null = null;
@@ -77,6 +82,10 @@ export const executeEventScript = (
   const setState = (stateName: unknown) => {
     if (typeof stateName === "string" && stateName) stateIntent = {kind: "state", stateName};
   };
+  // Запуск серверного скрипта по имени — делегируем колбэку движка (шлёт ACTION по WS).
+  const runScriptFn = (name: unknown) => {
+    if (typeof name === "string" && name && runScript) runScript(name);
+  };
 
   const args = cb.scope.names.map(name => {
     if (name in cb.scope.tagIdByName) {
@@ -86,7 +95,7 @@ export const executeEventScript = (
   });
 
   try {
-    cb.fn(...args, setProperty, setProp, setState, self ?? null);
+    cb.fn(...args, setProperty, setProp, setState, self ?? null, runScriptFn);
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
   }

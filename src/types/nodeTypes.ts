@@ -36,4 +36,4 @@ export type DeviceTreeResponse = {
   params: DeviceParamsType[];
 };
 
-export type ParamType = 'input' | 'textarea';
+export type ParamType = 'input' | 'textarea' | 'checkbox' | 'option';
