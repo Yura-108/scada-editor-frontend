@@ -90,17 +90,18 @@ export type BindingDto = {
 export interface ElementEventHandler {
   /** JavaScript-исходник обработчика. */
   code: string;
-  /** Обработчик включён (по умолчанию true). */
-  enabled?: boolean;
   /** Свойства объектов сцены в скоупе (чтение `Имя.V` + запись `setProperty`). */
   propertyRefs?: PropertyRef[];
 }
 
-/** События элемента, обрабатываемые на клиенте в режиме монитора. */
-export interface ElementEvents {
-  onClick?: ElementEventHandler;
-  onDoubleClick?: ElementEventHandler;
+/** Имена поддерживаемых событий. */
+export type ElementEventName = "onClick" | "onDoubleClick";
+
+/** Запись обработчика события в массиве `element.events` (бэкенд хранит events как массив узла). */
+export interface ElementEventEntry {
+  event_type: ElementEventName;
+  handler: ElementEventHandler;
 }
 
-/** Имена поддерживаемых событий. */
-export type ElementEventName = keyof ElementEvents;
+/** События элемента, обрабатываемые на клиенте в режиме монитора. */
+export type ElementEvents = ElementEventEntry[];

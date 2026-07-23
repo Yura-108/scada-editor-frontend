@@ -30,6 +30,24 @@ const encodeBindings = (el: DiagramElement): BindingDto[] =>
       }))
     : [];
 
+/**
+ * ElementEvents → DTO: `script` — сырой код обычно (как хочет бэкенд), а если у
+ * обработчика есть propertyRefs (ссылки на свойства других компонентов, контракту
+ * неизвестные) — JSON-конверт `{v:1, code, propertyRefs}` (симметрия с encodeBindings).
+ * Обратный путь — parseEvents при загрузке.
+ */
+const encodeEvents = (el: DiagramElement): {event_type: string; script: string}[] =>
+  Array.isArray(el.events)
+    ? el.events
+        .filter(e => e.handler?.code?.trim())
+        .map(e => ({
+          event_type: e.event_type,
+          script: e.handler.propertyRefs?.length
+            ? JSON.stringify({v: 1, code: e.handler.code, propertyRefs: e.handler.propertyRefs})
+            : e.handler.code,
+        }))
+    : [];
+
 const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
   const visualProps = {...el} as Record<string, unknown>;
 
@@ -43,6 +61,7 @@ const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
   delete visualProps.composition; // список ключей примитивов — запекается отдельно, не в base
   delete visualProps.scripts;
   delete visualProps.bindings;
+  delete visualProps.events;
   delete visualProps.properties;
   delete visualProps.states;
 
@@ -69,10 +88,11 @@ const buildShapeDescriptor = (
     key: primitive.key,
     ...base,
     ...(state?.overrides ?? {}),
-    // Данные примитива (теги/скрипты/биндинги) — иначе теряются при round-trip:
+    // Данные примитива (теги/скрипты/биндинги/события) — иначе теряются при round-trip:
     // buildBaseImage их удаляет, а unbake восстанавливал бы пустые массивы.
     ...(primitive.scripts?.length ? {scripts: primitive.scripts} : {}),
     ...(Array.isArray(primitive.bindings) && primitive.bindings.length ? {bindings: primitive.bindings} : {}),
+    ...(primitive.events?.length ? {events: encodeEvents(primitive)} : {}),
     ...(primitive.properties?.length ? {properties: primitive.properties} : {}),
   };
 };
@@ -135,6 +155,7 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
       ? element.scripts.map((s) => ({name: s.name, script: s.content}))
       : [],
     bindings: encodeBindings(element),
+    events: encodeEvents(element),
     states,
   };
 };
@@ -191,6 +212,7 @@ export const buildPaletteComponentTree = (
         ? element.scripts.map((s: any) => ({ name: s.name, script: s.content }))
         : [],
       bindings: encodeBindings(element),
+      events: encodeEvents(element),
       states,
       properties: templateProperties,
     };

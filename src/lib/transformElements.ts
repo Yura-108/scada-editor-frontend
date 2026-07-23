@@ -1,6 +1,7 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/lib/createUuid";
 import {parseBindings} from "@/lib/parseBindings";
+import {parseEvents} from "@/lib/parseEvents";
 
 type BackendStateDto = {
   id?: number | string;
@@ -31,6 +32,7 @@ type ComponentDto = {
   parent_id: number | null;
   scripts?: unknown[];
   bindings?: unknown[];
+  events?: unknown[];
   states?: BackendStateDto[];
   children?: Array<ComponentDto | string | number>;
   properties?: BackendPropertyDto[];
@@ -74,9 +76,7 @@ export default function transformElements(
     // doesn't shadow the base values that recomputeAncestorBounds updates.
     const GROUP_POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
     // Структурные ключи компонента в image (не визуальные overrides).
-    // events держим только на base-элементе (не в per-state overrides), иначе
-    // stale-значение в overrides перекрывало бы правку и уезжало бы в сейв.
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "events"]);
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -174,7 +174,7 @@ export default function transformElements(
         // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
         bindings: parseBindings(desc.bindings),
         properties: normalizeArray(desc.properties as unknown[]) as DiagramElement["properties"],
-        ...(desc.events ? {events: desc.events as DiagramElement["events"]} : {}),
+        ...(desc.events ? {events: parseEvents(desc.events)} : {}),
         label: String(desc.label ?? ""),
       } as DiagramElement);
 
@@ -191,8 +191,6 @@ export default function transformElements(
       w: toFiniteNumber(defaultRawImage.w, 80),
       h: toFiniteNumber(defaultRawImage.h, 80),
       ...(image || {}),
-      // events восстанавливаем из НЕобрезанного image (в overrides их нет — см. STRUCTURAL_KEYS).
-      ...(defaultRawImage.events ? {events: defaultRawImage.events as DiagramElement["events"]} : {}),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,
@@ -206,6 +204,7 @@ export default function transformElements(
       })),
       // Top-level биндинги едут через DTO-обёртку {name, script: JSON} — распаковываем.
       bindings: parseBindings(el.bindings),
+      events: parseEvents(el.events),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
     };

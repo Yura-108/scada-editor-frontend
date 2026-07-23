@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/channels', '/editor'];
+const protectedRoutes = ['/channels', '/editor', '/monitor'];
 const authRoutes = ['/login', '/register'];
 
 export function proxy(request: NextRequest) {
@@ -32,5 +32,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/register', "/editor/:path*", '/channels/:path*'],
+  matcher: ['/', '/login', '/register', "/editor/:path*", '/channels/:path*', '/monitor/:path*'],
 };

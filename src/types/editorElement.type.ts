@@ -49,6 +49,7 @@ export type ComponentCreateDto = {
   parent_id: number | null;
   scripts: { name: string; script: string }[];
   bindings: { component_property_id: number; name: string; script: string }[];
+  events: { event_type: string; script: string }[];
   states: {
     name: string;
     image: string;

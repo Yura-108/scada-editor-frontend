@@ -36,7 +36,7 @@ type TestResult =
 
 function EventScriptModalContent({element, event}: EventScriptProps) {
   const closeModal = useModalStore(s => s.closeModal);
-  const existing = element.events?.[event];
+  const existing = element.events?.find(e => e.event_type === event)?.handler;
 
   const [propertyRefs, setPropertyRefs] = useState<PropertyRef[]>(existing?.propertyRefs ?? []);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -90,7 +90,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
     setPropertyRefs(prev => prev.filter(r => r.propertyId !== propertyId));
 
   const runTest = () => {
-    const handler: ElementEventHandler = {code, propertyRefs, enabled: true};
+    const handler: ElementEventHandler = {code, propertyRefs};
     const compiled = compileEventScript(element.key, handler, scope);
     if ("error" in compiled) {
       setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
@@ -120,12 +120,11 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
 
   const handleSave = () => {
     if (!code.trim()) return;
-    const nextHandler: ElementEventHandler = {
-      code,
-      enabled: existing?.enabled ?? true,
-      propertyRefs,
-    };
-    const nextEvents: ElementEvents = {...(element.events ?? {}), [event]: nextHandler};
+    const nextHandler: ElementEventHandler = {code, propertyRefs};
+    const nextEvents: ElementEvents = [
+      ...(element.events ?? []).filter(e => e.event_type !== event),
+      {event_type: event, handler: nextHandler},
+    ];
     useEditorStore.getState().updateElement(element.key, {events: nextEvents});
     closeModal();
   };

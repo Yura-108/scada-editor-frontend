@@ -180,8 +180,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   const runEvent = useCallback((elementKey: string, event: ElementEventName) => {
     const store = useEditorStore.getState();
     const el = store.elements.find(e => e.key === elementKey);
-    const handler = el?.events?.[event];
-    if (!el || !handler || handler.enabled === false || !handler.code?.trim()) return;
+    const handler = el?.events?.find(e => e.event_type === event)?.handler;
+    if (!el || !handler || !handler.code?.trim()) return;
 
     const scope = withPropertyRefs(collectTagScope(el.properties), handler.propertyRefs);
     const compiled = compileEventScript(el.key, handler, scope);

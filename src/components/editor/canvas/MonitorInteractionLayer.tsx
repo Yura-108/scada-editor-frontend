@@ -4,16 +4,18 @@ import React from "react";
 import {Layer, Rect} from "react-konva";
 import type Konva from "konva";
 import {DiagramElement} from "@/types/editorElement.type";
-import type {ElementEventHandler, ElementEvents} from "@/types/binding.types";
+import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/types/binding.types";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {emitRuntimeEvent} from "@/lib/runtime/runtimeEventBus";
 
-const hasEnabled = (h?: ElementEventHandler): boolean =>
-  Boolean(h && h.enabled !== false && h.code && h.code.trim());
+const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h.code.trim());
+
+const findHandler = (events: ElementEvents | undefined, type: ElementEventName) =>
+  events?.find(e => e.event_type === type)?.handler;
 
 const isInteractive = (events?: ElementEvents): boolean =>
-  hasEnabled(events?.onClick) || hasEnabled(events?.onDoubleClick);
+  hasScript(findHandler(events, "onClick")) || hasScript(findHandler(events, "onDoubleClick"));
 
 interface Props {
   elements: DiagramElement[];
@@ -44,8 +46,8 @@ export function MonitorInteractionLayer({elements, elementsMap}: Props) {
         const h = Number(r.h) || 0;
         if (w <= 0 || h <= 0) return null;
         const rotation = Number(r.rotate ?? r.rotation ?? 0) || 0;
-        const clickable = hasEnabled(el.events?.onClick);
-        const dblClickable = hasEnabled(el.events?.onDoubleClick);
+        const clickable = hasScript(findHandler(el.events, "onClick"));
+        const dblClickable = hasScript(findHandler(el.events, "onDoubleClick"));
         return (
           <Rect
             key={el.key}

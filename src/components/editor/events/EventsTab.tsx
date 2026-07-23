@@ -25,16 +25,8 @@ const EVENTS: Array<{name: ElementEventName; label: string; hint: string}> = [
 export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
   const updateElement = useEditorStore(s => s.updateElement);
 
-  const setHandlerEnabled = (name: ElementEventName, enabled: boolean) => {
-    const current = element.events?.[name];
-    if (!current) return;
-    const nextEvents: ElementEvents = {...(element.events ?? {}), [name]: {...current, enabled}};
-    updateElement(element.key, {events: nextEvents});
-  };
-
   const removeHandler = (name: ElementEventName) => {
-    const nextEvents: ElementEvents = {...(element.events ?? {})};
-    delete nextEvents[name];
+    const nextEvents: ElementEvents = (element.events ?? []).filter(e => e.event_type !== name);
     updateElement(element.key, {events: nextEvents});
   };
 
@@ -48,7 +40,7 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
 
       <div className="space-y-2">
         {EVENTS.map(({name, label, hint}) => {
-          const handler = element.events?.[name];
+          const handler = element.events?.find(e => e.event_type === name)?.handler;
           return (
             <div
               key={name}
@@ -67,18 +59,6 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
                 <div className="ml-auto flex items-center gap-1.5">
                   {handler ? (
                     <>
-                      <label
-                        className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mr-1"
-                        title={handler.enabled === false ? "Обработчик выключен" : "Обработчик активен"}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={handler.enabled !== false}
-                          onChange={e => setHandlerEnabled(name, e.target.checked)}
-                          className="w-3.5 h-3.5 rounded border-gray-300 dark:border-neutral-600 text-blue-500"
-                        />
-                        вкл
-                      </label>
                       <button
                         className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
                         title="Редактировать скрипт"
