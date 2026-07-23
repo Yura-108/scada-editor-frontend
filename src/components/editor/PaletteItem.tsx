@@ -1,8 +1,9 @@
 "use client";
 
-import {useDraggable} from "@dnd-kit/core";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
+import {useEditorStore} from "@/store/useEditorStore";
+import {ElementType} from "@/types/editorElement.type";
 import {Trash2} from "lucide-react";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
@@ -15,25 +16,28 @@ export default function PaletteItem({item}: PaletteItemProps) {
   const {deletePaletteItem} = usePaletteStore();
   const isStatic = item.id >= STATIC_ID_THRESHOLD;
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-  } = useDraggable({id: item.id, data: {
-      type: item.type,
-      template: item.template,
-      isTemplate: true
-    }});
+  // «Вооружение» инструмента: клик по элементу палитры сохраняет его в pendingPlacement,
+  // следующий клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick).
+  const armed = useEditorStore((s) => s.pendingPlacement?.id === item.id);
+
+  const toggleArm = () => {
+    const {pendingPlacement, setPendingPlacement} = useEditorStore.getState();
+    setPendingPlacement(
+      pendingPlacement?.id === item.id
+        ? null
+        : {id: item.id, type: item.type as ElementType, template: item.template},
+    );
+  };
 
   return (
     <div className="group relative flex items-center gap-1">
       <div
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-[#1b1b1b] dark:hover:bg-[#262626]
-                 text-gray-900 dark:text-gray-100 px-3 py-2 rounded cursor-grab
-                 flex items-center transition-colors"
+        onClick={toggleArm}
+        className={`flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-[#1b1b1b] dark:hover:bg-[#262626]
+                 text-gray-900 dark:text-gray-100 px-3 py-2 rounded cursor-pointer
+                 flex items-center transition-colors${
+                   armed ? " ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-500/10" : ""
+                 }`}
       >
         <span className="text-sm truncate">{item.name}</span>
       </div>

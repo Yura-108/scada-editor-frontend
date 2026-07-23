@@ -72,6 +72,15 @@ type EditorState = {
   setCameraZoom: (newZoom: number) => void;
   setCamera: (x: number, y: number, zoom: number) => void;
 
+  /**
+   * «Вооружённый» инструмент палитры: клик по элементу палитры сохраняет сюда его
+   * тип/шаблон, следующий клик по холсту ставит элемент в эту точку и сбрасывает
+   * pendingPlacement в null (постановка по одному). id — id элемента палитры (для
+   * подсветки именно его и toggle). Не попадает в историю undo (не меняет elements).
+   */
+  pendingPlacement: { id: number; type: ElementType; template?: DiagramElement[] } | null;
+  setPendingPlacement: (p: { id: number; type: ElementType; template?: DiagramElement[] } | null) => void;
+
   /** Сдвиг всех верхнеуровневых выделенных на dx/dy (стрелки, мульти-drag). excludeKey — уже сдвинут сам. */
   moveSelectedBy: (dx: number, dy: number, excludeKey?: string) => void;
   /** Дубликат выделения со смещением (Ctrl+D); клоны попадают в корень сцены, как при вставке. */
@@ -535,6 +544,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
+
+      pendingPlacement: null,
+      setPendingPlacement: (p) => set({pendingPlacement: p}),
       moveSelectedBy: (dx, dy, excludeKey) => {
         if (!dx && !dy) return;
         const {selectedIds, elements, scene} = get();

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { GRID } from "@/lib/utils";
+import { useEditorStore } from "@/store/useEditorStore";
 
 interface EditorHotkeysDeps {
   /** false — хоткеи не вешаются вовсе (режим монитора). По умолчанию true. */
@@ -40,6 +41,9 @@ export function useEditorHotkeys({
 
       if (e.key === "Escape") {
         e.preventDefault();
+        // Сначала снимаем «вооружённый» инструмент палитры, не трогая выделение/группу.
+        const { pendingPlacement, setPendingPlacement } = useEditorStore.getState();
+        if (pendingPlacement) { setPendingPlacement(null); return; }
         if (activeGroupKey) exitGroup();
         else clearSelection();
       }

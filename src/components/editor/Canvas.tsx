@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useRef, useState, useCallback } from "react";
-import { useDroppable } from "@dnd-kit/core";
 import Konva from "konva";
 import { Stage, Layer, Rect, Line } from "react-konva";
 
@@ -10,10 +9,6 @@ import { snap } from "@/lib/utils";
 import { DiagramElement, GroupElement } from "@/types/editorElement.type";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
 import { createGridPattern } from "@/lib/editor/gridPattern";
-import { getElementBoundsRendered } from "@/lib/getElementBounds";
-import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
-import { getRenderedElement } from "@/lib/getRenderedElement";
-import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "@/lib/editor/smartGuides";
 
 import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 import { AddComponentModal } from "@/components/ui/AddComponentModal";
@@ -29,6 +24,10 @@ import { useThemeColors } from "./canvas/useThemeColors";
 import { useCanvasRect } from "./canvas/hooks/useCanvasRect";
 import { useEditorHotkeys } from "./canvas/hooks/useEditorHotkeys";
 import { useStageInteractions } from "./canvas/hooks/useStageInteractions";
+import { useMultiDragAndGuides } from "./canvas/hooks/useMultiDragAndGuides";
+import { useZoomControls } from "./canvas/hooks/useZoomControls";
+import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
+import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 
@@ -60,6 +59,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     activeGroupKey, enterGroup, exitGroup, clearSelection,
     canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
+    pendingPlacement,
   } = useEditorStore();
 
   const { resolvedTheme, themeColors } = useThemeColors();
@@ -68,10 +68,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
   const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean; elementKey: string | null }>({ isOpen: false, elementKey: null });
   const [addComponentState, setAddComponentState] = useState<{ isOpen: boolean; targetKey: string | null }>({ isOpen: false, targetKey: null });
   const [editingTextKey, setEditingTextKey] = useState<string | null>(null);
-  // Hover-подсветка: ключ элемента, который выберется по клику (для члена группы — сама группа).
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
-  const { setNodeRef } = useDroppable({ id: "canvas" });
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
 
@@ -99,10 +96,15 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
   );
 
   const handleElementClick = useCallback((clickedKey: string, multi: boolean) => {
+    // Вооружён инструмент палитры — клик по фигуре ставит новый элемент (на Stage.onClick),
+    // а не выделяет существующий.
+    if (useEditorStore.getState().pendingPlacement) return;
     const target = resolveClickTarget(clickedKey);
     if (target === null) { exitGroup(); return; }
     selectMultiple(multi ? [...selectedIds.filter(id => id !== target), target] : [target]);
   }, [resolveClickTarget, exitGroup, selectMultiple, selectedIds]);
+
+  const { handleStagePlacementClick } = usePendingPlacement({ stageRef, pendingPlacement });
 
   const { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp } = useStageInteractions({
     stageRef, camera, setCameraPan, setCameraZoom,
@@ -111,142 +113,14 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     readOnly,
   });
 
-  // ---- Мульти-drag: тянем один выделенный элемент — остальные едут следом. ----
-  // Drag-события Konva всплывают до Stage; сессия стартует, только если цель
-  // резолвится в выделенный элемент (ручки ресайза исключены по name).
-  const multiDragRef = useRef<{
-    draggedKey: string;
-    draggedOrig: { x: number; y: number };
-    others: { node: Konva.Node; orig: { x: number; y: number } }[];
-  } | null>(null);
+  // ---- Hover-подсветка (как в Figma: показываем рамку того, что выберется по клику) ----
+  const { hoverBounds, handleStageMouseOver, clearHover } = useHoverHighlight({
+    elementsMap, elements, selectedIds, resolveClickTarget,
+  });
 
-  // ---- Smart-guides: магнит к рёбрам/центрам соседей при перетаскивании ----
-  const guideSessionRef = useRef<{
-    target: Konva.Node;
-    startPos: { x: number; y: number };
-    startBounds: { minX: number; minY: number; maxX: number; maxY: number };
-    candidates: GuideCandidates;
-  } | null>(null);
-  const [guides, setGuides] = useState<{ v: number | null; h: number | null }>({ v: null, h: null });
-
-  const resolveDragKey = useCallback((target: Konva.Node): string | null => {
-    if (target.name() === "resize-handle") return null;
-    let node: Konva.Node | null = target;
-    // Драггаться может и внутренний узел (Arrow у линии, Circle у круга) — id лежит на группе выше.
-    for (let i = 0; i < 3 && node; i++) {
-      const id = node.id();
-      if (id && elementsMap[id]) return id;
-      node = node.getParent();
-    }
-    return null;
-  }, [elementsMap]);
-
-  const handleStageDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    // Прячем hover-подсветку на время перетаскивания — иначе рамка зависает на старом месте.
-    setHoveredKey(null);
-
-    const key = resolveDragKey(e.target);
-    const stage = stageRef.current;
-    if (!key || !stage) return;
-
-    const selectedSet = new Set(selectedIds);
-
-    // Smart-guides: соседи того же родителя (не выделенные) — их рёбра/центры.
-    const el = elementsMap[key];
-    if (el) {
-      const candidateEls = elements.filter(c =>
-        c.key !== key && !selectedSet.has(c.key) && c.parentKey === el.parentKey,
-      );
-      if (candidateEls.length) {
-        const b = getElementBoundsRendered(el, elements);
-        if (isFinite(b.minX)) {
-          guideSessionRef.current = {
-            target: e.target,
-            startPos: e.target.position(),
-            startBounds: b,
-            candidates: collectGuideCandidates(elements, candidateEls),
-          };
-        }
-      }
-    }
-
-    // Мульти-drag — только когда тянем один из ≥2 выделенных.
-    if (selectedIds.length < 2 || !selectedIds.includes(key)) return;
-
-    // Двигаем только верхнеуровневые выделенные — элемент с выделенным предком едет с ним.
-    const hasSelectedAncestor = (k: string): boolean => {
-      let pk = elementsMap[k]?.parentKey;
-      while (pk) {
-        if (selectedSet.has(pk)) return true;
-        pk = elementsMap[pk]?.parentKey ?? null;
-      }
-      return false;
-    };
-
-    const others = selectedIds
-      .filter(k => k !== key && !hasSelectedAncestor(k))
-      .map(k => stage.findOne(`#${k}`))
-      .filter((n): n is Konva.Node => Boolean(n))
-      .map(n => ({ node: n, orig: n.position() }));
-
-    if (!others.length) return;
-    multiDragRef.current = { draggedKey: key, draggedOrig: e.target.position(), others };
-  }, [selectedIds, elements, elementsMap, resolveDragKey]);
-
-  const handleStageDragMove = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    // 1) Smart-guides: примагничиваем перетаскиваемый элемент к рёбрам/центрам соседей.
-    const gs = guideSessionRef.current;
-    let guideV: number | null = null;
-    let guideH: number | null = null;
-    if (gs && e.target === gs.target) {
-      const dx = e.target.x() - gs.startPos.x;
-      const dy = e.target.y() - gs.startPos.y;
-      // Порог экранно-постоянный (~6px независимо от зума).
-      const threshold = 6 / camera.zoom;
-      const { minX, minY, maxX, maxY } = gs.startBounds;
-      const mv = findGuideMatch(
-        [minX + dx, (minX + maxX) / 2 + dx, maxX + dx],
-        gs.candidates.v,
-        threshold,
-      );
-      const mh = findGuideMatch(
-        [minY + dy, (minY + maxY) / 2 + dy, maxY + dy],
-        gs.candidates.h,
-        threshold,
-      );
-      if (mv) { e.target.x(e.target.x() + mv.offset); guideV = mv.line; }
-      if (mh) { e.target.y(e.target.y() + mh.offset); guideH = mh.line; }
-    }
-    setGuides(prev => (prev.v === guideV && prev.h === guideH) ? prev : { v: guideV, h: guideH });
-
-    // 2) Мульти-drag: остальные выделенные следуют за (уже примагниченной) позицией.
-    const session = multiDragRef.current;
-    if (!session) return;
-    const dx = e.target.x() - session.draggedOrig.x;
-    const dy = e.target.y() - session.draggedOrig.y;
-    for (const { node, orig } of session.others) {
-      node.position({ x: orig.x + dx, y: orig.y + dy });
-    }
-  }, [camera.zoom]);
-
-  const handleStageDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    guideSessionRef.current = null;
-    setGuides(prev => (prev.v === null && prev.h === null) ? prev : { v: null, h: null });
-
-    const session = multiDragRef.current;
-    if (!session) return;
-    multiDragRef.current = null;
-
-    // Дельта в терминах закоммиченного (снапнутого) значения перетащенного элемента.
-    const dx = snap(e.target.x()) - session.draggedOrig.x;
-    const dy = snap(e.target.y()) - session.draggedOrig.y;
-
-    // Возвращаем императивно сдвинутые узлы на исходные позиции ДО коммита:
-    // у линий/кругов группа не имеет controlled x/y, и React сам не сбросил бы сдвиг.
-    for (const { node, orig } of session.others) node.position(orig);
-
-    moveSelectedBy(dx, dy, session.draggedKey);
-  }, [moveSelectedBy]);
+  const { guides, handleStageDragStart, handleStageDragMove, handleStageDragEnd } = useMultiDragAndGuides({
+    stageRef, zoom: camera.zoom, elements, elementsMap, selectedIds, moveSelectedBy, clearHover,
+  });
 
   // ---- Transformer: одиночное выделение бокс-элементов (8 ручек + поворот) ----
   const transformTarget = useMemo(() => {
@@ -256,71 +130,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     return el;
   }, [selectedIds, elementsMap]);
 
-  // ---- Hover-подсветка (как в Figma: показываем рамку того, что выберется по клику) ----
-  // Для члена группы это рамка самой группы — сразу видно, что элементы объединены.
-  const handleStageMouseOver = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    let node: Konva.Node | null = e.target;
-    let key: string | null = null;
-    // id элемента может лежать на группе выше цели (Arrow у линии, Circle у круга и т.п.)
-    for (let i = 0; i < 4 && node; i++) {
-      const id = node.id();
-      if (id && elementsMap[id]) { key = id; break; }
-      node = node.getParent();
-    }
-    setHoveredKey(key ? resolveClickTarget(key) : null);
-  }, [elementsMap, resolveClickTarget]);
-
-  const hoverBounds = useMemo(() => {
-    if (!hoveredKey || selectedIds.includes(hoveredKey)) return null;
-    const el = elementsMap[hoveredKey];
-    if (!el) return null;
-    // Для группы показываем её рамку (то, что выберется по клику); для листа — фактические границы.
-    if (el.type === "group") {
-      const abs = getAbsoluteRenderedPos(el, elementsMap);
-      const rendered = getRenderedElement(el);
-      return { x: abs.x, y: abs.y, w: rendered.w, h: rendered.h };
-    }
-    const b = getElementBoundsRendered(el, elements);
-    return { x: b.minX, y: b.minY, w: b.maxX - b.minX, h: b.maxY - b.minY };
-  }, [hoveredKey, elementsMap, elements, selectedIds]);
-
-  // ---- Zoom-панель ----
-  const clampZoom = (z: number) => Math.min(Math.max(z, 0.2), 3);
-
-  const zoomBy = useCallback((factor: number) => {
-    // Зумируем вокруг центра видимой области, чтобы картинка не «уезжала».
-    const cx = (canvasRect?.width ?? 800) / 2;
-    const cy = (canvasRect?.height ?? 600) / 2;
-    const cam = useEditorStore.getState().camera;
-    const nz = clampZoom(cam.zoom * factor);
-    setCamera(cx - ((cx - cam.x) * nz) / cam.zoom, cy - ((cy - cam.y) * nz) / cam.zoom, nz);
-  }, [canvasRect, setCamera]);
-
-  const zoomFit = useCallback(() => {
-    if (!canvasRect) return;
-    const { elements: els, scene: sc } = useEditorStore.getState();
-    const roots = els.filter(el => el.parentKey === String(sc?.id));
-    if (!roots.length) { setCamera(0, 0, 1); return; }
-
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const el of roots) {
-      const b = getElementBoundsRendered(el, els);
-      minX = Math.min(minX, b.minX); minY = Math.min(minY, b.minY);
-      maxX = Math.max(maxX, b.maxX); maxY = Math.max(maxY, b.maxY);
-    }
-    if (!isFinite(minX)) return;
-
-    const pad = 60;
-    const nz = clampZoom(Math.min(
-      canvasRect.width / (maxX - minX + pad * 2),
-      canvasRect.height / (maxY - minY + pad * 2),
-    ));
-    setCamera(
-      (canvasRect.width - (maxX - minX) * nz) / 2 - minX * nz,
-      (canvasRect.height - (maxY - minY) * nz) / 2 - minY * nz,
-      nz,
-    );
-  }, [canvasRect, setCamera]);
+  const { zoomBy, zoomFit } = useZoomControls({ canvasRect, setCamera });
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
@@ -380,7 +190,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
       id="canvas-viewport"
       className="relative w-full h-full overflow-hidden bg-white dark:bg-neutral-950 context-menu-container"
     >
-      <div ref={setNodeRef} style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
+      <div style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
         <Stage
           ref={stageRef}
           // Stage — строго под размер видимой области (canvasRect), НЕ 5000×5000:
@@ -397,12 +207,13 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
           onMouseDown={handleStageMouseDown}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
+          onClick={readOnly ? undefined : handleStagePlacementClick}
           onContextMenu={handleStageContextMenu}
           onDragStart={handleStageDragStart}
           onDragMove={handleStageDragMove}
           onDragEnd={handleStageDragEnd}
           onMouseOver={readOnly ? undefined : handleStageMouseOver}
-          onMouseLeave={() => setHoveredKey(null)}
+          onMouseLeave={clearHover}
         >
           {/* readOnly (монитор): слой вне hit-графа Konva — фигуры не кликаются
               и не драгаются, при этом пан/зум Stage работают как обычно. */}

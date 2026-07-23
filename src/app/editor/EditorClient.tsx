@@ -1,22 +1,12 @@
 "use client";
 
-import {
-  DndContext,
-  DragOverlay,
-  closestCenter,
-} from "@dnd-kit/core";
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {ElementType} from "@/types/editorElement.type";
 import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene} from "@/lib/useAutoSaveScene";
-import {pickImageFile, fitImageSize} from "@/lib/pickImageFile";
-import {createUuid} from "@/lib/createUuid";
 
 export default function EditorPage() {
-  const [activeId, setActiveId] = useState<string | null>(null);
-
   const {loadPaletteItems} = usePaletteStore();
 
   // Автосохранение сцены раз в минуту (только при изменениях, тихо, без сброса выделения).
@@ -62,66 +52,9 @@ export default function EditorPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-100 overflow-hidden">
-      <DndContext
-        collisionDetection={closestCenter}
-        onDragStart={(e) => setActiveId(e.active.id as string)}
-        onDragEnd={(event) => {
-          const { over, active } = event;
-          if (!over) return;
-
-          if (over?.id === "canvas") {
-            const { camera, canvasRect } = useEditorStore.getState();
-            const translatedRect = active.rect.current.translated;
-
-            if (translatedRect && canvasRect) {
-              const localX = translatedRect.left - canvasRect.left;
-              const localY = translatedRect.top - canvasRect.top;
-
-              // Проверяем попадание точки сброса в видимую область холста в ЭКРАННЫХ
-              // координатах (а не в мировых). Раньше проверялись мировые координаты [0,5000],
-              // из-за чего элементы, брошенные далеко от центра после панорамирования/зума,
-              // ошибочно отбрасывались. Мировые координаты для размещения не ограничиваем.
-              if (localX < 0 || localY < 0 || localX > canvasRect.width || localY > canvasRect.height) return;
-
-              const worldX = (localX - camera.x) / camera.zoom;
-              const worldY = (localY - camera.y) / camera.zoom;
-
-              const type = active.data.current?.type as ElementType;
-              const templateData = active.data.current?.template;
-
-              if (type === 'custom') {
-                useEditorStore.getState().addTemplate(worldX, worldY, templateData);
-              } else if (type === 'image') {
-                // Создаём элемент-плейсхолдер СРАЗУ в точке сброса (не зависит от
-                // тайминга проводника), затем открываем проводник и заполняем src
-                // по этому же key. Отмена — остаётся плейсхолдер (двойной клик выберет).
-                const key = createUuid();
-                useEditorStore.getState().addElementAt(worldX, worldY, 'image', {key});
-                void (async () => {
-                  const src = await pickImageFile();
-                  if (!src) return;
-                  const {w, h} = await fitImageSize(src, 240);
-                  useEditorStore.getState().updateElementVisual(key, {src, w, h});
-                })();
-              } else {
-                useEditorStore.getState().addElementAt(worldX, worldY, type);
-              }
-            }
-          }
-          setActiveId(null);
-        }}
-      >
-        <WorkSpace />
-
-        <DragOverlay dropAnimation={null}>
-          {activeId ? (
-            <div
-              className="bg-linear-to-r from-blue-600 to-indigo-600 text-gray-900 dark:text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm font-medium opacity-90 scale-110">
-              {activeId}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      {/* Элементы добавляются кликом: клик по элементу палитры «вооружает» инструмент,
+          клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick). */}
+      <WorkSpace />
     </div>
   );
 }

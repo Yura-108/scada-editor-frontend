@@ -114,6 +114,10 @@ export function useStageInteractions({
       return;
     }
 
+    // Вооружён инструмент палитры — не стартуем маркиз и не сбрасываем выделение;
+    // постановка элемента идёт на Stage.onClick (Canvas.handleStagePlacementClick).
+    if (useEditorStore.getState().pendingPlacement) return;
+
     // Монитор: клики по холсту ничего не выделяют и не рисуют маркиз
     // (средняя кнопка — панорамирование — обработана выше).
     if (readOnly) return;
