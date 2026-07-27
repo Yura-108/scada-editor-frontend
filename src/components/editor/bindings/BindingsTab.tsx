@@ -5,8 +5,8 @@ import {Boxes, Pencil, Plus, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
-import {collectTagScope, hasSavedProperty, uniqueVarName} from "@/lib/runtime/bindingScope";
-import {createUuid} from "@/lib/createUuid";
+import {collectTagScope, hasSavedProperty} from "@/lib/runtime/bindingScope";
+import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 
@@ -41,26 +41,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
   const createDirectBinding = (picked: PickedProperty) => {
     setPickerOpen(false);
     const taken = new Set(collectTagScope(element.properties).names);
-    const varName = uniqueVarName(picked.propertyName, taken);
-    addBinding(element.key, {
-      v: 1,
-      id: createUuid(),
-      name: picked.propertyName,
-      enabled: true,
-      direct: true,
-      code: `setProp(${JSON.stringify(DIRECT_TARGET)}, ${varName}.V)`,
-      propertyRefs: [
-        {
-          varName,
-          propertyId: picked.propertyId,
-          componentKey: picked.componentKey,
-          componentId: picked.componentId,
-          componentLabel: picked.componentLabel,
-          propertyName: picked.propertyName,
-          valueType: picked.valueType,
-        },
-      ],
-    });
+    addBinding(element.key, buildDirectBinding(DIRECT_TARGET, picked, taken));
   };
 
   return (

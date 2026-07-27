@@ -304,7 +304,14 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
   }
 
   if (rendered.type === "table") {
-    return <TableShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return (
+      <TableShapeElement
+        el={el} isSelected={isSelected} snap={snap}
+        onElementClick={onElementClick} updateElementVisual={updateElementVisual}
+        focusedCell={ctx.selectedTableCell?.elementKey === el.key ? ctx.selectedTableCell : null}
+        onCellClick={ctx.onTableCellClick}
+      />
+    );
   }
 
   if (rendered.type === "trend") {

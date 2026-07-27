@@ -38,6 +38,18 @@ export interface ElementScript {
   content: string;
 }
 
+/**
+ * Статические (design-time) данные одной ячейки таблицы. Ключ в LeafElement.cells —
+ * `${row}_${col}` (0-based). Живое значение из привязки к тегу переопределяет `value`
+ * через runtimeOverridesByElementKey[el.key][`cell_${row}_${col}`] — см. src/lib/editor/tableCells.ts.
+ */
+export interface TableCellData {
+  value?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  align?: "left" | "center" | "right";
+}
+
 export type ComponentCreateDto = {
   key: string;
   id: number | null;
@@ -164,6 +176,17 @@ export interface LeafElement extends BaseCanvasElement {
   pressed? : boolean;
   checked?: boolean;
   d?: string; // SVG path data
+
+  // Для table
+  rows?: number;
+  cols?: number;
+  showHeader?: boolean;
+  headerText?: string;
+  alternateRow?: boolean;
+  alternateColor?: string;
+  headerColor?: string;
+  /** Статические данные ячеек по ключу "${row}_${col}". */
+  cells?: Record<string, TableCellData>;
   // ... добавляй по мере необходимости
 }
 

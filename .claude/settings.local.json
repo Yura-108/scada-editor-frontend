@@ -47,7 +47,8 @@
       "Bash(python3 *)",
       "Bash(cat *)",
       "Bash(tee /tmp/tsc_after.txt)",
-      "Bash(cd D:\\\\Work\\\\scada-editor-frontend *)"
+      "Bash(cd D:\\\\Work\\\\scada-editor-frontend *)",
+      "Bash(npm root *)"
     ]
   },
   "enableAllProjectMcpServers": true,

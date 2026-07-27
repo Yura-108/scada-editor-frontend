@@ -106,7 +106,7 @@ export const paletteItems: PaletteItemType[] = [
     type: "table",
     name: "Таблица",
     category: "Визуализация",
-    defaultProps: {rows: 4, cols: 3, headerText: "Таблица", w: 300, h: 160, backgroundColor: "#1e293b", headerColor: "#334155", strokeColor: "#475569", textColor: "#f8fafc", fontSize: 12, showHeader: true, alternateRow: true, alternateColor: "#0f172a"},
+    defaultProps: {rows: 4, cols: 3, headerText: "Таблица", w: 300, h: 160, backgroundColor: "transparent", headerColor: "transparent", strokeColor: "#000000", textColor: "#000000", fontSize: 12, showHeader: true, alternateRow: false, alternateColor: "#f1f5f9", cells: {}},
   },
   {
     id: 10 ** 5 + 17,

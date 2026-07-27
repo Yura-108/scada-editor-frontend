@@ -2,9 +2,9 @@
 
 import React, {useState, useMemo} from "react";
 import {cn} from "@/lib/utils";
-import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
+import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
-import {Plus, AlertTriangle, Trash2} from "lucide-react";
+import {Plus, AlertTriangle, Trash2, Boxes} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
@@ -16,6 +16,10 @@ import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/lib/createUuid";
 import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
 import {EventsTab} from "@/components/editor/events/EventsTab";
+import {ChooseObjectPropertyModal} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";
+import {collectTagScope, hasSavedProperty} from "@/lib/runtime/bindingScope";
+import {buildDirectBinding} from "@/lib/runtime/directBinding";
+import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 
 interface PropertiesPanelProps {
   element: DiagramElement | null;
@@ -32,6 +36,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const removeComponentStateFromSubtree = useEditorStore(s => s.removeComponentStateFromSubtree);
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
   const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
+  const selectedTableCell = useEditorStore(s => s.selectedTableCell);
+  const clearTableCellSelection = useEditorStore(s => s.clearTableCellSelection);
+  const addBinding = useEditorStore(s => s.addBinding);
+  const removeBinding = useEditorStore(s => s.removeBinding);
+  const [cellPickerOpen, setCellPickerOpen] = useState(false);
   // База каналов подгружена, если в дереве устройств есть узлы (глобальный стор,
   // наполняется при заходе в раздел «База каналов»). Без неё не из чего выбрать тег.
   const isChannelBaseLoaded = useDeviceStore(s => s.nodes.length > 0);
@@ -129,6 +138,27 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     : !isElementSaved
       ? "Сначала сохраните сцену — свойство можно добавить только сохранённому элементу (он ещё не создан на сервере)."
       : "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
+
+  // Сфокусированная ячейка таблицы (панель свойств показывает cell-блок только пока
+  // фокус принадлежит ИМЕННО этому элементу — переживает переключение вкладок).
+  const cellFocus = element.type === "table" && selectedTableCell?.elementKey === element.key
+    ? selectedTableCell
+    : null;
+  const cellsMap = renderedElementValues.cells as Record<string, TableCellData> | undefined;
+  const cellData = cellFocus ? getCellData(cellsMap, cellFocus.row, cellFocus.col) : undefined;
+  const cellTargetKey = cellFocus ? cellRuntimeKey(cellFocus.row, cellFocus.col) : null;
+  const cellBinding = cellTargetKey
+    ? (element.bindings ?? []).find(b => b.direct && b.directTarget === cellTargetKey)
+    : undefined;
+  const cellBindingRef = cellBinding?.propertyRefs?.[0];
+  const canBindCell = hasSavedProperty(element.properties);
+
+  const patchCell = (patch: Partial<TableCellData>) => {
+    if (!cellFocus) return;
+    updateElementVisual(element.key, {
+      cells: mergeCellPatch(cellsMap, cellFocus.row, cellFocus.col, patch),
+    });
+  };
 
   const handleSelectChange = (key: string, value: string) => {
     // Смена ориентации прогресс-бара меняет местами w/h, чтобы вертикальный бар был
@@ -339,6 +369,109 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {/* Визуальные параметры */}
         {activeTab === "visual" && (
           <div className="space-y-5">
+            {/* Ячейка таблицы: показывается только когда фокус (клик по ячейке на холсте)
+                принадлежит этому элементу. Табличные свойства ниже остаются видимы —
+                можно редактировать и таблицу целиком, и конкретную ячейку одновременно. */}
+            {cellFocus && cellTargetKey && (
+              <div className="space-y-3 rounded-xl border border-amber-400/40 bg-amber-500/5 p-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                    Ячейка: строка {cellFocus.row + 1}, столбец {cellFocus.col + 1}
+                  </h4>
+                  <button
+                    onClick={() => clearTableCellSelection()}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    title="Снять выделение ячейки"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+                    Значение
+                  </label>
+                  <input
+                    className={baseInputClasses}
+                    value={cellData?.value ?? ""}
+                    onChange={(e) => patchCell({value: e.target.value})}
+                  />
+                </div>
+
+                {cellBinding && cellBindingRef && (
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-xs">
+                    <Boxes size={13} className="text-emerald-500 shrink-0" />
+                    <span className="text-gray-500 dark:text-gray-400">значение ←</span>
+                    <span className="truncate flex-1">
+                      {cellBindingRef.componentLabel} · {cellBindingRef.propertyName}
+                    </span>
+                    <button
+                      onClick={() => removeBinding(element.key, cellBinding.id)}
+                      className="text-gray-500 hover:text-red-500 transition-colors"
+                      title="Отвязать"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                )}
+
+                <ColorField
+                  id="cell-bg"
+                  label="Цвет фона ячейки"
+                  value={cellData?.backgroundColor || "transparent"}
+                  onChange={(v) => patchCell({backgroundColor: v})}
+                  inputClassName={baseInputClasses}
+                />
+                <ColorField
+                  id="cell-text-color"
+                  label="Цвет текста ячейки"
+                  value={cellData?.textColor || (renderedElementValues.textColor as string) || "#000000"}
+                  onChange={(v) => patchCell({textColor: v})}
+                  inputClassName={baseInputClasses}
+                />
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+                    Выравнивание
+                  </label>
+                  <select
+                    className={cn(baseInputClasses, "appearance-none pr-8")}
+                    value={cellData?.align ?? "left"}
+                    onChange={(e) => patchCell({align: e.target.value as "left" | "center" | "right"})}
+                  >
+                    <option value="left">Слева</option>
+                    <option value="center">По центру</option>
+                    <option value="right">Справа</option>
+                  </select>
+                </div>
+
+                {!cellBinding && (
+                  <button
+                    className={canBindCell
+                      ? baseAddButtonClasses
+                      : "flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed"}
+                    disabled={!canBindCell}
+                    title={canBindCell ? undefined : "Сначала сохраните сцену и добавьте элементу свойство на вкладке «Свойства» — привязка требует сохранённого свойства."}
+                    onClick={() => canBindCell && setCellPickerOpen(true)}
+                  >
+                    <Boxes size={16} />
+                    Привязать к тегу
+                  </button>
+                )}
+
+                <ChooseObjectPropertyModal
+                  open={cellPickerOpen}
+                  onClose={() => setCellPickerOpen(false)}
+                  onPick={(picked) => {
+                    setCellPickerOpen(false);
+                    if (!cellTargetKey) return;
+                    const taken = new Set(collectTagScope(element.properties).names);
+                    addBinding(element.key, buildDirectBinding(cellTargetKey, picked, taken));
+                  }}
+                />
+              </div>
+            )}
+
             {/* Геометрия: точное позиционирование (координаты локальны родителю).
                 У линии позиция кодируется концами x1/y1/x2/y2, а не x/y/w/h. */}
             <div>

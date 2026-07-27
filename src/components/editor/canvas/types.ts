@@ -39,6 +39,13 @@ export interface ShapeElementProps {
   onStartTextEdit?: (key: string) => void;
 }
 
+/** Ячейка таблицы, сфокусированная в панели свойств (см. store.selectedTableCell). */
+export interface SelectedTableCell {
+  elementKey: string;
+  row: number;
+  col: number;
+}
+
 /**
  * Общий контекст рендеринга, прокидываемый в ShapeElement/GroupNode вместо
  * длинного списка пропов. Собирается один раз в Canvas.
@@ -77,4 +84,8 @@ export interface EditorRenderContext {
    * иначе двойная рамка (своя + трансформера) выглядит грязно.
    */
   transformerKey: string | null;
+  /** Ячейка таблицы, сфокусированная для панели свойств (см. store.selectedTableCell). */
+  selectedTableCell: SelectedTableCell | null;
+  /** Клик по конкретной ячейке таблицы: выделяет саму таблицу (как сегодня) и фокусирует ячейку. */
+  onTableCellClick: (elementKey: string, row: number, col: number, multi: boolean) => void;
 }

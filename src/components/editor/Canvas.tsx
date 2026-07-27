@@ -59,7 +59,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     activeGroupKey, enterGroup, exitGroup, clearSelection,
     canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
-    pendingPlacement,
+    pendingPlacement, selectedTableCell, selectTableCell,
   } = useEditorStore();
 
   const { resolvedTheme, themeColors } = useThemeColors();
@@ -103,6 +103,14 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     if (target === null) { exitGroup(); return; }
     selectMultiple(multi ? [...selectedIds.filter(id => id !== target), target] : [target]);
   }, [resolveClickTarget, exitGroup, selectMultiple, selectedIds]);
+
+  // Клик по ячейке таблицы: сначала выделяем таблицу целиком (как обычный клик по элементу),
+  // затем фокусируем ячейку — handleElementClick/selectMultiple сбрасывают selectedTableCell,
+  // поэтому selectTableCell обязан выполниться ПОСЛЕ него в этом же синхронном обработчике.
+  const onTableCellClick = useCallback((elementKey: string, row: number, col: number, multi: boolean) => {
+    handleElementClick(elementKey, multi);
+    selectTableCell(elementKey, row, col);
+  }, [handleElementClick, selectTableCell]);
 
   const { handleStagePlacementClick } = usePendingPlacement({ stageRef, pendingPlacement });
 
@@ -178,10 +186,12 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     currentComponentStateByElementKey,
     runtimeOverridesByElementKey,
     transformerKey: transformTarget?.key ?? null,
+    selectedTableCell, onTableCellClick,
   }), [
     selectedIds, activeGroupKey, elementsMap, themeColors,
     updateElementVisual, handleElementClick, enterGroup, resolveClickTarget, closeMenu,
     editingTextKey, currentComponentStateByElementKey, runtimeOverridesByElementKey, transformTarget,
+    selectedTableCell, onTableCellClick,
   ]);
 
   return (

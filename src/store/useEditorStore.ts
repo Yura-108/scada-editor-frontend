@@ -37,6 +37,13 @@ type EditorState = {
   activeGroupKey: string | null;
   enterGroup: (key: string) => void;
   exitGroup: () => void;
+  /**
+   * Ячейка таблицы, сфокусированная в панели свойств (для показа cell-специфичных
+   * полей). Транзиентно, как selectedIds/activeGroupKey — не в elements, вне undo.
+   */
+  selectedTableCell: {elementKey: string; row: number; col: number} | null;
+  selectTableCell: (elementKey: string, row: number, col: number) => void;
+  clearTableCellSelection: () => void;
   currentComponentStateByElementKey: Record<string, string>;
   setCurrentComponentStateId: (elementKey: string, componentState: string) => void;
   clearCurrentComponentStateId: (elementKey: string) => void;
@@ -526,6 +533,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectedId: null,
       selectedIds: [],
       activeGroupKey: null,
+      selectedTableCell: null,
       currentComponentStateByElementKey: {},
       runtimeOverridesByElementKey: {},
       clipboard: null,
@@ -626,7 +634,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         const {elements, scene, activeGroupKey} = get();
         const scopeKey = activeGroupKey ?? String(scene?.id ?? "");
         const keys = elements.filter(el => String(el.parentKey) === scopeKey).map(el => el.key);
-        if (keys.length) set({selectedIds: keys});
+        if (keys.length) set({selectedIds: keys, selectedTableCell: null});
       },
       bringToFront: (key) => {
         const {elements} = get();
@@ -872,10 +880,12 @@ export const useEditorStore = create<EditorState>()(temporal(
           )
         }));
       },
-      select: (id) => set({selectedIds: id ? [id] : []}),
-      selectMultiple: (ids) => set({selectedIds: [...ids]}),
-      clearSelection: () => set({selectedIds: []}),
-      enterGroup: (key) => set({activeGroupKey: key, selectedIds: []}),
+      select: (id) => set({selectedIds: id ? [id] : [], selectedTableCell: null}),
+      selectMultiple: (ids) => set({selectedIds: [...ids], selectedTableCell: null}),
+      clearSelection: () => set({selectedIds: [], selectedTableCell: null}),
+      enterGroup: (key) => set({activeGroupKey: key, selectedIds: [], selectedTableCell: null}),
+      selectTableCell: (elementKey, row, col) => set({selectedTableCell: {elementKey, row, col}}),
+      clearTableCellSelection: () => set({selectedTableCell: null}),
       exitGroup: () => set(state => {
         if (!state.activeGroupKey) return {};
         const group = state.elements.find(el => el.key === state.activeGroupKey);
@@ -886,6 +896,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         return {
           activeGroupKey: parentIsGroup ? parentKey! : null,
           selectedIds: [],
+          selectedTableCell: null,
         };
       }),
       addTemplate: (screenX, screenY, template) => {
@@ -1219,6 +1230,23 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
+        if (type === 'table') {
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 300, h: 160,
+            rows: 4, cols: 3, showHeader: true, headerText: "Таблица", alternateRow: false,
+            backgroundColor: "transparent", headerColor: "transparent",
+            strokeColor: "#000000", textColor: "#000000", fontSize: 12,
+            alternateColor: "#f1f5f9",
+            cells: {},
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
         const newElement: DiagramElement = {
           id: null,
           key: createUuid(),
@@ -1391,6 +1419,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         set({
           elements: nextElements,
           selectedIds: [],
+          selectedTableCell: null,
           currentComponentStateByElementKey: Object.fromEntries(
             Object.entries(prevStateMap).filter(([elementKey]) => !idsToDelete.has(elementKey))
           ),
@@ -1614,6 +1643,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           sceneList: [],
           selectedIds: [],
           activeGroupKey: null,
+          selectedTableCell: null,
           currentComponentStateByElementKey: {},
         }));
         // История undo принадлежала прошлому проекту — иначе Ctrl+Z «воскресит» его элементы.
@@ -1624,7 +1654,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const {currentProject} = get();
           if (!currentProject) {
             toast.error("Сначала выберите проект");
-            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
             return;
           }
 
@@ -1641,17 +1671,17 @@ export const useEditorStore = create<EditorState>()(temporal(
           // Иерархия: сцена обязана принадлежать выбранному проекту.
           if (!sceneBelongsToCurrentProject(scene, currentProject)) {
             toast.error("Сцена не принадлежит выбранному проекту");
-            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
             return;
           }
 
-          set({scene, elements: newElements, selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+          set({scene, elements: newElements, selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
 
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
           // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
-          set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}});
+          set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
         } finally {
           // Загрузка сцены — новая точка отсчёта: чистим историю undo, иначе Ctrl+Z
           // «воскресит» элементы прошлой сцены (с чужим parentKey и id:null → дубли на сервере).
@@ -1695,6 +1725,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             sceneList: [...get().sceneList, {id: newScene.id, name: newScene.name}],
             selectedIds: [],
             activeGroupKey: null,
+            selectedTableCell: null,
             currentComponentStateByElementKey: {},
           });
 
@@ -1727,7 +1758,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           set(state => ({
             sceneList: state.sceneList.filter(s => s.id !== id),
             ...(state.scene?.id === id
-              ? {scene: null, elements: [], selectedIds: [], activeGroupKey: null, currentComponentStateByElementKey: {}}
+              ? {scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}}
               : {}),
           }));
           toast.success('Сцена удалена');

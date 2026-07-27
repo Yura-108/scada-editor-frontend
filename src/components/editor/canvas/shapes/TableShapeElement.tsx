@@ -2,12 +2,26 @@
 
 import React from "react";
 import { Group, Rect, Line, Text } from "react-konva";
-import { LeafElement } from "@/types/editorElement.type";
+import Konva from "konva";
+import { LeafElement, TableCellData } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
+import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
 import type { ShapeElementProps } from "../types";
 
-export function TableShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+interface TableShapeElementProps extends ShapeElementProps {
+  /** Ячейка, сфокусированная в панели свойств (для этой таблицы), или null. */
+  focusedCell: { elementKey: string; row: number; col: number } | null;
+  /** Клик по конкретной ячейке — выделяет таблицу и фокусирует ячейку в панели свойств. */
+  onCellClick: (elementKey: string, row: number, col: number, multi: boolean) => void;
+}
+
+/** Цвет подсветки сфокусированной ячейки — намеренно отличается от синей пунктирной
+ *  рамки выделения таблицы (#3b82f6) и розовых smart-guides (#f43f5e). */
+const CELL_FOCUS_COLOR = "#f59e0b";
+
+export function TableShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual, focusedCell, onCellClick }: TableShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
+  const renderedAny = rendered as unknown as Record<string, unknown>;
   const pad = 4;
 
   const w = rendered.w || 300;
@@ -17,14 +31,16 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
   const cols = Math.max(1, Math.round(Number(rendered.cols ?? 3)));
   const showHeader = rendered.showHeader !== false;
   const headerText = (rendered.headerText as string) || "Таблица";
-  const alternateRow = rendered.alternateRow !== false;
+  const alternateRow = rendered.alternateRow === true;
 
-  const bgColor = rendered.backgroundColor || "#1e293b";
-  const headerColor = rendered.headerColor || "#334155";
-  const altColor = rendered.alternateColor || "#0f172a";
-  const strokeCol = rendered.strokeColor || "#475569";
-  const textCol = rendered.textColor || "#f8fafc";
+  const bgColor = rendered.backgroundColor || "transparent";
+  const headerColor = rendered.headerColor || "transparent";
+  const altColor = rendered.alternateColor || "#f1f5f9";
+  const strokeCol = rendered.strokeColor || "#000000";
+  const textCol = rendered.textColor || "#000000";
   const fontSize = Math.max(8, Math.min(24, Number(rendered.fontSize ?? 12)));
+
+  const cellsMap = rendered.cells as Record<string, TableCellData> | undefined;
 
   const headerH = showHeader ? Math.max(20, fontSize + 10) : 0;
   const bodyH = h - headerH;
@@ -69,22 +85,53 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
     }
   }
 
-  // Текст-заглушки в ячейках
-  const cellTexts: React.ReactElement[] = [];
+  // Ячейки: фон (кликабельный, хит-таргет для выбора ячейки), значение (статика или
+  // живой оверрайд из привязки к тегу), подсветка сфокусированной ячейки.
+  const cellNodes: React.ReactElement[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      cellTexts.push(
+      const data = getCellData(cellsMap, r, c);
+      const liveRaw = renderedAny[cellRuntimeKey(r, c)];
+      const displayValue = typeof liveRaw === "string" || typeof liveRaw === "number"
+        ? String(liveRaw)
+        : (data.value ?? "");
+      const cx = c * colW;
+      const cy = headerH + r * rowH;
+      const focused = focusedCell !== null && focusedCell.elementKey === el.key
+        && focusedCell.row === r && focusedCell.col === c;
+
+      cellNodes.push(
+        <Rect
+          key={`cell-bg-${r}-${c}`}
+          x={cx} y={cy} width={colW} height={rowH}
+          fill={data.backgroundColor || "transparent"}
+          onClick={(e: Konva.KonvaEventObject<MouseEvent>) => {
+            e.cancelBubble = true;
+            onCellClick(el.key, r, c, e.evt.shiftKey || e.evt.ctrlKey);
+          }}
+        />
+      );
+      cellNodes.push(
         <Text
-          key={`cell-${r}-${c}`}
-          x={c * colW + 4}
-          y={headerH + r * rowH + rowH / 2 - fontSize / 2}
+          key={`cell-text-${r}-${c}`}
+          x={cx + 4} y={cy + rowH / 2 - fontSize / 2}
           width={colW - 8}
-          text="—"
+          text={displayValue}
           fontSize={fontSize}
-          fill={textCol}
+          align={data.align || "left"}
+          fill={data.textColor || textCol}
           listening={false}
         />
       );
+      if (focused) {
+        cellNodes.push(
+          <Rect
+            key={`cell-focus-${r}-${c}`}
+            x={cx} y={cy} width={colW} height={rowH}
+            fill="transparent" stroke={CELL_FOCUS_COLOR} strokeWidth={2} listening={false}
+          />
+        );
+      }
     }
   }
 
@@ -126,8 +173,8 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
         </>
       )}
 
-      {/* Ячейки */}
-      {cellTexts}
+      {/* Ячейки: фон + значение + подсветка фокуса */}
+      {cellNodes}
 
       {/* Сетка */}
       {lines}
