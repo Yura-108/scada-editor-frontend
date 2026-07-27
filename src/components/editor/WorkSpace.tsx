@@ -51,9 +51,12 @@ export default function WorkSpace() {
 
   // Восстанавливаем сохранённую ширину после монтирования (localStorage недоступен на сервере,
   // поэтому не читаем его в useState-инициализаторе — это дало бы рассинхронизацию с SSR-разметкой).
+  // Синхронный setState здесь оправдан: это единственный способ безопасно прочитать
+  // браузерный API после монтирования, а не «выводимое» из пропсов состояние.
   useEffect(() => {
     const savedLeft = Number(localStorage.getItem(LS_LEFT_WIDTH));
     if (Number.isFinite(savedLeft) && savedLeft > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLeftWidth(Math.min(Math.max(savedLeft, LEFT_COLLAPSE), LEFT_MAX));
     }
     const savedRight = Number(localStorage.getItem(LS_RIGHT_WIDTH));
@@ -239,6 +242,13 @@ export default function WorkSpace() {
         {/*  </button>*/}
         {/*</div>*/}
 
+        {/* Минимальная полоса вкладок: пока реально готовы только «Редактор» и «Рецепты» —
+            остальные 8 вкладок выше остаются заглушками и закомментированы намеренно. */}
+        <div className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2">
+          {tabButton("editor", "Редактор")}
+          {tabButton("recipes", "Рецепты")}
+        </div>
+
         {/* Содержимое вкладки: занимает всё оставшееся место.
             Для «Редактора» — Canvas между панелями; для остальных — чистый элемент вкладки. */}
         <div className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
@@ -280,7 +290,7 @@ export default function WorkSpace() {
         {/* Кнопка РАЗВЕРНУТЬ левую панель (висит снаружи) */}
         <button
           onClick={() => setLeftVisible(true)}
-          className={`absolute top-4 -right-12 p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-r-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:bg-neutral-800 shadow-xl transition-opacity ${
+          className={`absolute top-4 -right-12 p-2 bg-white border border-neutral-200 dark:border-neutral-800 rounded-r-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:bg-neutral-800 shadow-xl transition-opacity ${
             !leftVisible && showEditorPanels ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >

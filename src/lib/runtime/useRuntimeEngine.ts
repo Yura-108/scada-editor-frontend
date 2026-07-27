@@ -24,6 +24,8 @@ export interface RuntimeEngineState {
   compileErrors: Map<string, string>;
   /** binding.id → последняя ошибка исполнения (после 5 подряд — автоотключение). */
   runtimeErrors: Map<string, string>;
+  /** id текущей WS-сессии (для GET /snapshot) — null, пока не подключены. */
+  sessionId: string | null;
 }
 
 /**
@@ -39,6 +41,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
   const [status, setStatus] = useState<RuntimeStatus>("closed");
   const [runtimeErrors, setRuntimeErrors] = useState<Map<string, string>>(new Map());
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Компиляция один раз на identity elements (загрузка/пересохранение сцены).
   const index = useMemo(
@@ -262,6 +265,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       onStatus: (s) => {
         log(`статус соединения: ${s}`);
         setStatus(s);
+        setSessionId(connRef.current?.getSessionId() ?? null);
       },
     });
     connRef.current = conn;
@@ -287,6 +291,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       errorCountRef.current = new Map();
       disabledRef.current = new Set();
       useEditorStore.getState().clearRuntime();
+      setSessionId(null);
     };
   }, [active, projectId]);
 
@@ -294,5 +299,6 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     status,
     compileErrors: index?.compileErrors ?? new Map(),
     runtimeErrors,
+    sessionId,
   };
 }

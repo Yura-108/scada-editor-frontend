@@ -15,6 +15,7 @@ import {useDeviceStore} from "@/store/useDeviceStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/lib/createUuid";
 import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
+import {RowBindingsTab} from "@/components/editor/bindings/RowBindingsTab";
 import {EventsTab} from "@/components/editor/events/EventsTab";
 import {ChooseObjectPropertyModal} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";
 import {collectTagScope, hasSavedProperty} from "@/lib/runtime/bindingScope";
@@ -25,7 +26,7 @@ interface PropertiesPanelProps {
   element: DiagramElement | null;
 }
 
-type TabType = "visual" | "states" | "properties" | "scripts" | "bindings" | "events";
+type TabType = "visual" | "states" | "properties" | "scripts" | "bindings" | "events" | "rowBindings";
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const [activeTab, setActiveTab] = useState<TabType>("visual");
@@ -360,6 +361,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
           >
             События
           </button>
+          {element.type === "table" && (
+            <button
+              onClick={() => setActiveTab("rowBindings")}
+              className={tabButtonClasses(activeTab === "rowBindings")}
+            >
+              Строки
+            </button>
+          )}
         </div>
       </div>
 
@@ -710,6 +719,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
 
         {/* События (onClick/onDoubleClick — JS режима монитора) */}
         {activeTab === "events" && <EventsTab element={element} />}
+
+        {/* Строки таблицы: привязка к тегам (bulk-контракт properties) */}
+        {activeTab === "rowBindings" && element.type === "table" && (
+          <RowBindingsTab
+            element={element}
+            rows={getNumberValue(renderedElementValues.rows, 4)}
+            cellsMap={cellsMap}
+          />
+        )}
 
       </div>
     </div>

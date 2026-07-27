@@ -157,6 +157,9 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     bindings: encodeBindings(element),
     events: encodeEvents(element),
     states,
+    // Привязки строк таблицы к тегам — bulk-контракт, отдельный от el.properties/
+    // /api/editor/tags (см. rowBindings у LeafElement).
+    ...(element.type === "table" ? {properties: element.rowBindings ?? []} : {}),
   };
 };
 

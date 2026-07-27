@@ -30,6 +30,9 @@ export interface RuntimeConnection {
   close: () => void;
   /** Триггер серверного Java-скрипта: {"type":"ACTION","scriptId"} (задел Phase C). */
   sendAction: (scriptId: number) => void;
+  /** id текущей сессии (для GET /snapshot) — null, если сокет ещё не подключён/уже закрыт.
+   *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
+  getSessionId: () => string | null;
 }
 
 const RUNTIME_WS_ORIGIN =
@@ -50,6 +53,7 @@ export function openRuntimeConnection(
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let reconnectDelay = 1000;
   let firstConnect = true;
+  let currentSessionId: string | null = null;
 
   const setStatus = (s: RuntimeStatus) => onStatus?.(s);
 
@@ -88,6 +92,7 @@ export function openRuntimeConnection(
       if (typeof data?.token !== "string") throw new Error("В ответе сессии нет token");
       wsPath = data.wsPath;
       wsToken = data.token;
+      currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
       log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${RUNTIME_WS_ORIGIN}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
@@ -145,6 +150,8 @@ export function openRuntimeConnection(
     socket.onclose = (e) => {
       stopPing();
       if (ws === socket) ws = null;
+      // Сессия умирает на сервере вместе с сокетом — snapshot по старому id больше не ответит.
+      currentSessionId = null;
       if (!closed) {
         log(`соединение закрыто (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — переподключаюсь через ${reconnectDelay}мс`);
       }
@@ -164,6 +171,7 @@ export function openRuntimeConnection(
       // Явный DELETE сессии не нужен: закрытие WS завершает её на сервере.
       ws?.close();
       ws = null;
+      currentSessionId = null;
       setStatus("closed");
     },
     sendAction: (scriptId: number) => {
@@ -174,5 +182,6 @@ export function openRuntimeConnection(
         console.warn(`[monitor:ws] sendAction(${scriptId}) проигнорирован — соединение не открыто`);
       }
     },
+    getSessionId: () => currentSessionId,
   };
 }

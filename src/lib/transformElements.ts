@@ -14,6 +14,7 @@ type BackendStateDto = {
 type BackendPropertyDto = {
   id: number;
   component_id: number;
+  name?: string;
   property_type: string | null;
   tag_id: string;
   description: string | null;
@@ -207,6 +208,13 @@ export default function transformElements(
       events: parseEvents(el.events),
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
+      // Привязки строк таблицы к тегам — унбейк из того же properties[], который
+      // buildComponentNode запекает только для type==="table" (симметрия round-trip).
+      ...(el.type === "table" ? {
+        rowBindings: normalizeArray(el.properties)
+          .filter((p) => p.property_type === "TAG")
+          .map((p) => ({name: p.name ?? "", tag_id: p.tag_id, property_type: "TAG", value_type: p.value_type ?? ""})),
+      } : {}),
     };
 
     // Process children recursively and collect their new unique keys

@@ -50,6 +50,18 @@ export interface TableCellData {
   align?: "left" | "center" | "right";
 }
 
+/**
+ * Свойство-строка таблицы (привязка к тегу) — отдельный, более лёгкий контракт,
+ * чем PropertyCreateDto (у той требуются id/component_id, которых ещё нет на
+ * этапе черновика). property_type всегда "TAG" — не путать с историческим "Тег".
+ */
+export interface ComponentPropertyDto {
+  name: string;
+  tag_id: string;
+  property_type: string;
+  value_type: string;
+}
+
 export type ComponentCreateDto = {
   key: string;
   id: number | null;
@@ -67,6 +79,8 @@ export type ComponentCreateDto = {
     image: string;
     isDefault: boolean;
   }[];
+  /** Только для type==="table": одна запись на строку, см. rowBindings у LeafElement. */
+  properties?: ComponentPropertyDto[];
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
@@ -187,6 +201,10 @@ export interface LeafElement extends BaseCanvasElement {
   headerColor?: string;
   /** Статические данные ячеек по ключу "${row}_${col}". */
   cells?: Record<string, TableCellData>;
+  /** Привязка строки таблицы к тегу (индекс массива = номер строки). Черновик
+   *  клиента до сохранения сцены — buildComponentNode запекает его в DTO.properties,
+   *  transformElements восстанавливает при загрузке. */
+  rowBindings?: ComponentPropertyDto[];
   // ... добавляй по мере необходимости
 }
 

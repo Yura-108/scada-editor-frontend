@@ -1,12 +1,13 @@
 "use client";
 
 import React, {useEffect, useMemo} from "react";
-import {AlertTriangle, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
+import openApplyRecipeModal from "@/components/monitor/ApplyRecipeModal";
 
 const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   connecting: {label: "Подключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
@@ -52,7 +53,7 @@ export default function MonitorClient() {
     if (currentProject) void loadSceneList(currentProject.id);
   }, [currentProject, loadSceneList]);
 
-  const {status, compileErrors, runtimeErrors} = useRuntimeEngine(Boolean(scene && currentProject));
+  const {status, compileErrors, runtimeErrors, sessionId} = useRuntimeEngine(Boolean(scene && currentProject));
 
   const problemCount = useMemo(
     () => compileErrors.size + runtimeErrors.size,
@@ -105,6 +106,16 @@ export default function MonitorClient() {
         </select>
 
         <div className="flex-1" />
+
+        {status === "live" && sessionId && (
+          <button
+            onClick={() => openApplyRecipeModal({sessionId})}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
+          >
+            <ClipboardList size={14} />
+            Применить рецепт
+          </button>
+        )}
 
         {problemCount > 0 && (
           <span
