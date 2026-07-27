@@ -3,9 +3,13 @@
  * PHASE4_RUNTIME_PLAN.md, WP4):
  *
  *  1. POST /api/runtime/sessions {projectId} (через наш BFF, Bearer нужен только
- *     на этом шаге) → {sessionId, wsPath, projectTree}.
+ *     на этом шаге) → {sessionId, wsPath, projectTree, token}. token — тот же JWT
+ *     из httpOnly-cookie access_token; BFF отдаёт его в теле ответа, поскольку
+ *     дальше сокет открывается напрямую браузером и cookie ему не виден.
  *  2. Raw WebSocket (НЕ SockJS/STOMP!) на рантайм-сервис `ws://…:8085` + wsPath.
  *     Gateway роутит только /api/** — wsPath НЕЛЬЗЯ клеить к origin gateway.
+ *     Рантайм требует JWT в query (?token=…) — заголовок Authorization браузерный
+ *     WebSocket слать не умеет; без валидного token соединение закрывается 401.
  *
  * Свойства сессии: обрыв WS убивает её на сервере — реконнект обязан заново
  * делать POST (новый sessionId); heartbeat на сервере нет — шлём клиентский ping
@@ -71,6 +75,7 @@ export function openRuntimeConnection(
 
     // Сессия одноразовая: каждый (ре)коннект начинается с нового POST.
     let wsPath: string;
+    let wsToken: string;
     try {
       const res = await fetch("/api/runtime/sessions", {
         method: "POST",
@@ -80,7 +85,9 @@ export function openRuntimeConnection(
       if (!res.ok) throw new Error(`POST /api/runtime/sessions → ${res.status}`);
       const data = await res.json();
       if (typeof data?.wsPath !== "string") throw new Error("В ответе сессии нет wsPath");
+      if (typeof data?.token !== "string") throw new Error("В ответе сессии нет token");
       wsPath = data.wsPath;
+      wsToken = data.token;
       log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${RUNTIME_WS_ORIGIN}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
@@ -89,7 +96,9 @@ export function openRuntimeConnection(
     }
     if (closed) return;
 
-    const socket = new WebSocket(RUNTIME_WS_ORIGIN + wsPath);
+    // Браузерный WebSocket не умеет слать заголовок Authorization — JWT идёт query-параметром.
+    const separator = wsPath.includes("?") ? "&" : "?";
+    const socket = new WebSocket(`${RUNTIME_WS_ORIGIN}${wsPath}${separator}token=${encodeURIComponent(wsToken)}`);
     ws = socket;
 
     socket.onopen = () => {

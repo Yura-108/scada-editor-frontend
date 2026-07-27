@@ -29,5 +29,12 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const data = await response.json().catch(() => null);
 
   // Пробрасываем реальный статус бэкенда (400 = проект не найден и т.п.).
-  return NextResponse.json(data, {status: response.status});
+  if (!response.ok || !data) {
+    return NextResponse.json(data, {status: response.status});
+  }
+
+  // WS открывается браузером напрямую на :8085 и не может прочитать httpOnly-cookie
+  // и не умеет слать заголовок Authorization — поэтому отдаём тот же JWT в теле ответа,
+  // фронт добавит его как ?token= к wsPath.
+  return NextResponse.json({...data, token}, {status: response.status});
 });
