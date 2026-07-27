@@ -50,7 +50,7 @@ function TooltipBtn({
   );
 }
 
-export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible: boolean, rightVisible: boolean }) {
+export default function ToolsPanel({ leftOffset, rightOffset }: { leftOffset: number, rightOffset: number }) {
   const {selectedIds, exportScene, elements, loadSceneList, createScene, scene, currentProject} = useEditorStore();
   const {loadPaletteItems} = usePaletteStore();
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -124,29 +124,31 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
   return (
     <nav
       style={{
-        left: leftVisible ? '288px' : '0px',
-        right: rightVisible ? '320px' : '0px',
+        left: `${leftOffset}px`,
+        right: `${rightOffset}px`,
       }}
-      className="fixed top-16 z-30 flex gap-3 justify-center items-center px-4 py-2
+      className="fixed top-16 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      {/* Проект и сцена */}
-      {(currentProject || scene) && (
-        <div className="text-sm font-medium text-neutral-400 pointer-events-auto flex gap-4">
-          {currentProject && (
-            <span>
-              Проект: <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentProject.name}</span>
-            </span>
-          )}
-          {scene && (
-            <span>
-              Сцена: <span className="text-gray-900 dark:text-gray-100 font-semibold">{scene.name}</span>
-            </span>
-          )}
-        </div>
-      )}
+      {/* Проект и сцена: отдельная колонка слева, не влияет на центрирование тулбара */}
+      <div className="min-w-0 flex justify-start">
+        {(currentProject || scene) && (
+          <div className="min-w-0 flex items-center gap-3 text-xs font-medium text-neutral-400 pointer-events-auto">
+            {currentProject && (
+              <span className="truncate">
+                Проект: <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentProject.name}</span>
+              </span>
+            )}
+            {scene && (
+              <span className="truncate">
+                Сцена: <span className="text-gray-900 dark:text-gray-100 font-semibold">{scene.name}</span>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
-      <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
+      <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto justify-self-center">
 
         <TooltipBtn icon={<Briefcase size={16} />} label="Проект" onClick={handleOpenProject} />
         <TooltipBtn icon={<FilePlus size={16} />} label="Создать сцену" onClick={handleCreateSchema} />
@@ -228,11 +230,13 @@ export default function ToolsPanel({ leftVisible, rightVisible }: { leftVisible:
         />
       </div>
 
-      {scene && currentProject && !sceneBelongsToProject && (
-        <div className="text-xs font-medium text-red-500 dark:text-red-400 pointer-events-auto">
-          Сцена не принадлежит проекту «{currentProject.name}». Выберите сцену из списка.
-        </div>
-      )}
+      <div className="min-w-0 flex justify-end">
+        {scene && currentProject && !sceneBelongsToProject && (
+          <div className="truncate text-xs font-medium text-red-500 dark:text-red-400 pointer-events-auto">
+            Сцена не принадлежит проекту «{currentProject.name}». Выберите сцену из списка.
+          </div>
+        )}
+      </div>
 
       <input
         ref={importInputRef}

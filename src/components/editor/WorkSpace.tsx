@@ -3,7 +3,7 @@ import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "@/store/useEditorStore";
-import React, {useMemo, useState, useRef} from "react";
+import React, {useMemo, useState, useRef, useEffect} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
 import {cn} from "@/lib/utils";
@@ -19,6 +19,12 @@ import {ReportsPanel} from "@/components/editor/panels/ReportsPanel";
 import {HelpPanel} from "@/components/editor/panels/HelpPanel";
 
 type TabType = "editor" | "recipes" | "lineParams" | "stationParams" | "pidController" | "lineBinding" | "signals" | "alarmLog" | "reports" | "help";
+
+// Ширины боковых панелей: дефолт/максимум/порог, ниже которого перетаскивание края схлопывает панель.
+const LEFT_DEFAULT = 288, LEFT_MAX = 480, LEFT_COLLAPSE = 160;
+const RIGHT_DEFAULT = 320, RIGHT_MAX = 520, RIGHT_COLLAPSE = 180;
+const LS_LEFT_WIDTH = "scada-editor:leftPanelWidth";
+const LS_RIGHT_WIDTH = "scada-editor:rightPanelWidth";
 
 export default function WorkSpace() {
   // Точечные селекторы вместо подписки на весь стор: иначе каждый тик пана/зума
@@ -38,9 +44,72 @@ export default function WorkSpace() {
   const [activeTab, setActiveTab] = useState<TabType>("editor");
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Ширины боковых панелей (w-72 = 288px, w-80 = 320px) — используются для отступов полосы вкладок.
-  const LEFT_ASIDE_WIDTH = 288;
-  const RIGHT_ASIDE_WIDTH = 320;
+  // Ширина боковых панелей — настраивается перетаскиванием края (см. handleResizeStart).
+  const [leftWidth, setLeftWidth] = useState(LEFT_DEFAULT);
+  const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT);
+  const [resizingSide, setResizingSide] = useState<"left" | "right" | null>(null);
+
+  // Восстанавливаем сохранённую ширину после монтирования (localStorage недоступен на сервере,
+  // поэтому не читаем его в useState-инициализаторе — это дало бы рассинхронизацию с SSR-разметкой).
+  useEffect(() => {
+    const savedLeft = Number(localStorage.getItem(LS_LEFT_WIDTH));
+    if (Number.isFinite(savedLeft) && savedLeft > 0) {
+      setLeftWidth(Math.min(Math.max(savedLeft, LEFT_COLLAPSE), LEFT_MAX));
+    }
+    const savedRight = Number(localStorage.getItem(LS_RIGHT_WIDTH));
+    if (Number.isFinite(savedRight) && savedRight > 0) {
+      setRightWidth(Math.min(Math.max(savedRight, RIGHT_COLLAPSE), RIGHT_MAX));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(LS_LEFT_WIDTH, String(leftWidth));
+  }, [leftWidth]);
+
+  useEffect(() => {
+    localStorage.setItem(LS_RIGHT_WIDTH, String(rightWidth));
+  }, [rightWidth]);
+
+  // Перетаскивание края панели: ширина следует за курсором, а при уходе ниже порога
+  // панель схлопывается (тот же жест, что и «Свернуть», плюс сброс к дефолтной ширине).
+  const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>, side: "left" | "right") => {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startWidth = side === "left" ? leftWidth : rightWidth;
+    setResizingSide(side);
+
+    const onMove = (ev: PointerEvent) => {
+      const delta = side === "left" ? ev.clientX - startX : startX - ev.clientX;
+      const raw = startWidth + delta;
+      if (side === "left") {
+        if (raw < LEFT_COLLAPSE) {
+          setLeftVisible(false);
+          setLeftWidth(LEFT_DEFAULT);
+        } else {
+          setLeftVisible(true);
+          setLeftWidth(Math.min(raw, LEFT_MAX));
+        }
+      } else {
+        if (raw < RIGHT_COLLAPSE) {
+          setRightVisible(false);
+          setRightWidth(RIGHT_DEFAULT);
+        } else {
+          setRightVisible(true);
+          setRightWidth(Math.min(raw, RIGHT_MAX));
+        }
+      }
+    };
+    const onUp = (ev: PointerEvent) => {
+      handle.releasePointerCapture(ev.pointerId);
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onUp);
+      setResizingSide(null);
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onUp);
+  };
 
   // Палитра, свойства, инструменты и Canvas показываются только во вкладке «Редактор».
   const showEditorPanels = activeTab === "editor";
@@ -88,7 +157,7 @@ export default function WorkSpace() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "editor":
-        return <EditorPanel rightInset={rightShown ? RIGHT_ASIDE_WIDTH : 0} />;
+        return <EditorPanel rightInset={rightShown ? rightWidth : 0} />;
       case "recipes":
         return <RecipesPanel />;
       case "lineParams":
@@ -118,7 +187,12 @@ export default function WorkSpace() {
 
       {/* Центральная область (Холст). Занимает 100% места, находится под панелями (z-0) */}
       <main className="absolute inset-0 flex flex-col z-0">
-        {showEditorPanels && <ToolsPanel leftVisible={leftVisible} rightVisible={rightVisible} />}
+        {showEditorPanels && (
+          <ToolsPanel
+            leftOffset={leftShown ? leftWidth : 0}
+            rightOffset={rightShown ? rightWidth : 0}
+          />
+        )}
 
         {/* Полоса вкладок: под header, между боковыми панелями. Не влезающие вкладки
             скрыты (overflow скрыт), переключение — стрелками. */}
@@ -175,7 +249,10 @@ export default function WorkSpace() {
 
       {/* Левая панель - Абсолютная, прилипшая к левому краю */}
       <aside
-        className={`absolute left-0 top-0 bottom-0 z-40 w-72 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+        style={{width: leftWidth}}
+        className={`absolute left-0 top-0 bottom-0 z-40 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md ease-in-out ${
+          resizingSide === 'left' ? 'transition-none' : 'transition-transform duration-300'
+        } ${
           leftShown ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -209,11 +286,24 @@ export default function WorkSpace() {
         >
           <PanelLeft size={20} />
         </button>
+
+        {/* Ручка перетаскивания: меняет ширину, а при уходе за порог — сворачивает панель */}
+        {leftShown && (
+          <div
+            onPointerDown={(e) => handleResizeStart(e, "left")}
+            className="absolute top-0 bottom-0 right-0 -mr-1.5 w-3 cursor-col-resize z-50 group/handle"
+          >
+            <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-blue-500/50 transition-colors" />
+          </div>
+        )}
       </aside>
 
       {/* Правая панель - Абсолютная, прилипшая к правому краю */}
       <aside
-        className={`absolute right-0 top-0 bottom-0 z-40 w-80 border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+        style={{width: rightWidth}}
+        className={`absolute right-0 top-0 bottom-0 z-40 border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md ease-in-out ${
+          resizingSide === 'right' ? 'transition-none' : 'transition-transform duration-300'
+        } ${
           rightShown ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -248,6 +338,16 @@ export default function WorkSpace() {
         >
           <PanelRight size={18} />
         </button>
+
+        {/* Ручка перетаскивания: меняет ширину, а при уходе за порог — сворачивает панель */}
+        {rightShown && (
+          <div
+            onPointerDown={(e) => handleResizeStart(e, "right")}
+            className="absolute top-0 bottom-0 left-0 -ml-1.5 w-3 cursor-col-resize z-50 group/handle"
+          >
+            <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-blue-500/50 transition-colors" />
+          </div>
+        )}
       </aside>
 
     </div>
