@@ -62,6 +62,8 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     pendingPlacement, selectedTableCell, selectTableCell,
   } = useEditorStore();
 
+  console.log(elements);
+
   const { resolvedTheme, themeColors } = useThemeColors();
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: CanvasMenuItem[] } | null>(null);

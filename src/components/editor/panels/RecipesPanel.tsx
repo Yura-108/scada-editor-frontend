@@ -7,6 +7,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeDto} from "@/types/recipe.types";
 import openRecipeModal from "@/components/editor/recipes/RecipeModal";
+import {isRowBindingProperty, parseRowBindingRow} from "@/lib/editor/rowBinding";
 
 export function RecipesPanel() {
   const elements = useEditorStore((s) => s.elements);
@@ -21,7 +22,11 @@ export function RecipesPanel() {
   const [isLoading, setIsLoading] = useState(false);
 
   const selectedComponent = tableComponents.find((el) => el.id === componentId);
-  const rowBindings = selectedComponent?.type === "table" ? (selectedComponent.rowBindings ?? []).filter(Boolean) : [];
+  const rowBindings = selectedComponent?.type === "table"
+    ? (selectedComponent.properties ?? [])
+        .filter(isRowBindingProperty)
+        .sort((a, b) => (parseRowBindingRow(a.property_type) ?? 0) - (parseRowBindingRow(b.property_type) ?? 0))
+    : [];
 
   // Загрузка триггерится выбором в <select>, а не эффектом от componentId —
   // так же, как в MonitorClient.tsx (loadScene по onChange).

@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useMemo} from "react";
+import React, {useState, useMemo, useEffect} from "react";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
@@ -62,6 +62,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     ...basePropertySchema,
     ...(elementPropertyMap[element.type as ElementType] || []),
   ] : [], [element?.type, element]);
+
+  // У таблицы нет вкладки «Свойства» (её роль выполняет «Строки» — привязки по рядам).
+  // Если выбор переключился на таблицу, пока была открыта эта вкладка — уводим на «Визуал».
+  useEffect(() => {
+    if (element?.type === "table" && activeTab === "properties") {
+      setActiveTab("visual");
+    }
+  }, [element?.key, element?.type]);
 
   if (!element) {
     return (
@@ -337,12 +345,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
           >
             Состояния
           </button>
-          <button
-            onClick={() => setActiveTab("properties")}
-            className={tabButtonClasses(activeTab === "properties")}
-          >
-            Свойства
-          </button>
+          {element.type !== "table" && (
+            <button
+              onClick={() => setActiveTab("properties")}
+              className={tabButtonClasses(activeTab === "properties")}
+            >
+              Свойства
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("scripts")}
             className={tabButtonClasses(activeTab === "scripts")}
@@ -606,7 +616,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         )}
 
         {/* Свойства */}
-        {activeTab === "properties" && (
+        {activeTab === "properties" && element.type !== "table" && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Добавленные свойства

@@ -1,5 +1,6 @@
 import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
 import {BindingDto} from "@/types/binding.types";
+import {isRowBindingProperty} from "@/lib/editor/rowBinding";
 
 /**
  * id свойства элемента для DTO-поля `component_property_id` (контракт требует
@@ -157,9 +158,12 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     bindings: encodeBindings(element),
     events: encodeEvents(element),
     states,
-    // Привязки строк таблицы к тегам — bulk-контракт, отдельный от el.properties/
-    // /api/editor/tags (см. rowBindings у LeafElement).
-    ...(element.type === "table" ? {properties: element.rowBindings ?? []} : {}),
+    // Привязки строк таблицы к тегам — записи element.properties с property_type
+    // "TAG:<row>" (isRowBindingProperty), отдельные от обычных свойств "Тег" и
+    // от их REST-пути /api/editor/tags.
+    ...(element.type === "table" ? {
+      properties: (element.properties ?? []).filter(isRowBindingProperty),
+    } : {}),
   };
 };
 

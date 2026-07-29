@@ -9,6 +9,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeApplyResultDto, SnapshotTagValueDto} from "@/types/recipe.types";
+import {isRowBindingProperty, parseRowBindingRow} from "@/lib/editor/rowBinding";
 
 interface Props {
   sessionId: string;
@@ -29,7 +30,11 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   const [isApplying, setIsApplying] = useState(false);
 
   const selectedComponent = tableComponents.find((el) => el.id === componentId);
-  const rowBindings = selectedComponent?.type === "table" ? (selectedComponent.rowBindings ?? []).filter(Boolean) : [];
+  const rowBindings = selectedComponent?.type === "table"
+    ? (selectedComponent.properties ?? [])
+        .filter(isRowBindingProperty)
+        .sort((a, b) => (parseRowBindingRow(a.property_type) ?? 0) - (parseRowBindingRow(b.property_type) ?? 0))
+    : [];
   const selectedRecipe = recipes.find((r) => r.id === recipeId);
 
   // Загрузка триггерится выбором в <select>, а не эффектом от componentId/recipeId

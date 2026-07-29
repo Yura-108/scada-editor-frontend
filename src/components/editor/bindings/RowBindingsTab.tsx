@@ -3,8 +3,10 @@
 import React from "react";
 import {Pencil, Trash2, Waypoints} from "lucide-react";
 import {DiagramElement, ComponentPropertyDto, TableCellData} from "@/types/editorElement.type";
+import {PropertyCreateDto} from "@/types/tags.types";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getCellData} from "@/lib/editor/tableCells";
+import {encodeRowPropertyType, parseRowBindingRow} from "@/lib/editor/rowBinding";
 import openRowTagBindingModal from "./RowTagBindingModal";
 
 interface RowBindingsTabProps {
@@ -15,25 +17,29 @@ interface RowBindingsTabProps {
 
 /**
  * Вкладка «Строки» панели свойств таблицы: привязка каждой строки к тегу —
- * отдельный bulk-контракт (property_type:"TAG"), не связанный с обычными
- * свойствами элемента (вкладка «Свойства») или JS-биндингами (вкладка «Привязки»).
- * Чисто клиентский черновик — round-trip только через сохранение сцены
- * (buildComponentNode/transformElements), без отдельного REST-запроса на строку.
+ * записи внутри element.properties с property_type:"TAG:<row>" (номер строки
+ * закодирован в самой строке property_type, см. src/lib/editor/rowBinding.ts),
+ * не связанные с обычными свойствами (property_type:"Тег") или JS-биндингами
+ * (вкладка «Привязки»). Чисто клиентский черновик — round-trip только через
+ * сохранение сцены (buildComponentNode/transformElements), без отдельного
+ * REST-запроса на строку.
  */
 export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, cellsMap}) => {
   const updateElement = useEditorStore(s => s.updateElement);
-  const rowBindings = element.type === "table" ? (element.rowBindings ?? []) : [];
+  const properties = element.type === "table" ? (element.properties ?? []) : [];
+  const bindingForRow = (row: number) =>
+    properties.find(p => parseRowBindingRow(p.property_type) === row) as ComponentPropertyDto | undefined;
 
   const setBinding = (row: number, binding: ComponentPropertyDto) => {
-    const next = [...rowBindings];
-    next[row] = binding;
-    updateElement(element.key, {rowBindings: next});
+    const others = properties.filter(p => parseRowBindingRow(p.property_type) !== row);
+    const entry = {...binding, property_type: encodeRowPropertyType(row)} as unknown as PropertyCreateDto;
+    updateElement(element.key, {properties: [...others, entry]});
   };
 
   const removeBinding = (row: number) => {
-    const next = [...rowBindings];
-    next[row] = undefined as unknown as ComponentPropertyDto;
-    updateElement(element.key, {rowBindings: next});
+    updateElement(element.key, {
+      properties: properties.filter(p => parseRowBindingRow(p.property_type) !== row),
+    });
   };
 
   return (
@@ -41,12 +47,12 @@ export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, ce
       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Строки</h4>
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Привязка каждой строки таблицы к тегу — отправляется бэкенду как <code>properties</code>{" "}
-        при сохранении сцены (по одной записи на строку, порядок = порядок строк).
+        при сохранении сцены (номер строки закодирован в <code>property_type</code>).
       </p>
 
       <div className="space-y-2">
         {Array.from({length: Math.max(0, rows)}, (_, row) => {
-          const binding = rowBindings[row];
+          const binding = bindingForRow(row);
           const hint = getCellData(cellsMap, row, 0)?.value;
           return (
             <div

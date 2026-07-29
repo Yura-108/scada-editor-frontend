@@ -297,7 +297,6 @@ export default function WorkSpace() {
           <PanelLeft size={20} />
         </button>
 
-        {/* Ручка перетаскивания: меняет ширину, а при уходе за порог — сворачивает панель */}
         {leftShown && (
           <div
             onPointerDown={(e) => handleResizeStart(e, "left")}

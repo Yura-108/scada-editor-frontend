@@ -206,15 +206,11 @@ export default function transformElements(
       // Top-level биндинги едут через DTO-обёртку {name, script: JSON} — распаковываем.
       bindings: parseBindings(el.bindings),
       events: parseEvents(el.events),
+      // Для type==="table" это же поле несёт привязки строк к тегам (property_type
+      // "TAG:<row>", см. src/lib/editor/rowBinding.ts) — номер строки едет внутри
+      // property_type, реконструкция позиции по индексу массива не нужна.
       properties: Array.isArray(el.properties) ? el.properties : [],
       label: el.name,
-      // Привязки строк таблицы к тегам — унбейк из того же properties[], который
-      // buildComponentNode запекает только для type==="table" (симметрия round-trip).
-      ...(el.type === "table" ? {
-        rowBindings: normalizeArray(el.properties)
-          .filter((p) => p.property_type === "TAG")
-          .map((p) => ({name: p.name ?? "", tag_id: p.tag_id, property_type: "TAG", value_type: p.value_type ?? ""})),
-      } : {}),
     };
 
     // Process children recursively and collect their new unique keys
