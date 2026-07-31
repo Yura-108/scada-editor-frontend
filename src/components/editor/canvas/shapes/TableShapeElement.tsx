@@ -42,6 +42,16 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
 
   const cellsMap = rendered.cells as Record<string, TableCellData> | undefined;
 
+  // Привязки строк (тег/локальный параметр) — конвенция колонок: 0 — номер строки
+  // (из position), 1 — имя тега/параметра, 2 — live-значение (см. cellRuntimeKey).
+  // Колонки 0/1 для привязанных строк выводятся из привязки, а не из статики cells.
+  const rowBindingByRow = new Map<number, {name: string}>();
+  if (el.type === "table") {
+    for (const p of el.properties ?? []) {
+      if (typeof p.position === "number") rowBindingByRow.set(p.position, p);
+    }
+  }
+
   const headerH = showHeader ? Math.max(20, fontSize + 10) : 0;
   const bodyH = h - headerH;
   const rowH = bodyH / rows;
@@ -91,10 +101,18 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const data = getCellData(cellsMap, r, c);
-      const liveRaw = renderedAny[cellRuntimeKey(r, c)];
-      const displayValue = typeof liveRaw === "string" || typeof liveRaw === "number"
-        ? String(liveRaw)
-        : (data.value ?? "");
+      const rowBinding = rowBindingByRow.get(r);
+      let displayValue: string;
+      if (rowBinding && c === 0) {
+        displayValue = String(r + 1);
+      } else if (rowBinding && c === 1) {
+        displayValue = rowBinding.name;
+      } else {
+        const liveRaw = renderedAny[cellRuntimeKey(r, c)];
+        displayValue = typeof liveRaw === "string" || typeof liveRaw === "number"
+          ? String(liveRaw)
+          : (data.value ?? "");
+      }
       const cx = c * colW;
       const cy = headerH + r * rowH;
       const focused = focusedCell !== null && focusedCell.elementKey === el.key

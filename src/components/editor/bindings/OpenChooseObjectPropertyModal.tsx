@@ -7,7 +7,6 @@ import {cn} from "@/lib/utils";
 import {useEditorStore} from "@/store/useEditorStore";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import {DiagramElement, ElementType} from "@/types/editorElement.type";
-import {isRowBindingProperty} from "@/lib/editor/rowBinding";
 
 /** Результат выбора свойства другого компонента для ссылки в биндинге. */
 export interface PickedProperty {
@@ -43,12 +42,14 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
   const elements = useEditorStore(s => s.elements);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Показываем компоненты сцены И любой элемент, у которого есть свойства
-  // (свойство можно завести на любом элементе — не обязательно на «компоненте»).
-  // Привязки строк таблицы (isRowBindingProperty) не считаются — это черновики без
-  // серверного id, «сохранить сцену» их не превратит в выбираемое свойство.
+  // Показываем компоненты сцены И любой элемент, у которого есть сохранённые
+  // (с числовым id) свойства — свойство можно завести на любом элементе, не
+  // обязательно на «компоненте». Строки таблиц (type==="table") не считаются —
+  // это привязки к рядам сетки, отдельная фича, здесь не выбираемая.
   const components = useMemo(
-    () => elements.filter(el => isComponentEl(el) || (el.properties?.some(p => !isRowBindingProperty(p)) ?? false)),
+    () => elements.filter(el =>
+      isComponentEl(el) || (el.type !== "table" && (el.properties?.some(p => typeof p.id === "number") ?? false))
+    ),
     [elements],
   );
 
@@ -87,7 +88,9 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
               </div>
             ) : (
               components.map(c => {
-                const props = (c.properties ?? []).filter(p => !isRowBindingProperty(p));
+                // Строки таблиц сюда не попадают вовсе (см. фильтр components выше,
+                // el.type !== "table"), так что props — это просто все свойства элемента.
+                const props = c.properties ?? [];
                 const isOpen = expanded.has(c.key);
                 return (
                   <div

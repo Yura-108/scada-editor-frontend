@@ -35,13 +35,17 @@ function RowTagBindingModalContent({row, binding, onConfirm}: Props) {
   // всегда актуальны — сбрасывать их эффектом не нужно.
   const [name, setName] = useState(binding?.name ?? "");
   const [valueType, setValueType] = useState(binding?.value_type || "number");
+  const [isLocal, setIsLocal] = useState(Boolean(binding) && !binding?.tag_id);
+  const [defaultValue, setDefaultValue] = useState(binding?.default_value ?? "");
 
   const tagId = selectedDevice ?? binding?.tag_id ?? "";
-  const canConfirm = Boolean(name.trim()) && Boolean(tagId);
+  const canConfirm = Boolean(name.trim()) && (isLocal || Boolean(tagId));
 
   const handleConfirm = () => {
     if (!canConfirm) return;
-    onConfirm({name: name.trim(), tag_id: tagId, property_type: "TAG", value_type: valueType});
+    onConfirm(isLocal
+      ? {name: name.trim(), tag_id: null, property_type: "Локальный", value_type: valueType, default_value: defaultValue}
+      : {name: name.trim(), tag_id: tagId, property_type: "Тег", value_type: valueType});
     closeModal();
   };
 
@@ -67,6 +71,29 @@ function RowTagBindingModalContent({row, binding, onConfirm}: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 space-y-5">
+        <div className="flex rounded-xl border border-gray-300 dark:border-gray-700/80 overflow-hidden text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setIsLocal(false)}
+            className={cn(
+              "flex-1 px-4 py-2 transition-colors",
+              !isLocal ? "bg-indigo-600 text-white" : "bg-white dark:bg-gray-900/80 text-gray-600 dark:text-gray-400"
+            )}
+          >
+            Тег
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsLocal(true)}
+            className={cn(
+              "flex-1 px-4 py-2 transition-colors",
+              isLocal ? "bg-indigo-600 text-white" : "bg-white dark:bg-gray-900/80 text-gray-600 dark:text-gray-400"
+            )}
+          >
+            Локальный параметр
+          </button>
+        </div>
+
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
             Название параметра
@@ -107,6 +134,24 @@ function RowTagBindingModalContent({row, binding, onConfirm}: Props) {
           </Select.Root>
         </div>
 
+        {isLocal ? (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+              Значение по умолчанию
+            </label>
+            <input
+              type="text"
+              value={defaultValue}
+              onChange={(e) => setDefaultValue(e.target.value)}
+              placeholder="0"
+              className={inputClass}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-500 ml-1">
+              У локального параметра нет тега — значение живёт в сессии монитора, а не в ПЛК.
+              Это значение будет показываться до первого изменения.
+            </p>
+          </div>
+        ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             <Waypoints className="h-4 w-4 text-indigo-500" />
@@ -121,6 +166,7 @@ function RowTagBindingModalContent({row, binding, onConfirm}: Props) {
             {tagId ? `Выбран тег: ${tagId}` : "Пока тег не выбран — кнопка сохранения будет недоступна."}
           </p>
         </div>
+        )}
       </div>
 
       <div className="shrink-0 mt-6 pt-4 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-800/80">

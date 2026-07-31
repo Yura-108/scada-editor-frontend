@@ -16,7 +16,7 @@ type BackendPropertyDto = {
   component_id: number;
   name?: string;
   property_type: string | null;
-  tag_id: string;
+  tag_id: string | null;
   description: string | null;
   value_type: string | null;
   default_value: string | null;

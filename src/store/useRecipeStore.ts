@@ -1,6 +1,6 @@
 import {create} from "zustand";
 import {toast} from "sonner";
-import {RecipeCreateDto, RecipeDto} from "@/types/recipe.types";
+import {RecipeCreateDto, RecipeDto, ResolvedRecipeDto} from "@/types/recipe.types";
 
 type RecipeState = {
   recipes: RecipeDto[];
@@ -8,6 +8,7 @@ type RecipeState = {
   createRecipe: (recipe: RecipeCreateDto) => Promise<void>;
   updateRecipe: (id: number, recipe: RecipeCreateDto) => Promise<void>;
   deleteRecipe: (id: number) => Promise<void>;
+  resolveRecipe: (id: number) => Promise<ResolvedRecipeDto | null>;
 };
 
 export const useRecipeStore = create<RecipeState>((set, get) => ({
@@ -76,6 +77,20 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Ошибка удаления рецепта");
+    }
+  },
+  resolveRecipe: async (id) => {
+    try {
+      const res = await fetch(`/api/editor/recipes/${id}/resolved`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Ошибка получения набора значений");
+      }
+      return await res.json();
+    } catch (err: unknown) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Ошибка получения набора значений");
+      return null;
     }
   },
 }));

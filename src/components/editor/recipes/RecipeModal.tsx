@@ -23,9 +23,9 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
   // рендерит content под key={openKey}), поэтому начальные значения useState
   // всегда актуальны — сбрасывать их эффектом не нужно.
   const [name, setName] = useState(recipe?.name ?? "");
-  const [valueByTag, setValueByTag] = useState<Record<string, string>>(() => {
+  const [valueByRowName, setValueByRowName] = useState<Record<string, string>>(() => {
     const seeded: Record<string, string> = {};
-    for (const v of recipe?.values ?? []) seeded[v.tag_id] = v.value;
+    for (const v of recipe?.values ?? []) seeded[v.row_name] = v.value;
     return seeded;
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -48,8 +48,9 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
     try {
       const payload = {
         name: name.trim(),
+        type: "recipe",
         component_id: componentId,
-        values: rowBindings.map((rb) => ({tag_id: rb.tag_id, value: valueByTag[rb.tag_id] ?? ""})),
+        values: rowBindings.map((rb) => ({row_name: rb.name, value: valueByRowName[rb.name] ?? ""})),
       };
       if (recipe) {
         await updateRecipe(recipe.id, payload);
@@ -89,20 +90,22 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
 
         {rowBindings.length === 0 ? (
           <div className="text-sm text-gray-500 dark:text-gray-400 italic">
-            У компонента нет ни одной строки, привязанной к тегу (вкладка «Строки») — рецепту
-            не с чем работать.
+            У компонента нет ни одной строки (вкладка «Строки») — рецепту не с чем работать.
           </div>
         ) : (
           <div className="space-y-3">
             {rowBindings.map((rb) => (
-              <div key={rb.tag_id} className="space-y-1.5">
+              <div key={rb.name} className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-                  {rb.name} <span className="normal-case text-gray-400 dark:text-gray-600">({rb.tag_id})</span>
+                  {rb.name}{" "}
+                  <span className="normal-case text-gray-400 dark:text-gray-600">
+                    ({rb.tag_id ? `тег: ${rb.tag_id}` : "локальный параметр"})
+                  </span>
                 </label>
                 <input
                   type="text"
-                  value={valueByTag[rb.tag_id] ?? ""}
-                  onChange={(e) => setValueByTag({...valueByTag, [rb.tag_id]: e.target.value})}
+                  value={valueByRowName[rb.name] ?? ""}
+                  onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.value})}
                   className={inputClass}
                 />
               </div>

@@ -2,6 +2,12 @@ import type {DiagramElement} from "@/types/editorElement.type";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
 
+/** Строка таблицы, живое значение которой пишется в ячейку колонки 2 (см. TableShapeElement). */
+export interface TableRowTarget {
+  elementKey: string;
+  row: number;
+}
+
 export interface BindingIndex {
   /** tag_id → биндинги, которые он триггерит (O(1)-маршрутизация входящего значения). */
   byTagId: Map<string, CompiledBinding[]>;
@@ -15,6 +21,10 @@ export interface BindingIndex {
   tagIds: Set<string>;
   /** Все propertyId, задействованные скомпилированными биндингами. */
   propertyIds: Set<number>;
+  /** tag_id → строки таблиц, привязанные к этому тегу (row-binding, НЕ JS-биндинг). */
+  tableRowsByTagId: Map<string, TableRowTarget[]>;
+  /** Имя локального параметра-строки → строки таблиц (WS properties[] по propertyName). */
+  tableRowsByPropertyName: Map<string, TableRowTarget[]>;
 }
 
 /**
@@ -29,8 +39,24 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   const compileErrors = new Map<string, string>();
   const tagIds = new Set<string>();
   const propertyIds = new Set<number>();
+  const tableRowsByTagId = new Map<string, TableRowTarget[]>();
+  const tableRowsByPropertyName = new Map<string, TableRowTarget[]>();
 
   for (const el of elements) {
+    if (el.type === "table") {
+      for (const p of el.properties ?? []) {
+        if (typeof p.position !== "number") continue;
+        const target: TableRowTarget = {elementKey: el.key, row: p.position};
+        if (p.tag_id) {
+          const list = tableRowsByTagId.get(p.tag_id);
+          if (list) list.push(target); else tableRowsByTagId.set(p.tag_id, [target]);
+        } else if (p.name) {
+          const list = tableRowsByPropertyName.get(p.name);
+          if (list) list.push(target); else tableRowsByPropertyName.set(p.name, [target]);
+        }
+      }
+    }
+
     const bindings = el.bindings ?? [];
     if (!bindings.length) continue;
 
@@ -70,5 +96,5 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
   if (propertyIds.size) console.table([...propertyIds].map(propertyId => ({propertyId})));
 
-  return {byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds};
+  return {byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds, tableRowsByTagId, tableRowsByPropertyName};
 };

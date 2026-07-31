@@ -18,7 +18,9 @@
  */
 
 export type RuntimeTagUpdate = {tagId: string; value: string; ts?: number};
-export type RuntimePropertyUpdate = {propertyId: number; value: unknown};
+/** propertyName — имя свойства (== row_name строки таблицы); propertyId нестабилен
+ *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
+export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
 export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed";
 
 export interface RuntimeConnectionHandlers {

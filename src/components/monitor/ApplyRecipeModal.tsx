@@ -9,7 +9,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeApplyResultDto, SnapshotTagValueDto} from "@/types/recipe.types";
-import {isRowBindingProperty, parseRowBindingRow} from "@/lib/editor/rowBinding";
+import {sortByRow} from "@/lib/editor/rowBinding";
 
 interface Props {
   sessionId: string;
@@ -31,11 +31,10 @@ function ApplyRecipeModalContent({sessionId}: Props) {
 
   const selectedComponent = tableComponents.find((el) => el.id === componentId);
   const rowBindings = selectedComponent?.type === "table"
-    ? (selectedComponent.properties ?? [])
-        .filter(isRowBindingProperty)
-        .sort((a, b) => (parseRowBindingRow(a.property_type) ?? 0) - (parseRowBindingRow(b.property_type) ?? 0))
+    ? sortByRow(selectedComponent.properties ?? [])
     : [];
   const selectedRecipe = recipes.find((r) => r.id === recipeId);
+  const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
 
   // Загрузка триггерится выбором в <select>, а не эффектом от componentId/recipeId
   // (тот же приём, что и в RecipesPanel — избегает setState прямо в эффекте).
@@ -69,7 +68,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   };
 
   const currentValueByTag = new Map((snapshot ?? []).map((s) => [s.tagId, s.value]));
-  const recipeValueByTag = new Map((selectedRecipe?.values ?? []).map((v) => [v.tag_id, v.value]));
+  const recipeValueByRowName = new Map((selectedRecipe?.values ?? []).map((v) => [v.row_name, v.value]));
 
   const handleApply = async () => {
     if (recipeId == null) return;
@@ -80,15 +79,18 @@ function ApplyRecipeModalContent({sessionId}: Props) {
       const res = await fetch("/api/runtime/recipes/apply", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({recipeId}),
+        body: JSON.stringify({recipeId, sessionId, projectId}),
       });
       const result: RecipeApplyResultDto = await res.json();
       if (!res.ok) throw new Error("Ошибка применения рецепта");
 
       if (result.failed === 0) {
-        toast.success(`Рецепт применён: ${result.sent}/${result.total} тегов записано`);
+        toast.success(`Рецепт применён: ${result.sent} тегов, ${result.localApplied} локальных из ${result.total}`);
       } else {
-        toast.error(`Применено с ошибками: ${result.sent}/${result.total}, не удалось: ${result.failedTags.join(", ")}`);
+        toast.error(`Применено с ошибками: ${result.sent}/${result.total}, не удалось: ${result.failedRows.join(", ")}`);
+      }
+      if (result.unmatchedRows.length) {
+        toast.warning(`Набор частично устарел — строк нет в таблице: ${result.unmatchedRows.join(", ")}`);
       }
       closeModal();
     } catch (err) {
@@ -174,10 +176,12 @@ function ApplyRecipeModalContent({sessionId}: Props) {
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70">
                     {rowBindings.map((rb) => (
-                      <tr key={rb.tag_id}>
+                      <tr key={rb.name}>
                         <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{rb.name}</td>
-                        <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{currentValueByTag.get(rb.tag_id) ?? "—"}</td>
-                        <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{recipeValueByTag.get(rb.tag_id) ?? "—"}</td>
+                        <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                          {rb.tag_id ? (currentValueByTag.get(rb.tag_id) ?? "—") : (rb.default_value ?? "—")}
+                        </td>
+                        <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{recipeValueByRowName.get(rb.name) ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

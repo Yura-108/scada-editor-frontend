@@ -158,9 +158,9 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     bindings: encodeBindings(element),
     events: encodeEvents(element),
     states,
-    // Привязки строк таблицы к тегам — записи element.properties с property_type
-    // "TAG:<row>" (isRowBindingProperty), отдельные от обычных свойств "Тег" и
-    // от их REST-пути /api/editor/tags.
+    // Привязки строк таблицы к тегам/локальным параметрам — записи element.properties
+    // с номером строки в position (isRowBindingProperty), отдельные от обычных
+    // свойств и от их REST-пути /api/editor/tags.
     ...(element.type === "table" ? {
       properties: (element.properties ?? []).filter(isRowBindingProperty),
     } : {}),

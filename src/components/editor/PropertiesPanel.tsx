@@ -1,10 +1,14 @@
 "use client";
 
 import React, {useState, useMemo, useEffect} from "react";
+import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
+import {SortableContext, arrayMove, rectSortingStrategy, useSortable} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
+import {PropertyCreateDto} from "@/types/tags.types";
 import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
-import {Plus, AlertTriangle, Trash2, Boxes} from "lucide-react";
+import {Plus, AlertTriangle, Trash2, Boxes, GripVertical} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
@@ -24,6 +28,47 @@ import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCel
 
 interface PropertiesPanelProps {
   element: DiagramElement | null;
+}
+
+/**
+ * «Таблетка» свойства в общем списке: ручка перетаскивания (attributes/listeners
+ * dnd-kit) висит ТОЛЬКО на иконке — остальная часть таблетки сохраняет исходный
+ * onClick открытия модалки редактирования, drag и клик не конфликтуют.
+ */
+function SortablePropertyPill({property, onClick}: {property: PropertyCreateDto; onClick: () => void}) {
+  const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: property.id});
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <span
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1 px-2.5 py-1.5",
+        "text-xs font-medium rounded-full",
+        "bg-indigo-950/60 text-indigo-300",
+        "border border-indigo-800/40",
+        "hover:bg-indigo-900/70 transition-colors cursor-pointer"
+      )}
+    >
+      <span
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className="cursor-grab active:cursor-grabbing text-indigo-400/70 hover:text-indigo-200 -ml-1"
+        title="Перетащить для изменения порядка"
+      >
+        <GripVertical size={12} />
+      </span>
+      {property.name || property.property_type || "Свойство"}
+      {property.tag_id ? ` • #${property.tag_id}` : ""}
+    </span>
+  );
 }
 
 type TabType = "visual" | "states" | "properties" | "scripts" | "bindings" | "events" | "rowBindings";
@@ -55,7 +100,50 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     () => renderedElement ? (renderedElement as unknown as Record<string, unknown>) : {},
     [renderedElement]
   );
+  const editProperty = useEditorStore(s => s.editProperty);
   const elementProperties = useMemo(() => element?.properties ?? [], [element?.properties]);
+  // Локальный порядок во время/сразу после драга — визуальная обратная связь до
+  // того, как все editProperty-запросы вернутся и стор пересчитает elementProperties.
+  // Сброс при смене элемента — во время рендера (React-паттерн "adjusting state
+  // during render"), не в эффекте: избегает лишнего ре-рендера/cascading setState.
+  const [localOrder, setLocalOrder] = useState<number[] | null>(null);
+  const [localOrderElementKey, setLocalOrderElementKey] = useState(element?.key);
+  if (element?.key !== localOrderElementKey) {
+    setLocalOrderElementKey(element?.key);
+    setLocalOrder(null);
+  }
+  const sortedProperties = useMemo(() => {
+    const base = [...elementProperties].sort((a, b) =>
+      (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || a.id - b.id
+    );
+    if (!localOrder) return base;
+    const byId = new Map(base.map(p => [p.id, p] as const));
+    const reordered = localOrder.map(id => byId.get(id)).filter((p): p is PropertyCreateDto => Boolean(p));
+    for (const p of base) if (!localOrder.includes(p.id)) reordered.push(p);
+    return reordered;
+  }, [elementProperties, localOrder]);
+  const dndSensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 4}}));
+  const handlePropertyDragEnd = async (event: DragEndEvent) => {
+    const {active, over} = event;
+    if (!over || active.id === over.id) return;
+    const ids = sortedProperties.map(p => p.id);
+    const oldIndex = ids.indexOf(Number(active.id));
+    const newIndex = ids.indexOf(Number(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedIds = arrayMove(ids, oldIndex, newIndex);
+    setLocalOrder(reorderedIds);
+
+    const byId = new Map(sortedProperties.map(p => [p.id, p] as const));
+    await Promise.all(
+      reorderedIds.map((id, index) => {
+        const prop = byId.get(id);
+        if (!prop || prop.position === index) return null;
+        const {id: propId, ...payload} = prop;
+        return editProperty(propId, {...payload, position: index});
+      })
+    );
+  };
   const elementScripts = useMemo(() => element?.scripts ?? [], [element?.scripts]);
 
   const schema: PropertySchema[] = useMemo(() => element ? [
@@ -622,29 +710,24 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               Добавленные свойства
             </h4>
 
-            {elementProperties.length === 0 ? (
+            {sortedProperties.length === 0 ? (
               <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">
                 Нет добавленных свойств
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {elementProperties.map(property => (
-                  <span
-                    key={property.id}
-                    onClick={() => handleAddProperty(element?.id, property)}
-                    className={`
-                      inline-flex items-center px-2.5 py-1.5
-                      text-xs font-medium rounded-full
-                      bg-indigo-950/60 text-indigo-300
-                      border border-indigo-800/40
-                      hover:bg-indigo-900/70 transition-colors cursor-pointer
-                    `}
-                  >
-                    {property.name || property.property_type || "Свойство"}
-                    {property.tag_id ? ` • #${property.tag_id}` : ""}
-                  </span>
-                ))}
-              </div>
+              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePropertyDragEnd}>
+                <SortableContext items={sortedProperties.map(p => p.id)} strategy={rectSortingStrategy}>
+                  <div className="flex flex-wrap gap-2">
+                    {sortedProperties.map(property => (
+                      <SortablePropertyPill
+                        key={property.id}
+                        property={property}
+                        onClick={() => handleAddProperty(element?.id, property)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
 
             {!canAddProperty && (

@@ -1,18 +1,15 @@
 /**
- * Привязка строки таблицы к тегу хранится прямо в element.properties (без отдельного
- * поля rowBindings), а номер строки закодирован в property_type: "TAG:<row>" вместо
- * голого "TAG". Бэкенд трогать нельзя — новое поле он бы молча не сохранил, а этот
- * формат round-trip'ится как непрозрачная строка (уже так работает для "TAG" сегодня).
+ * Привязка строки таблицы к тегу/локальному параметру хранится прямо в
+ * element.properties (без отдельного поля rowBindings). Номер строки — в поле
+ * position самого свойства (бэкенд его теперь поддерживает); property_type —
+ * обычная классификация ("Тег" | "Локальный"), как у всех остальных свойств.
  */
-const PREFIX = "TAG:";
+export const isRowBindingProperty = (p: {position?: number | null}): boolean =>
+  typeof p.position === "number";
 
-export const encodeRowPropertyType = (row: number): string => `${PREFIX}${row}`;
+export const rowOf = (p: {position?: number | null}): number | null =>
+  typeof p.position === "number" ? p.position : null;
 
-export const parseRowBindingRow = (propertyType: string | undefined): number | null => {
-  if (!propertyType?.startsWith(PREFIX)) return null;
-  const n = Number(propertyType.slice(PREFIX.length));
-  return Number.isInteger(n) && n >= 0 ? n : null;
-};
-
-export const isRowBindingProperty = (p: {property_type?: string}): boolean =>
-  parseRowBindingRow(p.property_type) !== null;
+/** Сортировка строк таблицы по position (свойства без position — в конец). */
+export const sortByRow = <T extends {position?: number | null}>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER));

@@ -51,17 +51,22 @@ export interface TableCellData {
 }
 
 /**
- * Свойство-строка таблицы (привязка к тегу) — отдельный, более лёгкий контракт,
- * чем PropertyCreateDto (у той требуются id/component_id, которых ещё нет на
- * этапе черновика). Хранится прямо в element.properties (никакого отдельного поля
- * rowBindings). property_type — "TAG:<row>" (0-based номер строки закодирован тут же,
- * см. src/lib/editor/rowBinding.ts) — не путать с историческим "Тег".
+ * Свойство-строка таблицы (привязка к тегу или локальный параметр) — отдельный,
+ * более лёгкий контракт, чем PropertyCreateDto (у той требуются id/component_id,
+ * которых ещё нет на этапе черновика в модалке привязки). Хранится прямо в
+ * element.properties (никакого отдельного поля rowBindings). Номер строки — в
+ * поле position самого PropertyCreateDto (см. src/lib/editor/rowBinding.ts),
+ * а не закодирован в property_type: тот теперь обычная классификация
+ * ("Тег" | "Локальный"), как у всех остальных свойств. tag_id === null — строка
+ * без тега (локальный параметр, значение живёт в сессии, а не в ПЛК).
  */
 export interface ComponentPropertyDto {
   name: string;
-  tag_id: string;
+  tag_id: string | null;
   property_type: string;
   value_type: string;
+  /** Значение по умолчанию для локальной строки (до первого изменения по WS). */
+  default_value?: string;
 }
 
 export type ComponentCreateDto = {
@@ -81,8 +86,8 @@ export type ComponentCreateDto = {
     image: string;
     isDefault: boolean;
   }[];
-  /** Только для type==="table": привязки строк к тегам, property_type: "TAG:<row>"
-   *  (см. isRowBindingProperty в src/lib/editor/rowBinding.ts). */
+  /** Только для type==="table": привязки строк к тегам/локальным параметрам,
+   *  номер строки — в поле position (см. src/lib/editor/rowBinding.ts). */
   properties?: ComponentPropertyDto[];
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)

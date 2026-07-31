@@ -9,7 +9,11 @@ import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
 import {setRuntimeEventHandler} from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
+import {cellRuntimeKey} from "@/lib/editor/tableCells";
 import type {ElementEventName} from "@/types/binding.types";
+
+/** Колонка live-значения строки таблицы (конвенция: 0 — номер, 1 — имя, 2 — значение). */
+const TABLE_ROW_VALUE_COL = 2;
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
 const FLUSH_INTERVAL_MS = 200;
@@ -59,6 +63,10 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   // ключ — propertyId.
   const pendingPropsRef = useRef(new Map<number, string>());
   const valuesByPropRef = useRef(new Map<number, string>());
+  // Отдельный буфер по имени свойства — только для маршрутизации в ячейки строк
+  // таблиц (propertyId нестабилен между пересохранениями таблицы, доку это и требует).
+  const pendingPropNameRef = useRef(new Map<string, string>());
+  const valuesByPropNameRef = useRef(new Map<string, string>());
   const errorCountRef = useRef(new Map<string, number>());
   const disabledRef = useRef(new Set<string>());
   // Активное WS-соединение — чтобы обработчик клика (runScript) мог послать ACTION.
@@ -68,9 +76,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     const idx = indexRef.current;
     const pending = pendingRef.current;
     const pendingProps = pendingPropsRef.current;
-    if (!idx || (!pending.size && !pendingProps.size)) return;
+    const pendingNames = pendingPropNameRef.current;
+    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size)) return;
     pendingRef.current = new Map();
     pendingPropsRef.current = new Map();
+    pendingPropNameRef.current = new Map();
 
     // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
     const affected = new Set<CompiledBinding>();
@@ -88,13 +98,34 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       changedProps.push({propertyId, value});
       for (const cb of idx.byPropertyId.get(propertyId) ?? []) affected.add(cb);
     }
-    if (!affected.size) return;
+    const changedNames: {name: string; value: string}[] = [];
+    for (const [name, value] of pendingNames) {
+      if (valuesByPropNameRef.current.get(name) === value) continue;
+      valuesByPropNameRef.current.set(name, value);
+      changedNames.push({name, value});
+    }
+
+    // Живые значения строк таблиц (тег- и локальные, маршрутизация по tag_id/имени,
+    // НЕ через CompiledBinding — это не JS-биндинги, а прямая запись в ячейку 2).
+    const tableRowProps: Record<string, Record<string, unknown>> = {};
+    for (const {tagId, value} of changedTags) {
+      for (const target of idx.tableRowsByTagId.get(tagId) ?? []) {
+        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, TABLE_ROW_VALUE_COL)] = value;
+      }
+    }
+    for (const {name, value} of changedNames) {
+      for (const target of idx.tableRowsByPropertyName.get(name) ?? []) {
+        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, TABLE_ROW_VALUE_COL)] = value;
+      }
+    }
+
+    if (!affected.size && !Object.keys(tableRowProps).length) return;
 
     const store = useEditorStore.getState();
     const byKey = new Map(store.elements.map(el => [el.key, el] as const));
 
     const stateNameByKey: Record<string, string> = {};
-    const propsByKey: Record<string, Record<string, unknown>> = {};
+    const propsByKey: Record<string, Record<string, unknown>> = {...tableRowProps};
     const fired: {binding: string; intents: string}[] = [];
     let newErrors: Map<string, string> | null = null;
 
@@ -144,10 +175,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     if (newErrors) setRuntimeErrors(newErrors);
 
     console.groupCollapsed(
-      `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
+      `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
     );
     if (changedTags.length) console.table(changedTags);
     if (changedProps.length) console.table(changedProps);
+    if (changedNames.length) console.table(changedNames);
     if (fired.length) console.table(fired);
     console.groupEnd();
 
@@ -174,6 +206,22 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
           valuesByPropRef.current.set(p.id, String(p.default_value ?? ""));
         }
       }
+    }
+
+    // Сид ячеек локальных строк таблиц из default_value — до первого WS-апдейта
+    // ячейка 2 не должна быть пустой (доку: «до первого изменения» показывается default_value).
+    const propsByKey: Record<string, Record<string, unknown>> = {};
+    for (const el of useEditorStore.getState().elements) {
+      if (el.type !== "table") continue;
+      for (const p of el.properties ?? []) {
+        if (p.tag_id || typeof p.position !== "number") continue;
+        const value = String(p.default_value ?? "");
+        valuesByPropNameRef.current.set(p.name, value);
+        (propsByKey[el.key] ??= {})[cellRuntimeKey(p.position, TABLE_ROW_VALUE_COL)] = value;
+      }
+    }
+    if (Object.keys(propsByKey).length) {
+      useEditorStore.getState().applyRuntimeBatch({propsByKey});
     }
   }, [active, index]);
 
@@ -260,7 +308,12 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         for (const t of tags) pendingRef.current.set(t.tagId, t.value);
         // properties[] — записи серверных Java-скриптов в свойства компонентов;
         // маршрутизируются по propertyId (значение → строка, buildTagObject распарсит).
-        for (const p of properties) pendingPropsRef.current.set(p.propertyId, String(p.value));
+        // Плюс по propertyName — отдельный путь для live-ячеек строк таблиц:
+        // propertyId нестабилен между пересохранениями таблицы, а имя — нет.
+        for (const p of properties) {
+          pendingPropsRef.current.set(p.propertyId, String(p.value));
+          if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
+        }
       },
       onStatus: (s) => {
         log(`статус соединения: ${s}`);
@@ -288,6 +341,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       valuesRef.current = new Map();
       pendingPropsRef.current = new Map();
       valuesByPropRef.current = new Map();
+      pendingPropNameRef.current = new Map();
+      valuesByPropNameRef.current = new Map();
       errorCountRef.current = new Map();
       disabledRef.current = new Set();
       useEditorStore.getState().clearRuntime();

@@ -1289,7 +1289,14 @@ export const useEditorStore = create<EditorState>()(temporal(
             throw new Error(`Не удалось добавить свойство: ${errorText}`);
           }
 
-          const newProperty: PropertyCreateDto = await res.json();
+          const created: PropertyCreateDto = await res.json();
+          // Некоторые бэкенды пока не round-trip'ят position на одиночном
+          // REST-эндпоинте свойства (в отличие от bulk-сохранения компонента) —
+          // подстраховываемся значением, которое сами отправили.
+          const newProperty: PropertyCreateDto = {
+            ...created,
+            position: created.position ?? payload.position ?? null,
+          };
 
           // Свойство уже создано на сервере — не пишем эту мутацию в историю undo,
           // иначе Ctrl+Z уберёт его только на клиенте (рассинхрон с бэкендом).
@@ -1320,7 +1327,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           throw new Error(`Не удалось обновить свойство: ${errorText}`);
         }
 
-        const updatedProperty: PropertyCreateDto = await res.json();
+        const updated: PropertyCreateDto = await res.json();
+        // См. addTags — тот же fallback на случай, если бэкенд не round-trip'ит
+        // position на одиночном REST-эндпоинте свойства.
+        const updatedProperty: PropertyCreateDto = {
+          ...updated,
+          position: updated.position ?? payload.position ?? null,
+        };
 
         // Серверная мутация — вне истории undo (см. addTags).
         const temporal = useEditorStore.temporal.getState();

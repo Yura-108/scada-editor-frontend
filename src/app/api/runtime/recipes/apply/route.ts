@@ -15,13 +15,15 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
+  // sessionId нужен, чтобы локальные (без тега) строки записались в сессию —
+  // без него теговые строки применятся, а локальные попадут в failedRows.
   const response = await fetch(`${BACKEND_URL}/api/runtime/recipes/apply`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({recipeId}),
+    body: JSON.stringify({recipeId, sessionId: body?.sessionId, projectId: body?.projectId}),
   });
 
   const data = await response.json().catch(() => null);
