@@ -19,6 +19,9 @@ const TABLE_ROW_VALUE_COL = 2;
 const FLUSH_INTERVAL_MS = 200;
 /** Столько ошибок исполнения ПОДРЯД отключают биндинг до перезагрузки сцены. */
 const MAX_CONSECUTIVE_ERRORS = 5;
+/** Соединение "live", но кадров нет дольше этого — считаем данные устаревшими
+ *  (обрыв Kafka-консьюмера на бэкенде не рвёт WS, ts — единственный признак). */
+const STALE_THRESHOLD_MS = 10_000;
 
 const log = (...args: unknown[]) => console.log("[monitor:engine]", ...args);
 
@@ -30,6 +33,10 @@ export interface RuntimeEngineState {
   runtimeErrors: Map<string, string>;
   /** id текущей WS-сессии (для GET /snapshot) — null, пока не подключены. */
   sessionId: string | null;
+  /** Причина отказа при status==="rejected" (e.reason из close-события 1003). */
+  rejectionReason: string | null;
+  /** true — соединение "live", но кадров нет дольше STALE_THRESHOLD_MS (см. useRuntimeEngine.ts). */
+  isStale: boolean;
 }
 
 /**
@@ -46,6 +53,16 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   const [status, setStatus] = useState<RuntimeStatus>("closed");
   const [runtimeErrors, setRuntimeErrors] = useState<Map<string, string>>(new Map());
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
+  // Момент последнего непустого UPDATE-кадра — обрыв Kafka-консьюмера на бэкенде
+  // не рвёт WS, поэтому статус может оставаться "live" при замерших значениях;
+  // единственный признак — переставший расти ts/момент приёма кадра.
+  const lastMessageAtRef = useRef(0);
+  // Живое зеркало status для интервала проверки устаревания (эффект соединения
+  // создаётся один раз на (active, projectId), status в его замыкании был бы старым).
+  const statusRef = useRef<RuntimeStatus>(status);
+  useEffect(() => { statusRef.current = status; }, [status]);
 
   // Компиляция один раз на identity elements (загрузка/пересохранение сцены).
   const index = useMemo(
@@ -301,9 +318,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     if (!active || projectId == null) return;
 
     log(`движок запущен для проекта ${projectId}`);
+    lastMessageAtRef.current = 0;
 
     const conn = openRuntimeConnection(projectId, {
       onUpdate: (tags, properties) => {
+        if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
         // Несколько апдейтов одного тега в батче: Map даёт last-write-wins.
         for (const t of tags) pendingRef.current.set(t.tagId, t.value);
         // properties[] — записи серверных Java-скриптов в свойства компонентов;
@@ -315,9 +334,10 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
           if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
         }
       },
-      onStatus: (s) => {
-        log(`статус соединения: ${s}`);
+      onStatus: (s, detail) => {
+        log(`статус соединения: ${s}${detail ? ` (${detail})` : ""}`);
         setStatus(s);
+        setRejectionReason(s === "rejected" ? (detail ?? "") : null);
         setSessionId(connRef.current?.getSessionId() ?? null);
       },
     });
@@ -331,9 +351,19 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     };
     document.addEventListener("visibilitychange", onVisibility);
 
+    // Отдельный редкий тик — не завязан на FLUSH_INTERVAL_MS, чтобы не пересчитывать
+    // устаревание на каждый батч-рендер.
+    const staleTimer = setInterval(() => {
+      const stale = statusRef.current === "live"
+        && lastMessageAtRef.current > 0
+        && Date.now() - lastMessageAtRef.current > STALE_THRESHOLD_MS;
+      setIsStale(prev => (prev === stale ? prev : stale));
+    }, 1000);
+
     return () => {
       log(`движок остановлен для проекта ${projectId}, рантайм-карты очищены`);
       clearInterval(timer);
+      clearInterval(staleTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       conn.close();
       connRef.current = null;
@@ -347,6 +377,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       disabledRef.current = new Set();
       useEditorStore.getState().clearRuntime();
       setSessionId(null);
+      setRejectionReason(null);
+      setIsStale(false);
     };
   }, [active, projectId]);
 
@@ -355,5 +387,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     compileErrors: index?.compileErrors ?? new Map(),
     runtimeErrors,
     sessionId,
+    rejectionReason,
+    isStale,
   };
 }

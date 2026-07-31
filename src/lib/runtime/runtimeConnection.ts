@@ -21,11 +21,14 @@ export type RuntimeTagUpdate = {tagId: string; value: string; ts?: number};
 /** propertyName — имя свойства (== row_name строки таблицы); propertyId нестабилен
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
-export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed";
+/** rejected — окончательный отказ хендшейка (код закрытия 1003: сессия уже занята
+ *  другим соединением, либо неизвестна) — реконнект в этом случае бессмысленен. */
+export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected";
 
 export interface RuntimeConnectionHandlers {
   onUpdate: (tags: RuntimeTagUpdate[], properties: RuntimePropertyUpdate[]) => void;
-  onStatus?: (status: RuntimeStatus) => void;
+  /** detail — причина для "rejected" (e.reason из close-события). */
+  onStatus?: (status: RuntimeStatus, detail?: string) => void;
 }
 
 export interface RuntimeConnection {
@@ -38,7 +41,7 @@ export interface RuntimeConnection {
 }
 
 const RUNTIME_WS_ORIGIN =
-  process.env.NEXT_PUBLIC_RUNTIME_WS_URL ?? "ws://localhost:8085";
+  process.env.NEXT_PUBLIC_RUNTIME_WS_URL ?? "ws://localhost:8080";
 
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -57,7 +60,7 @@ export function openRuntimeConnection(
   let firstConnect = true;
   let currentSessionId: string | null = null;
 
-  const setStatus = (s: RuntimeStatus) => onStatus?.(s);
+  const setStatus = (s: RuntimeStatus, detail?: string) => onStatus?.(s, detail);
 
   const stopPing = () => {
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
@@ -154,10 +157,20 @@ export function openRuntimeConnection(
       if (ws === socket) ws = null;
       // Сессия умирает на сервере вместе с сокетом — snapshot по старому id больше не ответит.
       currentSessionId = null;
+
+      // 1003 — окончательный отказ (у сессии уже есть живое соединение, либо она
+      // неизвестна/закрыта): реконнект-цикл тут будет крутиться вечно без толку.
+      if (e.code === 1003) {
+        log(`соединение отклонено (code=1003${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", e.reason);
+        return;
+      }
+
       if (!closed) {
         log(`соединение закрыто (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — переподключаюсь через ${reconnectDelay}мс`);
       }
-      // Сессия умерла на сервере — переподключение только через новый POST.
+      // Сессия умерла на сервере — переподключение только через новый POST
+      // (который заодно берёт свежий токен из cookie).
       scheduleReconnect();
     };
   };
@@ -170,7 +183,14 @@ export function openRuntimeConnection(
       closed = true;
       stopPing();
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-      // Явный DELETE сессии не нужен: закрытие WS завершает её на сервере.
+      // Best-effort явное закрытие сессии на бэкенде — до этого брошенная сессия
+      // продолжает получать значения тегов в буфер (reaper подберёт её не сразу).
+      // Не await'им (не блокируем закрытие сокета/уход со страницы), keepalive
+      // переживает unload; ошибка ничего не ломает на клиенте.
+      if (currentSessionId) {
+        const sessionId = currentSessionId;
+        fetch(`/api/runtime/sessions/${sessionId}`, {method: "DELETE", keepalive: true}).catch(() => {});
+      }
       ws?.close();
       ws = null;
       currentSessionId = null;

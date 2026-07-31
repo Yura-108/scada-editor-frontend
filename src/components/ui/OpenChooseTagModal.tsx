@@ -12,6 +12,7 @@ import { useModalStore } from "@/store/modalStore";
 import { useDeviceStore } from "@/store/useDeviceStore";
 import { useEditorStore } from "@/store/useEditorStore";
 import { PropertyCreateDto } from "@/types/tags.types";
+import { isBooleanValueType } from "@/lib/editor/valueTypes";
 
 interface Props {
   component_id: number;
@@ -222,16 +223,28 @@ export function AddPropertyContent({ component_id, property }: Props) {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
               Значение по умолчанию
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={defaultValue}
-                onChange={(e) => setDefaultValue(e.target.value)}
-                placeholder="Введите значение"
-                className={cn(inputClass, "pr-11")}
-              />
-              <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
-            </div>
+            {isBooleanValueType(valueType) ? (
+              <label className="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3.5 text-sm text-gray-700 dark:text-gray-200 shadow-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={defaultValue === "true"}
+                  onChange={(e) => setDefaultValue(e.target.checked ? "true" : "false")}
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                />
+                {defaultValue === "true" ? "true" : "false"}
+              </label>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={defaultValue}
+                  onChange={(e) => setDefaultValue(e.target.value)}
+                  placeholder="Введите значение"
+                  className={cn(inputClass, "pr-11")}
+                />
+                <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

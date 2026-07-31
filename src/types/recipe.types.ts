@@ -36,10 +36,11 @@ export interface ResolvedRecipeDto {
   unmatched_rows: string[];
 }
 
-/** GET /api/runtime/sessions/{sessionId}/snapshot?componentId= — текущие значения тегов (только теговые строки). */
+/** GET /api/runtime/sessions/{sessionId}/snapshot?componentId= — текущие значения тегов (только теговые строки).
+ *  value: null — сразу после рестарта рантайма значения ещё нет в памяти («нет данных», не 0/пусто). */
 export interface SnapshotTagValueDto {
   tagId: string;
-  value: string;
+  value: string | null;
 }
 
 /** POST /api/runtime/recipes/apply — результат записи набора значений. */

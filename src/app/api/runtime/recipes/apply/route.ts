@@ -17,6 +17,8 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   // sessionId нужен, чтобы локальные (без тега) строки записались в сессию —
   // без него теговые строки применятся, а локальные попадут в failedRows.
+  // Таймаут больше клиентского (20с) — BFF не должен обрывать запрос раньше,
+  // чем успеет ответить сам бэкенд (дедлайн подтверждения брокера ~7с + резолв).
   const response = await fetch(`${BACKEND_URL}/api/runtime/recipes/apply`, {
     method: "POST",
     headers: {
@@ -24,6 +26,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({recipeId, sessionId: body?.sessionId, projectId: body?.projectId}),
+    signal: AbortSignal.timeout(25_000),
   });
 
   const data = await response.json().catch(() => null);

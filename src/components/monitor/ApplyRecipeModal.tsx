@@ -15,6 +15,13 @@ interface Props {
   sessionId: string;
 }
 
+type ApplyStatus = "ok" | "partial" | "error";
+
+const applyStatusOf = (result: RecipeApplyResultDto): ApplyStatus =>
+  result.failed === 0 && result.unmatchedRows.length === 0 ? "ok"
+  : result.sent + result.localApplied === 0 ? "error"
+  : "partial";
+
 function ApplyRecipeModalContent({sessionId}: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const elements = useEditorStore((s) => s.elements);
@@ -28,6 +35,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState<RecipeApplyResultDto | null>(null);
 
   const selectedComponent = tableComponents.find((el) => el.id === componentId);
   const rowBindings = selectedComponent?.type === "table"
@@ -42,6 +50,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
     setComponentId(id);
     setRecipeId(null);
     setSnapshot(null);
+    setApplyResult(null);
     if (id != null) {
       setIsLoadingRecipes(true);
       void loadRecipes(id).finally(() => setIsLoadingRecipes(false));
@@ -51,6 +60,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   const selectRecipe = (id: number | null) => {
     setRecipeId(id);
     setSnapshot(null);
+    setApplyResult(null);
     if (id != null && componentId != null) {
       setIsLoadingSnapshot(true);
       fetch(`/api/runtime/sessions/${sessionId}/snapshot?componentId=${componentId}`)
@@ -75,27 +85,26 @@ function ApplyRecipeModalContent({sessionId}: Props) {
     if (!window.confirm(`Записать рецепт «${selectedRecipe?.name ?? ""}» в ПЛК? Действие необратимо.`)) return;
 
     setIsApplying(true);
+    setApplyResult(null);
     try {
+      // Ответ теперь ждёт подтверждения брокера (дедлайн ~7с на бэкенде + резолв
+      // набора) — таймаут с запасом, дефолтные 5-10с дали бы сетевую ошибку на
+      // успешно применённом рецепте.
       const res = await fetch("/api/runtime/recipes/apply", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({recipeId, sessionId, projectId}),
+        signal: AbortSignal.timeout(20_000),
       });
-      const result: RecipeApplyResultDto = await res.json();
-      if (!res.ok) throw new Error("Ошибка применения рецепта");
-
-      if (result.failed === 0) {
-        toast.success(`Рецепт применён: ${result.sent} тегов, ${result.localApplied} локальных из ${result.total}`);
-      } else {
-        toast.error(`Применено с ошибками: ${result.sent}/${result.total}, не удалось: ${result.failedRows.join(", ")}`);
-      }
-      if (result.unmatchedRows.length) {
-        toast.warning(`Набор частично устарел — строк нет в таблице: ${result.unmatchedRows.join(", ")}`);
-      }
-      closeModal();
+      const result: RecipeApplyResultDto | null = await res.json().catch(() => null);
+      if (!res.ok || !result) throw new Error("Ошибка применения рецепта");
+      setApplyResult(result);
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "Ошибка применения рецепта");
+      const isTimeout = err instanceof Error && err.name === "TimeoutError";
+      toast.error(isTimeout
+        ? "Не дождались ответа за 20 с — проверьте результат вручную, рецепт мог всё же примениться"
+        : (err instanceof Error ? err.message : "Ошибка применения рецепта"));
     } finally {
       setIsApplying(false);
     }
@@ -179,7 +188,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
                       <tr key={rb.name}>
                         <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{rb.name}</td>
                         <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
-                          {rb.tag_id ? (currentValueByTag.get(rb.tag_id) ?? "—") : (rb.default_value ?? "—")}
+                          {rb.tag_id ? (currentValueByTag.get(rb.tag_id) ?? "нет данных") : (rb.default_value ?? "—")}
                         </td>
                         <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{recipeValueByRowName.get(rb.name) ?? "—"}</td>
                       </tr>
@@ -190,28 +199,69 @@ function ApplyRecipeModalContent({sessionId}: Props) {
             )}
           </div>
         )}
+
+        {applyResult && (() => {
+          const status = applyStatusOf(applyResult);
+          return (
+            <div
+              className={cn(
+                "space-y-1.5 rounded-xl border px-4 py-3 text-sm",
+                status === "ok" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                status === "partial" && "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                status === "error" && "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400",
+              )}
+            >
+              <div className="font-medium">
+                {status === "ok" && "Рецепт применён полностью"}
+                {status === "partial" && "Рецепт применён частично"}
+                {status === "error" && "Не удалось применить рецепт"}
+              </div>
+              <div className="text-gray-600 dark:text-gray-400">
+                В ПЛК: {applyResult.sent}, локально: {applyResult.localApplied}, всего: {applyResult.total}
+              </div>
+              {applyResult.failedRows.length > 0 && (
+                <div>Не применились: {applyResult.failedRows.join(", ")}</div>
+              )}
+              {applyResult.unmatchedRows.length > 0 && (
+                <div>Строк нет в таблице (набор устарел): {applyResult.unmatchedRows.join(", ")}</div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="shrink-0 mt-6 pt-4 flex items-center gap-3 justify-end border-t border-gray-200 dark:border-gray-800/80">
-        {recipeId != null && (
+        {recipeId != null && !applyResult && (
           <span className="mr-auto flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
             <AlertTriangle size={14} />
             Запись в ПЛК необратима
           </span>
         )}
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-        >
-          Отмена
-        </button>
-        <button
-          onClick={handleApply}
-          disabled={recipeId == null || isApplying}
-          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 disabled:from-gray-400 disabled:to-gray-400 text-white shadow-lg shadow-red-500/30 disabled:shadow-none transition-all"
-        >
-          {isApplying ? "Применение..." : "Применить в ПЛК"}
-        </button>
+        {applyResult ? (
+          <button
+            onClick={closeModal}
+            className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-500/30 transition-all"
+          >
+            Готово
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={closeModal}
+              className="px-5 py-2.5 rounded-lg font-medium bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleApply}
+              disabled={recipeId == null || isApplying}
+              className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 disabled:from-gray-400 disabled:to-gray-400 text-white shadow-lg shadow-red-500/30 disabled:shadow-none transition-all flex items-center gap-2"
+            >
+              {isApplying && <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+              {isApplying ? "Применение..." : "Применить в ПЛК"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

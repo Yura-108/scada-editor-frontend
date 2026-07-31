@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo} from "react";
-import {AlertTriangle, ClipboardList, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
@@ -14,6 +14,9 @@ const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   live: {label: "Живые данные", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"},
   reconnecting: {label: "Переподключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
   closed: {label: "Нет соединения", className: "bg-neutral-500/15 text-neutral-500 dark:text-neutral-400"},
+  // Окончательный отказ (код закрытия 1003) — реконнект не запускается, обновление
+  // страницы/повторный выбор сцены нужны, чтобы попробовать снова.
+  rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
 };
 
 /**
@@ -53,7 +56,7 @@ export default function MonitorClient() {
     if (currentProject) void loadSceneList(currentProject.id);
   }, [currentProject, loadSceneList]);
 
-  const {status, compileErrors, runtimeErrors, sessionId} = useRuntimeEngine(Boolean(scene && currentProject));
+  const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale} = useRuntimeEngine(Boolean(scene && currentProject));
 
   const problemCount = useMemo(
     () => compileErrors.size + runtimeErrors.size,
@@ -130,7 +133,20 @@ export default function MonitorClient() {
           </span>
         )}
 
-        <span className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}>
+        {isStale && (
+          <span
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            title="Соединение живое, но новых значений давно не приходило — данные на экране могут быть устаревшими"
+          >
+            <Clock size={14} />
+            Данные могут устареть
+          </span>
+        )}
+
+        <span
+          className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
+          title={status === "rejected" && rejectionReason ? rejectionReason : undefined}
+        >
           <Radio size={14} />
           {statusView.label}
         </span>

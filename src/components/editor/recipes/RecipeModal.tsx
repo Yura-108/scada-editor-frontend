@@ -7,6 +7,7 @@ import {useRecipeStore} from "@/store/useRecipeStore";
 import {ComponentPropertyDto} from "@/types/editorElement.type";
 import {RecipeDto} from "@/types/recipe.types";
 import {cn} from "@/lib/utils";
+import {isBooleanValueType} from "@/lib/editor/valueTypes";
 
 interface Props {
   componentId: number;
@@ -102,12 +103,24 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
                     ({rb.tag_id ? `тег: ${rb.tag_id}` : "локальный параметр"})
                   </span>
                 </label>
-                <input
-                  type="text"
-                  value={valueByRowName[rb.name] ?? ""}
-                  onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.value})}
-                  className={inputClass}
-                />
+                {isBooleanValueType(rb.value_type) ? (
+                  <label className="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={valueByRowName[rb.name] === "true"}
+                      onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.checked ? "true" : "false"})}
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    {valueByRowName[rb.name] === "true" ? "true" : "false"}
+                  </label>
+                ) : (
+                  <input
+                    type="text"
+                    value={valueByRowName[rb.name] ?? ""}
+                    onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.value})}
+                    className={inputClass}
+                  />
+                )}
               </div>
             ))}
           </div>

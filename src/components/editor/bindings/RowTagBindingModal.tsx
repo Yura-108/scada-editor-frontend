@@ -11,6 +11,7 @@ import {cn} from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {ComponentPropertyDto} from "@/types/editorElement.type";
+import {isBooleanValueType} from "@/lib/editor/valueTypes";
 
 interface Props {
   row: number;
@@ -139,13 +140,25 @@ function RowTagBindingModalContent({row, binding, onConfirm}: Props) {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
               Значение по умолчанию
             </label>
-            <input
-              type="text"
-              value={defaultValue}
-              onChange={(e) => setDefaultValue(e.target.value)}
-              placeholder="0"
-              className={inputClass}
-            />
+            {isBooleanValueType(valueType) ? (
+              <label className="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={defaultValue === "true"}
+                  onChange={(e) => setDefaultValue(e.target.checked ? "true" : "false")}
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                />
+                {defaultValue === "true" ? "true" : "false"}
+              </label>
+            ) : (
+              <input
+                type="text"
+                value={defaultValue}
+                onChange={(e) => setDefaultValue(e.target.value)}
+                placeholder="0"
+                className={inputClass}
+              />
+            )}
             <p className="text-xs text-gray-500 dark:text-gray-500 ml-1">
               У локального параметра нет тега — значение живёт в сессии монитора, а не в ПЛК.
               Это значение будет показываться до первого изменения.
