@@ -139,7 +139,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
           >
             <option value="" disabled>Компонент…</option>
             {tableComponents.map((el) => (
-              <option key={el.key} value={el.id ?? ""}>{el.label || el.key}</option>
+              <option key={el.key} value={el.id ?? ""}>{el.label || el.type}</option>
             ))}
           </select>
         </div>

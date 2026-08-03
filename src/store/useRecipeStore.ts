@@ -5,8 +5,8 @@ import {RecipeCreateDto, RecipeDto, ResolvedRecipeDto} from "@/types/recipe.type
 type RecipeState = {
   recipes: RecipeDto[];
   loadRecipes: (componentId: number) => Promise<void>;
-  createRecipe: (recipe: RecipeCreateDto) => Promise<void>;
-  updateRecipe: (id: number, recipe: RecipeCreateDto) => Promise<void>;
+  createRecipe: (recipe: RecipeCreateDto) => Promise<boolean>;
+  updateRecipe: (id: number, recipe: RecipeCreateDto) => Promise<boolean>;
   deleteRecipe: (id: number) => Promise<void>;
   resolveRecipe: (id: number) => Promise<ResolvedRecipeDto | null>;
 };
@@ -41,9 +41,11 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const created: RecipeDto = await res.json();
       set({recipes: [...get().recipes, created]});
       toast.success("Рецепт создан");
+      return true;
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Ошибка создания рецепта");
+      return false;
     }
   },
   updateRecipe: async (id, recipe) => {
@@ -60,9 +62,11 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const updated: RecipeDto = await res.json();
       set({recipes: get().recipes.map(r => r.id === id ? updated : r)});
       toast.success("Рецепт обновлён");
+      return true;
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Ошибка обновления рецепта");
+      return false;
     }
   },
   deleteRecipe: async (id) => {

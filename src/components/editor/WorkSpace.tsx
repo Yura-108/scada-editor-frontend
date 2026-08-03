@@ -243,8 +243,16 @@ export default function WorkSpace() {
         {/*</div>*/}
 
         {/* Минимальная полоса вкладок: пока реально готовы только «Редактор» и «Рецепты» —
-            остальные 8 вкладок выше остаются заглушками и закомментированы намеренно. */}
-        <div className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2">
+            остальные 8 вкладок выше остаются заглушками и закомментированы намеренно.
+            Отступы обязательны: боковые панели — absolute z-40 поверх main (z-0), без
+            marginLeft/Right полоса вкладок оказывается под левой панелью и не видна. */}
+        <div
+          style={{
+            marginLeft: leftShown ? leftWidth : 0,
+            marginRight: rightShown ? rightWidth : 0,
+          }}
+          className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2 transition-[margin] duration-300 ease-in-out"
+        >
           {tabButton("editor", "Редактор")}
           {tabButton("recipes", "Рецепты")}
         </div>

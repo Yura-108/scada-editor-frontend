@@ -9,6 +9,12 @@ import {RecipeDto} from "@/types/recipe.types";
 import {cn} from "@/lib/utils";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
 
+const RECIPE_TYPE_OPTIONS: Array<{value: string; label: string}> = [
+  {value: "recipe", label: "Рецепты"},
+  {value: "pid_controller", label: "ПИД регулятор"},
+  {value: "station_params", label: "Параметры станции"},
+];
+
 interface Props {
   componentId: number;
   rowBindings: ComponentPropertyDto[];
@@ -24,6 +30,7 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
   // рендерит content под key={openKey}), поэтому начальные значения useState
   // всегда актуальны — сбрасывать их эффектом не нужно.
   const [name, setName] = useState(recipe?.name ?? "");
+  const [type, setType] = useState(recipe?.type ?? "recipe");
   const [valueByRowName, setValueByRowName] = useState<Record<string, string>>(() => {
     const seeded: Record<string, string> = {};
     for (const v of recipe?.values ?? []) seeded[v.row_name] = v.value;
@@ -49,16 +56,12 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
     try {
       const payload = {
         name: name.trim(),
-        type: "recipe",
+        type,
         component_id: componentId,
         values: rowBindings.map((rb) => ({row_name: rb.name, value: valueByRowName[rb.name] ?? ""})),
       };
-      if (recipe) {
-        await updateRecipe(recipe.id, payload);
-      } else {
-        await createRecipe(payload);
-      }
-      closeModal();
+      const ok = recipe ? await updateRecipe(recipe.id, payload) : await createRecipe(payload);
+      if (ok) closeModal();
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +90,21 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
             placeholder="Кефир"
             className={inputClass}
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+            Тип набора
+          </label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className={inputClass}
+          >
+            {RECIPE_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
 
         {rowBindings.length === 0 ? (

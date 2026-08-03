@@ -63,7 +63,10 @@ export function openRuntimeConnection(
   const setStatus = (s: RuntimeStatus, detail?: string) => onStatus?.(s, detail);
 
   const stopPing = () => {
-    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    if (pingTimer) {
+      clearInterval(pingTimer);
+      pingTimer = null;
+    }
   };
 
   const scheduleReconnect = () => {
@@ -78,32 +81,42 @@ export function openRuntimeConnection(
 
   const connect = async () => {
     if (closed) return;
+
     setStatus(firstConnect ? "connecting" : "reconnecting");
+
     log(`создаю сессию для проекта ${projectId}${firstConnect ? "" : " (переподключение)"}...`);
+
     firstConnect = false;
 
     // Сессия одноразовая: каждый (ре)коннект начинается с нового POST.
     let wsPath: string;
     let wsToken: string;
+
     try {
       const res = await fetch("/api/runtime/sessions", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({projectId}),
       });
+
       if (!res.ok) throw new Error(`POST /api/runtime/sessions → ${res.status}`);
+
       const data = await res.json();
+
       if (typeof data?.wsPath !== "string") throw new Error("В ответе сессии нет wsPath");
       if (typeof data?.token !== "string") throw new Error("В ответе сессии нет token");
+
       wsPath = data.wsPath;
       wsToken = data.token;
       currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
+
       log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${RUNTIME_WS_ORIGIN}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
       scheduleReconnect();
       return;
     }
+
     if (closed) return;
 
     // Браузерный WebSocket не умеет слать заголовок Authorization — JWT идёт query-параметром.

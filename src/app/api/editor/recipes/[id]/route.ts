@@ -55,7 +55,7 @@ export const PUT = protectedRoute(async (req, {token, params}) => {
 
   const recipe = await response.json().catch(() => null);
 
-  return NextResponse.json(recipe, {status: 201});
+  return NextResponse.json(recipe);
 });
 
 export const DELETE = protectedRoute(async (_request, {token, params}) => {
