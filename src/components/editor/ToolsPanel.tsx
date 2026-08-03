@@ -127,7 +127,7 @@ export default function ToolsPanel({ leftOffset, rightOffset }: { leftOffset: nu
         left: `${leftOffset}px`,
         right: `${rightOffset}px`,
       }}
-      className="fixed top-16 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
+      className="fixed top-26 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
       {/* Проект и сцена: отдельная колонка слева, не влияет на центрирование тулбара */}

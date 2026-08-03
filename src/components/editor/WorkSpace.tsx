@@ -189,7 +189,7 @@ export default function WorkSpace() {
     <div className="fixed inset-0 top-16 overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200">
 
       {/* Центральная область (Холст). Занимает 100% места, находится под панелями (z-0) */}
-      <main className="absolute inset-0 flex flex-col z-0">
+      <main className="absolute inset-0  flex flex-col z-0">
         {showEditorPanels && (
           <ToolsPanel
             leftOffset={leftShown ? leftWidth : 0}
