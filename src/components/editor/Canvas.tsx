@@ -15,6 +15,7 @@ import { AddComponentModal } from "@/components/ui/AddComponentModal";
 
 import { ShapeElement } from "./canvas/shapes/ShapeElement";
 import { GroupNode } from "./canvas/shapes/GroupNode";
+import { NoDataOverlay } from "./canvas/shapes/NoDataOverlay";
 import { TextEditorOverlay } from "./canvas/shapes/TextEditorOverlay";
 import { SelectionTransformer } from "./canvas/shapes/SelectionTransformer";
 import { ZoomControls } from "./canvas/ZoomControls";
@@ -57,7 +58,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
-    canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey,
+    canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey, noDataElementKeys,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
     pendingPlacement, selectedTableCell, selectTableCell,
   } = useEditorStore();
@@ -256,6 +257,10 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
                 ? <GroupNode key={el.key} group={el as GroupElement} ctx={ctx} />
                 : <ShapeElement key={el.key} el={el} ctx={ctx} />
             ))}
+
+            {/* «Нет данных» (монитор, TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
+                вне монитора — движок рантайма там не запущен. */}
+            <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
 
             {/* Hover-подсветка: один оверлей-Rect вместо пропса в фигуры — иначе каждое
                 движение мыши ре-рендерило бы всю мемоизированную сцену. */}

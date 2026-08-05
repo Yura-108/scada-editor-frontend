@@ -25,6 +25,14 @@ export interface BindingIndex {
   tableRowsByTagId: Map<string, TableRowTarget[]>;
   /** Имя локального параметра-строки → строки таблиц (WS properties[] по propertyName). */
   tableRowsByPropertyName: Map<string, TableRowTarget[]>;
+  /**
+   * tag_id → элементы, у которых этот тег — свойство типа "Тег" (`property_type
+   * === "Тег" && tag_id`), НЕЗАВИСИМО от наличия скомпилированного JS-биндинга.
+   * Нужна для «нет данных» при quality != GOOD (TAG_CONTRACT_CHANGES.md B2):
+   * «привязан к тегу» — это наличие тег-свойства на компоненте, а не наличие
+   * биндинга (у таблиц тег пишется в ячейку напрямую, минуя биндинги).
+   */
+  elementKeysByTagId: Map<string, Set<string>>;
 }
 
 /**
@@ -41,8 +49,15 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   const propertyIds = new Set<number>();
   const tableRowsByTagId = new Map<string, TableRowTarget[]>();
   const tableRowsByPropertyName = new Map<string, TableRowTarget[]>();
+  const elementKeysByTagId = new Map<string, Set<string>>();
 
   for (const el of elements) {
+    for (const p of el.properties ?? []) {
+      if (p.property_type !== "Тег" || !p.tag_id) continue;
+      const set = elementKeysByTagId.get(p.tag_id);
+      if (set) set.add(el.key); else elementKeysByTagId.set(p.tag_id, new Set([el.key]));
+    }
+
     if (el.type === "table") {
       for (const p of el.properties ?? []) {
         if (typeof p.position !== "number") continue;
@@ -96,5 +111,8 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
   if (propertyIds.size) console.table([...propertyIds].map(propertyId => ({propertyId})));
 
-  return {byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds, tableRowsByTagId, tableRowsByPropertyName};
+  return {
+    byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds,
+    tableRowsByTagId, tableRowsByPropertyName, elementKeysByTagId,
+  };
 };

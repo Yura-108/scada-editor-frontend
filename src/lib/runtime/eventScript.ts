@@ -61,7 +61,7 @@ export const compileEventScript = (
  */
 export const executeEventScript = (
   cb: CompiledEventScript,
-  valuesByTagId: ReadonlyMap<string, string>,
+  valuesByTagId: ReadonlyMap<string, string | null>,
   valuesByPropertyId: ReadonlyMap<number, string>,
   self?: unknown,
   runScript?: (name: string) => void,

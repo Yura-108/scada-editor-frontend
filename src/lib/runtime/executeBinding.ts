@@ -28,9 +28,11 @@ export interface CompiledBinding {
   fn: (...args: unknown[]) => unknown;
 }
 
-/** Значение тега в скоупе кода: `Test.V` — число, если парсится, `Test.RAW` — сырая строка. */
-export const buildTagObject = (raw: string | undefined) => {
-  const num = raw !== undefined && raw.trim() !== "" ? Number(raw) : NaN;
+/** Значение тега в скоупе кода: `Test.V` — число, если парсится, `Test.RAW` — сырая строка.
+ *  raw может быть `null` (тег с quality != GOOD без последнего достоверного значения,
+ *  см. TAG_CONTRACT_CHANGES.md A3/B4) — важно не звать `.trim()` на нём. */
+export const buildTagObject = (raw: string | null | undefined) => {
+  const num = raw != null && raw.trim() !== "" ? Number(raw) : NaN;
   return {
     V: Number.isFinite(num) ? num : (raw ?? null),
     RAW: raw ?? null,
@@ -75,7 +77,7 @@ export type ExecuteResult =
  */
 export const executeBinding = (
   cb: CompiledBinding,
-  valuesByTagId: ReadonlyMap<string, string>,
+  valuesByTagId: ReadonlyMap<string, string | null>,
   valuesByPropertyId: ReadonlyMap<number, string>,
   self?: unknown,
 ): ExecuteResult => {

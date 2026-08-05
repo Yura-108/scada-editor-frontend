@@ -17,7 +17,9 @@
  * `tags: null` — нормализация `?? []` обязательна.
  */
 
-export type RuntimeTagUpdate = {tagId: string; value: string; ts?: number};
+/** quality отсутствует или "GOOD" — значение достоверно; любое другое — нет
+ *  (не сравнивать на равенство "BAD" — контракт расширяемый, см. TAG_CONTRACT_CHANGES.md). */
+export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number; quality?: string};
 /** propertyName — имя свойства (== row_name строки таблицы); propertyId нестабилен
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};

@@ -55,13 +55,21 @@ type EditorState = {
    */
   runtimeOverridesByElementKey: Record<string, Record<string, unknown>>;
   /**
+   * Ключи элементов, привязанных к тегу с quality != GOOD (или ещё не получавших
+   * ни одного сообщения — холодный старт). Рисуется оверлеем «нет данных» поверх
+   * готовой сцены (NoDataOverlay), не завязано на elements/undo/автосейв —
+   * TAG_CONTRACT_CHANGES.md B2/B4.
+   */
+  noDataElementKeys: Set<string>;
+  /**
    * Применяет батч рантайм-изменений одним set(): переключения состояний
-   * (по ИМЕНИ, с каскадом на поддерево) + патчи визуальных свойств.
-   * Если фактических изменений нет — set() не вызывается вовсе.
+   * (по ИМЕНИ, с каскадом на поддерево) + патчи визуальных свойств + набор
+   * элементов «нет данных». Если фактических изменений нет — set() не вызывается вовсе.
    */
   applyRuntimeBatch: (batch: {
     stateNameByKey?: Record<string, string>;
     propsByKey?: Record<string, Record<string, unknown>>;
+    noDataKeys?: Set<string>;
   }) => void;
   /** Сброс всех рантайм-карт (выход из монитора). */
   clearRuntime: () => void;
@@ -536,6 +544,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectedTableCell: null,
       currentComponentStateByElementKey: {},
       runtimeOverridesByElementKey: {},
+      noDataElementKeys: new Set(),
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -761,7 +770,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         return {currentComponentStateByElementKey: next};
       }),
-      applyRuntimeBatch: ({stateNameByKey, propsByKey}) => {
+      applyRuntimeBatch: ({stateNameByKey, propsByKey, noDataKeys}) => {
         const state = get();
         const patch: Partial<EditorState> = {};
 
@@ -797,12 +806,17 @@ export const useEditorStore = create<EditorState>()(temporal(
           if (changed) patch.runtimeOverridesByElementKey = nextOverrides;
         }
 
+        // 3) Набор «нет данных» (B2/B4) — движок уже присылает только изменившийся
+        // набор (diff внутри useRuntimeEngine), здесь достаточно просто заменить.
+        if (noDataKeys) patch.noDataElementKeys = noDataKeys;
+
         // Ничего фактически не изменилось — не дёргаем ни стор, ни рендер.
         if (Object.keys(patch).length) set(patch);
       },
       clearRuntime: () => set({
         runtimeOverridesByElementKey: {},
         currentComponentStateByElementKey: {},
+        noDataElementKeys: new Set(),
       }),
       updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
       // Мульти-версия: один set() (= один шаг undo) для всех ключей.

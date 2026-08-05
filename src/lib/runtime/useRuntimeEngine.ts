@@ -3,7 +3,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
-import {buildBindingIndex} from "@/lib/runtime/bindingIndex";
+import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import {executeBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
@@ -24,6 +24,29 @@ const MAX_CONSECUTIVE_ERRORS = 5;
 const STALE_THRESHOLD_MS = 10_000;
 
 const log = (...args: unknown[]) => console.log("[monitor:engine]", ...args);
+
+/** quality отсутствует или "GOOD" — достоверно; всё остальное — нет (не сравнивать на "BAD"). */
+const isTagQualityGood = (quality?: string) => quality === undefined || quality === "GOOD";
+
+const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every(k => b.has(k));
+
+/**
+ * Элементы, у которых хотя бы один тег-свойство сейчас недостоверен (quality != GOOD)
+ * ИЛИ по нему ещё не было ни одного сообщения (холодный старт, TAG_CONTRACT_CHANGES.md B4).
+ */
+const computeNoDataElementKeys = (
+  idx: BindingIndex,
+  tagMeta: ReadonlyMap<string, {quality: string; ts?: number}>,
+): Set<string> => {
+  const result = new Set<string>();
+  for (const [tagId, keys] of idx.elementKeysByTagId) {
+    const meta = tagMeta.get(tagId);
+    const bad = !meta || !isTagQualityGood(meta.quality);
+    if (bad) for (const k of keys) result.add(k);
+  }
+  return result;
+};
 
 export interface RuntimeEngineState {
   status: RuntimeStatus;
@@ -73,9 +96,17 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   indexRef.current = index;
 
   // Коалесинг-буфер тика (tag_id → последнее значение) и последние известные
-  // значения всех тегов скоупа (аргументы для исполнения биндингов).
-  const pendingRef = useRef(new Map<string, string>());
-  const valuesRef = useRef(new Map<string, string>());
+  // значения всех тегов скоупа (аргументы для исполнения биндингов). value может
+  // быть null — тег с quality != GOOD без последнего достоверного значения.
+  const pendingRef = useRef(new Map<string, string | null>());
+  const valuesRef = useRef(new Map<string, string | null>());
+  // Последнее известное качество/момент снятия по тегу (TAG_CONTRACT_CHANGES.md B1/B3).
+  const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
+  // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
+  // чтобы не пересчитывать noDataElementKeys на каждый тик без надобности.
+  const qualityDirtyRef = useRef(false);
+  // Последний набор "нет данных", отправленный в стор — для diff перед новым applyRuntimeBatch.
+  const noDataKeysRef = useRef(new Set<string>());
   // Зеркальные буферы для свойств других компонентов (properties[] UPDATE),
   // ключ — propertyId.
   const pendingPropsRef = useRef(new Map<number, string>());
@@ -101,12 +132,25 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
     const affected = new Set<CompiledBinding>();
-    const changedTags: {tagId: string; value: string}[] = [];
+    const changedTags: {tagId: string; value: string | null}[] = [];
     for (const [tagId, value] of pending) {
       if (valuesRef.current.get(tagId) === value) continue;
       valuesRef.current.set(tagId, value);
       changedTags.push({tagId, value});
       for (const cb of idx.byTagId.get(tagId) ?? []) affected.add(cb);
+    }
+
+    // «Нет данных» (B2/B4): пересчитываем только если у какого-то тега реально
+    // сменилось quality (взводится в onUpdate) — независимо от того, изменилось
+    // ли при этом само значение (quality могла смениться при том же value).
+    let noDataKeys: Set<string> | undefined;
+    if (qualityDirtyRef.current) {
+      qualityDirtyRef.current = false;
+      const next = computeNoDataElementKeys(idx, tagMetaRef.current);
+      if (!setsEqual(next, noDataKeysRef.current)) {
+        noDataKeysRef.current = next;
+        noDataKeys = next;
+      }
     }
     const changedProps: {propertyId: number; value: string}[] = [];
     for (const [propertyId, value] of pendingProps) {
@@ -136,7 +180,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       }
     }
 
-    if (!affected.size && !Object.keys(tableRowProps).length) return;
+    if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
     const store = useEditorStore.getState();
     const byKey = new Map(store.elements.map(el => [el.key, el] as const));
@@ -200,11 +244,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     if (fired.length) console.table(fired);
     console.groupEnd();
 
-    if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length) {
+    if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
       // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
       // applyRuntimeBatch: без фактических изменений set() не вызывается.
-      log("применяю батч:", {stateNameByKey, propsByKey});
-      store.applyRuntimeBatch({stateNameByKey, propsByKey});
+      log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
+      store.applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
     }
   }, [runtimeErrors]);
 
@@ -237,8 +281,20 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         (propsByKey[el.key] ??= {})[cellRuntimeKey(p.position, TABLE_ROW_VALUE_COL)] = value;
       }
     }
-    if (Object.keys(propsByKey).length) {
-      useEditorStore.getState().applyRuntimeBatch({propsByKey});
+    // Начальный расчёт «нет данных» (B4): тег, по которому ещё не было ни одного
+    // сообщения (tagMetaRef пуст на самый первый маунт), считается недостоверным —
+    // элементы, привязанные к нему, сразу уходят в noDataElementKeys, не дожидаясь
+    // первого BAD-кадра. При смене сцены внутри той же сессии tagMetaRef уже может
+    // знать часть тегов — пересчёт учитывает и это.
+    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current);
+    const noDataChanged = !setsEqual(initialNoData, noDataKeysRef.current);
+    if (noDataChanged) noDataKeysRef.current = initialNoData;
+
+    if (Object.keys(propsByKey).length || noDataChanged) {
+      useEditorStore.getState().applyRuntimeBatch({
+        propsByKey: Object.keys(propsByKey).length ? propsByKey : undefined,
+        noDataKeys: noDataChanged ? initialNoData : undefined,
+      });
     }
   }, [active, index]);
 
@@ -324,7 +380,14 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       onUpdate: (tags, properties) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
         // Несколько апдейтов одного тега в батче: Map даёт last-write-wins.
-        for (const t of tags) pendingRef.current.set(t.tagId, t.value);
+        for (const t of tags) {
+          pendingRef.current.set(t.tagId, t.value);
+          // quality отсутствует у сегодняшнего бэкенда — трактуем как GOOD (совместимость).
+          const quality = t.quality ?? "GOOD";
+          const prevMeta = tagMetaRef.current.get(t.tagId);
+          if (!prevMeta || prevMeta.quality !== quality) qualityDirtyRef.current = true;
+          tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
+        }
         // properties[] — записи серверных Java-скриптов в свойства компонентов;
         // маршрутизируются по propertyId (значение → строка, buildTagObject распарсит).
         // Плюс по propertyName — отдельный путь для live-ячеек строк таблиц:
@@ -375,6 +438,9 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       valuesByPropNameRef.current = new Map();
       errorCountRef.current = new Map();
       disabledRef.current = new Set();
+      tagMetaRef.current = new Map();
+      qualityDirtyRef.current = false;
+      noDataKeysRef.current = new Set();
       useEditorStore.getState().clearRuntime();
       setSessionId(null);
       setRejectionReason(null);
