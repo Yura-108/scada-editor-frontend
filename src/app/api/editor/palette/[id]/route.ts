@@ -1,6 +1,5 @@
 import {backendErrorResponse} from "@/lib/backendProxy";
 import {protectedRoute} from "@/lib/protected";
-import {withVersionFields} from "@/lib/saveEnvelope";
 import {NextResponse} from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
@@ -24,7 +23,7 @@ export const PUT = protectedRoute(async (req, { token, params }) => {
       "Content-Type": "application/json",
     },
     // based_on_version / save_kind — полями рядом, без конверта (см. POST палитры).
-    body: JSON.stringify(withVersionFields(newPaletteItem)),
+    body: JSON.stringify(newPaletteItem),
   });
 
   // Тело ошибки идёт насквозь: 409 несёт base_version/current_version, по которым

@@ -1,7 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import { backendErrorResponse } from '@/lib/backendProxy';
 import {protectedRoute} from "@/lib/protected";
-import { withVersionFields } from '@/lib/saveEnvelope';
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -39,8 +38,8 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
       'Content-Type': 'application/json',
     },
     // У шаблона тело и так объект — оборачивать нечего: based_on_version и save_kind
-    // едут полями рядом. Пока EDITOR_SAVE_ENVELOPE выключен, они вырезаются.
-    body: JSON.stringify(withVersionFields(newPaletteItem)),
+    // едут полями рядом, без конверта.
+    body: JSON.stringify(newPaletteItem),
   });
 
   // Раньше здесь тело ошибки пересобиралось в {error: "Ошибка N: …"} — это съедало

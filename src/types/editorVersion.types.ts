@@ -98,8 +98,8 @@ export const isSaveConflictBody = (body: unknown): body is SaveConflict =>
  * заодно подхватываются присвоенные сервером id (обязательство §2: пришедший id обязан
  * вернуться тем же).
  *
- * `version_no: null` приходит от нашего BFF, когда бэкенд ещё отвечает старым голым
- * массивом (флаг EDITOR_SAVE_ENVELOPE выключен).
+ * `version_no: null` подставляет наш BFF, когда в ответе бэкенда номера версии не было
+ * (см. normalizeSaveResponse) — форма ответа тогда не гарантирована.
  */
 export type SaveSceneResponse = {
   components: Record<string, unknown>[];
