@@ -35,6 +35,7 @@ import {
   type MergeReport,
   type SaveConflict,
   type SaveKind,
+  type VersionKind,
   type VersionListQuery,
   type VersionPreview,
   type VersionSummary,
@@ -186,6 +187,15 @@ type EditorState = {
   isVersionsLoading: boolean;
   /** Больше строк в истории нет — «Показать ещё» прячется. */
   versionsExhausted: boolean;
+  /**
+   * Последний применённый фильтр по виду версий (то, что выбрано в панели истории).
+   *
+   * Обновления списка «вдогонку» (после сохранения и после восстановления) приходят
+   * из стора, а не из панели, и без запомненного фильтра уходили без `kind` — то есть
+   * молча подменяли отфильтрованный список полным: панель с выключенной галочкой
+   * «показывать автосохранения и восстановления» начинала показывать именно их.
+   */
+  versionsKinds: VersionKind[] | null;
   /** Ответ 409: сцену успел сохранить кто-то ещё. Открывает диалог сравнения. */
   saveConflict: SaveConflict | null;
   /**
@@ -210,7 +220,8 @@ type EditorState = {
   previewVersionAt: (time: string) => Promise<void>;
   exitVersionPreview: () => void;
   restoreVersion: (versionNo: number) => Promise<boolean>;
-  /** «Вернуться к предыдущему сохранению»: последняя MANUAL минус одна. */
+  /** «Вернуться к предыдущему сохранению»: ближайшая MANUAL старше того, что на холсте
+   *  (для RESTORE — старше версии-источника, иначе шаг назад ходил бы по кругу). */
   restorePreviousManualVersion: () => Promise<boolean>;
   dismissSaveConflict: () => void;
   /** Скрыть плашку о чужой версии, замеченной автосохранением. */
@@ -743,6 +754,27 @@ const parseBackendErrorMessage = (status: number, text: string): string => {
 let saveInFlight: Promise<boolean> | null = null;
 
 /**
+ * Очередь точечных правок свойств (`/api/editor/tags`, §8 контракта версий).
+ *
+ * С 17.08.2026 каждая такая правка проверяется гардом версии и оставляет снимок в
+ * истории сцены, то есть ДВИГАЕТ номер версии. Номера в ответе этих эндпоинтов нет
+ * (задача `scada-6e1`), поэтому новую базу приходится перечитывать из истории.
+ *
+ * Отсюда обязательная сериализация: перетаскивание строки в панели свойств шлёт
+ * `editProperty` на каждую сдвинутую строку разом. Параллельно они ушли бы с одним и
+ * тем же `based_on_version`, первая сдвинула бы версию, а все остальные получили бы
+ * `409` — половина перестановки молча не сохранилась бы.
+ */
+let propertyWriteChain: Promise<unknown> = Promise.resolve();
+
+const queuePropertyWrite = <T,>(task: () => Promise<T>): Promise<T> => {
+  // then(task, task) — предыдущая неудача не должна отменять следующую правку.
+  const run = propertyWriteChain.then(task, task);
+  propertyWriteChain = run.catch(() => undefined);
+  return run;
+};
+
+/**
  * Сколько раз вставляли текущий буфер обмена. Смещение копии считается как
  * `60 * pasteCount`, иначе повторный Ctrl+V кладёт копию точно на предыдущую.
  * Сбрасывается при копировании и при смене сцены/проекта.
@@ -913,6 +945,60 @@ export const hasUnsavedWork = (): boolean => {
   return versionPreview ? (versionPreviewStash?.isDirty ?? false) : isDirty;
 };
 
+/**
+ * Поле `based_on_version` для точечных правок свойств (§8 контракта версий).
+ *
+ * Версий у сцены ещё нет — поле не отправляем вовсе. Правило то же, что у сохранения
+ * сцены: номер обязателен только там, где история уже существует, а присланный номер
+ * при её отсутствии — 400.
+ */
+const propertyVersionField = (): {based_on_version?: number} => {
+  const version = useEditorStore.getState().sceneVersion;
+  return version != null ? {based_on_version: version} : {};
+};
+
+/**
+ * Разбирает неуспешный ответ точечной правки свойства.
+ *
+ * 409 здесь означает не то же, что при сохранении сцены: слияния у эндпоинтов свойств
+ * нет — расхождение версии для них безусловный отказ. Поэтому диалог сравнения не
+ * открываем (сравнивать нечего, сервер списка расхождений не присылает), а показываем
+ * плашку устаревшей базы — тем же полем, что и автосохранение, — и подтягиваем
+ * актуальный номер версии, чтобы повтор действия прошёл без ручной перезагрузки схемы.
+ */
+const propertyWriteError = async (res: Response, fallback: string): Promise<Error> => {
+  const text = await res.text().catch(() => "");
+
+  if (res.status === 409) {
+    let current: number | null = null;
+    try {
+      const body = JSON.parse(text);
+      if (isSaveConflictBody(body)) current = body.current_version ?? null;
+    } catch {
+      // не JSON — номер не узнаем, плашку покажем без него
+    }
+    useEditorStore.setState({staleBaseVersion: current});
+    void useEditorStore.getState().refreshSceneVersion();
+
+    return new Error("Схему успел изменить кто-то другой — правка свойства отклонена. Обновите схему и повторите.");
+  }
+
+  return new Error(`${fallback}: ${text || `ошибка ${res.status}`}`);
+};
+
+/**
+ * Подхватывает версию сцены, созданную точечной правкой свойства (§8).
+ *
+ * Номера версии в ответе этих эндпоинтов нет, а «прошлый + 1» неверен: при совпадении
+ * содержимого сервер новую версию не заводит. Поэтому спрашиваем историю. Без этого
+ * `sceneVersion` остаётся на версии до правки, и следующее сохранение сцены уходит с
+ * устаревшей базой — то есть штатно получает 409 на ровном месте.
+ */
+const syncSceneVersionAfterPropertyWrite = async () => {
+  await useEditorStore.getState().refreshSceneVersion();
+  if (useEditorStore.getState().versions.length) void useEditorStore.getState().loadVersions();
+};
+
 /** Фиксирует текущее состояние как сохранённое: снимает флаг «грязно». */
 const markSceneSaved = (persisted: boolean) => {
   savedElementsSnapshot = useEditorStore.getState().elements;
@@ -982,6 +1068,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       versions: [],
       isVersionsLoading: false,
       versionsExhausted: false,
+      versionsKinds: null,
       saveConflict: null,
       staleBaseVersion: null,
       versionPreview: null,
@@ -1764,79 +1851,90 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       addTags: async (payload: PropertyCreateRequestDto) => {
         try {
-          const res = await fetch(`/api/editor/tags`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
+          // В очередь: правка свойства двигает версию сцены, и параллельные правки
+          // разошлись бы по базе (см. queuePropertyWrite).
+          await queuePropertyWrite(async () => {
+            const res = await fetch(`/api/editor/tags`, {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              // `based_on_version` — §8 контракта: с 17.08.2026 точечные правки свойств
+              // проверяются гардом версии, и без номера сохранённая сцена отвечает 400.
+              body: JSON.stringify({...payload, ...propertyVersionField()})
+            });
+
+            if (!res.ok) throw await propertyWriteError(res, "Не удалось добавить свойство");
+
+            const created: PropertyCreateDto = await res.json();
+            // Некоторые бэкенды пока не round-trip'ят position на одиночном
+            // REST-эндпоинте свойства (в отличие от bulk-сохранения компонента) —
+            // подстраховываемся значением, которое сами отправили.
+            const newProperty: PropertyCreateDto = {
+              ...created,
+              position: created.position ?? payload.position ?? null,
+            };
+
+            // Свойство уже создано на сервере — не пишем эту мутацию в историю undo,
+            // иначе Ctrl+Z уберёт его только на клиенте (рассинхрон с бэкендом).
+            const temporal = useEditorStore.temporal.getState();
+            temporal.pause();
+            set(state => ({
+              elements: state.elements.map(el =>
+                el.id === payload.component_id
+                  ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
+                  : el
+              )
+            }));
+            temporal.resume();
+
+            await syncSceneVersionAfterPropertyWrite();
           });
-
-          if (!res.ok) {
-            const errorText = await res.text().catch(() => "Неизвестная ошибка");
-            throw new Error(`Не удалось добавить свойство: ${errorText}`);
-          }
-
-          const created: PropertyCreateDto = await res.json();
-          // Некоторые бэкенды пока не round-trip'ят position на одиночном
-          // REST-эндпоинте свойства (в отличие от bulk-сохранения компонента) —
-          // подстраховываемся значением, которое сами отправили.
-          const newProperty: PropertyCreateDto = {
-            ...created,
-            position: created.position ?? payload.position ?? null,
-          };
-
-          // Свойство уже создано на сервере — не пишем эту мутацию в историю undo,
-          // иначе Ctrl+Z уберёт его только на клиенте (рассинхрон с бэкендом).
-          const temporal = useEditorStore.temporal.getState();
-          temporal.pause();
-          set(state => ({
-            elements: state.elements.map(el =>
-              el.id === payload.component_id
-                ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
-                : el
-            )
-          }));
-          temporal.resume();
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка при добавлении свойства"));
         }
       },
       editProperty: async (propertyId: number, payload: PropertyCreateRequestDto) => {
-        const res = await fetch(`/api/editor/tags/${propertyId}`, {
-          method: "PUT",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
+        // Очередь обязательна: перетаскивание строки в панели свойств вызывает
+        // editProperty сразу на несколько строк, и параллельно они ушли бы с одной и
+        // той же (уже устаревшей после первой) базой — см. queuePropertyWrite.
+        await queuePropertyWrite(async () => {
+          const res = await fetch(`/api/editor/tags/${propertyId}`, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            // `based_on_version` — §8 контракта (см. addTags). `component_id` шлём
+            // прежний: перенос свойства на другой компонент бэкенд отвергает.
+            body: JSON.stringify({...payload, ...propertyVersionField()})
+          });
+
+          if (!res.ok) throw await propertyWriteError(res, "Не удалось обновить свойство");
+
+          const updated: PropertyCreateDto = await res.json();
+          // См. addTags — тот же fallback на случай, если бэкенд не round-trip'ит
+          // position на одиночном REST-эндпоинте свойства.
+          const updatedProperty: PropertyCreateDto = {
+            ...updated,
+            position: updated.position ?? payload.position ?? null,
+          };
+
+          // Серверная мутация — вне истории undo (см. addTags).
+          const temporal = useEditorStore.temporal.getState();
+          temporal.pause();
+          set(state => ({
+            elements: state.elements.map(el =>
+              el.id === payload.component_id
+                ? {
+                    ...el,
+                    properties: (el.properties || []).map(p =>
+                      p.id === propertyId ? updatedProperty : p
+                    )
+                  } as DiagramElement
+                : el
+            )
+          }));
+          temporal.resume();
+
+          await syncSceneVersionAfterPropertyWrite();
         });
-
-        if (!res.ok) {
-          const errorText = await res.text().catch(() => "Неизвестная ошибка");
-          throw new Error(`Не удалось обновить свойство: ${errorText}`);
-        }
-
-        const updated: PropertyCreateDto = await res.json();
-        // См. addTags — тот же fallback на случай, если бэкенд не round-trip'ит
-        // position на одиночном REST-эндпоинте свойства.
-        const updatedProperty: PropertyCreateDto = {
-          ...updated,
-          position: updated.position ?? payload.position ?? null,
-        };
-
-        // Серверная мутация — вне истории undo (см. addTags).
-        const temporal = useEditorStore.temporal.getState();
-        temporal.pause();
-        set(state => ({
-          elements: state.elements.map(el =>
-            el.id === payload.component_id
-              ? {
-                  ...el,
-                  properties: (el.properties || []).map(p =>
-                    p.id === propertyId ? updatedProperty : p
-                  )
-                } as DiagramElement
-              : el
-          )
-        }));
-        temporal.resume();
       },
       // Биндинги — клиентские данные (уезжают на сервер только с сохранением сцены),
       // поэтому их правки, в отличие от addTags/editProperty, ДОЛЖНЫ попадать в undo.
@@ -2202,10 +2300,14 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const append = opts?.append ?? false;
         const limit = opts?.limit ?? VERSIONS_PAGE_SIZE;
+        // Фильтр задаёт панель; обновления «вдогонку» (после сохранения, после
+        // восстановления) приходят без него и обязаны повторить последний выбор
+        // пользователя, а не молча показать все виды версий.
+        const kinds = opts?.kinds ?? get().versionsKinds ?? undefined;
 
-        set({isVersionsLoading: true});
+        set({isVersionsLoading: true, ...(opts?.kinds ? {versionsKinds: opts.kinds} : {})});
         try {
-          const page = await fetchVersions("scenes", Number(sceneId), {...opts, limit});
+          const page = await fetchVersions("scenes", Number(sceneId), {...opts, kinds, limit});
           if (get().scene?.id !== sceneId) return;
 
           set(state => ({
@@ -2321,7 +2423,15 @@ export const useEditorStore = create<EditorState>()(temporal(
           const temporal = useEditorStore.temporal.getState();
           temporal.pause();
           try {
-            applyServerComponents(restored.components, scene);
+            if (restored.version_no != null) {
+              applyServerComponents(restored.components, scene);
+            } else {
+              // Та же логика, что в exportScene: ответ без `version_no` — признак того,
+              // что бэкенд ответил не по контракту, и форму дерева в нём никто не
+              // гарантировал. Доверить такому ответу холст значит показать не ту версию
+              // (или пустую сцену) молча — честнее перечитать документ с сервера.
+              await get().loadScene(Number(scene.id), {keepHistory: true});
+            }
           } finally {
             useEditorStore.temporal.getState().resume();
           }
@@ -2330,9 +2440,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           // уже не существует — оставлять его значит дать Ctrl+Z воскресить их.
           useEditorStore.temporal.getState().clear();
 
-          set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null});
-          markSceneSaved(true);
-          if (restored.version_no == null) void get().refreshSceneVersion();
+          if (restored.version_no != null) {
+            set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null});
+            markSceneSaved(true);
+          } else {
+            // loadScene уже расставил elements/снимок и сам спросил текущую версию.
+            set({saveConflict: null, staleBaseVersion: null});
+          }
           void get().loadVersions();
 
           toast.success(`Восстановлена версия ${versionNo}`);
@@ -2348,16 +2462,36 @@ export const useEditorStore = create<EditorState>()(temporal(
         if (sceneId == null) return false;
 
         try {
-          // Ровно две свежие MANUAL: текущее состояние и то, что было до него.
-          // Автосохранения намеренно мимо — человек их не делал и отменять не просил.
-          const manual = await fetchVersions("scenes", Number(sceneId), {kinds: ["MANUAL"], limit: 2});
+          // Тянем ВСЕ виды, а не только MANUAL: чтобы понять, «предыдущее» относительно
+          // чего искать, надо увидеть и записи RESTORE. Список отфильтрованный по MANUAL
+          // после восстановления не меняется вовсе — по нему шаг назад всегда упирался
+          // в одну и ту же версию, и повторные нажатия возвращали то же самое состояние.
+          const all = await fetchVersions("scenes", Number(sceneId), {limit: VERSIONS_PAGE_SIZE});
 
-          if (manual.length < 2) {
+          if (!all.length) {
             toast.info("Предыдущего ручного сохранения нет");
             return false;
           }
 
-          return await get().restoreVersion(manual[1].version_no);
+          // Что лежит на холсте сейчас. sceneVersion может отставать (бэкенд не всегда
+          // отдаёт version_no) — тогда берём самую свежую запись истории.
+          const current = get().sceneVersion;
+          const head = all.find(v => v.version_no === current) ?? all[0];
+
+          // Для RESTORE содержимое равно версии-источнику: шаг назад надо делать от неё,
+          // иначе «отменить отмену» вернуло бы ту же самую версию по кругу.
+          const contentVersion =
+            head.kind === "RESTORE" && head.restored_from != null ? head.restored_from : head.version_no;
+
+          // Список свежие-первыми, поэтому первая подходящая строка — ближайшая старшая.
+          const previous = all.find(v => v.kind === "MANUAL" && v.version_no < contentVersion);
+
+          if (!previous) {
+            toast.info("Предыдущего ручного сохранения нет");
+            return false;
+          }
+
+          return await get().restoreVersion(previous.version_no);
         } catch (err) {
           console.error(err);
           toast.error(getErrorMessage(err, "Не удалось найти предыдущее сохранение"));
