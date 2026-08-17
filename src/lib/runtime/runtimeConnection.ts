@@ -1,3 +1,4 @@
+import {devLog} from "@/lib/devLog";
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
  * PHASE4_RUNTIME_PLAN.md, WP4):
@@ -48,7 +49,7 @@ const RUNTIME_WS_ORIGIN =
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
 
-const log = (...args: unknown[]) => console.log("[monitor:ws]", ...args);
+const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,

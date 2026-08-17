@@ -18,7 +18,7 @@ export const selectTriggerClassName = cn(
 
 /** Панель со списком опций */
 export const selectContentClassName = cn(
-  "z-100 overflow-hidden rounded-xl border shadow-xl",
+  "z-dropdown overflow-hidden rounded-xl border shadow-xl",
   "border-neutral-200 dark:border-neutral-700",
   "bg-white dark:bg-neutral-900",
   "text-neutral-900 dark:text-neutral-100",

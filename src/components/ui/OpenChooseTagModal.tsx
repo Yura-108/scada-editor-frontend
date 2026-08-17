@@ -13,6 +13,7 @@ import { useDeviceStore } from "@/store/useDeviceStore";
 import { useEditorStore } from "@/store/useEditorStore";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { isBooleanValueType } from "@/lib/editor/valueTypes";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface Props {
   component_id: number;
@@ -346,21 +347,12 @@ export function AddPropertyContent({ component_id, property }: Props) {
       </div>
 
       {/* Footer buttons */}
-      <div className="shrink-0 mt-6 pt-4 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-800/80">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-        >
-          Отмена
-        </button>
-        <button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-400 text-white shadow-lg shadow-indigo-500/30 disabled:shadow-none transition-all"
-        >
+      <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm}>
           {isLoading ? "Сохранение..." : property ? "Сохранить" : "Добавить свойство"}
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </div>
   );
 }

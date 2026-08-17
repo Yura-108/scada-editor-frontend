@@ -1,5 +1,6 @@
 import { useModalStore } from "@/store/modalStore";
-import { useState } from "react";
+import { toast } from "sonner";
+import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import {
   selectTriggerClassName,
 } from "@/components/ui/selectStyles";
 import { useDeviceStore } from "@/store/useDeviceStore";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface Props {
   onLoadAction: (node: {
@@ -27,6 +29,8 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
   const [selectedValue, setSelectedValue] = useState<string>(String(templateList[0].key));
   const [inputValue, setInputValue] = useState<string>("");
+  const typeLabelId = useId();
+  const nameId = useId();
 
   const handleConfirm = () => {
     if (!inputValue.trim()) return;
@@ -52,16 +56,21 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
       </Dialog.Description>
 
       <div className="space-y-5">
-        {/* Выбор типа (Select) */}
+        {/* Выбор типа (Select).
+            Radix Select.Trigger — кнопка, а не поле формы: `htmlFor` её не
+            подписывает, поэтому связь идёт через id + aria-labelledby. */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+          <label
+            id={typeLabelId}
+            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
+          >
             Тип устройства
           </label>
           <Select.Root
             defaultValue={String(templateList[0].key)}
             onValueChange={setSelectedValue}
           >
-            <Select.Trigger className={selectTriggerClassName}>
+            <Select.Trigger aria-labelledby={typeLabelId} className={selectTriggerClassName}>
               <Select.Value placeholder="Выберите тип..." />
               <Select.Icon>
                 <ChevronDown className={selectIconClassName} />
@@ -90,11 +99,15 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
         {/* Поле ввода */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+          <label
+            htmlFor={nameId}
+            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
+          >
             Название устройства
           </label>
           <div className="relative">
             <input
+              id={nameId}
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -116,34 +129,12 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
       </div>
 
       {/* Кнопки */}
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium
-          bg-gray-100 dark:bg-gray-800
-          hover:bg-gray-200 dark:hover:bg-gray-700
-          border border-gray-300 dark:border-gray-700
-          hover:border-gray-400 dark:hover:border-gray-600
-          text-gray-700 dark:text-gray-300
-          transition-colors"
-        >
-          Отмена
-        </button>
-
-        <button
-          onClick={handleConfirm}
-          disabled={!inputValue.trim()}
-          className="px-6 py-2.5 rounded-lg font-medium
-          bg-linear-to-r from-indigo-600 to-blue-600
-          hover:from-indigo-500 hover:to-blue-500
-          disabled:from-gray-300 disabled:to-gray-400
-          disabled:text-gray-500 dark:disabled:from-gray-700 dark:disabled:to-gray-600
-          text-white shadow-lg shadow-indigo-500/30
-          transition-all disabled:shadow-none disabled:cursor-not-allowed"
-        >
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirm} disabled={!inputValue.trim()}>
           Создать
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </>
   )
 }
@@ -152,8 +143,15 @@ export function OpenCreateDeviveModal(nodeKey: string) {
   const {openModal} = useModalStore.getState();
   const {addDevice, deviceTemplateList} = useDeviceStore.getState();
 
-  if (deviceTemplateList.templates.length > 0) {
-    openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={deviceTemplateList.templates} nodeKey={nodeKey} />);
+  const templates = deviceTemplateList?.templates ?? [];
+
+  // Раньше при пустом списке пункт «Добавить» молча ничего не делал — теперь
+  // объясняем причину вместо тишины.
+  if (templates.length === 0) {
+    toast.error('Список шаблонов устройств пуст — не удалось загрузить его с сервера');
+    return;
   }
+
+  openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={templates} nodeKey={nodeKey} />);
 }
 

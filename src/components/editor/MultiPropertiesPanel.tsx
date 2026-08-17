@@ -7,6 +7,7 @@ import {elementPropertyMap} from "@/constants/propertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ColorField} from "@/components/ui/ColorField";
+import {NumberInput} from "@/components/ui/NumberInput";
 
 interface MultiPropertiesPanelProps {
   elements: DiagramElement[];
@@ -64,11 +65,11 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
         return (
           <div key={prop.key} className="space-y-1.5">
             {label(prop.label, id)}
-            <input
-              id={id} type="number" className={baseInputClasses}
-              value={typeof shared === "number" ? shared : ""}
+            <NumberInput
+              id={id} className={baseInputClasses}
+              value={typeof shared === "number" ? shared : undefined}
               placeholder={shared === undefined ? "разные" : ""}
-              onChange={(e) => apply(prop.key, Number(e.target.value) || 0)}
+              onCommit={(v) => apply(prop.key, v)}
             />
           </div>
         );
@@ -152,20 +153,20 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               {label("Ширина", "multi-w")}
-              <input
-                id="multi-w" type="number" className={baseInputClasses}
-                value={typeof sharedW === "number" ? sharedW : ""}
+              <NumberInput
+                id="multi-w" className={baseInputClasses}
+                value={typeof sharedW === "number" ? sharedW : undefined}
                 placeholder={sharedW === undefined ? "разные" : ""}
-                onChange={(e) => apply("w", Number(e.target.value) || 0)}
+                onCommit={(v) => apply("w", v)}
               />
             </div>
             <div className="space-y-1.5">
               {label("Высота", "multi-h")}
-              <input
-                id="multi-h" type="number" className={baseInputClasses}
-                value={typeof sharedH === "number" ? sharedH : ""}
+              <NumberInput
+                id="multi-h" className={baseInputClasses}
+                value={typeof sharedH === "number" ? sharedH : undefined}
                 placeholder={sharedH === undefined ? "разные" : ""}
-                onChange={(e) => apply("h", Number(e.target.value) || 0)}
+                onCommit={(v) => apply("h", v)}
               />
             </div>
           </div>

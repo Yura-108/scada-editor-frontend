@@ -1,9 +1,10 @@
 import { useModalStore } from "@/store/modalStore";
-import { useState } from "react";
+import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { Type } from "lucide-react";
 import { useDeviceStore } from "@/store/useDeviceStore";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface Props {
   title: string;
@@ -18,6 +19,7 @@ export function CreateNamedNodeContent({ title, description, placeholder, onConf
   const { closeModal } = useModalStore.getState();
 
   const [inputValue, setInputValue] = useState<string>("");
+  const nameId = useId();
 
   const handleConfirm = () => {
     if (!inputValue.trim()) return;
@@ -39,11 +41,15 @@ export function CreateNamedNodeContent({ title, description, placeholder, onConf
       <div className="space-y-5">
         {/* Поле ввода */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+          <label
+            htmlFor={nameId}
+            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
+          >
             Название
           </label>
           <div className="relative">
             <input
+              id={nameId}
               type="text"
               autoFocus
               value={inputValue}
@@ -69,34 +75,12 @@ export function CreateNamedNodeContent({ title, description, placeholder, onConf
       </div>
 
       {/* Кнопки */}
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium
-          bg-gray-100 dark:bg-gray-800
-          hover:bg-gray-200 dark:hover:bg-gray-700
-          border border-gray-300 dark:border-gray-700
-          hover:border-gray-400 dark:hover:border-gray-600
-          text-gray-700 dark:text-gray-300
-          transition-colors"
-        >
-          Отмена
-        </button>
-
-        <button
-          onClick={handleConfirm}
-          disabled={!inputValue.trim()}
-          className="px-6 py-2.5 rounded-lg font-medium
-          bg-linear-to-r from-indigo-600 to-blue-600
-          hover:from-indigo-500 hover:to-blue-500
-          disabled:from-gray-300 disabled:to-gray-400
-          disabled:text-gray-500 dark:disabled:from-gray-700 dark:disabled:to-gray-600
-          text-white shadow-lg shadow-indigo-500/30
-          transition-all disabled:shadow-none disabled:cursor-not-allowed"
-        >
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirm} disabled={!inputValue.trim()}>
           Создать
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </>
   );
 }

@@ -33,7 +33,9 @@ export const AddComponentModal = ({
   onClose,
   targetKey,
 }: AddComponentModalProps) => {
-  const { elements, moveElementToGroup } = useEditorStore();
+  // Точечные селекторы — см. тот же комментарий в MoveToGroupModal.
+  const elements = useEditorStore(s => s.elements);
+  const moveElementToGroup = useEditorStore(s => s.moveElementToGroup);
   const [selectedKey, setSelectedKey] = useState<string>("");
 
   // Кандидаты: компоненты сцены, кроме самого целевого и его потомков

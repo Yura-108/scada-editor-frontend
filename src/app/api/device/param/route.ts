@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {protectedRoute} from "@/lib/protected";
+import {backendErrorResponse} from "@/lib/backendProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -33,12 +34,9 @@ export const PATCH = protectedRoute(async (request: NextRequest, {token})=> {
       body: JSON.stringify(changes),
     });
 
-    if (!backendResponse.ok) {
-      const errorData = await backendResponse.json().catch(() => ({}));
-      return NextResponse.json(errorData || { message: 'Ошибка бэкенда' }, {
-        status: backendResponse.status,
-      });
-    }
+    // `.json().catch(() => ({}))` съедал непарсируемое тело: клиент получал `{}`
+    // и показывал «Ошибка бэкенда» вместо реального сообщения.
+    if (!backendResponse.ok) return backendErrorResponse(backendResponse);
 
     await backendResponse.json();
 
@@ -67,6 +65,10 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     },
     body: JSON.stringify(param),
   });
+
+  // Ответ не проверялся вовсе: отказ бэкенда возвращался клиенту как 201 с телом
+  // ошибки, и параметр «добавлялся» только в интерфейсе.
+  if (!response.ok) return backendErrorResponse(response);
 
   const newParam = await response.json().catch(() => null);
 

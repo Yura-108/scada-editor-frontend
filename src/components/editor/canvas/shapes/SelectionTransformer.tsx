@@ -7,6 +7,7 @@ import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { snap } from "@/lib/utils";
 import { MIN_SIZE } from "../types";
+import { useThemeColors } from "../useThemeColors";
 
 interface Props {
   /** Одиночный выделенный бокс-элемент (не group/text/circle/line/polygon). */
@@ -25,6 +26,7 @@ interface Props {
  */
 export function SelectionTransformer({ element, stageRef, updateElementVisual, zoom }: Props) {
   const trRef = useRef<Konva.Transformer>(null);
+  const { themeColors } = useThemeColors();
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -81,9 +83,9 @@ export function SelectionTransformer({ element, stageRef, updateElementVisual, z
       borderStrokeWidth={1 / zoom}
       padding={6 / zoom}
       rotateAnchorOffset={18 / zoom}
-      anchorStroke="#3b82f6"
-      anchorFill="#ffffff"
-      borderStroke="#3b82f6"
+      anchorStroke={themeColors.selection}
+      anchorFill={themeColors.handleFill}
+      borderStroke={themeColors.selection}
       borderDash={[4, 3]}
       ignoreStroke
       boundBoxFunc={(oldBox, newBox) =>

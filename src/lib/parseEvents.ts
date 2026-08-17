@@ -8,10 +8,13 @@ const isEnvelopedHandler = (raw: unknown): raw is {v: 1; code: string; propertyR
   (raw as {v?: unknown}).v === 1 && typeof (raw as {code?: unknown}).code === "string";
 
 /**
- * Восстанавливает ElementEvents из DTO-массива бэкенда `{event_type, script}[]`.
+ * Восстанавливает ElementEvents из DTO-массива бэкенда `{id?, event_type, script}[]`.
  * `script` — либо сырой JS (как в примере бэкенда), либо наш JSON-конверт
  * `{v:1, code, propertyRefs}` (когда обработчик ссылается на свойства других
  * компонентов). Нераспознанное — пропускаем.
+ *
+ * `id` запоминаем в `serverId`, чтобы вернуть его следующим сохранением как получили
+ * (§2 контракта версий).
  */
 export const parseEvents = (raw: unknown): ElementEvents => {
   if (!Array.isArray(raw)) return [];
@@ -35,7 +38,12 @@ export const parseEvents = (raw: unknown): ElementEvents => {
     } catch {
       // не JSON — сырой код, используем как есть
     }
-    result.push({event_type: eventType as ElementEventName, handler: {code, propertyRefs}});
+    const serverId = (item as {id?: unknown}).id;
+    result.push({
+      event_type: eventType as ElementEventName,
+      handler: {code, propertyRefs},
+      ...(typeof serverId === "number" || typeof serverId === "string" ? {serverId} : {}),
+    });
   }
   return result;
 };

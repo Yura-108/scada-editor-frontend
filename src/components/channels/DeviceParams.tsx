@@ -6,13 +6,20 @@ import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus} from 'lucide-rea
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
-import {ContextMenuType} from "@/types/contextMenu.type";
+import {
+  ContextMenuTrigger,
+  ContextMenuType,
+  contextMenuTriggerFromKey,
+  isContextMenuKey,
+} from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
-import { isEditingDevice } from "@/lib/useIsEditingDevice";
+import { useEditingDevices } from "@/lib/useIsEditingDevice";
 import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
 import {useUnlockEditingOnUnload} from "@/lib/useUnlockEditingOnUnload";
 import {resolveParamWidget, isParamChecked} from "@/lib/paramWidget";
+import {confirmModal} from "@/components/ui/ConfirmModal";
+import {toast} from "sonner";
 
 const DeviceParams = () => {
   const {
@@ -26,6 +33,12 @@ const DeviceParams = () => {
     toggleEditing,
     getParamsTypes,
   } = useDeviceStore();
+
+  // Реактивный признак блокировки: раньше читался через getState() прямо в
+  // рендере, поэтому подпись кнопки и блокировка формы не обновлялись, пока
+  // компонент не перерисовывался по другой причине.
+  const editingDevices = useEditingDevices();
+  const isEditingSelected = !!selectedDevice && editingDevices.includes(selectedDevice);
 
   // Снятие redis-локов при перезагрузке/закрытии вкладки (sendBeacon).
   // SPA-навигацию закрывает cleanup-эффект ниже.
@@ -43,7 +56,6 @@ const DeviceParams = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
-  // const [isModalOpen, setIsModalOpen] = useState(false);
 
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
@@ -115,15 +127,23 @@ const DeviceParams = () => {
     return editedParams.size > 0;
   }, [editedParams]);
 
-  const handleRemoveParam = (key: string) => {
-    if (confirm('Вы уверены, что хотите удалить этот параметр?')) {
-      removeParam(key)
-        .then(() => {
-          console.log(`Параметр ${key} удалён`);
-        })
-        .catch((err) => {
-          console.error('Ошибка при удалении параметра:', err);
-        });
+  const handleRemoveParam = async (key: string) => {
+    const confirmed = await confirmModal({
+      title: 'Удалить параметр?',
+      description: 'Параметр будет удалён безвозвратно.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await removeParam(key);
+      toast.success('Параметр удалён');
+    } catch (err) {
+      // Раньше ошибка уходила только в консоль: строка оставалась на экране,
+      // и пользователь считал, что удаление прошло.
+      console.error('Ошибка при удалении параметра:', err);
+      toast.error(err instanceof Error ? err.message : 'Не удалось удалить параметр');
     }
   }
   const handleChange = (key: string, value: string) => {
@@ -145,43 +165,33 @@ const DeviceParams = () => {
     setIsSaving(true);
 
     try {
-      const arrayChanges: Array<{key: string; value: string}> = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key?.startsWith('device-params-draft:')) continue;
-        const raw = localStorage.getItem(key);
+      // Отправляем ТОЛЬКО черновик текущего устройства. Раньше здесь перебирался
+      // весь localStorage по префиксу 'device-params-draft:', из-за чего кнопка,
+      // активная по изменениям одного устройства (hasChanges), записывала заодно
+      // устаревшие черновики других устройств и других сессий.
+      const arrayChanges: Array<{key: string; value: string}> = [...editedParams].map(
+        ([key, value]) => ({key, value}),
+      );
 
-        if (!raw) continue;
-        const parsed: {key: string; value: string}[] = JSON.parse(raw);
-
-        parsed.forEach(item => {
-          arrayChanges.push({
-            key: item.key,
-            value: item.value,
-          });
-        });
+      if (arrayChanges.length === 0) {
+        setSaveStatus('idle');
+        return;
       }
 
-      if (arrayChanges.length > 0) {
-        await updateParam(arrayChanges);
-      }
+      await updateParam(arrayChanges);
 
-      // очистка после успеха
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key?.startsWith('device-params-draft:')) {
-          localStorage.removeItem(key);
-        }
-      }
+      // Очистка после успеха — тоже только текущего устройства.
+      if (draftKey) localStorage.removeItem(draftKey);
       setEditedParams(new Map());
       setSaveStatus('success');
     } catch (err) {
+      console.error('Ошибка сохранения параметров:', err);
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
   }
-  const handleContextMenu = (e: React.MouseEvent, key: string | null = null) => {
+  const handleContextMenu = (e: ContextMenuTrigger, key: string | null = null) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -210,7 +220,7 @@ const DeviceParams = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-600 dark:text-gray-400">
         <div className="text-center">
-          <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          <div className="bg-gray-100 dark:bg-neutral-800 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
             <AlertCircle className="w-12 h-12"/>
           </div>
           <p className="text-lg">Нет параметров для отображения</p>
@@ -219,19 +229,19 @@ const DeviceParams = () => {
     );
   }
   return (
-    <div className="min-h-screen flex flex-col bg-linear-to-b from-gray-50 to-white rounded-2xl shadow-xl">
+    <div className="min-h-app flex flex-col bg-linear-to-b from-gray-50 to-white dark:from-neutral-900 dark:to-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl">
       {/* Заголовок */}
-      <div className="px-6 py-4  bg-linear-to-r rom-purple-100 to-indigo-200 rounded-2xl">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-          <Settings className="w-6 h-6 text-purple-600"/>
+      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200 dark:from-purple-950/60 dark:to-indigo-950/60 rounded-2xl">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+          <Settings className="w-6 h-6 text-purple-600 dark:text-purple-400"/>
           Параметры
         </h2>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {currentDevice?.title || 'Device'} • {rawParams.length} параметров
         </p>
       </div>
       {/* Футер с кнопкой */}
-      <div className="px-6 border-b-2 py-2 border-t border-gray-200 bg-white">
+      <div className="px-6 border-b-2 py-2 border-t border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
         <div className="flex items-center gap-2">
           <button
             className={clsx(
@@ -240,11 +250,11 @@ const DeviceParams = () => {
             onClick={() => toggleEditing(selectedDevice)}
           >
             <Edit3 className="w-5 h-5"/>
-            {isEditingDevice(selectedDevice) ? 'Закончить редактирование' : 'Начать редактирование'}
+            {isEditingSelected ? 'Закончить редактирование' : 'Начать редактирование'}
           </button>
 
           <button
-            disabled={!isEditingDevice(selectedDevice)}
+            disabled={!isEditingSelected}
             className={clsx(
               'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
 
@@ -287,13 +297,13 @@ const DeviceParams = () => {
 
           <div className="flex items-center gap-3">
             {saveStatus === 'success' && (
-              <div className="flex items-center gap-2 text-green-600 font-medium">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
                 <CheckCircle2 className="w-5 h-5"/>
                 Сохранено!
               </div>
             )}
             {saveStatus === 'error' && (
-              <div className="flex items-center gap-2 text-red-600 font-medium">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-medium">
                 <AlertCircle className="w-5 h-5"/>
                 Ошибка сохранения
               </div>
@@ -305,7 +315,7 @@ const DeviceParams = () => {
       <div
         className={clsx(
           "relative transition-all",
-          !isEditingDevice(selectedDevice) && "pointer-events-none select-none opacity-50",
+          !isEditingSelected && "pointer-events-none select-none opacity-50",
         )}
       >
         {/* Форма */}
@@ -330,7 +340,7 @@ const DeviceParams = () => {
                       type="text"
                       value={value}
                       onChange={(e) => handleChange(keyStr, e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all text-gray-800 font-medium"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 hover:border-gray-400 dark:hover:border-neutral-600 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 dark:focus:ring-purple-500/20 outline-none transition-all text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-500 font-medium"
                       placeholder="Введите значение..."
                     />
                   )}
@@ -340,7 +350,7 @@ const DeviceParams = () => {
                       value={value}
                       onChange={(e) => handleChange(keyStr, e.target.value)}
                       rows={4}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 hover:border-gray-400 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all resize-none font-medium text-gray-800"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 hover:border-gray-400 dark:hover:border-neutral-600 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 dark:focus:ring-purple-500/20 outline-none transition-all resize-none font-medium text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-500"
                       placeholder="Введите описание..."
                     />
                   )}
@@ -356,7 +366,7 @@ const DeviceParams = () => {
                       />
                       <label
                         htmlFor={`cb-${param.key}`}
-                        className="text-lg font-medium text-gray-700 cursor-pointer"
+                        className="text-lg font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
                       >
                         {checked ? 'Включено' : 'Выключено'}
                       </label>
@@ -382,21 +392,32 @@ const DeviceParams = () => {
 
         {/* Общие параметры */}
         <div className='text-sm group relative flex flex-col justify-between transition-all duration-200 px-6 py-6 col-span-2'>
-          <label className="block text-lg font-semibold text-gray-700 mb-3">
+          <label className="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Общие параметры
           </label>
           <div
             onContextMenu={(e) => handleContextMenu(e, null)}
-            className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 hover:border-gray-400 transition-all text-gray-600 dark:text-gray-400 "}
+            className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 dark:border-neutral-700 bg-white dark:bg-neutral-950 transition-all text-gray-600 dark:text-gray-400 "}
           >
             {optionItems.map(p => (
+              // Строка достижима с клавиатуры: единственное действие над ней —
+              // контекстное меню, а раньше на ней висел только onContextMenu,
+              // то есть без мыши параметр было не удалить.
               <div
                 key={p.key}
+                role="button"
+                tabIndex={0}
+                title="Правая кнопка мыши или Shift+F10 — меню параметра"
                 onContextMenu={(e) => handleContextMenu(e, p.key)}
+                onKeyDown={(e) => {
+                  if (isContextMenuKey(e) || e.key === "Enter" || e.key === " ") {
+                    handleContextMenu(contextMenuTriggerFromKey(e), p.key);
+                  }
+                }}
                 className={clsx(
                   "text-gray-700 dark:text-gray-300 px-2 py-1 cursor-pointer transition-all duration-150 \n" +
                   "    border-l-0 hover:border-l-4 hover:border-blue-500",
-                  contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300" : ""
+                  contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300 dark:bg-blue-500/40" : ""
                 )}
               >
                 {p.value}
@@ -406,12 +427,6 @@ const DeviceParams = () => {
         </div>
 
       </div>
-      {/* Модальное окно добавления параметра */}
-      {/*<AddParamModal*/}
-      {/*  open={isModalOpen}*/}
-      {/*  onClose={() => setIsModalOpen(false)}*/}
-      {/*  onAdd={(type, name) => handleAddParam(type, name)}*/}
-      {/*/>*/}
     </div>
   );
 };

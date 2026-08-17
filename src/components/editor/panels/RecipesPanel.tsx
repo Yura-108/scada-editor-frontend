@@ -8,6 +8,7 @@ import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeDto} from "@/types/recipe.types";
 import openRecipeModal from "@/components/editor/recipes/RecipeModal";
 import {sortByRow} from "@/lib/editor/rowBinding";
+import {confirmModal} from "@/components/ui/ConfirmModal";
 
 export function RecipesPanel() {
   const elements = useEditorStore((s) => s.elements);
@@ -42,15 +43,22 @@ export function RecipesPanel() {
     "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
   );
 
-  const handleDelete = (recipe: RecipeDto) => {
-    if (!window.confirm(`Удалить рецепт «${recipe.name}»?`)) return;
+  const handleDelete = async (recipe: RecipeDto) => {
+    const confirmed = await confirmModal({
+      title: `Удалить рецепт «${recipe.name}»?`,
+      description: "Рецепт и его значения будут удалены безвозвратно.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!confirmed) return;
     void deleteRecipe(recipe.id);
   };
 
   return (
     <div className="p-6 space-y-5 max-w-4xl">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Рецепты</h1>
+        {/* Единый вид заголовка панели (как в «Слоях» и «Свойствах»). */}
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">Рецепты</h3>
 
         <div className="flex items-center gap-2">
           <select

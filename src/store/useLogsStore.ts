@@ -9,6 +9,14 @@ interface LogsState {
   searchQuery: string;
   isLoading: boolean;
   error: string | null;
+  /**
+   * Запрос за период уже выполнялся хотя бы раз.
+   *
+   * Без этого начальное состояние (`logs: []`) неотличимо от «за период ничего
+   * не найдено», и при первом заходе страница сообщала об отсутствии данных за
+   * период, который пользователь ещё не выбирал.
+   */
+  hasSearched: boolean;
 
   setSearchQuery: (query: string) => void;
   setFromDate: (date: string) => void;
@@ -26,13 +34,15 @@ export const useLogsStore = create<LogsState>((set, get) => ({
     searchQuery: '',
     isLoading: false,
     error: null,
+    hasSearched: false,
     setFromDate: (date) => set({fromDate: date}),
     setToDate: (date) => set({toDate: date}),
     clearStore: () => set({
       fromDate: '',
       toDate: '',
       logs: [],
-      error: null
+      error: null,
+      hasSearched: false,
     }),
     setSearchQuery: (query) => set({searchQuery: query}),
     getFilteredLogs: () => {
@@ -55,6 +65,13 @@ export const useLogsStore = create<LogsState>((set, get) => ({
         return;
       }
 
+      // Перевёрнутый диапазон бэкенд молча возвращал пустым, и это выглядело
+      // как «за период ничего не происходило».
+      if (new Date(fromDate).getTime() > new Date(toDate).getTime()) {
+        set({error: 'Начальная дата позже конечной — проверьте диапазон.'});
+        return;
+      }
+
       set({isLoading: true, error: null});
 
       try {
@@ -74,10 +91,10 @@ export const useLogsStore = create<LogsState>((set, get) => ({
         }
 
         const data = await response.json();
-        set({logs: data, isLoading: false});
+        set({logs: Array.isArray(data) ? data : [], isLoading: false, hasSearched: true});
 
       } catch (err: any) {
-        set({error: err.message, isLoading: false});
+        set({error: err.message, isLoading: false, hasSearched: true});
       }
     }
   }),

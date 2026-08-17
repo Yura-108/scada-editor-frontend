@@ -10,14 +10,18 @@ import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/components/ui/SwitcherIcon';
 import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
-import {ContextMenuType} from "@/types/contextMenu.type";
+import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
 
 const DeviceTreePanel = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const {
     nodes,
     selectedDevice,
-    handleContextAction
+    handleContextAction,
+    isLoadingNodes,
+    nodesError,
+    loadedRootPath,
+    loadNodes,
   } = useDeviceStore();
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
@@ -29,7 +33,7 @@ const DeviceTreePanel = () => {
   };
 
   const handleContextMenu = useCallback(
-    (e: React.MouseEvent, node: DeviceNodeType | null) => {
+    (e: ContextMenuTrigger, node: DeviceNodeType | null) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -54,10 +58,6 @@ const DeviceTreePanel = () => {
     },
     [handleSelect, setContextMenu] // зависимости
   );
-
-  // const handleAddDevice = async () => {
-  //   await handleContextAction('add', null);
-  // }
 
   const treeData = useMemo(() => {
     const map = new Map<string, DataNode>();
@@ -148,14 +148,14 @@ const DeviceTreePanel = () => {
   }, [nodes]);
 
   return (
-    <div className="h-[60vh] md:h-[calc(100vh-4rem)] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
-      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-          <Router className={'w-6 h-6 text-purple-600'}/>
+    <div className="h-[60vh] md:h-app bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200 dark:from-purple-950/60 dark:to-indigo-950/60">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+          <Router className={'w-6 h-6 text-purple-600 dark:text-purple-400'}/>
           Дерево устройств
         </h2>
-        <p className="text-sm text-gray-600 mt-1">
-          {deviceCount} устройств • {channelCount} каналов
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}
         </p>
       </div>
 
@@ -163,32 +163,47 @@ const DeviceTreePanel = () => {
         className="flex-1 overflow-y-auto custom-scrollbar px-2 py-4"
         onContextMenu={(e) => handleContextMenu(e, null)}
       >
-        <Tree
-          treeData={treeData}
-          showLine={false}
-          showIcon={false}
-          switcherIcon={SwitcherIcon}
-          selectedKeys={selectedDevice ? [selectedDevice] : []}
-          onSelect={handleSelect}
-          defaultExpandAll={false}
-          className="custom-tree"
-        />
-
-        {/*<button*/}
-        {/*  className={clsx(*/}
-        {/*    "flex items-center gap-2 px-4 py-2 mt-2",*/}
-        {/*    "hover:bg-gray-200",*/}
-        {/*    "rounded-xl",*/}
-        {/*    "text-sm text-gray-800 font-medium",*/}
-        {/*    "transition-all duration-200",*/}
-        {/*    "active:scale-95"*/}
-        {/*  )}*/}
-        {/*  onClick={handleAddDevice}*/}
-        {/*>*/}
-        {/*  <Plus size={18} />*/}
-        {/*  Добавить устройство*/}
-        {/*</button>*/}
-
+        {/* Раньше во время загрузки дерево показывало «0 устройств • 0 каналов»,
+            а ошибка загрузки была видна только в консоли. */}
+        {isLoadingNodes ? (
+          <div className="space-y-2 px-2" aria-busy="true" aria-label="Загрузка дерева устройств">
+            {Array.from({length: 8}).map((_, i) => (
+              <div
+                key={i}
+                className="h-6 rounded bg-gray-200 dark:bg-neutral-800 animate-pulse"
+                style={{width: `${90 - (i % 4) * 15}%`}}
+              />
+            ))}
+          </div>
+        ) : nodesError ? (
+          <div className="mx-2 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-700 dark:text-red-300">
+            <p className="font-medium">Не удалось загрузить дерево устройств</p>
+            <p className="mt-1 break-words">{nodesError}</p>
+            {loadedRootPath && (
+              <button
+                onClick={() => void loadNodes(loadedRootPath)}
+                className="mt-3 rounded-md bg-red-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600"
+              >
+                Повторить
+              </button>
+            )}
+          </div>
+        ) : treeData.length === 0 ? (
+          <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+            Дерево пусто — выберите площадку и проект ниже
+          </div>
+        ) : (
+          <Tree
+            treeData={treeData}
+            showLine={false}
+            showIcon={false}
+            switcherIcon={SwitcherIcon}
+            selectedKeys={selectedDevice ? [selectedDevice] : []}
+            onSelect={handleSelect}
+            defaultExpandAll={false}
+            className="custom-tree"
+          />
+        )}
 
         {/* Контекстное меню */}
         {contextMenu && (

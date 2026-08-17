@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/channels', '/editor', '/monitor'];
+const protectedRoutes = ['/channels', '/editor', '/monitor', '/log'];
 const authRoutes = ['/login', '/register'];
 
 export function proxy(request: NextRequest) {
@@ -14,8 +14,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/channels', request.url));
   }
 
+  // Совпадение только по границе сегмента: голый startsWith('/log') поймал бы и
+  // '/login', отправив страницу входа в бесконечный редирект на саму себя.
+  const isProtected = protectedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+
   // Если не авторизован и пытается зайти
-  if (!token && protectedRoutes.some((route) => pathname.startsWith(route))) {
+  if (!token && isProtected) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -32,5 +38,13 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/register', "/editor/:path*", '/channels/:path*', '/monitor/:path*'],
+  matcher: [
+    '/',
+    '/login',
+    '/register',
+    '/editor/:path*',
+    '/channels/:path*',
+    '/monitor/:path*',
+    '/log/:path*',
+  ],
 };

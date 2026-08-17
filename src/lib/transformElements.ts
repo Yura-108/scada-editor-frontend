@@ -97,6 +97,9 @@ export default function transformElements(
       }
       return {
         id: state.id != null ? String(state.id) : createUuid(),
+        // serverId ставим ТОЛЬКО если id действительно пришёл с сервера: локальный
+        // uuid отправлять обратно нельзя (см. ComponentState.serverId).
+        ...(state.id != null ? {serverId: state.id} : {}),
         name: state.name,
         overrides,
         isDefault: state.isDefault ?? index === 0,
@@ -200,6 +203,9 @@ export default function transformElements(
       children: [], // Will be populated by children's processing
       scripts: normalizeArray(el.scripts).map((s: Record<string, unknown>) => ({
         id: s.id != null ? String(s.id) : createUuid(),
+        // serverId — только когда id действительно пришёл с сервера: локальный uuid
+        // отправлять обратно нельзя (то же правило, что у ComponentState.serverId).
+        ...(typeof s.id === "number" || typeof s.id === "string" ? {serverId: s.id} : {}),
         name: String(s.name ?? ""),
         content: String(s.content ?? s.script ?? ""),
       })),

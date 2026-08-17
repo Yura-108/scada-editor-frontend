@@ -24,6 +24,60 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
 };
 
 
+/**
+ * Русские названия типов элементов.
+ *
+ * Заголовок панели свойств собирался как `${type} Properties` — в полностью
+ * русском интерфейсе получалось «Progress_bar Properties»: английское слово
+ * плюс сырой snake_case идентификатор типа.
+ */
+export const elementTypeLabels: Record<ElementType, string> = {
+  button: "Кнопка",
+  progress_bar: "Индикатор выполнения",
+  checkbox: "Флажок",
+  text: "Текст",
+  polygon: "Многоугольник",
+  path: "Кривая",
+  rectangle: "Прямоугольник",
+  circle: "Окружность",
+  line: "Линия",
+  group: "Группа",
+  toggle: "Переключатель",
+  slider: "Ползунок",
+  dropdown: "Выпадающий список",
+  input: "Поле ввода",
+  image: "Изображение",
+  custom: "Компонент",
+  gauge: "Стрелочный прибор",
+  table: "Таблица",
+  trend: "График",
+  chart: "Диаграмма",
+};
+
+/** Название типа для интерфейса; неизвестный тип показываем как есть. */
+export const elementTypeLabel = (type: string): string =>
+  elementTypeLabels[type as ElementType] ?? type;
+
+/**
+ * Типы, рендерер которых реально применяет `rotation={rendered.rotate || 0}`.
+ *
+ * Поле «Поворот°» показывалось для всех типов кроме `group`, но у `polygon`,
+ * `circle`, `line`, текста и таблицы поворот никуда не прокидывается — значение
+ * записывалось в элемент и молча не давало эффекта. Список держим здесь, рядом
+ * с реестром: при добавлении rotation в очередную фигуру её нужно внести сюда.
+ */
+export const ROTATABLE_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([
+  "rectangle",
+  "button",
+  "checkbox",
+  "dropdown",
+  "image",
+  "input",
+  "progress_bar",
+  "slider",
+  "toggle",
+]);
+
 export const basePropertySchema: PropertySchema[] = [
   {
     key: "label",

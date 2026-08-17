@@ -1,3 +1,4 @@
+import {devLog, isDev} from "@/lib/devLog";
 import type {DiagramElement} from "@/types/editorElement.type";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
@@ -105,11 +106,13 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
     }
   }
 
-  console.log(
+  devLog(
     `[monitor:engine] индекс собран: биндингов ${all.length}, ошибок компиляции ${compileErrors.size}, отслеживаемых тегов ${tagIds.size}, свойств ${propertyIds.size}`,
   );
-  if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
-  if (propertyIds.size) console.table([...propertyIds].map(propertyId => ({propertyId})));
+  if (isDev) {
+    if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
+    if (propertyIds.size) console.table([...propertyIds].map(propertyId => ({propertyId})));
+  }
 
   return {
     byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds,

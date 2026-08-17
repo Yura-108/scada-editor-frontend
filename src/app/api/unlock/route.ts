@@ -5,7 +5,6 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const editingDevicesKeys = await req.json();
-  console.log(editingDevicesKeys);
   if (!editingDevicesKeys) {
     return NextResponse.json(
       {error: "Массив пуст!"},

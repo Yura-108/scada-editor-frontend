@@ -1,4 +1,5 @@
 import { protectedRoute } from "@/lib/protected";
+import { backendErrorResponse } from "@/lib/backendProxy";
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
@@ -27,13 +28,10 @@ export const GET = protectedRoute(async (req: NextRequest, { token }) => {
       cache: 'no-store'
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      return NextResponse.json(
-        { error: `Backend error: ${text}` },
-        { status: response.status }
-      );
-    }
+    // Тело бэкенда пробрасываем как есть: обёртка `{error: "Backend error: …"}`
+    // прятала `message` из Spring-ответа, и в тосте вместо причины отказа
+    // оказывался сырой JSON-блоб.
+    if (!response.ok) return backendErrorResponse(response);
 
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);
@@ -61,18 +59,7 @@ export const POST = protectedRoute(async (req: NextRequest, { token }) => {
     });
 
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('--- BACKEND ERROR REPORT ---');
-      console.log('Status:', response.status);
-      console.log('Message from Backend:', errorText);
-      console.log('----------------------------');
-
-      return NextResponse.json(
-        { error: `Backend error: ${errorText}` },
-        { status: response.status }
-      );
-    }
+    if (!response.ok) return backendErrorResponse(response);
 
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);

@@ -1,5 +1,6 @@
 "use client";
 
+import {devLog} from "@/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
@@ -23,7 +24,7 @@ const MAX_CONSECUTIVE_ERRORS = 5;
  *  (обрыв Kafka-консьюмера на бэкенде не рвёт WS, ts — единственный признак). */
 const STALE_THRESHOLD_MS = 10_000;
 
-const log = (...args: unknown[]) => console.log("[monitor:engine]", ...args);
+const log = (...args: unknown[]) => devLog("[monitor:engine]", ...args);
 
 /** quality отсутствует или "GOOD" — достоверно; всё остальное — нет (не сравнивать на "BAD"). */
 const isTagQualityGood = (quality?: string) => quality === undefined || quality === "GOOD";

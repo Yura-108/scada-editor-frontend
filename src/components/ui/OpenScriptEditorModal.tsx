@@ -6,6 +6,7 @@ import {java} from "@codemirror/lang-java";
 import {Wand2} from "lucide-react";
 import {formatCode} from "@/lib/formatCode";
 import {TitleWithHint} from "./codeModalParts";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface ScriptModalProps {
   title: string;
@@ -100,27 +101,16 @@ export function ScriptEditorModalContent({
         </div>
       </div>
 
-      <div className="shrink-0 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800
-          hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600
-            transition-colors text-gray-800 dark:text-gray-300"
-        >
-          Отмена
-        </button>
-        <button
+      <ModalFooter className="shrink-0 mt-0">
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button
+          variant="primary"
           onClick={handleConfirmAction}
           disabled={!name.trim() || !content.trim() || isLoading}
-          className="px-6 py-2.5 rounded-lg font-medium
-          bg-linear-to-r from-indigo-600 to-blue-600
-          hover:from-indigo-500 hover:to-blue-500
-          disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 disabled:text-gray-500
-          text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
         >
           {isLoading ? "Загрузка..." : confirmLabel}
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </div>
   )
 }

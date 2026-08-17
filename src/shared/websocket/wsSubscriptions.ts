@@ -1,3 +1,4 @@
+import {devLog} from "@/lib/devLog";
 import { wsClient } from "./wsClient";
 import { useDeviceStore } from "@/store/useDeviceStore";
 import type { StompSubscription } from "@stomp/stompjs";
@@ -22,10 +23,10 @@ export function subscribeDeviceTree(site: string, project: string) {
   // ❗ защита от двойной подписки
   if (subscriptions.has(destination)) return;
 
-  console.log("subscribed device tree", site, project);
+  devLog("[ws] подписка на дерево устройств", site, project);
   const sub = wsClient.subscribe(destination, (msg) => {
     const event: WSEvent = JSON.parse(msg.body);
-    console.log(event);
+    devLog("[ws] событие дерева устройств", event);
 
     useDeviceStore.setState((state) => {
       switch (event.type) {

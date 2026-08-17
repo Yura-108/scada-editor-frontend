@@ -25,14 +25,27 @@ import { ChartShapeElement } from "./ChartShapeElement";
 interface ShapeElementProps {
   el: DiagramElement;
   ctx: EditorRenderContext;
+  /** Уже с учётом Transformer: у его цели своя рамка не рисуется. */
+  isSelected: boolean;
+  /** Текст редактируется инлайн — Konva-текст прячется под textarea. */
+  isEditing: boolean;
+  /** Сфокусированная ячейка таблицы, если она принадлежит этому элементу. */
+  focusedCell: { elementKey: string; row: number; col: number } | null;
 }
 
-/** Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect). */
-function ShapeElementBase({ el, ctx }: ShapeElementProps) {
+/**
+ * Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect).
+ *
+ * Всё изменчивое приходит пропами от CanvasNode, который подписан на свой срез
+ * стора: раньше эти же данные читались из общего контекста, и любое изменение
+ * схемы перерисовывало все фигуры сразу.
+ */
+function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: ShapeElementProps) {
   const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
-  // Когда к элементу прицеплен Transformer, его рамка заменяет собственную
-  // пунктирную рамку фигуры (двойная рамка выглядит грязно).
-  const isSelected = ctx.selectedIds.includes(el.key) && el.key !== ctx.transformerKey;
+  // Ref объявляем на верхнем уровне (правила хуков — ниже идут условные return).
+  // Раньше в ветке круга вызывался React.createRef() прямо в рендере: он создаёт
+  // НОВЫЙ ref на каждый рендер, и CircleResizeHandle мог получить отцепленный.
+  const circleRef = React.useRef<Konva.Circle>(null);
   const rendered = getRenderedElement(el) as LeafElement;
 
   if (rendered.type === "polygon") {
@@ -67,7 +80,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
           points={pts as number[]}
           closed={true}
           fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
           strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
           draggable
           onDragEnd={(e) => {
@@ -75,9 +88,11 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
             const dx = node.x();
             const dy = node.y();
             node.position({ x: 0, y: 0 });
+            // Смещение уже привязано общим обработчиком Stage (сетка +
+            // направляющие, см. useMultiDragAndGuides) — повторно не снапим.
             updateElementVisual(el.key, {
-              x: snap(rendered.x + dx),
-              y: snap(rendered.y + dy),
+              x: rendered.x + dx,
+              y: rendered.y + dy,
             });
           }}
           onClick={(e) => {
@@ -117,7 +132,6 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
     const r = rendered.radius || rendered.w / 2 || 40;
     const cx = rendered.x + r;
     const cy = rendered.y + r;
-    const circleRef = React.createRef<Konva.Circle>();
     return (
       <Group key={el.key} id={el.key}>
         <Circle
@@ -126,7 +140,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
           y={cy}
           radius={r}
           fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-          stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+          stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
           strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
           draggable
           onDragEnd={(e) => {
@@ -135,7 +149,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
             const dx = nx - cx;
             const dy = ny - cy;
             e.target.position({ x: cx, y: cy });
-            updateElementVisual(el.key, { x: snap(rendered.x + dx), y: snap(rendered.y + dy) });
+            updateElementVisual(el.key, { x: rendered.x + dx, y: rendered.y + dy });
           }}
           onClick={(e) => {
             e.cancelBubble = true;
@@ -164,7 +178,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
     const x2 = rendered.x2 ?? rendered.x + 80;
     const y2 = rendered.y2 ?? rendered.y;
 
-    const lineStroke = isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault);
+    const lineStroke = isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault);
     const lineWidth = rendered.strokeWidth || 2;
     // Стиль пунктира: "5 5" / "10 5 2 5" → [5,5] / [10,5,2,5]; пусто → сплошная.
     const dashArr = (() => {
@@ -197,9 +211,9 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
             const dy = e.target.y();
             e.target.position({ x: 0, y: 0 });
             updateElementVisual(el.key, {
-              x1: snap(x1 + dx), y1: snap(y1 + dy),
-              x2: snap(x2 + dx), y2: snap(y2 + dy),
-              x: snap((x1 + x2) / 2 + dx), y: snap((y1 + y2) / 2 + dy),
+              x1: x1 + dx, y1: y1 + dy,
+              x2: x2 + dx, y2: y2 + dy,
+              x: (x1 + x2) / 2 + dx, y: (y1 + y2) / 2 + dy,
             });
           }}
           onClick={(e) => {
@@ -246,7 +260,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
       <TextShapeElement
         el={el}
         isSelected={isSelected}
-        isEditing={ctx.editingTextKey === el.key}
+        isEditing={isEditing}
         snap={snap}
         onElementClick={onElementClick}
         onStartTextEdit={ctx.onStartTextEdit}
@@ -308,7 +322,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
       <TableShapeElement
         el={el} isSelected={isSelected} snap={snap}
         onElementClick={onElementClick} updateElementVisual={updateElementVisual}
-        focusedCell={ctx.selectedTableCell?.elementKey === el.key ? ctx.selectedTableCell : null}
+        focusedCell={focusedCell}
         onCellClick={ctx.onTableCellClick}
       />
     );
@@ -336,8 +350,8 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
       draggable
       onDragEnd={(e) => {
         updateElementVisual(el.key, {
-          x: snap(e.target.x()),
-          y: snap(e.target.y()),
+          x: e.target.x(),
+          y: e.target.y(),
         });
       }}
       onClick={(e) => {
@@ -349,7 +363,7 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
         width={rendered.w}
         height={rendered.h}
         fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-        stroke={isSelected ? "#3b82f6" : (rendered.strokeColor || themeColors.strokeDefault)}
+        stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
         strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
         cornerRadius={rendered.rx || 0}
       />
@@ -369,8 +383,5 @@ function ShapeElementBase({ el, ctx }: ShapeElementProps) {
   );
 }
 
-/**
- * Мемоизировано: ctx собирается в Canvas через useMemo, поэтому пан/зум/маркиз/меню
- * не меняют его identity — вся сцена пропускает ре-рендер (иначе O(N) на каждый тик колеса).
- */
+/** Мемоизировано: пропы — сам элемент, стабильный ctx и несколько примитивов. */
 export const ShapeElement = React.memo(ShapeElementBase);

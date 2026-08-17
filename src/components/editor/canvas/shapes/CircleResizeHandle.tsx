@@ -3,6 +3,7 @@
 import React, { useRef } from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
+import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GRID } from "@/lib/utils";
 import { useEditorStore } from "@/store/useEditorStore";
 
@@ -59,7 +60,7 @@ export function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual
       }}
       onMouseLeave={e => {
         const container = e.target.getStage()?.container();
-        if (container) container.style.cursor = "default";
+        resetCanvasCursor(container);
       }}
     />
   );

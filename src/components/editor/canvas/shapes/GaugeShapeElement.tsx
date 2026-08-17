@@ -5,8 +5,9 @@ import { Group, Rect, Arc, Line, Text, Circle } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
+import { SelectionOutline } from "./SelectionOutline";
 
-export function GaugeShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+export function GaugeShapeElement({ el, isSelected, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const pad = 4;
 
@@ -86,14 +87,11 @@ export function GaugeShapeElement({ el, isSelected, snap, onElementClick, update
       x={rendered.x}
       y={rendered.y}
       draggable
-      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onDragEnd={(e) => updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() })}
       onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
     >
       {isSelected && (
-        <Rect
-          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
-          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
-        />
+        <SelectionOutline x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2} />
       )}
 
       {/* Фон */}

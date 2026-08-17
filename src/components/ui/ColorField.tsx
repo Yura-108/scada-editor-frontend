@@ -1,8 +1,9 @@
 "use client";
 
-import React, {useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Ban} from "lucide-react";
 import {cn} from "@/lib/utils";
+import {beginHistoryGroup, endHistoryGroup} from "@/lib/editor/historyGroup";
 
 interface ColorFieldProps {
   id: string;
@@ -25,6 +26,24 @@ const CHECKER = "repeating-conic-gradient(#c9c9c9 0% 25%, #ffffff 0% 50%) 50% / 
 export function ColorField({id, label, value, onChange, inputClassName}: ColorFieldProps) {
   // Черновик hex-ввода: пока пользователь печатает невалидное значение, не сбрасываем ввод.
   const [draft, setDraft] = useState<string | null>(null);
+
+  // Ведение по палитре шлёт onChange непрерывно — это десятки правок в секунду,
+  // каждая из которых была отдельным шагом undo. Всё ведение до потери фокуса
+  // склеиваем в один шаг.
+  const groupingRef = useRef(false);
+  const beginGrouping = () => {
+    if (groupingRef.current) return;
+    groupingRef.current = true;
+    beginHistoryGroup();
+  };
+  const endGrouping = () => {
+    if (!groupingRef.current) return;
+    groupingRef.current = false;
+    endHistoryGroup();
+  };
+  // Страховка: элемент могли снять с выделения прямо во время ведения —
+  // без этого история осталась бы на паузе навсегда.
+  useEffect(() => endGrouping, []);
 
   const isTransparent = value === "transparent";
   const pickerValue = value && HEX_RE.test(value) && value.length === 7 ? value : "#ffffff";
@@ -64,7 +83,8 @@ export function ColorField({id, label, value, onChange, inputClassName}: ColorFi
           type="color"
           className={cn(inputClassName, "h-9 w-12 p-1 cursor-pointer shrink-0")}
           value={pickerValue}
-          onChange={(e) => { setDraft(null); onChange(e.target.value); }}
+          onChange={(e) => { beginGrouping(); setDraft(null); onChange(e.target.value); }}
+          onBlur={endGrouping}
         />
         <input
           type="text"

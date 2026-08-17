@@ -7,10 +7,38 @@ const isTagBinding = (raw: unknown): raw is TagBinding =>
   typeof (raw as TagBinding).code === "string";
 
 /**
+ * Серверные поля DTO-обёртки, которые надо вернуть в следующем сохранении как получили
+ * (§2 контракта версий): id самого биндинга и пара «свойство» — номер плюс имя.
+ *
+ * Живут на TagBinding отдельными полями, а не внутри опак-строки `script`: строку мы
+ * пересобираем при каждом сохранении, и id из старого JSON пережил бы удаление сущности
+ * на сервере — после восстановления версии мы бы вернули номер, которого уже нет.
+ */
+const serverFieldsOf = (item: unknown): Partial<TagBinding> => {
+  if (typeof item !== "object" || item === null) return {};
+
+  const dto = item as {
+    id?: unknown;
+    component_property_id?: unknown;
+    component_property_name?: unknown;
+  };
+
+  return {
+    ...(typeof dto.id === "number" || typeof dto.id === "string" ? {serverId: dto.id} : {}),
+    ...(typeof dto.component_property_id === "number"
+      ? {componentPropertyId: dto.component_property_id}
+      : {}),
+    ...(typeof dto.component_property_name === "string"
+      ? {componentPropertyName: dto.component_property_name}
+      : {}),
+  };
+};
+
+/**
  * Восстанавливает TagBinding[] из обеих форм сериализации:
  *  - сырые объекты (запечены в `states[].image.composition[].bindings` как есть);
- *  - DTO-обёртки `{component_property_id, name, script}` с JSON внутри `script`
- *    (top-level биндинги компонента едут через контракт бэкенда).
+ *  - DTO-обёртки `{id?, component_property_id, component_property_name?, name, script}`
+ *    с JSON внутри `script` (top-level биндинги компонента едут через контракт бэкенда).
  * Всё, что не распознано (легаси/мусор), отбрасывается с предупреждением.
  */
 export const parseBindings = (raw: unknown): TagBinding[] => {
@@ -30,7 +58,9 @@ export const parseBindings = (raw: unknown): TagBinding[] => {
       try {
         const parsed = JSON.parse(script);
         if (isTagBinding(parsed)) {
-          result.push(parsed);
+          // Серверные поля берём из обёртки, а не из JSON: обёртка — то, что сервер
+          // прислал сейчас, JSON — то, что мы сохранили в прошлый раз.
+          result.push({...parsed, ...serverFieldsOf(item)});
           continue;
         }
       } catch {

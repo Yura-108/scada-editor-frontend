@@ -1,4 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
+import { backendErrorResponse } from '@/lib/backendProxy';
 import {protectedRoute} from "@/lib/protected";
 
 // Снапшот — REST, идёт через gateway (как создание сессии), а не напрямую на :8085.
@@ -36,10 +37,7 @@ export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
     }
   );
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка ${response.status}: ${text}`);
-  }
+  if (!response.ok) return backendErrorResponse(response);
 
   const data = await response.json().catch(() => null);
 

@@ -1,3 +1,4 @@
+import {devLog} from "@/lib/devLog";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
@@ -11,5 +12,5 @@ export const wsClient = new Client({
 });
 
 wsClient.onConnect = () => {
-  console.log("WS Connected!");
+  devLog("[ws] соединение установлено");
 };

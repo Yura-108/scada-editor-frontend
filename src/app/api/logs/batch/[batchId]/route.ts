@@ -1,4 +1,5 @@
 import { protectedRoute } from "@/lib/protected";
+import { backendErrorResponse } from "@/lib/backendProxy";
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
@@ -21,18 +22,8 @@ export const POST = protectedRoute(async (_req: NextRequest, { token, params }) 
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('--- BACKEND ERROR REPORT (batch undo) ---');
-      console.log('Status:', response.status);
-      console.log('Message from Backend:', errorText);
-      console.log('-----------------------------------------');
-
-      return NextResponse.json(
-        { error: `Backend error: ${errorText}` },
-        { status: response.status }
-      );
-    }
+    // Причина отказа уходит клиенту как есть, а не в console.log сервера.
+    if (!response.ok) return backendErrorResponse(response);
 
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);

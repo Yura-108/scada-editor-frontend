@@ -1,25 +1,29 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-import { useTheme } from "next-themes";
 import { Group, Rect, Text } from "react-konva";
 import Konva from "konva";
+import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { useEditorStore } from "@/store/useEditorStore";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
+import { useThemeColors } from "../useThemeColors";
+import { SelectionOutline } from "./SelectionOutline";
 
 export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const textRef = useRef<Konva.Text>(null);
-  const { resolvedTheme } = useTheme();
-  const textDefaultColor = resolvedTheme === "dark" ? "#ffffff" : "#1a1a1a";
+  // Через общий источник цветов холста, а не своим `resolvedTheme === "dark"`:
+  // раньше здесь дублировалась палитра, а синий выделения был захардкожен.
+  const { themeColors } = useThemeColors();
+  const textDefaultColor = themeColors.textDefault;
 
   const pad = 4;
 
   const fontSize = rendered.fontSize ?? 16;
-  const text = rendered.text ?? "Text";
+  const text = rendered.text ?? "Текст";
   const fontFamily = rendered.fontFamily || "Arial";
   const fontStyle = rendered.bold ? "bold" : "normal";
   // Режим ширины (как в Figma): по умолчанию — по содержимому (перенос только по Enter);
@@ -59,9 +63,10 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
         // Игнорируем всплывший dragend от дочерней ручки ресайза — иначе её локальный x()
         // (равный новой ширине) запишется как координата группы и текст «телепортируется».
         if (e.target !== e.currentTarget) return;
+        // Позиция уже привязана общим обработчиком Stage (сетка + направляющие).
         updateElementVisual(el.key, {
-          x: snap(e.target.x()),
-          y: snap(e.target.y()),
+          x: e.target.x(),
+          y: e.target.y(),
         });
       }}
       onClick={(e) => {
@@ -78,17 +83,7 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
       }}
     >
       {isSelected && !isEditing && (
-        <Rect
-          x={-pad}
-          y={-pad}
-          width={boxW + pad * 2}
-          height={boxH + pad * 2}
-          fill="transparent"
-          stroke="#3b82f6"
-          strokeWidth={1.5}
-          dash={[4, 3]}
-          listening={false}
-        />
+        <SelectionOutline x={-pad} y={-pad} width={boxW + pad * 2} height={boxH + pad * 2} />
       )}
       <Text
         ref={textRef}
@@ -135,6 +130,7 @@ function TextWidthHandle({ boxW, boxH, elKey, currentW, isAutoWidth, snap, updat
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
 }) {
   const zoom = useEditorStore(s => s.camera.zoom);
+  const { themeColors } = useThemeColors();
   const size = 8 / zoom;
 
   return (
@@ -146,8 +142,8 @@ function TextWidthHandle({ boxW, boxH, elKey, currentW, isAutoWidth, snap, updat
       height={size}
       offsetX={size / 2}
       offsetY={size / 2}
-      fill="#ffffff"
-      stroke="#3b82f6"
+      fill={themeColors.handleFill}
+      stroke={themeColors.selection}
       strokeWidth={1.5 / zoom}
       draggable
       onDragStart={(e) => { e.cancelBubble = true; }}
@@ -172,7 +168,7 @@ function TextWidthHandle({ boxW, boxH, elKey, currentW, isAutoWidth, snap, updat
       }}
       onMouseLeave={(e) => {
         const c = e.target.getStage()?.container();
-        if (c) c.style.cursor = "default";
+        resetCanvasCursor(c);
       }}
     />
   );

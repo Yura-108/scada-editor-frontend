@@ -34,7 +34,7 @@ export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, ce
 
   const setBinding = async (row: number, binding: ComponentPropertyDto) => {
     if (!element.id) {
-      toast.error("Сначала сохраните сцену — компонент ещё не сохранён на сервере");
+      toast.error("Сначала сохраните схему — компонент ещё не сохранён на сервере");
       return;
     }
 

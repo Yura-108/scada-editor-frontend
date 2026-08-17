@@ -1,9 +1,9 @@
 import { DiagramElement } from "@/types/editorElement.type";
 import { useEditorStore } from "@/store/useEditorStore";
-import { editorElementMenuItems } from "@/constants/contextMenuItems";
 import { getDescendants } from "@/lib/getDescendants";
 import { handleAddProperty } from "@/lib/handleAddProperty";
 import { OpenCreateFaceplateModal } from "@/components/ui/OpenCreateFaceplateModal";
+import { promptModal } from "@/components/ui/ConfirmModal";
 import type { CanvasMenuItem } from "./types";
 
 export interface BuildItemMenuDeps {
@@ -28,11 +28,17 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
     closeMenu();
   };
 
-  const handleCreateComponent = () => {
-    const name = prompt("Название компонента", el.label || "Компонент");
-    if (name === null) { closeMenu(); return; }
-    useEditorStore.getState().createComponentFromGroup(el.key, name.trim() || undefined);
+  const handleCreateComponent = async () => {
     closeMenu();
+    const name = await promptModal({
+      title: "Создать компонент",
+      description: "Примитивы группы станут составом компонента и будут запечены в его изображение.",
+      label: "Название компонента",
+      defaultValue: el.label || "Компонент",
+      confirmLabel: "Создать",
+    });
+    if (name === null) return;
+    useEditorStore.getState().createComponentFromGroup(el.key, name || undefined);
   };
 
   const handleDisassemble = () => {
@@ -44,21 +50,13 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
     { label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id },
     { label: "На передний план", onClick: () => { useEditorStore.getState().bringToFront(el.key); closeMenu(); } },
     { label: "На задний план", onClick: () => { useEditorStore.getState().sendToBack(el.key); closeMenu(); } },
-    ...editorElementMenuItems.map(item => ({
-      label: item.label,
-      onClick: () => {
-        if (item.label === "Копировать") {
-          copySelectedElement();
-        } else if (item.label === "Переместить в группу") {
-          openMoveToGroup(el.key);
-        } else if (item.label === "Удалить") {
-          deleteSelectedElement();
-        } else {
-          item.onClick?.();
-        }
-        closeMenu();
-      },
-    })),
+    // Пункты задаём явно. Раньше они брались из editorElementMenuItems, а действие
+    // выбиралось СРАВНЕНИЕМ РУССКОЙ ПОДПИСИ; исходные обработчики там — заглушки
+    // console.log, поэтому любая опечатка или переименование подписи молча
+    // превращали пункт в no-op.
+    { label: "Копировать", onClick: () => { copySelectedElement(); closeMenu(); } },
+    { label: "Переместить в группу", onClick: () => { openMoveToGroup(el.key); closeMenu(); } },
+    { label: "Удалить", onClick: () => { deleteSelectedElement(); closeMenu(); }, variant: "danger" },
     isPlainGroup ? { label: "Создать компонент", onClick: handleCreateComponent } : null,
     isComponent ? { label: "Добавить компонент", onClick: () => { openAddComponent(el.key); closeMenu(); } } : null,
     isComponent ? { label: "Разобрать компонент", onClick: handleDisassemble } : null,

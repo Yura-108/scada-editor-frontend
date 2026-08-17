@@ -1,74 +1,56 @@
 'use client';
 
-
 import Link from 'next/link';
-import { Home, ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Home, SearchX } from 'lucide-react';
 
+/**
+ * Страница 404.
+ *
+ * Сдержанный вид вместо градиента purple→pink→red с прыгающими «Sparkles» и
+ * подписью «Ой-ой! Страница пропала в космосе»: для промышленной SCADA такой
+ * тон неуместен, а половина текста была нечитаемой — `text-gray-900` поверх
+ * яркого фона в светлой теме.
+ *
+ * Шапки здесь нет: корневой not-found рендерится вне группы (app), поэтому
+ * ссылка «На главную» — единственный способ вернуться, и она на месте.
+ */
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center px-4">
-      <div className="max-w-4xl w-full text-center">
-        {/* Большая анимированная 404 */}
-        <div className="relative mb-12">
-          <h1 className="text-9xl md:text-[12rem] font-black text-gray-900 dark:text-white opacity-20 selecture-20 tracking-tighter select-none">
-            404
-          </h1>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-bounce">
-              <Sparkles className="w-20 h-20 md:w-32 md:h-32 text-yellow-300" />
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-lg text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800">
+          <SearchX className="h-8 w-8 text-gray-500 dark:text-neutral-400" />
         </div>
 
-        {/* Текст */}
-        <div className="relative z-10">
-          <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 drop-shadow-lg">
-            Ой-ой! Страница пропала в космосе
-          </h2>
-          <p className="text-xl md:text-2xl text-gray-900 dark:text-white/90 mb-10 max-w-2xl mx-auto drop-shadow">
-            Кажется, вы зашли туда, куда даже наши разработчики боятся ходить...
-          </p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-500">
+          Ошибка 404
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Страница не найдена
+        </h1>
+        <p className="mt-3 text-gray-600 dark:text-neutral-400">
+          Проверьте адрес — возможно, раздел был переименован или удалён.
+        </p>
 
-          {/* Карточка с действиями */}
-          <div className="inline-block bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-12 transform hover:scale-105 transition-all duration-300">
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <Link
-                href="/app"
-                className="group flex items-center gap-3 px-8 py-5 bg-linear-to-r from-purple-600 to-pink-600 text-gray-900 dark:text-white text-xl font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-300 shadow-lg"
-              >
-                <Home className="w-6 h-6 group-hover:animate-pulse" />
-                На главную
-              </Link>
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/channels"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-indigo-600 to-blue-600 px-6 py-2.5 font-medium text-white shadow-lg shadow-indigo-500/30 transition-all hover:from-indigo-500 hover:to-blue-500"
+          >
+            <Home className="h-4 w-4" />
+            На главную
+          </Link>
 
-              <button
-                onClick={() => window.history.back()}
-                className="group flex items-center gap-3 px-8 py-5 bg-white/20 backdrop-blur border-2 border-white/30 text-gray-900 dark:text-white text-xl font-bold rounded-2xl hover:bg-white/30 transition-all duration-300"
-              >
-                <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-                Вернуться назад
-              </button>
-            </div>
-
-            <p className="mt-8 text-gray-600 text-sm">
-              Или просто подождите... возможно, страница сама найдётся
-            </p>
-          </div>
-
-          {/* Декоративные элементы */}
-          <div className="mt-16 flex justify-center gap-8 opacity-30">
-            <div className="animate-pulse">
-              <div className="w-3 h-3 bg-yellow-300 rounded-full"></div>
-            </div>
-            <div className="animate-pulse delay-75">
-              <div className="w-4 h-4 bg-pink-300 rounded-full"></div>
-            </div>
-            <div className="animate-pulse delay-150">
-              <div className="w-3 h-3 bg-purple-300 rounded-full"></div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-6 py-2.5 font-medium text-gray-700 dark:text-neutral-300 transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Вернуться назад
+          </button>
         </div>
       </div>
     </div>
   );
 }
-

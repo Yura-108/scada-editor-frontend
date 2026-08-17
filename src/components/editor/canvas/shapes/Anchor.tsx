@@ -3,6 +3,7 @@
 import React from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
+import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { useEditorStore } from "@/store/useEditorStore";
 import type { ThemeColors } from "../types";
 
@@ -41,7 +42,7 @@ export function Anchor({ x, y, onDragMove, themeColors }: AnchorProps) {
       }}
       onMouseLeave={e => {
         const container = e.target.getStage()?.container();
-        if (container) container.style.cursor = "default";
+        resetCanvasCursor(container);
       }}
     />
   );

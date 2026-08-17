@@ -9,6 +9,7 @@ import { DiagramElement } from "@/types/editorElement.type";
 import { PaletteItemType } from "@/types/palette.types";
 import SelectItem from "./SelectItem";
 import {selectTriggerClassName} from "@/components/ui/selectStyles";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface Props {
   onLoadAction: (paletteItem: Omit<PaletteItemType, "id">) => void;
@@ -142,7 +143,7 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
                 <Select.Content
                   position="popper"
                   sideOffset={6}
-                  className="z-[100] min-w-[var(--radix-select-trigger-width)] max-h-64 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  className="z-dropdown min-w-[var(--radix-select-trigger-width)] max-h-64 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
                 >
                   <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
                     <ChevronDown className="h-5 w-5 rotate-180" />
@@ -205,26 +206,20 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
       </div>
 
       {/* Кнопки */}
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600 transition-all"
-        >
-          Отмена
-        </button>
-
-        <button
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button
+          variant="primary"
           onClick={handleConfirm}
           disabled={
             !name.trim() ||
             (mode === 'create' && !type.trim()) ||
             (mode === 'update' && !selectedTemplateId)
           }
-          className="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-400 text-white shadow-lg shadow-indigo-500/30 disabled:shadow-none transition-all"
         >
           {mode === 'create' ? 'Создать' : 'Обновить'}
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </>
   );
 }

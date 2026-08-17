@@ -4,6 +4,7 @@ import { snap } from "@/lib/utils";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";
 import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "@/lib/editor/smartGuides";
 import { DiagramElement } from "@/types/editorElement.type";
+import { beginHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";
 
 interface MultiDragAndGuidesDeps {
   stageRef: RefObject<Konva.Stage | null>;
@@ -16,10 +17,40 @@ interface MultiDragAndGuidesDeps {
   clearHover: () => void;
 }
 
+interface DragSession {
+  key: string;
+  /** Узел, который тянет Konva. Проверка `e.target === target` отсекает чужие события. */
+  target: Konva.Node;
+  /**
+   * Тянут корневой узел элемента (его `id` равен ключу).
+   *
+   * У круга, линии и полигона перетаскивается внутренняя фигура, а не узел с id,
+   * и её координаты — это смещение внутри элемента. Поэтому таким узлам к сетке
+   * привязывается СМЕЩЕНИЕ от начала жеста (движение шагами сетки), а корневым —
+   * сама позиция (как и раньше).
+   */
+  isRoot: boolean;
+  startPos: { x: number; y: number };
+  /** Остальные выделенные, которые едут следом (мульти-drag). */
+  others: { node: Konva.Node; orig: { x: number; y: number } }[];
+}
+
 /**
- * Мульти-drag (тянем один выделенный элемент — остальные едут следом) + smart-guides
- * (магнит к рёбрам/центрам соседей) — обе сессии живут на уровне Stage, т.к.
- * drag-события Konva всплывают до него.
+ * Перетаскивание на холсте: привязка к сетке, магнит к соседям (smart-guides) и
+ * мульти-drag (тянем один выделенный элемент — остальные едут следом).
+ *
+ * Всё это живёт на уровне Stage, потому что drag-события Konva всплывают до него.
+ * Здесь же — ЕДИНСТВЕННОЕ место, где задаётся позиция перетаскиваемого узла:
+ *
+ *  - раньше живой снап был только у части фигур (виджеты снапили в своём
+ *    `onDragMove`, а прямоугольник, текст, таблица, график и прочие — нет, и
+ *    прыгали на сетку только в момент отпускания);
+ *  - направляющие примагничивали узел здесь, а `onDragEnd` фигуры затем делал
+ *    `snap()` к сетке и сбивал выравнивание — элемент соскакивал с направляющей,
+ *    если та не легла на шаг сетки.
+ *
+ * Теперь позицию доводит этот хук (сетка, поверх неё — направляющие), а фигуры в
+ * `onDragEnd` берут её как есть.
  */
 export function useMultiDragAndGuides({
   stageRef,
@@ -30,18 +61,10 @@ export function useMultiDragAndGuides({
   moveSelectedBy,
   clearHover,
 }: MultiDragAndGuidesDeps) {
-  // ---- Мульти-drag: тянем один выделенный элемент — остальные едут следом. ----
-  // Drag-события Konva всплывают до Stage; сессия стартует, только если цель
-  // резолвится в выделенный элемент (ручки ресайза исключены по name).
-  const multiDragRef = useRef<{
-    draggedKey: string;
-    draggedOrig: { x: number; y: number };
-    others: { node: Konva.Node; orig: { x: number; y: number } }[];
-  } | null>(null);
+  const dragSessionRef = useRef<DragSession | null>(null);
 
   // ---- Smart-guides: магнит к рёбрам/центрам соседей при перетаскивании ----
   const guideSessionRef = useRef<{
-    target: Konva.Node;
     startPos: { x: number; y: number };
     startBounds: { minX: number; minY: number; maxX: number; maxY: number };
     candidates: GuideCandidates;
@@ -62,11 +85,14 @@ export function useMultiDragAndGuides({
 
   const handleStageDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     clearHover();
+    dragSessionRef.current = null;
+    guideSessionRef.current = null;
 
     const key = resolveDragKey(e.target);
     const stage = stageRef.current;
     if (!key || !stage) return;
 
+    const startPos = e.target.position();
     const selectedSet = new Set(selectedIds);
 
     // Smart-guides: соседи того же родителя (не выделенные) — их рёбра/центры.
@@ -79,8 +105,7 @@ export function useMultiDragAndGuides({
         const b = getElementBoundsRendered(el, elements);
         if (isFinite(b.minX)) {
           guideSessionRef.current = {
-            target: e.target,
-            startPos: e.target.position(),
+            startPos,
             startBounds: b,
             candidates: collectGuideCandidates(elements, candidateEls),
           };
@@ -89,36 +114,69 @@ export function useMultiDragAndGuides({
     }
 
     // Мульти-drag — только когда тянем один из ≥2 выделенных.
-    if (selectedIds.length < 2 || !selectedIds.includes(key)) return;
+    let others: DragSession["others"] = [];
+    if (selectedIds.length >= 2 && selectedIds.includes(key)) {
+      // Двигаем только верхнеуровневые выделенные — элемент с выделенным предком едет с ним.
+      const hasSelectedAncestor = (k: string): boolean => {
+        let pk = elementsMap[k]?.parentKey;
+        while (pk) {
+          if (selectedSet.has(pk)) return true;
+          pk = elementsMap[pk]?.parentKey ?? null;
+        }
+        return false;
+      };
 
-    // Двигаем только верхнеуровневые выделенные — элемент с выделенным предком едет с ним.
-    const hasSelectedAncestor = (k: string): boolean => {
-      let pk = elementsMap[k]?.parentKey;
-      while (pk) {
-        if (selectedSet.has(pk)) return true;
-        pk = elementsMap[pk]?.parentKey ?? null;
-      }
-      return false;
+      // Один обход дерева вместо stage.findOne() на каждый выделенный элемент.
+      const nodeByKey = collectNodesById(stage);
+
+      others = selectedIds
+        .filter(k => k !== key && !hasSelectedAncestor(k))
+        .map(k => nodeByKey.get(k))
+        .filter((n): n is Konva.Node => Boolean(n))
+        .map(n => ({ node: n, orig: n.position() }));
+    }
+
+    dragSessionRef.current = {
+      key,
+      target: e.target,
+      isRoot: e.target.id() === key,
+      startPos,
+      others,
     };
 
-    const others = selectedIds
-      .filter(k => k !== key && !hasSelectedAncestor(k))
-      .map(k => stage.findOne(`#${k}`))
-      .filter((n): n is Konva.Node => Boolean(n))
-      .map(n => ({ node: n, orig: n.position() }));
-
-    if (!others.length) return;
-    multiDragRef.current = { draggedKey: key, draggedOrig: e.target.position(), others };
+    // Жест завершается ДВУМЯ коммитами в стор: сначала onDragEnd самой фигуры
+    // (события Konva всплывают снизу вверх), затем moveSelectedBy для остальных.
+    // Это две записи истории на один жест — Ctrl+Z возвращал часть элементов.
+    // Склеиваем весь жест в один шаг (тот же приём, что у стрелок и палитры цвета).
+    if (others.length) beginHistoryGroup();
   }, [selectedIds, elements, elementsMap, resolveDragKey, stageRef, clearHover]);
 
   const handleStageDragMove = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    // 1) Smart-guides: примагничиваем перетаскиваемый элемент к рёбрам/центрам соседей.
-    const gs = guideSessionRef.current;
+    const session = dragSessionRef.current;
+    // Ручки ресайза ведут себя сами (и гасят всплытие dragstart) — их не трогаем.
+    if (!session || e.target !== session.target) return;
+
+    // 1) Привязка к сетке. Для корневого узла — сама позиция, для внутренней
+    //    фигуры (круг/линия/полигон) — смещение от начала жеста.
+    const raw = e.target.position();
+    let x: number;
+    let y: number;
+    if (session.isRoot) {
+      x = snap(raw.x);
+      y = snap(raw.y);
+    } else {
+      x = session.startPos.x + snap(raw.x - session.startPos.x);
+      y = session.startPos.y + snap(raw.y - session.startPos.y);
+    }
+
+    // 2) Направляющие ПОВЕРХ сетки: попал в порог — выравнивание по соседу
+    //    побеждает и доживает до отпускания (фигуры больше не снапят повторно).
     let guideV: number | null = null;
     let guideH: number | null = null;
-    if (gs && e.target === gs.target) {
-      const dx = e.target.x() - gs.startPos.x;
-      const dy = e.target.y() - gs.startPos.y;
+    const gs = guideSessionRef.current;
+    if (gs) {
+      const dx = x - gs.startPos.x;
+      const dy = y - gs.startPos.y;
       // Порог экранно-постоянный (~6px независимо от зума).
       const threshold = 6 / zoom;
       const { minX, minY, maxX, maxY } = gs.startBounds;
@@ -132,39 +190,57 @@ export function useMultiDragAndGuides({
         gs.candidates.h,
         threshold,
       );
-      if (mv) { e.target.x(e.target.x() + mv.offset); guideV = mv.line; }
-      if (mh) { e.target.y(e.target.y() + mh.offset); guideH = mh.line; }
+      if (mv) { x += mv.offset; guideV = mv.line; }
+      if (mh) { y += mh.offset; guideH = mh.line; }
     }
+
+    e.target.position({ x, y });
     setGuides(prev => (prev.v === guideV && prev.h === guideH) ? prev : { v: guideV, h: guideH });
 
-    // 2) Мульти-drag: остальные выделенные следуют за (уже примагниченной) позицией.
-    const session = multiDragRef.current;
-    if (!session) return;
-    const dx = e.target.x() - session.draggedOrig.x;
-    const dy = e.target.y() - session.draggedOrig.y;
+    // 3) Мульти-drag: остальные выделенные следуют за итоговой позицией. Раньше
+    //    они ехали за сырой (не привязанной) позицией, а в коммит уходила
+    //    привязанная дельта — на отпускании вся пачка дёргалась.
+    const dx = x - session.startPos.x;
+    const dy = y - session.startPos.y;
     for (const { node, orig } of session.others) {
       node.position({ x: orig.x + dx, y: orig.y + dy });
     }
   }, [zoom]);
 
   const handleStageDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    const session = dragSessionRef.current;
+    if (!session || e.target !== session.target) return;
+
+    dragSessionRef.current = null;
     guideSessionRef.current = null;
     setGuides(prev => (prev.v === null && prev.h === null) ? prev : { v: null, h: null });
 
-    const session = multiDragRef.current;
-    if (!session) return;
-    multiDragRef.current = null;
+    if (!session.others.length) return;
 
-    // Дельта в терминах закоммиченного (снапнутого) значения перетащенного элемента.
-    const dx = snap(e.target.x()) - session.draggedOrig.x;
-    const dy = snap(e.target.y()) - session.draggedOrig.y;
+    // Дельта уже привязана (сетка/направляющие) в handleStageDragMove.
+    const dx = e.target.x() - session.startPos.x;
+    const dy = e.target.y() - session.startPos.y;
 
     // Возвращаем императивно сдвинутые узлы на исходные позиции ДО коммита:
     // у линий/кругов группа не имеет controlled x/y, и React сам не сбросил бы сдвиг.
     for (const { node, orig } of session.others) node.position(orig);
 
-    moveSelectedBy(dx, dy, session.draggedKey);
+    moveSelectedBy(dx, dy, session.key);
+
+    // Весь перенос отменяется одним Ctrl+Z.
+    endHistoryGroup();
   }, [moveSelectedBy]);
 
   return { guides, handleStageDragStart, handleStageDragMove, handleStageDragEnd };
+}
+
+/** Все узлы сцены с непустым id, за один обход дерева. */
+function collectNodesById(stage: Konva.Stage): Map<string, Konva.Node> {
+  const byId = new Map<string, Konva.Node>();
+  stage.find((node: Konva.Node) => {
+    const id = node.id();
+    if (id && !byId.has(id)) byId.set(id, node);
+    return false;
+  });
+  return byId;
 }

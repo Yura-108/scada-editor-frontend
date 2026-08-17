@@ -1,4 +1,5 @@
 import {protectedRoute} from "@/lib/protected";
+import { backendErrorResponse } from '@/lib/backendProxy';
 import {NextResponse} from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
@@ -14,10 +15,7 @@ export const GET = protectedRoute(async (_request, {token, params}) => {
     },
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка ${response.status}: ${text}`);
-  }
+  if (!response.ok) return backendErrorResponse(response);
 
   const data = await response.json().catch(() => null);
 

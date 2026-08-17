@@ -1,7 +1,8 @@
 import {DiagramElement, GroupElement} from "@/types/editorElement.type";
-import getAbsolutePosition, {getAbsoluteRenderedPosition} from "@/lib/getAbsolutePosition";
+import {absolutePosition} from "@/lib/getAbsolutePosition";
 import {getElementBounds, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {getRenderedElement} from "@/lib/getRenderedElement";
+import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
 
 export const GROUP_PADDING = 20;
 
@@ -13,17 +14,23 @@ export function resolveParentAbsolute(
   elements: DiagramElement[],
   sceneId?: number | null,
 ): {x: number; y: number} {
+  return resolveParentAbsoluteIndexed(parentKey, getElementIndex(elements), sceneId);
+}
+
+/** То же поверх готового индекса — для горячих путей, где индекс уже построен. */
+export function resolveParentAbsoluteIndexed(
+  parentKey: string | null | undefined,
+  index: ElementIndex,
+  sceneId?: number | null,
+): {x: number; y: number} {
   if (parentKey == null || parentKey === "" || parentKey === String(sceneId ?? "")) {
     return {x: 0, y: 0};
   }
 
-  const parent = elements.find(
-    (e) => e.key === parentKey || String(e.id) === String(parentKey),
-  );
-
+  const parent = resolveParentElement(parentKey, index);
   if (!parent) return {x: 0, y: 0};
 
-  return getAbsoluteRenderedPosition(parent, elements);
+  return absolutePosition(parent, index, true);
 }
 
 export function unionBounds(boundsList: ElementBounds[], padding = GROUP_PADDING) {

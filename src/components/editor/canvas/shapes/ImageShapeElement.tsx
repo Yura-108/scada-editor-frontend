@@ -7,6 +7,7 @@ import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
 import type { ShapeElementProps } from "../types";
+import { SelectionOutline } from "./SelectionOutline";
 
 /**
  * Картинка на холсте. src — data URL, выбранный через проводник (при дропе с
@@ -16,7 +17,7 @@ import type { ShapeElementProps } from "../types";
  *  - cover   — заполнить рамку с обрезкой (через crop исходника);
  *  - fill    — растянуть по рамке.
  */
-export function ImageShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
+export function ImageShapeElement({ el, isSelected, onElementClick, updateElementVisual }: ShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const w = rendered.w || 120;
   const h = rendered.h || 120;
@@ -59,19 +60,12 @@ export function ImageShapeElement({ el, isSelected, snap, onElementClick, update
       rotation={rendered.rotate || 0}
       opacity={rendered.opacity ?? 1}
       draggable
-      onDragMove={(e) => {
-        // Живой снаппинг во время перетаскивания.
-        e.target.position({ x: snap(e.target.x()), y: snap(e.target.y()) });
-      }}
-      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onDragEnd={(e) => updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() })}
       onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
       onDblClick={(e) => { e.cancelBubble = true; void replaceImage(); }}
     >
       {isSelected && (
-        <Rect
-          x={-4} y={-4} width={w + 8} height={h + 8}
-          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
-        />
+        <SelectionOutline x={-4} y={-4} width={w + 8} height={h + 8} />
       )}
 
       {/* Прозрачная область-хит: весь прямоугольник кликабелен/перетаскиваем,

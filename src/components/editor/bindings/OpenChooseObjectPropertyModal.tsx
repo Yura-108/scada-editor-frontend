@@ -64,17 +64,17 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
   return (
     <Dialog.Root open={open} onOpenChange={o => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-modal-nested bg-black/60 backdrop-blur-sm" />
         <Dialog.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-[60] -translate-x-1/2 -translate-y-1/2",
+            "fixed left-1/2 top-1/2 z-modal-nested -translate-x-1/2 -translate-y-1/2",
             "w-[95vw] max-w-lg max-h-[85vh] flex flex-col overflow-hidden rounded-2xl",
             "bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white",
             "border border-gray-200 dark:border-gray-800/70 shadow-2xl shadow-black/50 p-6",
             "focus:outline-none",
           )}
         >
-          <Dialog.Title className="text-lg font-semibold mb-1">Свойства объектов сцены</Dialog.Title>
+          <Dialog.Title className="text-lg font-semibold mb-1">Свойства объектов схемы</Dialog.Title>
           <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Выберите свойство компонента, чтобы сослаться на него в коде привязки. В рантайме его
             значение приходит из записей серверных скриптов (<code>properties[]</code>).
@@ -125,7 +125,7 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
                                 key={`${p.id}-${p.name}`}
                                 type="button"
                                 disabled={!saved}
-                                title={saved ? undefined : "Свойство ещё не сохранено — сначала сохраните сцену"}
+                                title={saved ? undefined : "Свойство ещё не сохранено — сначала сохраните схему"}
                                 onClick={() =>
                                   saved &&
                                   onPick({

@@ -1,4 +1,6 @@
+import {backendErrorResponse} from "@/lib/backendProxy";
 import {protectedRoute} from "@/lib/protected";
+import {withVersionFields} from "@/lib/saveEnvelope";
 import {NextResponse} from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
@@ -10,7 +12,7 @@ export const PUT = protectedRoute(async (req, { token, params }) => {
 
   if (!newPaletteItem) {
     return NextResponse.json(
-      {error: "Шаблон пуст!"},
+      {message: "Шаблон пуст!"},
       {status: 400}
     );
   }
@@ -19,22 +21,19 @@ export const PUT = protectedRoute(async (req, { token, params }) => {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",  // ← добавить это
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(newPaletteItem),
+    // based_on_version / save_kind — полями рядом, без конверта (см. POST палитры).
+    body: JSON.stringify(withVersionFields(newPaletteItem)),
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => {});
-    return NextResponse.json(
-      { error: err?.message || "Ошибка редактирования" },
-      { status: response.status }
-    );
-  }
+  // Тело ошибки идёт насквозь: 409 несёт base_version/current_version, по которым
+  // строится диалог конфликта, а прежняя пересборка в {error} их теряла.
+  if (!response.ok) return backendErrorResponse(response);
 
   const paletteItem = await response.json().catch(() => null);
 
-  return NextResponse.json(paletteItem, {status: 201});
+  return NextResponse.json(paletteItem);
 });
 
 export const DELETE = protectedRoute(async (_request, { token, params }) => {

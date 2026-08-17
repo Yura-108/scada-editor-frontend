@@ -21,7 +21,7 @@ export function StateSelect({elementKey, states}: Props) {
   const activeStateId = useEditorStore(
     state => state.currentComponentStateByElementKey[elementKey] ?? ""
   );
-  const {setCurrentComponentStateId} = useEditorStore();
+  const setCurrentComponentStateId = useEditorStore(state => state.setCurrentComponentStateId);
 
   const normalizedSelectedValue = states.some(state => state.id === activeStateId)
     ? activeStateId

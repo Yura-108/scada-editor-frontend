@@ -18,17 +18,45 @@ const firstSavedPropertyId = (el: DiagramElement): number => {
 };
 
 /**
+ * Возвращать ли серверные id вложенных сущностей.
+ *
+ * В сцене — да, это обязательство контракта (§2). В шаблоне — НЕТ: у DTO шаблона нет
+ * `id` ни на одном уровне, сущности связываются по именам, а id, попавший в шаблон из
+ * сцены, адресует чужую сущность. Флаг существует ровно ради этой разницы.
+ */
+type EncodeOptions = {withServerIds?: boolean};
+
+/**
  * TagBinding → DTO: биндинг целиком уезжает JSON-строкой в опак-поле `script`
  * (как states[].image — без изменения контракта бэкенда). Обратный путь —
  * parseBindings при загрузке.
  */
-const encodeBindings = (el: DiagramElement): BindingDto[] =>
+const encodeBindings = (
+  el: DiagramElement,
+  {withServerIds = true}: EncodeOptions = {},
+): BindingDto[] =>
   Array.isArray(el.bindings)
-    ? el.bindings.map(b => ({
-        component_property_id: firstSavedPropertyId(el),
-        name: b.name ?? "",
-        script: JSON.stringify(b),
-      }))
+    ? el.bindings.map(b => {
+        // Серверные поля живут в DTO-обёртке, а не внутри опак-строки `script`:
+        // вырезаем их перед сериализацией, иначе в JSON осел бы id, который сервер мог
+        // уже не знать (свойство удалили и завели заново — номер сменился).
+        const {serverId, componentPropertyId, componentPropertyName, ...payload} = b;
+
+        return {
+          // Пришёл с id — возвращаем тот же (§2 контракта): без него переименование
+          // биндинга читается как «удалили один, создали другой».
+          ...(withServerIds && serverId != null ? {id: serverId} : {}),
+          // Пару «свойство» возвращаем как получили. Своё значение вычисляем только для
+          // новых биндингов: имя нужно снимку версии, а номер снимок не переживает.
+          component_property_id:
+            (withServerIds ? componentPropertyId : undefined) ?? firstSavedPropertyId(el),
+          ...(withServerIds && componentPropertyName != null
+            ? {component_property_name: componentPropertyName}
+            : {}),
+          name: b.name ?? "",
+          script: JSON.stringify(payload),
+        };
+      })
     : [];
 
 /**
@@ -37,11 +65,17 @@ const encodeBindings = (el: DiagramElement): BindingDto[] =>
  * неизвестные) — JSON-конверт `{v:1, code, propertyRefs}` (симметрия с encodeBindings).
  * Обратный путь — parseEvents при загрузке.
  */
-const encodeEvents = (el: DiagramElement): {event_type: string; script: string}[] =>
+const encodeEvents = (
+  el: DiagramElement,
+  {withServerIds = true}: EncodeOptions = {},
+): {id?: number | string; event_type: string; script: string}[] =>
   Array.isArray(el.events)
     ? el.events
         .filter(e => e.handler?.code?.trim())
         .map(e => ({
+          // Пришёл с id — возвращаем тот же (§2 контракта). Сами события сервер
+          // сопоставляет по event_type, так что id здесь ради снимка версии.
+          ...(withServerIds && e.serverId != null ? {id: e.serverId} : {}),
           event_type: e.event_type,
           script: e.handler.propertyRefs?.length
             ? JSON.stringify({v: 1, code: e.handler.code, propertyRefs: e.handler.propertyRefs})
@@ -91,9 +125,24 @@ const buildShapeDescriptor = (
     ...(state?.overrides ?? {}),
     // Данные примитива (теги/скрипты/биндинги/события) — иначе теряются при round-trip:
     // buildBaseImage их удаляет, а unbake восстанавливал бы пустые массивы.
-    ...(primitive.scripts?.length ? {scripts: primitive.scripts} : {}),
-    ...(Array.isArray(primitive.bindings) && primitive.bindings.length ? {bindings: primitive.bindings} : {}),
-    ...(primitive.events?.length ? {events: encodeEvents(primitive)} : {}),
+    //
+    // Серверные id здесь вырезаны намеренно. Примитив composition не сущность бэкенда:
+    // он живёт внутри опак-строки `image`, и id ему адресовать нечего. Сверх того, при
+    // слиянии `image` сравнивается целым блобом — любая необязательная величина внутри
+    // означала бы конфликт там, где визуально ничего не менялось.
+    ...(primitive.scripts?.length
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ? {scripts: primitive.scripts.map(({serverId, ...s}) => s)}
+      : {}),
+    ...(Array.isArray(primitive.bindings) && primitive.bindings.length
+      ? {
+          bindings: primitive.bindings.map(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            ({serverId, componentPropertyId, componentPropertyName, ...b}) => b,
+          ),
+        }
+      : {}),
+    ...(primitive.events?.length ? {events: encodeEvents(primitive, {withServerIds: false})} : {}),
     ...(primitive.properties?.length ? {properties: primitive.properties} : {}),
   };
 };
@@ -137,6 +186,10 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
         stateImage.composition = compositionPrimitives.map(p => buildShapeDescriptor(p, state.name));
       }
       return {
+        // Пришедший с сервера id обязан вернуться тем же — иначе переименование
+        // состояния читается как «удалили и создали заново» (§2 контракта версий).
+        // Локальный uuid новых состояний не отправляем: сервер их создаст сам.
+        ...(state.serverId != null ? {id: state.serverId} : {}),
         name: state.name,
         image: JSON.stringify(stateImage),
         isDefault: state.isDefault ?? index === 0,
@@ -153,7 +206,13 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     parent_key: element.parentKey,
     parent_id: element.parentId,
     scripts: Array.isArray(element.scripts)
-      ? element.scripts.map((s) => ({name: s.name, script: s.content}))
+      ? element.scripts.map((s) => ({
+          // Пришёл с id — возвращаем тот же (§2 контракта): у скрипта есть имя, и без id
+          // переименование читается сервером как «удалили и создали заново».
+          ...(s.serverId != null ? {id: s.serverId} : {}),
+          name: s.name,
+          script: s.content,
+        }))
       : [],
     bindings: encodeBindings(element),
     events: encodeEvents(element),
@@ -189,6 +248,9 @@ export const buildPaletteComponentTree = (
   const buildNestedNode = (element: DiagramElement): Record<string, any> => {
     const baseImage = buildBaseImage(element);
     const orderedChildren = getOrderedChildren(element, elements);
+    // Серверные id вложенных сущностей в шаблон НЕ уезжают: у DTO шаблона их нет ни на
+    // одном уровне (§2 контракта — потому для шаблонов и нет слияния), а id, попавший
+    // сюда из сцены, адресовал бы чужую сущность.
     const states = (element.states.length ? element.states : [{id: "default", name: "Нормальное", overrides: {}, isDefault: true}])
       .map((state, index) => ({
         name: state.name,
@@ -218,8 +280,8 @@ export const buildPaletteComponentTree = (
       scripts: Array.isArray(element.scripts)
         ? element.scripts.map((s: any) => ({ name: s.name, script: s.content }))
         : [],
-      bindings: encodeBindings(element),
-      events: encodeEvents(element),
+      bindings: encodeBindings(element, {withServerIds: false}),
+      events: encodeEvents(element, {withServerIds: false}),
       states,
       properties: templateProperties,
     };

@@ -6,6 +6,7 @@ import {Search, X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
+import {confirmModal} from "@/components/ui/ConfirmModal";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 
@@ -47,14 +48,17 @@ export default function Palette() {
             onChange={(e) => setSearch(e.target.value)}
             className={`
               w-full bg-white dark:bg-neutral-900/70 border border-neutral-300 dark:border-neutral-700 rounded-lg
-              pl-10 pr-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500
+              pl-10 pr-4 py-2.5 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-500
               focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600/50
               transition-all
             `}
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch("")}
+              aria-label="Очистить поиск"
+              title="Очистить поиск"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-300"
             >
               <X size={16} />
@@ -101,10 +105,21 @@ export default function Palette() {
                   {/* Кнопка удаления группы — справа */}
                   {isDeletableCategory && (
                     <button
-                      onClick={() => deletePaletteCategory(category)}
+                      onClick={async () => {
+                        // Удаление категории необратимо (серверная операция вне undo),
+                        // а порог у неё был самый низкий — один клик по иконке.
+                        const confirmed = await confirmModal({
+                          title: `Удалить группу «${category}»?`,
+                          description: `Будут удалены все шаблоны группы (${items.length} шт.). Действие необратимо и не отменяется через Ctrl+Z.`,
+                          confirmLabel: "Удалить группу",
+                          danger: true,
+                        });
+                        if (confirmed) void deletePaletteCategory(category);
+                      }}
                       className="p-2 rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-500/10
-                           opacity-0 group-hover/cat:opacity-100 transition-all duration-200 shrink-0"
+                           opacity-0 group-hover/cat:opacity-100 focus-visible:opacity-100 transition-all duration-200 shrink-0"
                       title={`Удалить группу «${category}»`}
+                      aria-label={`Удалить группу «${category}»`}
                     >
                       <Trash2 size={14} />
                     </button>

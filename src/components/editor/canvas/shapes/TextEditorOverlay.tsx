@@ -5,6 +5,7 @@ import { useEditorStore } from "@/store/useEditorStore";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { useThemeColors } from "../useThemeColors";
 
 interface TextEditorOverlayProps {
   elementKey: string;
@@ -14,8 +15,8 @@ interface TextEditorOverlayProps {
 
 /**
  * HTML-<textarea> поверх холста для инлайн-редактирования текстового элемента (как в Figma):
- * Enter — перенос строки, Esc / потеря фокуса — сохранение. Позиция считается из store
- * (мировые координаты + камера), поэтому корректно учитывает зум и панораму.
+ * Enter — перенос строки, потеря фокуса — сохранение, Esc — отмена. Позиция считается
+ * из store (мировые координаты + камера), поэтому корректно учитывает зум и панораму.
  */
 export function TextEditorOverlay({ elementKey, elementsMap, onClose }: TextEditorOverlayProps) {
   const element = useEditorStore((s) => s.elements.find((e) => e.key === elementKey));
@@ -23,9 +24,13 @@ export function TextEditorOverlay({ elementKey, elementsMap, onClose }: TextEdit
   const updateElementVisual = useEditorStore((s) => s.updateElementVisual);
 
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const { themeColors } = useThemeColors();
   const rendered = element ? (getRenderedElement(element) as LeafElement) : null;
 
-  const [value, setValue] = useState<string>(rendered?.text ?? "Text");
+  const [value, setValue] = useState<string>(rendered?.text ?? "Текст");
+  // Отмена по Escape: onBlur срабатывает после размонтирования и иначе сохранил бы
+  // изменённое значение.
+  const cancelledRef = useRef(false);
 
   // Фокус + выделение всего текста при открытии — сразу можно перепечатать.
   useEffect(() => {
@@ -60,12 +65,18 @@ export function TextEditorOverlay({ elementKey, elementsMap, onClose }: TextEdit
   const fixedWidth = isFixedWidth && rendered.w ? rendered.w * zoom : undefined;
 
   const commit = () => {
+    if (cancelledRef.current) return;
     // Пустой текст не сохраняем — элемент остаётся с прежним значением (чтобы не «потерять» его на холсте).
     if (value.trim().length === 0) {
       onClose();
       return;
     }
     if (value !== rendered.text) updateElementVisual(elementKey, { text: value });
+    onClose();
+  };
+
+  const cancel = () => {
+    cancelledRef.current = true;
     onClose();
   };
 
@@ -78,9 +89,11 @@ export function TextEditorOverlay({ elementKey, elementsMap, onClose }: TextEdit
       onKeyDown={(e) => {
         // Гасим всплытие, чтобы глобальные хоткеи редактора не срабатывали во время набора.
         e.stopPropagation();
+        // Escape отменяет правку. Раньше он её СОХРАНЯЛ — во всём остальном
+        // интерфейсе Escape отменяет, и отменить ввод текста было невозможно.
         if (e.key === "Escape") {
           e.preventDefault();
-          commit();
+          cancel();
         }
         // Enter — перенос строки (стандартное поведение textarea), как в Figma.
       }}
@@ -90,12 +103,12 @@ export function TextEditorOverlay({ elementKey, elementsMap, onClose }: TextEdit
         position: "absolute",
         left,
         top,
-        zIndex: 20,
+        zIndex: "var(--z-canvas-overlay)",
         margin: 0,
         padding: 0,
         border: "none",
         outline: "none",
-        boxShadow: "0 0 0 1px #3b82f6",
+        boxShadow: `0 0 0 1px ${themeColors.selection}`,
         background: "transparent",
         resize: "none",
         overflow: "hidden",

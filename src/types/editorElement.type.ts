@@ -1,5 +1,5 @@
 import {PropertyCreateDto} from "@/types/tags.types";
-import {ElementEvents, TagBinding} from "@/types/binding.types";
+import {BindingDto, ElementEvents, TagBinding} from "@/types/binding.types";
 
 export type SceneType = {
   id: number;
@@ -26,14 +26,36 @@ export type SceneType = {
 // }
 
 export type ComponentState = {
+  /** Локальный ключ состояния (uuid). Используется React и currentComponentStateByElementKey. */
   id: string;
+  /**
+   * Идентификатор состояния НА СЕРВЕРЕ — есть только у состояний, пришедших из бэкенда.
+   *
+   * Отдельное поле, а не `id`, потому что локальный `id` генерируется нами для новых
+   * состояний, и отправить такой uuid на сервер нельзя. Обязательство контракта версий
+   * (§2 «Что сливается, а что нет»): сущность, пришедшая с `id`, обязана вернуться с тем
+   * же `id` — иначе переименование читается как «удалили и создали заново», история
+   * теряется, а слияние выдаёт ложный конфликт на ровном месте.
+   */
+  serverId?: number | string;
   name: string;
   overrides: Record<string, unknown>;
   isDefault?: boolean;
 }
 
 export interface ElementScript {
+  /**
+   * Локальный ключ скрипта. У скриптов, пришедших с сервера, здесь лежит серверный id
+   * строкой — на это опирается монитор (`Number(script.id)` в useRuntimeEngine), поэтому
+   * поле не переименовываем.
+   */
   id: string;
+  /**
+   * Серверный id — только у скриптов, пришедших из бэкенда. То же обязательство, что у
+   * `ComponentState.serverId`: пришло с `id` — вернуть с тем же. Отдельно от `id`, потому
+   * что у новых скриптов там uuid, отправлять который нельзя.
+   */
+  serverId?: number | string;
   name: string;
   content: string;
 }
@@ -78,10 +100,14 @@ export type ComponentCreateDto = {
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  scripts: { name: string; script: string }[];
-  bindings: { component_property_id: number; name: string; script: string }[];
-  events: { event_type: string; script: string }[];
+  /** `id` — только у скриптов, пришедших с сервера (см. ElementScript.serverId). */
+  scripts: { id?: number | string; name: string; script: string }[];
+  bindings: BindingDto[];
+  /** `id` — только у событий, пришедших с сервера. */
+  events: { id?: number | string; event_type: string; script: string }[];
   states: {
+    /** Возвращается только для состояний, пришедших с сервера (см. ComponentState.serverId). */
+    id?: number | string;
     name: string;
     image: string;
     isDefault: boolean;

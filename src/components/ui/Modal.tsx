@@ -1,15 +1,33 @@
 'use client';
-import React, {ReactNode, useEffect} from 'react';
 
+import React, { ReactNode } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+/**
+ * Локальная модалка с собственным состоянием open/onClose.
+ *
+ * В отличие от {@link ModalRoot} (единый стек в layout) используется там, где
+ * диалог принадлежит конкретному компоненту — «Добавить компонент»,
+ * «Переместить в группу».
+ *
+ * Реализация — Radix Dialog: ручная версия не портировала содержимое в body
+ * и не удерживала фокус внутри окна (Tab уводил на элементы под затемнением).
+ * Escape, клик вне окна и блокировка прокрутки фона тоже достаются даром.
+ */
 type ModalProps = {
   open: boolean;
   onClose: () => void;
 
-  title?: ReactNode;
+  /** Обязателен: Radix использует его как имя диалога для скринридера. */
+  title: ReactNode;
+  /** Подпись под заголовком. Если не задана — скрыта визуально, но есть в DOM. */
+  description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
 
-  width?: string;
+  /** false — клик по затемнению не закрывает окно (для форм с несохранёнными данными). */
   closeOnOverlay?: boolean;
 };
 
@@ -17,61 +35,75 @@ const Modal: React.FC<ModalProps> = ({
   open,
   onClose,
   title,
+  description,
   children,
   footer,
-  closeOnOverlay = true
+  closeOnOverlay = true,
 }) => {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent)=> {
-      if (e.key === 'Escape') onClose();
-    };
-
-    if (open) {
-      window.addEventListener('keydown', handleEsc);
-    }
-
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={closeOnOverlay ? onClose : undefined}
-      />
+    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            'fixed inset-0 z-modal bg-black/50 backdrop-blur-sm',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          )}
+        />
 
-      {/* Сплошная тема (как у ModalRoot), без «стекла»: одинаково читается в светлой и тёмной. */}
-      <div
-        className="
-          relative z-10 flex flex-col
-          w-full max-w-lg max-h-[92vh] overflow-hidden
-          rounded-2xl
-          bg-white dark:bg-[#0f0f1a]
-          text-gray-900 dark:text-white
-          border border-gray-200 dark:border-neutral-800
-          shadow-2xl shadow-black/30
-        "
-        onClick={e => e.stopPropagation()}
-      >
-        {title && (
-          <div className="px-6 py-4 text-lg font-semibold border-b border-gray-200 dark:border-neutral-800 shrink-0">
-            {title}
+        <Dialog.Content
+          onInteractOutside={(e) => {
+            if (!closeOnOverlay) e.preventDefault();
+          }}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-modal -translate-x-1/2 -translate-y-1/2',
+            // flex-col + max-h: нижние кнопки не уезжают за край экрана.
+            'flex w-[95vw] max-w-lg max-h-[92vh] flex-col overflow-hidden rounded-2xl',
+            // Сплошная тема (как у ModalRoot), без «стекла»: одинаково читается
+            // в светлой и тёмной.
+            'bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white',
+            'border border-gray-200 dark:border-neutral-800 shadow-2xl shadow-black/30',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'focus:outline-none',
+          )}
+        >
+          <div className="shrink-0 border-b border-gray-200 dark:border-neutral-800 px-6 py-4 pr-14">
+            <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
+            {/* Описание всегда в DOM ради a11y Radix; без текста — скрыто визуально. */}
+            <Dialog.Description
+              className={cn(
+                description
+                  ? 'mt-1 text-sm text-gray-600 dark:text-gray-400'
+                  : 'sr-only',
+              )}
+            >
+              {description ?? title}
+            </Dialog.Description>
           </div>
-        )}
 
-        {/* Прокручиваемая область — нижние кнопки не пропадают за краем экрана. */}
-        <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
+          <Dialog.Close asChild>
+            <button
+              className="absolute right-4 top-3.5 rounded-full p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+              aria-label="Закрыть"
+            >
+              <X size={18} />
+            </button>
+          </Dialog.Close>
 
-        {footer && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-neutral-800 flex justify-end gap-3 shrink-0">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+          {/* Прокручиваемая область — нижние кнопки не пропадают за краем экрана. */}
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+
+          {footer && (
+            <div className="shrink-0 border-t border-gray-200 dark:border-neutral-800 px-6 py-4 flex justify-end gap-3">
+              {footer}
+            </div>
+          )}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 };
 
 export default Modal;

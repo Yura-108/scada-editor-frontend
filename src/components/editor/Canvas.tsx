@@ -4,17 +4,23 @@ import React, { useMemo, useRef, useState, useCallback } from "react";
 import Konva from "konva";
 import { Stage, Layer, Rect, Line } from "react-konva";
 
+import { useShallow } from "zustand/react/shallow";
+
 import { useEditorStore } from "@/store/useEditorStore";
 import { snap } from "@/lib/utils";
-import { DiagramElement, GroupElement } from "@/types/editorElement.type";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
 import { createGridPattern } from "@/lib/editor/gridPattern";
+import { getChildElements, getElementIndex } from "@/lib/editor/elementIndex";
+import { selectVisibleRootKeys } from "@/lib/editor/viewportCulling";
+import { NON_TRANSFORMABLE } from "./canvas/useElementRenderState";
+// Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
+// должны примениться до создания Stage.
+import "@/lib/editor/konvaConfig";
 
 import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 import { AddComponentModal } from "@/components/ui/AddComponentModal";
 
-import { ShapeElement } from "./canvas/shapes/ShapeElement";
-import { GroupNode } from "./canvas/shapes/GroupNode";
+import { CanvasNode } from "./canvas/shapes/CanvasNode";
 import { NoDataOverlay } from "./canvas/shapes/NoDataOverlay";
 import { TextEditorOverlay } from "./canvas/shapes/TextEditorOverlay";
 import { SelectionTransformer } from "./canvas/shapes/SelectionTransformer";
@@ -35,9 +41,6 @@ import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 const CANVAS_WIDTH = 5000;
 const CANVAS_HEIGHT = 5000;
 
-/** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
-const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "line", "polygon"]);
-
 interface CanvasProps {
   /**
    * Режим монитора: сцена только отображается. Layer выключается из hit-графа
@@ -45,32 +48,44 @@ interface CanvasProps {
    * маркиз/хоткеи/контекст-меню отключены; пан/зум камеры остаются.
    */
   readOnly?: boolean;
-  /**
-   * Ширина открытой правой боковой панели (px) — на неё сдвигается панель зума,
-   * чтобы не прятаться под панелью. В мониторе панелей нет → 0.
-   */
-  controlsRightInset?: number;
 }
 
-export default function Canvas({ readOnly = false, controlsRightInset = 0 }: CanvasProps) {
+export default function Canvas({ readOnly = false }: CanvasProps) {
+  // Точечный срез вместо подписки на весь стор: без него холст перерисовывался на
+  // ЛЮБОЕ изменение (sceneList, projectList, clipboard, currentProject …), а не
+  // только на то, что он рисует. Ср. тот же приём в WorkSpace.
   const {
     elements, selectedIds, selectMultiple, setCanvasRect,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
-    canvasRect, currentComponentStateByElementKey, runtimeOverridesByElementKey, noDataElementKeys,
+    canvasRect, noDataElementKeys,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
-    pendingPlacement, selectedTableCell, selectTableCell,
-  } = useEditorStore();
-
-  console.log(elements);
+    pendingPlacement, setEditingTextKey, editingTextKey,
+    groupSelected, ungroupSelected,
+  } = useEditorStore(useShallow(s => ({
+    elements: s.elements, selectedIds: s.selectedIds, selectMultiple: s.selectMultiple,
+    setCanvasRect: s.setCanvasRect,
+    deleteSelectedElement: s.deleteSelectedElement, copySelectedElement: s.copySelectedElement,
+    pasteSelectedElement: s.pasteSelectedElement,
+    camera: s.camera, scene: s.scene, setCameraPan: s.setCameraPan, setCameraZoom: s.setCameraZoom,
+    updateElementVisual: s.updateElementVisual,
+    activeGroupKey: s.activeGroupKey, enterGroup: s.enterGroup, exitGroup: s.exitGroup,
+    clearSelection: s.clearSelection,
+    canvasRect: s.canvasRect,
+    noDataElementKeys: s.noDataElementKeys,
+    moveSelectedBy: s.moveSelectedBy, duplicateSelected: s.duplicateSelected,
+    selectAllInScope: s.selectAllInScope, setCamera: s.setCamera,
+    pendingPlacement: s.pendingPlacement,
+    setEditingTextKey: s.setEditingTextKey, editingTextKey: s.editingTextKey,
+    groupSelected: s.groupSelected, ungroupSelected: s.ungroupSelected,
+  })));
 
   const { resolvedTheme, themeColors } = useThemeColors();
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: CanvasMenuItem[] } | null>(null);
   const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean; elementKey: string | null }>({ isOpen: false, elementKey: null });
   const [addComponentState, setAddComponentState] = useState<{ isOpen: boolean; targetKey: string | null }>({ isOpen: false, targetKey: null });
-  const [editingTextKey, setEditingTextKey] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -79,48 +94,74 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
   useEditorHotkeys({
     enabled: !readOnly,
     activeGroupKey, exitGroup, clearSelection, deleteSelectedElement, copySelectedElement, pasteSelectedElement,
-    duplicateSelected, selectAllInScope, moveSelectedBy,
+    duplicateSelected, selectAllInScope, moveSelectedBy, groupSelected, ungroupSelected,
   });
 
-  const rootElements = useMemo(() => elements.filter(el => el.parentKey === String(scene?.id)), [elements, scene]);
-  const elementsMap = useMemo(() => {
-    const map: Record<string, DiagramElement> = {};
-    elements.forEach(el => { map[el.key] = el; });
-    return map;
-  }, [elements]);
+  // Общий индекс массива (кэшируется по ссылке на него): key→элемент и
+  // parentKey→ключи детей. Раньше Canvas строил свою карту, а геометрия
+  // параллельно бегала по массиву линейным поиском.
+  const elementIndex = useMemo(() => getElementIndex(elements), [elements]);
+  const elementsMap = elementIndex.byKey;
+  const rootElements = useMemo(
+    () => getChildElements(String(scene?.id ?? ""), elementIndex),
+    [elementIndex, scene],
+  );
 
   const gridPattern = useMemo(() => createGridPattern(themeColors.gridLine), [themeColors.gridLine]);
 
   const closeMenu = useCallback(() => setContextMenu(null), []);
 
-  const resolveClickTarget = useCallback(
-    (key: string) => resolveClickTargetFn(key, elementsMap, activeGroupKey, String(scene?.id)),
-    [elementsMap, activeGroupKey, scene],
-  );
+  // Колбэки холста намеренно БЕЗ зависимостей от изменчивого состояния: они
+  // попадают в ctx, а ctx обязан быть стабильным по ссылке (иначе не работает
+  // мемоизация узлов). Актуальные elements/selectedIds/activeGroupKey читаем
+  // через getState() в момент вызова — это обработчики событий, не рендер.
+  const resolveClickTarget = useCallback((key: string) => {
+    const s = useEditorStore.getState();
+    return resolveClickTargetFn(
+      key,
+      getElementIndex(s.elements).byKey,
+      s.activeGroupKey,
+      String(s.scene?.id),
+    );
+  }, []);
 
   const handleElementClick = useCallback((clickedKey: string, multi: boolean) => {
+    const s = useEditorStore.getState();
     // Вооружён инструмент палитры — клик по фигуре ставит новый элемент (на Stage.onClick),
     // а не выделяет существующий.
-    if (useEditorStore.getState().pendingPlacement) return;
+    if (s.pendingPlacement) return;
     const target = resolveClickTarget(clickedKey);
-    if (target === null) { exitGroup(); return; }
-    selectMultiple(multi ? [...selectedIds.filter(id => id !== target), target] : [target]);
-  }, [resolveClickTarget, exitGroup, selectMultiple, selectedIds]);
+    if (target === null) { s.exitGroup(); return; }
+
+    if (!multi) {
+      s.selectMultiple([target]);
+      return;
+    }
+
+    // Ctrl/Shift+клик ПЕРЕКЛЮЧАЕТ элемент. Раньше он всегда добавлялся в конец
+    // (filter + append), поэтому снять выделение модификатором было невозможно.
+    const current = s.selectedIds;
+    s.selectMultiple(
+      current.includes(target)
+        ? current.filter(id => id !== target)
+        : [...current, target],
+    );
+  }, [resolveClickTarget]);
 
   // Клик по ячейке таблицы: сначала выделяем таблицу целиком (как обычный клик по элементу),
   // затем фокусируем ячейку — handleElementClick/selectMultiple сбрасывают selectedTableCell,
   // поэтому selectTableCell обязан выполниться ПОСЛЕ него в этом же синхронном обработчике.
   const onTableCellClick = useCallback((elementKey: string, row: number, col: number, multi: boolean) => {
     handleElementClick(elementKey, multi);
-    selectTableCell(elementKey, row, col);
-  }, [handleElementClick, selectTableCell]);
+    useEditorStore.getState().selectTableCell(elementKey, row, col);
+  }, [handleElementClick]);
 
   const { handleStagePlacementClick } = usePendingPlacement({ stageRef, pendingPlacement });
 
   const { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp } = useStageInteractions({
     stageRef, camera, setCameraPan, setCameraZoom,
     elements, elementsMap, selectedIds, selectMultiple,
-    activeGroupKey, exitGroup, closeMenu,
+    activeGroupKey, exitGroup, closeMenu, resolveClickTarget,
     readOnly,
   });
 
@@ -140,6 +181,19 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     if (!el || NON_TRANSFORMABLE.has(el.type)) return null;
     return el;
   }, [selectedIds, elementsMap]);
+
+  // ---- Culling: на больших схемах монтируем только то, что рядом с экраном ----
+  const visibleRootKeys = useMemo(
+    () => selectVisibleRootKeys({
+      rootElements,
+      elementIndex,
+      camera,
+      canvasRect,
+      selectedIds,
+      activeGroupKey,
+    }),
+    [rootElements, elementIndex, camera, canvasRect, selectedIds, activeGroupKey],
+  );
 
   const { zoomBy, zoomFit } = useZoomControls({ canvasRect, setCamera });
 
@@ -178,23 +232,19 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
     });
   };
 
-  // Стабильный ctx (useMemo) — ключ к мемоизации фигур: пан/зум/маркиз/меню не меняют
-  // его identity, и React.memo пропускает ре-рендер всей сцены. currentComponentStateByElementKey
-  // в deps обязателен: переключение состояния меняет ctx и «пробивает» memo (getRenderedElement
-  // читает состояние нереактивно через getState()).
+  // ctx СТАБИЛЕН по ссылке: только палитра и колбэки, ничего изменчивого.
+  // Всё, что меняется при работе (выделение, состав схемы, активное состояние,
+  // редактируемый текст, сфокусированная ячейка), каждый узел читает про себя
+  // сам — см. useElementRenderState. Пока это ехало общим контекстом, React.memo
+  // на узлах не срабатывал ни разу: любая правка перерисовывала всю сцену.
   const ctx: EditorRenderContext = useMemo(() => ({
-    selectedIds, activeGroupKey, elementsMap, themeColors, snap,
+    themeColors, snap,
     updateElementVisual, onElementClick: handleElementClick, enterGroup, resolveClickTarget, closeMenu,
-    editingTextKey, onStartTextEdit: setEditingTextKey,
-    currentComponentStateByElementKey,
-    runtimeOverridesByElementKey,
-    transformerKey: transformTarget?.key ?? null,
-    selectedTableCell, onTableCellClick,
+    onStartTextEdit: setEditingTextKey,
+    onTableCellClick,
   }), [
-    selectedIds, activeGroupKey, elementsMap, themeColors,
-    updateElementVisual, handleElementClick, enterGroup, resolveClickTarget, closeMenu,
-    editingTextKey, currentComponentStateByElementKey, runtimeOverridesByElementKey, transformTarget,
-    selectedTableCell, onTableCellClick,
+    themeColors, updateElementVisual, handleElementClick, enterGroup,
+    resolveClickTarget, closeMenu, setEditingTextKey, onTableCellClick,
   ]);
 
   return (
@@ -228,9 +278,12 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
           onMouseOver={readOnly ? undefined : handleStageMouseOver}
           onMouseLeave={clearHover}
         >
-          {/* readOnly (монитор): слой вне hit-графа Konva — фигуры не кликаются
-              и не драгаются, при этом пан/зум Stage работают как обычно. */}
-          <Layer listening={!readOnly}>
+          {/* Слой фона: перерисовывается только при смене темы. В общем слое
+              сетка размером 10000×10000 переписывалась заново на каждый кадр
+              перетаскивания и на каждое движение рамки выделения.
+              listening=false — огромный прямоугольник уходит из hit-графа Konva;
+              клик по пустому месту приходит на сам Stage, и это уже учтено. */}
+          <Layer listening={false}>
             <Rect
               key={`canvas-bg-${resolvedTheme}`}
               name="canvas-bg"
@@ -239,7 +292,6 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
               width={CANVAS_WIDTH * 2}
               height={CANVAS_HEIGHT * 2}
               fill={themeColors.canvasBg}
-              listening={false}
             />
             <Rect
               key={`grid-${resolvedTheme}`}
@@ -251,13 +303,21 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
               fillPriority="pattern"
               fillPatternImage={gridPattern as unknown as HTMLImageElement}
             />
+          </Layer>
 
-            {rootElements.map(el => (
-              el.type === "group"
-                ? <GroupNode key={el.key} group={el as GroupElement} ctx={ctx} />
-                : <ShapeElement key={el.key} el={el} ctx={ctx} />
+          {/* Слой содержимого: сами фигуры.
+              readOnly (монитор): слой вне hit-графа Konva — фигуры не кликаются
+              и не драгаются, при этом пан/зум Stage работают как обычно. */}
+          <Layer listening={!readOnly}>
+            {visibleRootKeys.map(key => (
+              <CanvasNode key={key} elementKey={key} ctx={ctx} />
             ))}
+          </Layer>
 
+          {/* Слой оверлеев: подсветка, направляющие, рамка выделения, Transformer.
+              Живёт отдельно, чтобы движение мыши при протяжке рамки или
+              перетаскивании перерисовывало только его, а не всю сцену. */}
+          <Layer listening={!readOnly}>
             {/* «Нет данных» (монитор, TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
                 вне монитора — движок рантайма там не запущен. */}
             <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
@@ -270,7 +330,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
                 y={hoverBounds.y - 2}
                 width={hoverBounds.w + 4}
                 height={hoverBounds.h + 4}
-                stroke="#3b82f6"
+                stroke={themeColors.selection}
                 strokeWidth={1.5}
                 dash={[5, 3]}
                 opacity={0.7}
@@ -283,7 +343,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
             {guides.v !== null && (
               <Line
                 points={[guides.v, -CANVAS_HEIGHT / 2, guides.v, CANVAS_HEIGHT * 1.5]}
-                stroke="#f43f5e"
+                stroke={themeColors.guide}
                 strokeWidth={1 / camera.zoom}
                 dash={[4, 4]}
                 listening={false}
@@ -292,7 +352,7 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
             {guides.h !== null && (
               <Line
                 points={[-CANVAS_WIDTH / 2, guides.h, CANVAS_WIDTH * 1.5, guides.h]}
-                stroke="#f43f5e"
+                stroke={themeColors.guide}
                 strokeWidth={1 / camera.zoom}
                 dash={[4, 4]}
                 listening={false}
@@ -315,9 +375,10 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
                 y={Math.min(selectionRect.y, selectionRect.y + selectionRect.height)}
                 width={Math.abs(selectionRect.width)}
                 height={Math.abs(selectionRect.height)}
-                fill="rgba(0, 150, 255, 0.2)"
-                stroke="#0096ff"
+                fill={themeColors.selectionFill}
+                stroke={themeColors.selection}
                 strokeWidth={1}
+                listening={false}
               />
             )}
           </Layer>
@@ -341,22 +402,27 @@ export default function Canvas({ readOnly = false, controlsRightInset = 0 }: Can
         onZoomBy={zoomBy}
         onFit={zoomFit}
         onReset={() => setCamera(0, 0, 1)}
-        rightOffset={controlsRightInset}
       />
 
-      <CanvasContextMenu menu={contextMenu} />
+      <CanvasContextMenu menu={contextMenu} onClose={closeMenu} />
 
-      <MoveToGroupModal
-        isOpen={moveToGroupState.isOpen}
-        elementKey={moveToGroupState.elementKey}
-        onClose={() => setMoveToGroupState({ isOpen: false, elementKey: null })}
-      />
+      {/* Монтируем только на время показа: обе модалки читают `elements`, и
+          постоянно смонтированные они подписывали холст на лишние обновления. */}
+      {moveToGroupState.isOpen && (
+        <MoveToGroupModal
+          isOpen
+          elementKey={moveToGroupState.elementKey}
+          onClose={() => setMoveToGroupState({ isOpen: false, elementKey: null })}
+        />
+      )}
 
-      <AddComponentModal
-        isOpen={addComponentState.isOpen}
-        targetKey={addComponentState.targetKey}
-        onClose={() => setAddComponentState({ isOpen: false, targetKey: null })}
-      />
+      {addComponentState.isOpen && (
+        <AddComponentModal
+          isOpen
+          targetKey={addComponentState.targetKey}
+          onClose={() => setAddComponentState({ isOpen: false, targetKey: null })}
+        />
+      )}
     </div>
   );
 }

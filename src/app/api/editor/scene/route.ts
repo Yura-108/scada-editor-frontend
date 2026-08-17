@@ -1,4 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
+import { backendErrorResponse } from '@/lib/backendProxy';
 import {protectedRoute} from "@/lib/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
@@ -33,10 +34,7 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
     }
   );
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка ${response.status}: ${text}`);
-  }
+  if (!response.ok) return backendErrorResponse(response);
 
   const data = await response.json().catch(() => null);
 
@@ -68,16 +66,10 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     body: JSON.stringify(body),
   });
 
-  // Пробрасываем реальный статус бэкенда — иначе клиент получает 201 с мусором
-  // вместо сцены и store указывает на несуществующую сцену.
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Неизвестная ошибка");
-
-    return NextResponse.json(
-      {error: `Ошибка ${response.status}: ${errorText}`},
-      {status: response.status}
-    );
-  }
+  // Пробрасываем реальный статус и тело бэкенда — иначе клиент получает 201 с мусором
+  // вместо сцены и store указывает на несуществующую сцену. Пересборка тела в
+  // {error: "Ошибка N: …"} прятала `message` от parseBackendErrorMessage.
+  if (!response.ok) return backendErrorResponse(response);
 
   const scene = await response.json().catch(() => null);
 

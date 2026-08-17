@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from "sonner";
 
 export default function LogsList() {
-  const { logs, isLoading, getFilteredLogs, fetchLogs } = useLogsStore();
+  const { logs, isLoading, hasSearched, searchQuery, getFilteredLogs, fetchLogs } = useLogsStore();
 
   const filteredLogs = getFilteredLogs();
 
@@ -23,11 +23,33 @@ export default function LogsList() {
     );
   }
 
+  // Три разных пустых состояния вместо одного: до первого запроса, «за период
+  // пусто» и «фильтр ничего не нашёл» — раньше все три выглядели одинаково,
+  // а последнее вообще давало таблицу с одними заголовками.
+  if (!hasSearched) {
+    return (
+      <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+        <span className="text-5xl opacity-30" aria-hidden>🗓️</span>
+        <p>Выберите период и нажмите «Показать»</p>
+      </div>
+    );
+  }
+
   if (logs.length === 0) {
     return (
       <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-        <span className="text-5xl opacity-30">📭</span>
+        <span className="text-5xl opacity-30" aria-hidden>📭</span>
         <p>Нет данных за выбранный период</p>
+      </div>
+    );
+  }
+
+  if (filteredLogs.length === 0) {
+    return (
+      <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+        <span className="text-5xl opacity-30" aria-hidden>🔍</span>
+        <p>Ничего не найдено по запросу «{searchQuery}»</p>
+        <p className="text-sm">Записей за период: {logs.length}</p>
       </div>
     );
   }

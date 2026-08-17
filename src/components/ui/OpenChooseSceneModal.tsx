@@ -8,6 +8,8 @@ import {useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {toast} from "sonner";
+import {confirmModal} from "@/components/ui/ConfirmModal";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface Props {
   onLoadAction: (value: number) => void;
@@ -38,7 +40,12 @@ export function ChooseSceneContent({
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    const ok = window.confirm('Вы уверены, что хотите удалить эту сцену? Это действие необратимо.');
+    const ok = await confirmModal({
+      title: 'Удалить схему?',
+      description: 'Схема и все её элементы будут удалены. Действие необратимо.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
     if (!ok) return;
     await onDeleteAction(id);
     const next = localList.filter(s => s.id !== id);
@@ -75,7 +82,7 @@ export function ChooseSceneContent({
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         {projectName
           ? `Схемы проекта «${projectName}». Выберите существующую или создайте новую.`
-          : "Загрузите одну из сохранённых сцен или создайте новую."}
+          : "Загрузите одну из сохранённых схем или создайте новую."}
       </Dialog.Description>
 
       {localList.length === 0 ? (
@@ -85,21 +92,32 @@ export function ChooseSceneContent({
       ) : (
         <ul className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
           {localList.map(scene => (
+            // Выбор схемы — отдельная кнопка внутри строки, а не onClick на <li>:
+            // кнопку удаления во вложенную кнопку не положить, а без этого выбрать
+            // схему с клавиатуры было нельзя.
             <li
               key={scene.id}
-              onClick={() => setSelectedId(scene.id)}
               className={cn(
-                "flex items-center justify-between px-3 py-2.5 cursor-pointer text-sm transition-colors",
+                "flex items-center justify-between px-3 py-2.5 text-sm transition-colors",
                 selectedId === scene.id
                   ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
                   : "hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
               )}
             >
-              <span className="truncate">{scene.name}</span>
               <button
+                type="button"
+                aria-pressed={selectedId === scene.id}
+                onClick={() => setSelectedId(scene.id)}
+                className="min-w-0 flex-1 truncate text-left cursor-pointer"
+              >
+                {scene.name}
+              </button>
+              <button
+                type="button"
                 onClick={(e) => handleDelete(e, scene.id)}
                 className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
-                title="Удалить сцену"
+                title="Удалить схему"
+                aria-label={`Удалить схему «${scene.name}»`}
               >
                 <X size={14} />
               </button>
@@ -134,23 +152,14 @@ export function ChooseSceneContent({
         </div>
       )}
 
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600 transition-colors"
-        >
-          Отмена
-        </button>
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
         {localList.length > 0 && (
-          <button
-            onClick={handleConfirm}
-            disabled={selectedId === null}
-            className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="primary" onClick={handleConfirm} disabled={selectedId === null}>
             Выбрать
-          </button>
+          </Button>
         )}
-      </div>
+      </ModalFooter>
     </>
   );
 }
@@ -177,7 +186,7 @@ export function openChooseSceneModal() {
 
     const created = await createScene(name);
     if (!created) {
-      toast.error("Не удалось создать сцену");
+      toast.error("Не удалось создать схему");
       return null;
     }
 

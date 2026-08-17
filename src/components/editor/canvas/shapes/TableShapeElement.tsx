@@ -7,6 +7,7 @@ import { LeafElement, TableCellData } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
 import type { ShapeElementProps } from "../types";
+import { SelectionOutline } from "./SelectionOutline";
 
 interface TableShapeElementProps extends ShapeElementProps {
   /** Ячейка, сфокусированная в панели свойств (для этой таблицы), или null. */
@@ -16,10 +17,10 @@ interface TableShapeElementProps extends ShapeElementProps {
 }
 
 /** Цвет подсветки сфокусированной ячейки — намеренно отличается от синей пунктирной
- *  рамки выделения таблицы (#3b82f6) и розовых smart-guides (#f43f5e). */
+ *  рамки выделения таблицы и розовых smart-guides (цвета — в useThemeColors). */
 const CELL_FOCUS_COLOR = "#f59e0b";
 
-export function TableShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual, focusedCell, onCellClick }: TableShapeElementProps) {
+export function TableShapeElement({ el, isSelected, onElementClick, updateElementVisual, focusedCell, onCellClick }: TableShapeElementProps) {
   const rendered = getRenderedElement(el) as LeafElement;
   const renderedAny = rendered as unknown as Record<string, unknown>;
   const pad = 4;
@@ -159,14 +160,11 @@ export function TableShapeElement({ el, isSelected, snap, onElementClick, update
       x={rendered.x}
       y={rendered.y}
       draggable
-      onDragEnd={(e) => updateElementVisual(el.key, { x: snap(e.target.x()), y: snap(e.target.y()) })}
+      onDragEnd={(e) => updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() })}
       onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
     >
       {isSelected && (
-        <Rect
-          x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2}
-          fill="transparent" stroke="#3b82f6" strokeWidth={1.5} dash={[4, 3]} listening={false}
-        />
+        <SelectionOutline x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2} />
       )}
 
       {/* Фон */}

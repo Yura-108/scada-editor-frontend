@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {cn} from "@/lib/utils";
 import {Type} from "lucide-react";
 import React, {useId, useState} from "react";
+import { Button, ModalFooter } from "@/components/ui/Button";
 
 interface InputModalProps {
   title: string;
@@ -75,27 +76,12 @@ export function InputModalContent({
           </div>
       </div>
 
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800
-          hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600
-            transition-colors text-gray-700 dark:text-gray-300"
-        >
-          Отмена
-        </button>
-        <button
-          onClick={handleConfirmAction}
-          disabled={!value.trim() || isLoading}
-          className="px-6 py-2.5 rounded-lg font-medium
-          bg-linear-to-r from-indigo-600 to-blue-600
-          hover:from-indigo-500 hover:to-blue-500
-          disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500
-          text-gray-900 dark:text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
-        >
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirmAction} disabled={!value.trim() || isLoading}>
           {isLoading ? "Загрузка..." : confirmLabel}
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </>
   )
 }

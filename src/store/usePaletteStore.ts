@@ -5,6 +5,7 @@ import {toast} from "sonner";
 import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
 import transformElements from "@/lib/transformElements";
 import {DiagramElement} from "@/types/editorElement.type";
+import {isSaveConflictBody, SaveConflictError} from "@/types/editorVersion.types";
 
 /**
  * Нормализует шаблон перед сохранением в палитру.
@@ -23,6 +24,57 @@ const normalizeTemplateForPalette = (
       return {...el, parentId: null, parentKey: null};
     }
     return {...el, parentId: null};
+  });
+};
+
+/**
+ * Разбирает ответ и бросает ошибку с сообщением бэкенда, если статус не 2xx.
+ *
+ * Без этой проверки тело ошибки 4xx/5xx парсилось как обычный DTO и попадало в
+ * список палитры записью с `id: undefined`, а пользователь видел «успешно».
+ *
+ * 409 выделен отдельным типом ошибки: расхождение версий — не сбой сохранения, а
+ * ситуация, в которой решает человек, и показывать её надо сравнением, а не тостом.
+ */
+const parseOk = async <T>(res: Response, fallback: string): Promise<T> => {
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    // не-JSON — сообщение возьмём из текста
+  }
+
+  if (res.status === 409 && isSaveConflictBody(body)) {
+    throw new SaveConflictError(body);
+  }
+
+  if (!res.ok) {
+    const message =
+      (body && typeof body === "object" && typeof (body as {message?: unknown}).message === "string"
+        ? (body as {message: string}).message
+        : "") || text.slice(0, 200) || `${fallback} (${res.status})`;
+    throw new Error(message);
+  }
+
+  return body as T;
+};
+
+/**
+ * Сообщает о расхождении версий шаблона.
+ *
+ * Отдельного диалога у шаблонов нет намеренно: слияния для них не будет (у DTO
+ * шаблона нет id на вложенных уровнях, переименование неотличимо от «удалили плюс
+ * создали»), список расхождений не придёт, и показывать было бы нечего. Разрешение
+ * одно — перечитать список и повторить правку от свежей версии.
+ */
+const reportTemplateConflict = (err: SaveConflictError) => {
+  const {base_version, current_version} = err.conflict;
+  toast.error("Шаблон изменил другой пользователь", {
+    description:
+      `Вы правили версию ${base_version ?? "—"}, на сервере уже ${current_version ?? "—"}. ` +
+      "Обновите список шаблонов и повторите правку.",
+    duration: 12_000,
   });
 };
 
@@ -47,9 +99,9 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
     try {
       const res = await fetch("/api/editor/palette/");
 
-      const json: PaletteItemResponseDTO[] = await res.json();
+      const json = await parseOk<PaletteItemResponseDTO[]>(res, "Ошибка загрузки списка элементов");
 
-      const paletteItems: PaletteItemType[] = json.map(item => {
+      const paletteItems: PaletteItemType[] = (json ?? []).map(item => {
         const components = transformElements([item.rootComponent]);
         return {
           id: item.id,
@@ -58,13 +110,15 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
           category: item.type,
           defaultProps: {},
           template: components,
+          versionNo: item.version_no ?? null,
         }
       });
 
       set({
         paletteItems: [...paletteItemsStatic, ...paletteItems]
       });
-      toast.success("Список элементов загружен");
+      // Успешный тост здесь не нужен: загрузка идёт при каждом монтировании
+      // редактора и после каждого createScene — получался спам.
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Ошибка загрузки списка элементов");
@@ -86,6 +140,9 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         name: paletteItem.name,
         type: paletteItem.category,
         rootComponent,
+        // У шаблона тело и так объект — конверта нет, поля версионирования едут рядом.
+        // Новый шаблон версий не имеет, based_on_version не отправляем.
+        save_kind: "MANUAL",
       };
 
       const res = await fetch("/api/editor/palette/", {
@@ -95,7 +152,7 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
       });
 
 
-      const paletteItemResponse: PaletteItemResponseDTO = await res.json();
+      const paletteItemResponse = await parseOk<PaletteItemResponseDTO>(res, "Ошибка сохранения шаблона");
 
       const newPaletteItem: PaletteItemType = {
         id: paletteItemResponse.id,
@@ -103,14 +160,17 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         type: 'custom',
         category: paletteItemResponse.type,
         defaultProps: paletteItem.defaultProps,
-        template: transformElements([paletteItemResponse.rootComponent])
+        template: transformElements([paletteItemResponse.rootComponent]),
+        versionNo: paletteItemResponse.version_no ?? null,
       }
       set({
         paletteItems: [...get().paletteItems, newPaletteItem]
       });
+      toast.success("Шаблон сохранён");
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Ошибка загрузки списка элементов");
+      if (err instanceof SaveConflictError) return reportTemplateConflict(err);
+      toast.error(err.message || "Ошибка сохранения шаблона");
     }
   },
   updatePaletteItem: async (id, paletteItem) => {
@@ -125,10 +185,18 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         return;
       }
 
+      // База — версия, на которой пользователь правил шаблон. Берём из списка, а не
+      // из аргумента: вызывающий передаёт Omit<PaletteItemType,'id'> из формы, где
+      // версии нет, и подставить туда её значило бы просить UI помнить о контракте.
+      const basedOnVersion = paletteItem.versionNo ?? get().paletteItems.find(i => i.id === id)?.versionNo;
+
       const paletteItemUpdateDTO = {
         name: paletteItem.name,
         type: paletteItem.category,
         rootComponent,
+        save_kind: "MANUAL",
+        // Версий нет — это первое сохранение шаблона, поле не отправляем вовсе.
+        ...(basedOnVersion != null ? {based_on_version: basedOnVersion} : {}),
       };
 
       const res = await fetch(`/api/editor/palette/${id}`, {
@@ -137,7 +205,7 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         body: JSON.stringify(paletteItemUpdateDTO),
       });
 
-      const paletteItemResponse: PaletteItemResponseDTO = await res.json();
+      const paletteItemResponse = await parseOk<PaletteItemResponseDTO>(res, "Ошибка обновления шаблона");
 
       const updatedPaletteItem: PaletteItemType = {
         id: paletteItemResponse.id,
@@ -145,7 +213,9 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
         type: 'custom',
         category: paletteItemResponse.type,
         defaultProps: paletteItem.defaultProps,
-        template: transformElements([paletteItemResponse.rootComponent])
+        template: transformElements([paletteItemResponse.rootComponent]),
+        // Ответ без version_no (старый контракт) не должен затирать известную версию.
+        versionNo: paletteItemResponse.version_no ?? basedOnVersion ?? null,
       }
 
       // Обновляем элемент в списке
@@ -158,11 +228,11 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
       toast.success("Шаблон успешно обновлен");
     } catch (err: any) {
       console.error(err);
+      if (err instanceof SaveConflictError) return reportTemplateConflict(err);
       toast.error(err.message || "Ошибка обновления шаблона");
     }
   },
   deletePaletteItem: async (id) => {
-    console.log('DELETE PALETTE ITEM', id);
     try {
       const res = await fetch(`/api/editor/palette/${id}`, { method: "DELETE" });
       if (!res.ok) {

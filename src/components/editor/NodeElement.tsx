@@ -59,7 +59,7 @@ export default function NodeElement({
       default:
         return (
           <div className="text-neutral-500 text-sm italic p-4">
-            Unsupported type: {element.type}
+            Неизвестный тип элемента: {element.type}
           </div>
         );
     }
@@ -69,7 +69,6 @@ export default function NodeElement({
     <div
       className={containerClasses}
       style={{ background: "transparent" }}
-      onDoubleClick={e => console.log(e)}
     >
       {element.label && element.type !== "text" && element.type !== "checkbox" && element.type !== "progress_bar" && (
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-white dark:bg-neutral-900/90 text-neutral-800 dark:text-neutral-200 text-xs rounded border border-neutral-300 dark:border-neutral-700 shadow-sm whitespace-nowrap z-10">

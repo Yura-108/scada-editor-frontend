@@ -9,11 +9,16 @@ import {
   Pencil
 } from 'lucide-react';
 import { useDeviceStore } from '@/store/useDeviceStore';
+import {
+  ContextMenuTrigger,
+  contextMenuTriggerFromKey,
+  isContextMenuKey,
+} from '@/types/contextMenu.type';
 
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
   onClick: () => void;
-  onContextMenu: (e: React.MouseEvent, node: any) => void;
+  onContextMenu: (e: ContextMenuTrigger, node: any) => void;
 }
 
 const NodeIcon = ({ depth, isLeaf }: { depth: number; isLeaf?: boolean }) => {
@@ -59,21 +64,29 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium text-sm select-none cursor-pointer border',
         isSelected
-          ? 'bg-indigo-200 text-indigo-900 border-indigo-200 shadow-xs'
-          : 'hover:bg-gray-300 text-gray-700 border-transparent',
+          ? 'bg-indigo-200 text-indigo-900 border-indigo-200 shadow-xs dark:bg-indigo-500/30 dark:text-indigo-100 dark:border-indigo-500/40'
+          : 'hover:bg-gray-300 text-gray-700 border-transparent dark:text-gray-300 dark:hover:bg-neutral-800',
         isEditing
-          ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900'
-          : 'text-gray-700 border-transparent',
+          ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900 dark:from-teal-500/20 dark:via-teal-500/10 dark:border-teal-500/40 dark:text-teal-200'
+          : 'text-gray-700 border-transparent dark:text-gray-300',
       )}
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(e, node)}
+      // Выделение узла и стрелки — забота rc-tree (у него свой role="treeitem"
+      // на обёртке строки). Здесь добирается только контекстное меню: без этого
+      // добавить/удалить узел можно было исключительно правой кнопкой мыши.
+      onKeyDown={(e) => {
+        if (!isContextMenuKey(e)) return;
+        onContextMenu(contextMenuTriggerFromKey(e), node);
+      }}
+      title={`${node.title} — Shift+F10 открывает меню узла`}
     >
       <NodeIcon depth={depth} isLeaf={node.isLeaf} />
 
       <span className="flex-1 truncate">{node.title}</span>
 
       {/* Опционально: бейджик глубины. Очень помогает ориентироваться при бесконечной вложенности */}
-      <span className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
+      <span className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded-md">
         L{depth}
       </span>
 
@@ -81,7 +94,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       {isEditing && (
         <Pencil
           size={14}
-          className="text-teal-600 ml-2"
+          className="text-teal-600 dark:text-teal-400 ml-2"
         />
       )}
     </div>

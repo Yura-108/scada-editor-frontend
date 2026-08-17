@@ -26,7 +26,10 @@ export const MoveToGroupModal = ({
                                    onClose,
                                    elementKey,
                                  }: MoveToGroupModalProps) => {
-  const { elements, moveElementToGroup } = useEditorStore();
+  // Точечные селекторы: подписка на весь стор перерисовывала модалку на каждый
+  // тик пана/зума — она смонтирована в Canvas постоянно.
+  const elements = useEditorStore(s => s.elements);
+  const moveElementToGroup = useEditorStore(s => s.moveElementToGroup);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string>("");
 
   const groups = useMemo(

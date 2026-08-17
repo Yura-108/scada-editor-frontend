@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState} from "react";
+import React, {useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle} from "lucide-react";
 import {toast} from "sonner";
@@ -10,6 +10,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeApplyResultDto, SnapshotTagValueDto} from "@/types/recipe.types";
 import {sortByRow} from "@/lib/editor/rowBinding";
+import {confirmModal} from "@/components/ui/ConfirmModal";
 
 interface Props {
   sessionId: string;
@@ -82,7 +83,18 @@ function ApplyRecipeModalContent({sessionId}: Props) {
 
   const handleApply = async () => {
     if (recipeId == null) return;
-    if (!window.confirm(`Записать рецепт «${selectedRecipe?.name ?? ""}» в ПЛК? Действие необратимо.`)) return;
+
+    // Запись в ПЛК необратима и идёт на реальное оборудование — нативный confirm()
+    // здесь неуместен: он не стилизуется, игнорирует тему и в ряде окружений
+    // (кросс-доменный iframe) подавляется браузером, то есть подтверждения
+    // фактически не было бы.
+    const confirmed = await confirmModal({
+      title: "Записать рецепт в ПЛК?",
+      description: `Рецепт «${selectedRecipe?.name ?? ""}» будет записан в контроллер. Действие необратимо.`,
+      confirmLabel: "Записать",
+      danger: true,
+    });
+    if (!confirmed) return;
 
     setIsApplying(true);
     setApplyResult(null);
@@ -110,6 +122,9 @@ function ApplyRecipeModalContent({sessionId}: Props) {
     }
   };
 
+  const componentSelectId = useId();
+  const recipeSelectId = useId();
+
   const selectClasses = cn(
     "w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg",
     "px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100",
@@ -129,10 +144,14 @@ function ApplyRecipeModalContent({sessionId}: Props) {
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 space-y-5">
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+          <label
+            htmlFor={componentSelectId}
+            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
+          >
             Компонент
           </label>
           <select
+            id={componentSelectId}
             className={selectClasses}
             value={componentId ?? ""}
             onChange={(e) => selectComponent(e.target.value ? Number(e.target.value) : null)}
@@ -146,10 +165,14 @@ function ApplyRecipeModalContent({sessionId}: Props) {
 
         {componentId != null && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+            <label
+              htmlFor={recipeSelectId}
+              className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
+            >
               Рецепт
             </label>
             <select
+              id={recipeSelectId}
               className={selectClasses}
               value={recipeId ?? ""}
               disabled={isLoadingRecipes}

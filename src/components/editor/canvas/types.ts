@@ -11,6 +11,16 @@ export interface ThemeColors {
   gridLine: string;
   anchorFill: string;
   anchorStroke: string;
+  /** Единый цвет выделения: обводка фигуры, рамка Transformer, подсветка наведения. */
+  selection: string;
+  /** Заливка рамки-протяжки (тот же оттенок, что и `selection`). */
+  selectionFill: string;
+  /** Заливка ручек Transformer. */
+  handleFill: string;
+  /** Обводка активной (входящей) группы. */
+  activeGroup: string;
+  /** Направляющие привязки к соседям (smart guides). */
+  guide: string;
 }
 
 export interface SelectionRect {
@@ -24,6 +34,8 @@ export interface CanvasMenuItem {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  /** "danger" — деструктивное действие (красная подпись). */
+  variant?: "danger";
 }
 
 /** Пропы для простых листовых Konva-компонентов (text/checkbox/progress_bar). */
@@ -47,13 +59,20 @@ export interface SelectedTableCell {
 }
 
 /**
- * Общий контекст рендеринга, прокидываемый в ShapeElement/GroupNode вместо
- * длинного списка пропов. Собирается один раз в Canvas.
+ * Общий контекст рендеринга, прокидываемый в узлы холста вместо длинного списка
+ * пропов. Собирается один раз в Canvas и **обязан быть стабильным по ссылке**.
+ *
+ * Раньше сюда входили `selectedIds`, `elementsMap`, карты состояний и ячейка
+ * таблицы — то есть контекст менялся при любой правке схемы и любом клике, и
+ * React.memo на узлах не срабатывал никогда: перерисовывалась вся сцена.
+ * Теперь всё изменчивое каждый узел читает про себя сам, точечным селектором
+ * (см. useElementRenderState), а здесь остаются только колбэки и палитра.
+ *
+ * Колбэки обязаны быть стабильными: те, что зависят от выделения или состава
+ * схемы, читают их через `useEditorStore.getState()` в момент вызова, а не
+ * через замыкание.
  */
 export interface EditorRenderContext {
-  selectedIds: string[];
-  activeGroupKey: string | null;
-  elementsMap: Record<string, DiagramElement>;
   themeColors: ThemeColors;
   snap: (v: number) => number;
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
@@ -61,31 +80,8 @@ export interface EditorRenderContext {
   enterGroup: (key: string) => void;
   resolveClickTarget: (key: string) => string | null;
   closeMenu: () => void;
-  /** Ключ текстового элемента, редактируемого сейчас инлайн (или null). */
-  editingTextKey: string | null;
   /** Запускает инлайн-редактирование текста по двойному клику. */
   onStartTextEdit: (key: string) => void;
-  /**
-   * Активное состояние по ключу элемента. Фигуры читают состояние через
-   * getRenderedElement (getState()), но это поле ОБЯЗАНО быть в контексте:
-   * оно меняет identity ctx при переключении состояния и «пробивает» React.memo
-   * фигур — иначе смена состояния не перерисуется.
-   */
-  currentComponentStateByElementKey: Record<string, string>;
-  /**
-   * Рантайм-оверрайды монитора. Как и currentComponentStateByElementKey,
-   * фигуры читают их через getRenderedElement (getState()), но поле обязано
-   * быть в контексте — тик рантайма меняет identity ctx и «пробивает» React.memo.
-   */
-  runtimeOverridesByElementKey: Record<string, Record<string, unknown>>;
-  /**
-   * Ключ элемента, к которому прицеплен SelectionTransformer (или null).
-   * Такая фигура НЕ рисует собственную пунктирную рамку выделения —
-   * иначе двойная рамка (своя + трансформера) выглядит грязно.
-   */
-  transformerKey: string | null;
-  /** Ячейка таблицы, сфокусированная для панели свойств (см. store.selectedTableCell). */
-  selectedTableCell: SelectedTableCell | null;
-  /** Клик по конкретной ячейке таблицы: выделяет саму таблицу (как сегодня) и фокусирует ячейку. */
+  /** Клик по конкретной ячейке таблицы: выделяет саму таблицу и фокусирует ячейку. */
   onTableCellClick: (elementKey: string, row: number, col: number, multi: boolean) => void;
 }

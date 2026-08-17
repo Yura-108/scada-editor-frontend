@@ -7,12 +7,15 @@ import {CSS} from "@dnd-kit/utilities";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {PropertyCreateDto} from "@/types/tags.types";
-import {elementPropertyMap, basePropertySchema} from "@/constants/propertiesPanel";
+import {elementPropertyMap, basePropertySchema, elementTypeLabel, ROTATABLE_TYPES} from "@/constants/propertiesPanel";
 import {Plus, AlertTriangle, Trash2, Boxes, GripVertical} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
 import {ColorField} from "@/components/ui/ColorField";
+import {NumberInput} from "@/components/ui/NumberInput";
+import {TextInput} from "@/components/ui/TextInput";
+import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
@@ -43,30 +46,39 @@ function SortablePropertyPill({property, onClick}: {property: PropertyCreateDto;
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const label = `${property.name || property.property_type || "Свойство"}${
+    property.tag_id ? ` • #${property.tag_id}` : ""
+  }`;
+
+  // Ручка и подпись — две отдельные кнопки внутри оболочки-таблетки.
+  // Кнопку внутрь кнопки вкладывать нельзя, а раньше и то и другое было
+  // кликабельными <span>: таблетка не открывалась с клавиатуры, а ручка dnd-kit
+  // не получала фокус, из-за чего клавиатурное перетаскивание не работало.
   return (
     <span
       ref={setNodeRef}
       style={style}
-      onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1 px-2.5 py-1.5",
         "text-xs font-medium rounded-full",
         "bg-indigo-950/60 text-indigo-300",
         "border border-indigo-800/40",
-        "hover:bg-indigo-900/70 transition-colors cursor-pointer"
+        "hover:bg-indigo-900/70 transition-colors"
       )}
     >
-      <span
+      <button
+        type="button"
         {...attributes}
         {...listeners}
-        onClick={(e) => e.stopPropagation()}
         className="cursor-grab active:cursor-grabbing text-indigo-400/70 hover:text-indigo-200 -ml-1"
         title="Перетащить для изменения порядка"
+        aria-label={`Перетащить «${label}» для изменения порядка`}
       >
         <GripVertical size={12} />
-      </span>
-      {property.name || property.property_type || "Свойство"}
-      {property.tag_id ? ` • #${property.tag_id}` : ""}
+      </button>
+      <button type="button" onClick={onClick} className="cursor-pointer text-left">
+        {label}
+      </button>
     </span>
   );
 }
@@ -159,13 +171,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     }
   }, [element?.key, element?.type]);
 
-  if (!element) {
-    return (
-      <div className="h-full flex items-center justify-center text-gray-500 text-sm italic">
-        Выберите элемент для редактирования свойств
-      </div>
-    );
-  }
+  // Пустое состояние живёт в WorkSpace: панель свойств рендерится только когда
+  // выбран ровно один элемент, поэтому эта ветка была недостижима — два разных
+  // текста на одно и то же условие.
+  if (!element) return null;
 
   const baseInputClasses = cn(
     "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",
@@ -199,10 +208,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     }
   }
 
-  const removeComponentState = (stateName: string) => {
-    if (!window.confirm(`Удалить состояние «${stateName}»? Его визуальные настройки будут потеряны.`)) {
-      return;
-    }
+  const removeComponentState = async (stateName: string) => {
+    const confirmed = await confirmModal({
+      title: `Удалить состояние «${stateName}»?`,
+      description: "Визуальные настройки этого состояния будут потеряны.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!confirmed) return;
     removeComponentStateFromSubtree(element.key, stateName);
   }
 
@@ -210,7 +223,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     if (!element) return;
     openScriptEditorModal({
       title: "Добавление скрипта",
-      description: "Напишите Java-код для обработки событий компонента",
+      // Скрипты компонента исполняются НА СЕРВЕРЕ (Java): монитор только шлёт
+      // ACTION с их id (см. runScript в useRuntimeEngine). Обработчики событий и
+      // привязки — наоборот, JavaScript в браузере. Раньше подписи путали одно
+      // с другим: «Напишите Java-код для обработки событий» здесь и
+      // «Отредактируйте JS-код скрипта» на соседней кнопке.
+      description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
       onConfirm: (name, content) => {
         const newScript = { id: createUuid(), name, content };
         updateElement(element.key, {
@@ -225,15 +243,44 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  /**
+   * Поля блока «Геометрия» — ровно те, что рендерер действительно читает.
+   *
+   * Раньше панель расходилась с холстом в двух местах: «Поворот°» показывался
+   * для всех типов кроме группы, хотя `rotation` прокидывает только часть фигур
+   * (см. ROTATABLE_TYPES); а у круга правились «Ширина»/«Высота», тогда как
+   * рендерер берёт `radius || w / 2` — то есть ввод ширины ничего не менял.
+   */
+  const geometryFields: {key: string; label: string; commit?: (v: number) => Record<string, unknown>}[] =
+    element.type === "line"
+      ? [
+          {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
+          {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
+        ]
+      : element.type === "circle"
+        ? [
+            {key: "x", label: "X"}, {key: "y", label: "Y"},
+            // Пишем и radius, и w/h — так же, как ручка изменения размера круга
+            // (CircleResizeHandle), иначе габариты элемента разъедутся с фигурой.
+            {key: "radius", label: "Радиус", commit: (v) => ({radius: v, w: v * 2, h: v * 2})},
+          ]
+        : [
+            {key: "x", label: "X"}, {key: "y", label: "Y"},
+            {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
+            ...(ROTATABLE_TYPES.has(element.type as ElementType)
+              ? [{key: "rotate", label: "Поворот°"}]
+              : []),
+          ];
+
   // Добавлять свойства можно только сохранённому элементу (у него есть id на
   // сервере — свойства создаются серверным роутом по component_id) и при
   // загруженной базе каналов (дерево устройств нужно, чтобы выбрать тег).
   const isElementSaved = element.id != null;
   const canAddProperty = isElementSaved && isChannelBaseLoaded;
   const addPropertyHint = !isElementSaved && !isChannelBaseLoaded
-    ? "Сначала сохраните сцену и откройте раздел «База каналов»: свойства добавляются только сохранённым элементам, а для выбора тега нужно загруженное дерево устройств."
+    ? "Сначала сохраните схему и откройте раздел «База каналов»: свойства добавляются только сохранённым элементам, а для выбора тега нужно загруженное дерево устройств."
     : !isElementSaved
-      ? "Сначала сохраните сцену — свойство можно добавить только сохранённому элементу (он ещё не создан на сервере)."
+      ? "Сначала сохраните схему — свойство можно добавить только сохранённому элементу (он ещё не создан на сервере)."
       : "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
 
   // Сфокусированная ячейка таблицы (панель свойств показывает cell-блок только пока
@@ -311,14 +358,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         return (
           <div key={uniqueKey} className="space-y-1.5">
             {label}
-            <input
+            {/* Коммит по blur/Enter, а не на каждый символ: иначе каждое нажатие
+                клавиши — новый массив elements, то есть шаг undo на символ и
+                полный пересчёт схемы с перерисовкой холста. */}
+            <TextInput
               id={`prop-${property.key}`}
               className={baseInputClasses}
               value={textValue}
               placeholder={property.placeholder || ""}
-              onChange={(e) =>
-                updateElementVisual(element.key, {[property.key]: e.target.value})
-              }
+              onCommit={(v) => updateElementVisual(element.key, {[property.key]: v})}
             />
           </div>
         );
@@ -327,19 +375,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         return (
           <div key={uniqueKey} className="space-y-1.5">
             {label}
-            <input
+            <NumberInput
               id={`prop-${property.key}`}
-              type="number"
               className={baseInputClasses}
               value={numberValue}
               min={property.min}
               max={property.max}
               step={property.step ?? 1}
-              onChange={(e) =>
-                updateElementVisual(element.key, {
-                  [property.key]: Number(e.target.value) || 0,
-                })
-              }
+              onCommit={(v) => updateElementVisual(element.key, {[property.key]: v})}
             />
           </div>
         );
@@ -410,8 +453,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     <div key={element.key} className="h-full flex flex-col bg-white/70 dark:bg-neutral-950/70 backdrop-blur-sm border-l border-gray-200 dark:border-neutral-800 overflow-hidden">
       {/* Header */}
       <div className="shrink-0 p-4 pb-3 border-b border-gray-200 dark:border-neutral-800">
-        <h3 className="text-base font-medium text-gray-900 dark:text-neutral-200 tracking-tight">
-          {element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties
+        {/* Единый вид заголовка панели (как в «Слоях»): раньше здесь был
+            h3 text-base «Progress_bar Properties», в LayersPanel — h3 text-xs
+            uppercase, а в RecipesPanel — h1 text-2xl. */}
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+          Свойства: {elementTypeLabel(element.type)}
         </h3>
         <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1 font-mono">
           ID: {element.key.slice(0, 8)}...
@@ -486,11 +532,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     Ячейка: строка {cellFocus.row + 1}, столбец {cellFocus.col + 1}
                   </h4>
                   <button
+                    type="button"
                     onClick={() => clearTableCellSelection()}
                     className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                     title="Снять выделение ячейки"
+                    aria-label="Снять выделение ячейки"
                   >
-                    ✕
+                    <span aria-hidden>✕</span>
                   </button>
                 </div>
 
@@ -498,10 +546,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
                     Значение
                   </label>
-                  <input
+                  {/* Как и остальные текстовые поля: коммит по blur/Enter —
+                      значение ячейки уходит в схему целиком, а не посимвольно. */}
+                  <TextInput
                     className={baseInputClasses}
                     value={cellData?.value ?? ""}
-                    onChange={(e) => patchCell({value: e.target.value})}
+                    onCommit={(v) => patchCell({value: v})}
                   />
                 </div>
 
@@ -558,7 +608,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                       ? baseAddButtonClasses
                       : "flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed"}
                     disabled={!canBindCell}
-                    title={canBindCell ? undefined : "Сначала сохраните сцену и добавьте элементу свойство на вкладке «Свойства» — привязка требует сохранённого свойства."}
+                    title={canBindCell ? undefined : "Сначала сохраните схему и добавьте элементу свойство на вкладке «Свойства» — привязка требует сохранённого свойства."}
                     onClick={() => canBindCell && setCellPickerOpen(true)}
                   >
                     <Boxes size={16} />
@@ -586,17 +636,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                 Геометрия
               </h4>
               <div className="grid grid-cols-2 gap-4">
-                {(element.type === "line"
-                  ? [
-                      {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
-                      {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
-                    ]
-                  : [
-                      {key: "x", label: "X"}, {key: "y", label: "Y"},
-                      {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
-                      ...(element.type !== "group" ? [{key: "rotate", label: "Поворот°"}] : []),
-                    ]
-                ).map((field) => (
+                {geometryFields.map((field) => (
                   <div key={field.key} className="space-y-1.5">
                     <label
                       htmlFor={`geom-${field.key}`}
@@ -604,14 +644,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     >
                       {field.label}
                     </label>
-                    <input
+                    <NumberInput
                       id={`geom-${field.key}`}
-                      type="number"
                       className={baseInputClasses}
                       value={getNumberValue(renderedElementValues[field.key])}
                       step={1}
-                      onChange={(e) =>
-                        updateElementVisual(element.key, {[field.key]: Number(e.target.value) || 0})
+                      onCommit={(v) =>
+                        updateElementVisual(element.key, field.commit ? field.commit(v) : {[field.key]: v})
                       }
                     />
                   </div>
@@ -765,8 +804,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {elementScripts.map(script => (
-                  <span
+                  <button
                     key={script.id}
+                    type="button"
+                    title={`Редактировать скрипт «${script.name}»`}
                     className={`
                       inline-flex items-center px-2.5 py-1.5
                       text-xs font-medium rounded-full
@@ -777,7 +818,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     onClick={() => {
                         openScriptEditorModal({
                           title: "Редактирование скрипта",
-                          description: "Отредактируйте JS-код скрипта",
+                          description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
                           defaultName: script.name,
                           defaultContent: script.content,
                           onConfirm: (name, content) => {
@@ -790,7 +831,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     }}
                   >
                     {script.name}
-                  </span>
+                  </button>
                 ))}
               </div>
             )}

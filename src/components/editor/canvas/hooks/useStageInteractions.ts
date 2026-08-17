@@ -1,10 +1,28 @@
 import { RefObject, useEffect, useRef, useState } from "react";
 import Konva from "konva";
+import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { useEditorStore } from "@/store/useEditorStore";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
 import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
 import type { SelectionRect } from "../types";
+
+/** Тот же клэмп зума, что и в ZoomControls. */
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 3;
+
+/**
+ * Приводит колесо к пикселям. `deltaMode` бывает LINE (Firefox) и PAGE, и без
+ * нормализации один и тот же жест даёт в разных браузерах разницу в ~30 раз.
+ */
+const normalizeWheelDelta = (e: WheelEvent): {deltaX: number; deltaY: number} => {
+  const LINE_HEIGHT = 16;
+  const factor =
+    e.deltaMode === 1 /* DOM_DELTA_LINE */ ? LINE_HEIGHT
+    : e.deltaMode === 2 /* DOM_DELTA_PAGE */ ? window.innerHeight
+    : 1;
+  return {deltaX: e.deltaX * factor, deltaY: e.deltaY * factor};
+};
 
 interface StageInteractionsDeps {
   stageRef: RefObject<Konva.Stage | null>;
@@ -18,6 +36,8 @@ interface StageInteractionsDeps {
   activeGroupKey: string | null;
   exitGroup: () => void;
   closeMenu: () => void;
+  /** Что реально должно выделиться по клику в этот элемент (группа/её ребёнок). */
+  resolveClickTarget: (key: string) => string | null;
   /** Режим монитора: без маркиза и сброса выделения; пан/зум остаются. */
   readOnly?: boolean;
 }
@@ -38,10 +58,13 @@ export function useStageInteractions({
   activeGroupKey,
   exitGroup,
   closeMenu,
+  resolveClickTarget,
   readOnly = false,
 }: StageInteractionsDeps) {
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
   const middlePanRef = useRef<{ x: number; y: number } | null>(null);
+  /** Рамка запущена с Shift/Ctrl — добавляем к выделению, а не заменяем его. */
+  const marqueeAdditiveRef = useRef(false);
 
   // Панорамирование средней кнопкой — нативные window-события, чтобы drag
   // работал и за пределами холста.
@@ -58,7 +81,7 @@ export function useStageInteractions({
       if (e.button === 1 && middlePanRef.current) {
         middlePanRef.current = null;
         const container = stageRef.current?.container();
-        if (container) container.style.cursor = "default";
+        resetCanvasCursor(container);
       }
     };
 
@@ -75,6 +98,10 @@ export function useStageInteractions({
     const stage = stageRef.current;
     if (!stage) return;
 
+    // Firefox отдаёт deltaMode=DOM_DELTA_LINE (deltaY≈3), Chrome — PIXEL (≈100).
+    // Без нормализации в Firefox холст пролистывался по 3px, а зум был незаметен.
+    const { deltaX, deltaY } = normalizeWheelDelta(e.evt);
+
     if (e.evt.ctrlKey) {
       // Ctrl + Wheel → zoom to cursor point
       const oldScale = stage.scaleX();
@@ -86,8 +113,10 @@ export function useStageInteractions({
         y: (pointer.y - stage.y()) / oldScale,
       };
 
-      const zoomSensitivity = 0.001;
-      const newZoom = Math.min(Math.max(oldScale + (-e.evt.deltaY * zoomSensitivity), 0.2), 3);
+      // Мультипликативный шаг (как у кнопок ZoomControls): аддитивный давал
+      // огромный относительный скачок на zoom 0.2 и почти нулевой на 3.0.
+      const factor = Math.exp(-deltaY * 0.002);
+      const newZoom = Math.min(Math.max(oldScale * factor, ZOOM_MIN), ZOOM_MAX);
 
       setCameraZoom(newZoom);
       setCameraPan(
@@ -95,10 +124,47 @@ export function useStageInteractions({
         pointer.y - mousePointTo.y * newZoom - camera.y,
       );
     } else if (e.evt.shiftKey) {
-      setCameraPan(-e.evt.deltaY, 0);
+      setCameraPan(-deltaY, 0);
     } else {
-      setCameraPan(-e.evt.deltaX, -e.evt.deltaY);
+      setCameraPan(-deltaX, -deltaY);
     }
+  };
+
+  /**
+   * Нажатие по НЕвыделенной фигуре сразу её выделяет.
+   *
+   * Раньше выделение происходило по click, то есть уже после перетаскивания:
+   * потянув невыделенный элемент, пользователь двигал его, а панель свойств
+   * продолжала показывать другой. Группы вели себя иначе (их вообще нельзя было
+   * потянуть, пока не выделишь) — правило было разным для разных типов.
+   *
+   * Уже выделенный элемент не трогаем: переключение Ctrl/Shift+кликом остаётся
+   * на обработчике click, иначе снять выделение модификатором было бы нельзя.
+   */
+  const selectOnPress = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (e.target.name() === "resize-handle") return;
+
+    let node: Konva.Node | null = e.target;
+    let key: string | null = null;
+    for (let i = 0; i < 4 && node; i++) {
+      const id = node.id();
+      if (id && elementsMap[id]) { key = id; break; }
+      node = node.getParent();
+    }
+    if (!key) return;
+
+    const target = resolveClickTarget(key);
+    if (!target) return;
+
+    // Ctrl/Shift обрабатывает click: там переключение (добавить/убрать). Если
+    // добавить элемент ещё и здесь, click тут же снял бы его обратно.
+    const evt = e.evt;
+    if (evt instanceof MouseEvent && (evt.shiftKey || evt.ctrlKey || evt.metaKey)) return;
+
+    const state = useEditorStore.getState();
+    if (state.selectedIds.includes(target)) return;
+
+    state.selectMultiple([target]);
   };
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -106,8 +172,11 @@ export function useStageInteractions({
     const clickedOnEmpty = e.target === e.target.getStage();
     const clickedOnBg = e.target.name() === "grid-bg";
 
-    // Средняя кнопка → старт панорамирования
+    // Средняя кнопка → старт панорамирования.
+    // preventDefault обязателен: иначе Chrome/Edge открывают виджет автоскролла
+    // поверх жеста.
     if (e.evt instanceof MouseEvent && e.evt.button === 1) {
+      e.evt.preventDefault();
       middlePanRef.current = { x: e.evt.clientX, y: e.evt.clientY };
       const container = stageRef.current?.container();
       if (container) container.style.cursor = "grabbing";
@@ -122,21 +191,31 @@ export function useStageInteractions({
     // (средняя кнопка — панорамирование — обработана выше).
     if (readOnly) return;
 
-    if (clickedOnEmpty || clickedOnBg) {
-      if (activeGroupKey) {
-        exitGroup();
-      } else if (!e.evt.shiftKey && !e.evt.ctrlKey) {
-        selectMultiple([]);
-      }
-      const pos = stageRef.current?.getPointerPosition();
-      if (pos && stageRef.current) {
-        setSelectionRect({
-          x: (pos.x - stageRef.current.x()) / stageRef.current.scaleX(),
-          y: (pos.y - stageRef.current.y()) / stageRef.current.scaleX(),
-          width: 0,
-          height: 0,
-        });
-      }
+    // Нажатие по фигуре — выделяем её (см. selectOnPress) и на этом всё:
+    // маркиз стартует только с пустого места.
+    if (!clickedOnEmpty && !clickedOnBg) {
+      selectOnPress(e);
+      return;
+    }
+
+    if (activeGroupKey) {
+      exitGroup();
+    } else if (!e.evt.shiftKey && !e.evt.ctrlKey) {
+      selectMultiple([]);
+    }
+
+    const pos = stageRef.current?.getPointerPosition();
+    if (pos && stageRef.current) {
+      // Запоминаем модификатор: с ним рамка ДОБАВЛЯЕТ к выделению, без него —
+      // заменяет. Раньше объединение было безусловным, и снять выделение
+      // рамкой было невозможно.
+      marqueeAdditiveRef.current = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+      setSelectionRect({
+        x: (pos.x - stageRef.current.x()) / stageRef.current.scaleX(),
+        y: (pos.y - stageRef.current.y()) / stageRef.current.scaleX(),
+        width: 0,
+        height: 0,
+      });
     }
   };
 
@@ -171,11 +250,28 @@ export function useStageInteractions({
       ))
       .map(el => el.key);
 
-    if (selected.length > 0) {
+    if (marqueeAdditiveRef.current) {
       selectMultiple([...new Set([...selectedIds, ...selected])]);
+    } else {
+      selectMultiple(selected);
     }
     setSelectionRect(null);
   };
+
+  // Завершение рамки слушаем на window: обработчик Stage не срабатывает, если
+  // кнопку отпустили за пределами холста (например, над боковой панелью), и
+  // рамка «залипала» — оставалась нарисованной и росла на следующем движении.
+  // Тот же приём, что и у панорамирования средней кнопкой выше.
+  const finalizeMarqueeRef = useRef(handleStageMouseUp);
+  useEffect(() => {
+    finalizeMarqueeRef.current = handleStageMouseUp;
+  });
+
+  useEffect(() => {
+    const onWindowMouseUp = () => finalizeMarqueeRef.current();
+    window.addEventListener("mouseup", onWindowMouseUp);
+    return () => window.removeEventListener("mouseup", onWindowMouseUp);
+  }, []);
 
   return { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp };
 }

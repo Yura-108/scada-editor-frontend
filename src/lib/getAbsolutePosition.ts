@@ -1,31 +1,18 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {getRenderedElement} from "@/lib/getRenderedElement";
+import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
 
-/** Абсолютные координаты элемента на холсте (с учётом цепочки parentKey). */
+/**
+ * Абсолютные координаты элемента на холсте (с учётом цепочки parentKey).
+ *
+ * Цепочка родителей разворачивается через индекс: раньше на каждый уровень
+ * вложенности шёл `elements.find` по всему массиву.
+ */
 export default function getAbsolutePosition(
   el: DiagramElement,
   elements: DiagramElement[],
 ): {x: number; y: number} {
-  const parentKey = el.parentKey;
-
-  if (parentKey == null || parentKey === "") {
-    return {x: el.x ?? 0, y: el.y ?? 0};
-  }
-
-  const parent = elements.find(
-    (e) => e.key === parentKey || String(e.id) === String(parentKey),
-  );
-
-  if (!parent) {
-    return {x: el.x ?? 0, y: el.y ?? 0};
-  }
-
-  const parentAbs = getAbsolutePosition(parent, elements);
-
-  return {
-    x: parentAbs.x + (el.x ?? 0),
-    y: parentAbs.y + (el.y ?? 0),
-  };
+  return absolutePosition(el, getElementIndex(elements), false);
 }
 
 /**
@@ -37,25 +24,27 @@ export function getAbsoluteRenderedPosition(
   el: DiagramElement,
   elements: DiagramElement[],
 ): {x: number; y: number} {
-  const rendered = getRenderedElement(el);
-  const parentKey = el.parentKey;
+  return absolutePosition(el, getElementIndex(elements), true);
+}
 
-  if (parentKey == null || parentKey === "") {
-    return {x: rendered.x ?? 0, y: rendered.y ?? 0};
+/** Общая реализация обоих вариантов поверх готового индекса. */
+export function absolutePosition(
+  el: DiagramElement,
+  index: ElementIndex,
+  rendered: boolean,
+): {x: number; y: number} {
+  let x = 0;
+  let y = 0;
+  let current: DiagramElement | null = el;
+  // Страховка от цикла в parentKey: без неё битая иерархия вешала бы вкладку.
+  let hops = 0;
+
+  while (current && hops++ < 1000) {
+    const source: DiagramElement = rendered ? getRenderedElement(current) : current;
+    x += source.x ?? 0;
+    y += source.y ?? 0;
+    current = resolveParentElement(current.parentKey, index);
   }
 
-  const parent = elements.find(
-    (e) => e.key === parentKey || String(e.id) === String(parentKey),
-  );
-
-  if (!parent) {
-    return {x: rendered.x ?? 0, y: rendered.y ?? 0};
-  }
-
-  const parentAbs = getAbsoluteRenderedPosition(parent, elements);
-
-  return {
-    x: parentAbs.x + (rendered.x ?? 0),
-    y: parentAbs.y + (rendered.y ?? 0),
-  };
+  return {x, y};
 }

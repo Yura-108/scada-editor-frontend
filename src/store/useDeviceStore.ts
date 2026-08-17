@@ -9,6 +9,39 @@ import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
 import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
 import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenCreateContainerModal";
+import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {toast} from "sonner";
+
+/**
+ * Разбирает ответ и бросает ошибку с сообщением бэкенда при не-2xx.
+ *
+ * Мутации базы каналов раньше вообще не проверяли `res.ok`: тело ошибки
+ * парсилось как DTO и подмешивалось в состояние как настоящий узел
+ * (`nodeDTO.key.split` падал с TypeError), либо изменение молча не применялось.
+ */
+const parseOk = async <T>(res: Response, fallback: string): Promise<T> => {
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    // тело не JSON — сообщение возьмём из текста
+  }
+
+  if (!res.ok) {
+    const message =
+      (body && typeof body === "object" && typeof (body as {message?: unknown}).message === "string"
+        ? (body as {message: string}).message
+        : "") || text.slice(0, 200) || `${fallback} (${res.status})`;
+    throw new Error(message);
+  }
+
+  return body as T;
+};
+
+const errorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error && err.message ? err.message : fallback;
+
 interface DeviceStoreState {
   nodes: NodeType[];
   params: NodeParamType[];
@@ -29,6 +62,11 @@ interface DeviceStoreState {
   selectedDevice: string | null;
 
   getParams(deviceKey: string | null): DeviceParamsType[];
+
+  /** Идёт загрузка дерева устройств — панель показывает скелетон вместо «0 устройств». */
+  isLoadingNodes: boolean;
+  /** Текст последней ошибки загрузки дерева (для инлайн-плашки с кнопкой «Повторить»). */
+  nodesError: string | null;
 
   loadNodes: (rootPath: string[]) => Promise<void>;
   getParamsTypes: () => Promise<void>;
@@ -52,9 +90,13 @@ export const useDeviceStore = create<DeviceStoreState>()(
       params: [],
       loadedRootPath: null,
       isStale: false,
+      isLoadingNodes: false,
+      nodesError: null,
       contextMenu: null,
       paramsTypes: [],
-      deviceTemplateList: [],
+      // Тип — объект с полем templates; пустой массив здесь ронял
+      // OpenCreateDeviceModal (`deviceTemplateList.templates.length`) с TypeError.
+      deviceTemplateList: {templates: []},
       editingDevices: [],
       setContextMenu: (menu) => set({contextMenu: menu}),
       selectedDevice: null,
@@ -81,9 +123,10 @@ export const useDeviceStore = create<DeviceStoreState>()(
         return get().params.filter((param) => param.parentKey === deviceKey);
       },
       loadNodes: async (rootPath) => {
+        set({isLoadingNodes: true, nodesError: null});
         try {
           const promises = rootPath.map(async (project) => {
-            const res = await fetch(`/api/device/fullHierarchy?project=${project}`);
+            const res = await fetch(`/api/device/fullHierarchy?project=${encodeURIComponent(project)}`);
 
             if (!res.ok) {
               throw new Error(`Ошибка загрузки: ${project}`);
@@ -135,14 +178,27 @@ export const useDeviceStore = create<DeviceStoreState>()(
             isStale: false,
           });
         } catch (error) {
+          set({nodesError: errorMessage(error, 'Не удалось загрузить базу каналов')});
+          toast.error(errorMessage(error, 'Не удалось загрузить базу каналов'));
           throw error;
+        } finally {
+          set({isLoadingNodes: false});
         }
       },
       loadDeviceTemplateList: async () => {
-        const res = await fetch('/api/device/template');
-        const data = await res.json();
-
-        set({deviceTemplateList: data});
+        try {
+          const res = await fetch('/api/device/template');
+          const data = await parseOk<{templates: {key: number; value: string}[]}>(
+            res, 'Не удалось загрузить шаблоны устройств',
+          );
+          // Форма читает deviceTemplateList.templates.length — пустой массив вместо
+          // объекта ронял модалку «Добавить» с TypeError.
+          set({deviceTemplateList: data?.templates ? data : {templates: []}});
+        } catch (err) {
+          console.error('Ошибка загрузки шаблонов устройств:', err);
+          toast.error(errorMessage(err, 'Не удалось загрузить шаблоны устройств'));
+          set({deviceTemplateList: {templates: []}});
+        }
       },
       startEditing: async (keys: string[]) => {
         const {editingDevices} = get();
@@ -153,13 +209,20 @@ export const useDeviceStore = create<DeviceStoreState>()(
             body: JSON.stringify(filteredKeys),
           });
 
-          const lockedDevices = await res.json();
+          const lockedDevices = await parseOk<string[]>(res, 'Не удалось начать редактирование');
 
           set({
             editingDevices: [...editingDevices, ...lockedDevices],
           });
+
+          // Бэкенд может вернуть 200 и пустой список — узел держит другой пользователь.
+          // Без сообщения это выглядело как «кнопка не работает».
+          if (filteredKeys.length > 0 && lockedDevices.length === 0) {
+            toast.error('Узел уже редактируется другим пользователем');
+          }
         } catch (err) {
           console.error("Lock failed: ", err);
+          toast.error(errorMessage(err, 'Не удалось начать редактирование'));
         }
       },
       stopEditing: async (keys: string[]) => {
@@ -170,13 +233,14 @@ export const useDeviceStore = create<DeviceStoreState>()(
             body: JSON.stringify(keys),
           });
 
-          const unlockedDevices = await res.json();
+          const unlockedDevices = await parseOk<string[]>(res, 'Не удалось снять блокировку');
 
           set(state => ({
             editingDevices: state.editingDevices.filter(device => !unlockedDevices.includes(device)),
           }));
         } catch (err) {
           console.error("Unlock failed: ", err);
+          toast.error(errorMessage(err, 'Не удалось завершить редактирование'));
         }
       },
       toggleEditing: (key: string) => {
@@ -190,18 +254,25 @@ export const useDeviceStore = create<DeviceStoreState>()(
         }
       },
       addDevice: async (node) => {
-        const res = await fetch('/api/device/', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(node),
-        });
-
         type ResponseType = {
           nodeDTO: NodeType;
           params: NodeParamType[];
         };
 
-        const { nodeDTO, params } = await res.json() as ResponseType;
+        let nodeDTO: NodeType;
+        let params: NodeParamType[];
+        try {
+          const res = await fetch('/api/device/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(node),
+          });
+          ({nodeDTO, params} = await parseOk<ResponseType>(res, 'Не удалось создать узел'));
+        } catch (err) {
+          console.error('Ошибка при создании узла:', err);
+          toast.error(errorMessage(err, 'Не удалось создать узел'));
+          return;
+        }
 
         const parts = nodeDTO.key.split('.');
         const title = parts.pop() || '';
@@ -219,34 +290,55 @@ export const useDeviceStore = create<DeviceStoreState>()(
         }));
       },
       removeDevice: async (key: string) => {
-        await fetch(`/api/device/${key}`, {
-          method: 'DELETE',
-          headers: {'Content-Type': 'application/json'},
-        });
+        try {
+          const res = await fetch(`/api/device/${key}`, {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+          });
+          await parseOk(res, 'Не удалось удалить узел');
+        } catch (err) {
+          console.error('Ошибка при удалении узла:', err);
+          toast.error(errorMessage(err, 'Не удалось удалить узел'));
+          return;
+        }
 
         set((state) => ({
           nodes: state.nodes.filter((n) => n.key !== key),
           params: state.params.filter((p) => p.parentKey !== key),
         }));
+        toast.success('Узел удалён');
       },
       deleteOptionParam: async (key) => {
-        await fetch(`/api/device/param/${key}`, {
-          method: 'DELETE',
-          headers: {'Content-Type': 'application/json'},
-        });
+        try {
+          const res = await fetch(`/api/device/param/${key}`, {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+          });
+          await parseOk(res, 'Не удалось удалить параметр');
+        } catch (err) {
+          console.error('Ошибка при удалении параметра:', err);
+          toast.error(errorMessage(err, 'Не удалось удалить параметр'));
+          return;
+        }
 
         set((state) => ({
           params: state.params.filter(p => p.key !== key)
         }))
       },
       addParam: async (param) => {
-        const res = await fetch('/api/device/param/', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(param),
-        });
-
-        const newParam = await res.json();
+        let newParam: NodeParamType;
+        try {
+          const res = await fetch('/api/device/param/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(param),
+          });
+          newParam = await parseOk<NodeParamType>(res, 'Не удалось добавить параметр');
+        } catch (err) {
+          console.error('Ошибка при добавлении параметра:', err);
+          toast.error(errorMessage(err, 'Не удалось добавить параметр'));
+          return;
+        }
 
         set((state) => ({
           params: [...state.params, newParam]
@@ -306,7 +398,13 @@ export const useDeviceStore = create<DeviceStoreState>()(
       handleContextAction: async (action, nodeKey) => {
         if (action === 'delete') {
           if (!nodeKey) return;
-          if (confirm('Удалить этот узел и все дочерние?')) {
+          const confirmed = await confirmModal({
+            title: 'Удалить узел?',
+            description: 'Узел и все дочерние элементы будут удалены. Действие необратимо.',
+            confirmLabel: 'Удалить',
+            danger: true,
+          });
+          if (confirmed) {
             await get().removeDevice(nodeKey);
           }
         }
@@ -334,7 +432,12 @@ export const useDeviceStore = create<DeviceStoreState>()(
         if (action === 'add') {
           if (!get().selectedDevice) return;
           const id = get().paramsTypes.find(paramsType => paramsType.name === 'Общие параметры')?.id;
-          const title = prompt('Название нового параметра:');
+          const title = await promptModal({
+            title: 'Новый параметр',
+            label: 'Название параметра',
+            placeholder: 'Например: Уставка давления',
+            confirmLabel: 'Добавить',
+          });
           if (title && id) {
             const newParam = {
               id: Number(id),
@@ -346,7 +449,11 @@ export const useDeviceStore = create<DeviceStoreState>()(
           }
         }
         if (action === 'edit') {
-          const title = prompt('Название параметра:');
+          const title = await promptModal({
+            title: 'Переименовать параметр',
+            label: 'Название параметра',
+            confirmLabel: 'Сохранить',
+          });
           if (title && paramKey) {
             const changes = [{key: paramKey, value: title}];
             await get().updateParam(changes);

@@ -1,5 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
+import { backendErrorResponse } from '@/lib/backendProxy';
 import {protectedRoute} from "@/lib/protected";
+import { withVersionFields } from '@/lib/saveEnvelope';
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -13,10 +15,7 @@ export const GET = protectedRoute(async (_req: NextRequest, {token}) => {
     },
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка ${response.status}: ${text}`);
-  }
+  if (!response.ok) return backendErrorResponse(response);
 
   const data = await response.json().catch(() => null);
 
@@ -28,7 +27,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   if (!newPaletteItem) {
     return NextResponse.json(
-      {error: "Шаблон пуст!"},
+      {message: "Шаблон пуст!"},
       {status: 400}
     );
   }
@@ -39,19 +38,14 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(newPaletteItem),
+    // У шаблона тело и так объект — оборачивать нечего: based_on_version и save_kind
+    // едут полями рядом. Пока EDITOR_SAVE_ENVELOPE выключен, они вырезаются.
+    body: JSON.stringify(withVersionFields(newPaletteItem)),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Неизвестная ошибка");
-
-    return NextResponse.json(
-      {
-        error: `Ошибка ${response.status}: ${errorText}`,
-      },
-      { status: response.status }
-    );
-  }
+  // Раньше здесь тело ошибки пересобиралось в {error: "Ошибка N: …"} — это съедало
+  // 409 вместе со списком расхождений, по которому строится диалог конфликта.
+  if (!response.ok) return backendErrorResponse(response);
 
   const paletteItem = await response.json().catch(() => null);
 

@@ -7,12 +7,17 @@ export async function callAuth(path: string, body: { login: string; password: st
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка ${response.status}: ${text}`);
+  // Ошибку НЕ бросаем: роут должен уметь вернуть клиенту статус и сообщение бэкенда.
+  // При throw ветка `if (!ok)` в роуте недостижима, а 401 превращается в HTML-500 Next.js,
+  // и реальная причина («неверный логин или пароль») до пользователя не доходит.
+  const text = await response.text();
+  let data: Record<string, unknown>;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // Бэкенд ответил не-JSON (например, HTML страницей ошибки) — сохраняем текст как сообщение.
+    data = { message: text || `Ошибка ${response.status}` };
   }
-
-  const data = await response.json();
 
   return {
     ok: response.ok,
