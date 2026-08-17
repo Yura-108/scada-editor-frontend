@@ -42,7 +42,7 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
 const saveComponents = async (req: NextRequest, token: string) => {
   const body = await req.json().catch(() => null);
   const envelope = toSaveEnvelope(body);
-
+  console.log(req)
   if (!envelope || !envelope.components.length) {
     return NextResponse.json(
       {message: "Окно редактирования пустое!"},

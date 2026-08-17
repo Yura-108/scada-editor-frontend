@@ -277,48 +277,48 @@ export default function ToolsPanel() {
         {/* Выравнивание (≥2 выделенных) и распределение (≥3).
             Блок был закомментирован, из-за чего alignSelected/distributeSelected
             в сторе оставались недостижимым кодом. */}
-        <TooltipBtn
-          icon={<AlignStartVertical size={16} />} label="По левому краю"
-          onClick={() => useEditorStore.getState().alignSelected('left')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignCenterVertical size={16} />} label="По центру (гориз.)"
-          onClick={() => useEditorStore.getState().alignSelected('hcenter')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignEndVertical size={16} />} label="По правому краю"
-          onClick={() => useEditorStore.getState().alignSelected('right')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignStartHorizontal size={16} />} label="По верхнему краю"
-          onClick={() => useEditorStore.getState().alignSelected('top')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignCenterHorizontal size={16} />} label="По центру (верт.)"
-          onClick={() => useEditorStore.getState().alignSelected('vcenter')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignEndHorizontal size={16} />} label="По нижнему краю"
-          onClick={() => useEditorStore.getState().alignSelected('bottom')}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<AlignHorizontalSpaceBetween size={16} />} label="Распределить по горизонтали"
-          onClick={() => useEditorStore.getState().distributeSelected('h')}
-          disabled={!canEdit || selectedIds.length < 3}
-        />
-        <TooltipBtn
-          icon={<AlignVerticalSpaceBetween size={16} />} label="Распределить по вертикали"
-          onClick={() => useEditorStore.getState().distributeSelected('v')}
-          disabled={!canEdit || selectedIds.length < 3}
-        />
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignStartVertical size={16} />} label="По левому краю"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('left')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignCenterVertical size={16} />} label="По центру (гориз.)"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('hcenter')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignEndVertical size={16} />} label="По правому краю"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('right')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignStartHorizontal size={16} />} label="По верхнему краю"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('top')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignCenterHorizontal size={16} />} label="По центру (верт.)"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('vcenter')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignEndHorizontal size={16} />} label="По нижнему краю"*/}
+        {/*  onClick={() => useEditorStore.getState().alignSelected('bottom')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignHorizontalSpaceBetween size={16} />} label="Распределить по горизонтали"*/}
+        {/*  onClick={() => useEditorStore.getState().distributeSelected('h')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 3}*/}
+        {/*/>*/}
+        {/*<TooltipBtn*/}
+        {/*  icon={<AlignVerticalSpaceBetween size={16} />} label="Распределить по вертикали"*/}
+        {/*  onClick={() => useEditorStore.getState().distributeSelected('v')}*/}
+        {/*  disabled={!canEdit || selectedIds.length < 3}*/}
+        {/*/>*/}
 
-        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
+        {/*<div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />*/}
 
         {/* Пока сохранение идёт — спиннер и блокировка: раньше промис не
             ожидался и не было никакого признака работы, поэтому нетерпеливые
