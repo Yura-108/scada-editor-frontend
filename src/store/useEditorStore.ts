@@ -754,6 +754,23 @@ const parseBackendErrorMessage = (status: number, text: string): string => {
 let saveInFlight: Promise<boolean> | null = null;
 
 /**
+ * Счётчик подмен документа на холсте: растёт при каждой замене `elements` серверным
+ * деревом (`applyServerComponents` — загрузка сцены, сохранение, восстановление, просмотр
+ * версии).
+ *
+ * Нужен, чтобы поздний ответ не затирал более свежий документ. Сценарий, из-за которого
+ * счётчик появился: пока летит сохранение, пользователь восстанавливает версию.
+ * Восстановление кладёт на холст свою версию, а затем возвращается ответ сохранения — и
+ * обработчик успеха подменяет `elements` деревом, каким оно было ДО восстановления, да ещё
+ * и помечает это состояние сохранённым. Снаружи это выглядит как «восстановление не
+ * сработало»: холст остался прежним.
+ *
+ * Сравнение по номеру, а не по флагу «идёт восстановление»: подменить документ может любая
+ * из операций, и важно не «кто именно», а «документ уже не тот, к которому относится ответ».
+ */
+let documentGeneration = 0;
+
+/**
  * Очередь точечных правок свойств (`/api/editor/tags`, §8 контракта версий).
  *
  * С 17.08.2026 каждая такая правка проверяется гардом версии и оставляет снимок в
@@ -813,6 +830,10 @@ let versionPreviewStash: {
  * (`transformElements` — unbake запечённой composition) не должна разъехаться между
  * ними. Выделение/активная группа/состояния сбрасываются, потому что ключи после
  * серверного круга могут исчезнуть; вызывающий восстанавливает их сам, если нужно.
+ *
+ * Здесь же растёт `documentGeneration`: это единственная точка, где документ на холсте
+ * заменяется целиком, а значит единственное место, откуда операции могут узнать, что их
+ * ответ уже устарел.
  */
 const applyServerComponents = (
   components: unknown[],
@@ -822,6 +843,8 @@ const applyServerComponents = (
     (components ?? []) as Parameters<typeof transformElements>[0],
     scene,
   );
+
+  documentGeneration += 1;
 
   useEditorStore.setState({
     elements,
@@ -2130,6 +2153,10 @@ export const useEditorStore = create<EditorState>()(temporal(
 
             const components = buildComponentTree(elements, String(scene?.id));
             const basedOnVersion = opts?.basedOnVersion ?? sceneVersion;
+            // Поколение документа НА МОМЕНТ отправки. Если к возврату ответа оно выросло,
+            // холст успели заменить (восстановление версии, просмотр, перезагрузка сцены),
+            // и подменять его нашим деревом уже нельзя — см. documentGeneration.
+            const generationAtSend = documentGeneration;
 
             // `PUT`, а не `POST`: `POST` только создаёт компоненты и не принимает
             // `scene_id`, а слияние чужих правок сервер делает исключительно для `PUT`
@@ -2182,6 +2209,27 @@ export const useEditorStore = create<EditorState>()(temporal(
               : [];
             const savedVersion: number | null =
               typeof saved?.version_no === "number" ? saved.version_no : null;
+
+            // Пока летел запрос, документ на холсте заменили целиком — почти всегда это
+            // восстановление версии, начатое до того, как сохранение успело вернуться.
+            // Сохранение состоялось, но описывает уже ПРОШЛОЕ состояние: подменить им
+            // холст значит отменить восстановление на глазах у пользователя, а записать
+            // его `version_no` в базу — уехать следующим сохранением от чужого снимка.
+            // Поэтому ответ принимаем к сведению и не трогаем ни холст, ни базу; версию
+            // спрашиваем у истории, там порядок событий уже разрешён.
+            if (documentGeneration !== generationAtSend) {
+              set({saveConflict: null, staleBaseVersion: null});
+              if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
+              void get().refreshSceneVersion();
+              if (get().versions.length) void get().loadVersions();
+
+              if (!opts?.silent) {
+                toast.success("Сохранено", {
+                  description: "Схему на холсте за это время заменили — показано новое содержимое, не то, что сохранялось.",
+                });
+              }
+              return true;
+            }
 
             if (!opts?.silent) toast.success("Сохранено успешно!");
 
@@ -2407,54 +2455,102 @@ export const useEditorStore = create<EditorState>()(temporal(
         useEditorStore.temporal.getState().resume();
       },
       restoreVersion: async (versionNo) => {
-        const {scene} = get();
-        if (!scene?.id) return false;
+        if (!get().scene?.id) return false;
 
-        try {
-          const restored = await restoreVersionRequest("scenes", Number(scene.id), versionNo);
+        // Восстановление берёт ТОТ ЖЕ замок, что и сохранение. Без этого летящее
+        // сохранение (ручное или автосейв) ложится на сервер уже ПОСЛЕ восстановления и
+        // откатывает его, а его ответ подменяет холст дореставрационным деревом — снаружи
+        // это выглядит как «восстановление не сработало». Заодно замок сериализует два
+        // восстановления подряд: побеждает нажатое последним, а не ответившее последним.
+        while (saveInFlight) {
+          await saveInFlight.catch(() => {});
+        }
 
-          // Восстановление дописывает историю новой версией — просмотр закрываем без
-          // возврата отложенных правок: они относятся к состоянию, которое пользователь
-          // только что осознанно заменил.
-          versionPreviewStash = null;
-          if (get().versionPreview) useEditorStore.temporal.getState().resume();
-          set({versionPreview: null});
+        const run = (async (): Promise<boolean> => {
+          const {scene} = get();
+          if (!scene?.id) return false;
 
-          const temporal = useEditorStore.temporal.getState();
-          temporal.pause();
           try {
-            if (restored.version_no != null) {
-              applyServerComponents(restored.components, scene);
-            } else {
-              // Та же логика, что в exportScene: ответ без `version_no` — признак того,
-              // что бэкенд ответил не по контракту, и форму дерева в нём никто не
-              // гарантировал. Доверить такому ответу холст значит показать не ту версию
-              // (или пустую сцену) молча — честнее перечитать документ с сервера.
-              await get().loadScene(Number(scene.id), {keepHistory: true});
+            // Пустой ответ на непустой сцене — признак беды (см. ниже), поэтому надо
+            // знать, было ли на холсте хоть что-то ДО восстановления.
+            const hadElements = get().elements.length > 0;
+
+            const restored = await restoreVersionRequest("scenes", Number(scene.id), versionNo);
+
+            // Восстановление дописывает историю новой версией — просмотр закрываем без
+            // возврата отложенных правок: они относятся к состоянию, которое пользователь
+            // только что осознанно заменил.
+            versionPreviewStash = null;
+            if (get().versionPreview) useEditorStore.temporal.getState().resume();
+            set({versionPreview: null});
+
+            // Ответу доверяем холст только когда он подтверждён контрактом и не пуст:
+            //  - без `version_no` бэкенд ответил не по контракту, и форму дерева в ответе
+            //    никто не гарантировал;
+            //  - ноль корневых компонентов при непустой сцене означает, что документ
+            //    пришёл в форме, которую `rootComponentsOf` не разобрал. Применить такой
+            //    ответ значит стереть схему и тут же пометить пустоту сохранённой —
+            //    ближайший автосейв запишет её на сервер.
+            // В обоих случаях честнее перечитать документ с сервера.
+            const trustResponse =
+              restored.version_no != null && (restored.components.length > 0 || !hadElements);
+
+            const temporal = useEditorStore.temporal.getState();
+            temporal.pause();
+            try {
+              if (trustResponse) {
+                applyServerComponents(restored.components, scene);
+              } else {
+                await get().loadScene(Number(scene.id), {keepHistory: true});
+              }
+            } finally {
+              useEditorStore.temporal.getState().resume();
             }
-          } finally {
-            useEditorStore.temporal.getState().resume();
+
+            // Стек undo помнит элементы ДО восстановления, часть из которых на сервере
+            // уже не существует — оставлять его значит дать Ctrl+Z воскресить их.
+            useEditorStore.temporal.getState().clear();
+
+            if (trustResponse) {
+              set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null});
+              markSceneSaved(true);
+            } else {
+              // loadScene уже расставил elements/снимок и сам спросил текущую версию.
+              set({saveConflict: null, staleBaseVersion: null});
+            }
+            void get().loadVersions();
+
+            // `restored_from` называет версию, которую сервер ВЗЯЛ за источник. Расхождение
+            // с запрошенной означает, что восстановлено не то, — и без этой проверки такой
+            // ответ неотличим от успеха: тост бодро называет запрошенный номер, а на холсте
+            // чужое содержимое.
+            if (restored.restored_from != null && restored.restored_from !== versionNo) {
+              toast.warning(`Сервер восстановил версию ${restored.restored_from}, а не ${versionNo}`, {
+                description: "На холсте содержимое версии " + restored.restored_from +
+                  ". Если это повторяется, история версий на сервере отдаёт не тот снимок.",
+                duration: 12_000,
+              });
+            } else if (!trustResponse) {
+              toast.warning(`Версия ${versionNo} восстановлена, схема перечитана с сервера`, {
+                description: "Ответ восстановления пришёл в неожиданном виде, поэтому холсту он не доверен.",
+                duration: 10_000,
+              });
+            } else {
+              toast.success(`Восстановлена версия ${versionNo}`);
+            }
+            return true;
+          } catch (err) {
+            console.error(err);
+            toast.error(getErrorMessage(err, "Не удалось восстановить версию"));
+            return false;
           }
+        })();
 
-          // Стек undo помнит элементы ДО восстановления, часть из которых на сервере
-          // уже не существует — оставлять его значит дать Ctrl+Z воскресить их.
-          useEditorStore.temporal.getState().clear();
-
-          if (restored.version_no != null) {
-            set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null});
-            markSceneSaved(true);
-          } else {
-            // loadScene уже расставил elements/снимок и сам спросил текущую версию.
-            set({saveConflict: null, staleBaseVersion: null});
-          }
-          void get().loadVersions();
-
-          toast.success(`Восстановлена версия ${versionNo}`);
-          return true;
-        } catch (err) {
-          console.error(err);
-          toast.error(getErrorMessage(err, "Не удалось восстановить версию"));
-          return false;
+        saveInFlight = run;
+        try {
+          return await run;
+        } finally {
+          if (saveInFlight === run) saveInFlight = null;
         }
       },
       restorePreviousManualVersion: async () => {
