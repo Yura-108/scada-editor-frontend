@@ -9,6 +9,7 @@ import {
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
 } from "lucide-react";
+import {choiceModal} from "@/components/ui/ConfirmModal";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
@@ -143,16 +144,63 @@ export default function ToolsPanel() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
         const arr = Array.isArray(json) ? json : [json];
-        useEditorStore.getState().importElementsFromJson(arr);
-        toast.success(`Импортировано элементов: ${arr.length}`);
+
+        // На непустой схеме спрашиваем: без этого повторный импорт того же листа молча
+        // удваивал схему, а замена была недоступна вовсе.
+        let mode: "append" | "replace" = "replace";
+        if (useEditorStore.getState().elements.length) {
+          const answer = await choiceModal({
+            title: "На схеме уже есть элементы",
+            description: `В файле ${arr.length} элементов. Что с ними сделать?`,
+            options: [
+              {
+                id: "replace",
+                label: "Заменить содержимое схемы",
+                description: "Текущие элементы будут убраны. Отменяется через Ctrl+Z, на сервере — до ближайшего сохранения.",
+                danger: true,
+              },
+              {
+                id: "append",
+                label: "Добавить к существующим",
+                description: "Импортированное ляжет поверх текущего. Повторный импорт того же файла задвоит элементы.",
+              },
+            ],
+          });
+          if (!answer) return;
+          mode = answer as "append" | "replace";
+        }
+
+        const stats = useEditorStore.getState().importElementsFromJson(arr, {mode});
+
+        if (!stats) {
+          toast.success(`Импортировано элементов: ${arr.length}`);
+          return;
+        }
+
+        // Разбивка по типам — она же приёмка: контрольные числа листа сверяются глазами,
+        // без консоли (см. CONTUR_IMPORT_PLAN.md, §5).
+        toast.success(`Импортировано элементов: ${stats.total}`, {
+          description:
+            `Техобъектов ${stats.groups} · линий чертежа ${stats.lines} · устройств ${stats.circles} · ` +
+            `подписей ${stats.labels} · имён контуров ${stats.contourNames} · рамок ${stats.frames}`,
+          duration: 12_000,
+        });
+
+        if (stats.repairedLinks) {
+          toast.warning(`Достроено связей групп: ${stats.repairedLinks}`, {
+            description: "В файле были односторонние ссылки родитель ↔ ребёнок. Стоит сказать об этом CONTUR.",
+            duration: 12_000,
+          });
+        }
       } catch {
         toast.error("Ошибка чтения файла: неверный JSON");
+      } finally {
+        e.target.value = "";
       }
-      e.target.value = "";
     };
     reader.readAsText(file);
   };

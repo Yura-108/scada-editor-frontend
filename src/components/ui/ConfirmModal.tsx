@@ -5,9 +5,9 @@ import { AlertTriangle, HelpCircle } from "lucide-react";
 import React, { useId, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useConfirmStore, type ConfirmEntry } from "@/store/confirmStore";
-import type { ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
+import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
 
-export type { ConfirmModalOptions, PromptModalOptions };
+export type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions };
 
 /**
  * Промис-обёртка вместо нативного `confirm()`.
@@ -28,6 +28,19 @@ export function confirmModal(options: ConfirmModalOptions): Promise<boolean> {
 export function promptModal(options: PromptModalOptions): Promise<string | null> {
   return new Promise<string | null>((resolve) => {
     useConfirmStore.getState().push({kind: "prompt", options, resolve});
+  });
+}
+
+/**
+ * Выбор из нескольких действий. Резолвится id варианта либо `null` при отмене.
+ *
+ * Нужен там, где исходов больше двух и `confirmModal` пришлось бы натягивать на «да/нет»:
+ * например, импорт в непустую схему — заменить, добавить или передумать. Прятать третий
+ * исход за Esc нельзя, когда один из вариантов теряет работу пользователя.
+ */
+export function choiceModal(options: ChoiceModalOptions): Promise<string | null> {
+  return new Promise<string | null>((resolve) => {
+    useConfirmStore.getState().push({kind: "choice", options, resolve});
   });
 }
 
@@ -103,6 +116,78 @@ function ConfirmDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "confirm
               )}
             >
               {confirmLabel}
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function ChoiceDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "choice"}> }) {
+  const remove = useConfirmStore((s) => s.remove);
+  const { title, description, options, cancelLabel = "Отмена" } = entry.options;
+
+  const settle = (value: string | null) => {
+    entry.resolve(value);
+    remove(entry.id);
+  };
+
+  return (
+    <Dialog.Root open onOpenChange={(open) => { if (!open) settle(null); }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-confirm bg-black/60 backdrop-blur-sm" />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-confirm w-[95vw] max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-2xl",
+            "dark:border-gray-800/70 dark:bg-[#0f0f1a] dark:text-white",
+            "focus:outline-none",
+          )}
+        >
+          <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
+          {description ? (
+            <Dialog.Description className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              {description}
+            </Dialog.Description>
+          ) : (
+            <Dialog.Description className="sr-only">{title}</Dialog.Description>
+          )}
+
+          {/* Варианты столбцом, а не в ряд: у каждого есть пояснение, и в строку они
+              превращаются в кнопки без подписей — то есть в угадайку. */}
+          <div className="mt-6 flex flex-col gap-2">
+            {options.map((option, index) => (
+              <button
+                key={option.id}
+                type="button"
+                autoFocus={index === 0}
+                onClick={() => settle(option.id)}
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-left transition-colors",
+                  option.danger
+                    ? "border-red-300 hover:bg-red-50 dark:border-red-500/40 dark:hover:bg-red-500/10"
+                    : "border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800",
+                )}
+              >
+                <div className={cn(
+                  "font-medium",
+                  option.danger ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100",
+                )}>
+                  {option.label}
+                </div>
+                {option.description && (
+                  <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+                    {option.description}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button type="button" onClick={() => settle(null)} className={cancelButtonClasses}>
+              {cancelLabel}
             </button>
           </div>
         </Dialog.Content>
@@ -206,11 +291,11 @@ export function ConfirmRoot() {
 
   return (
     <>
-      {stack.map((entry) =>
-        entry.kind === "confirm"
-          ? <ConfirmDialog key={entry.id} entry={entry} />
-          : <PromptDialog key={entry.id} entry={entry} />,
-      )}
+      {stack.map((entry) => {
+        if (entry.kind === "confirm") return <ConfirmDialog key={entry.id} entry={entry} />;
+        if (entry.kind === "choice") return <ChoiceDialog key={entry.id} entry={entry} />;
+        return <PromptDialog key={entry.id} entry={entry} />;
+      })}
     </>
   );
 }

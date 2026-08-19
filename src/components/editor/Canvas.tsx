@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState, useCallback } from "react";
 import Konva from "konva";
-import { Stage, Layer, Rect, Line } from "react-konva";
+import { Stage, Layer, Rect, Line, Circle } from "react-konva";
 
 import { useShallow } from "zustand/react/shallow";
 
@@ -166,7 +166,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
   });
 
   // ---- Hover-подсветка (как в Figma: показываем рамку того, что выберется по клику) ----
-  const { hoverBounds, handleStageMouseOver, clearHover } = useHoverHighlight({
+  const { hoverHighlight, handleStageMouseOver, clearHover } = useHoverHighlight({
     elementsMap, elements, selectedIds, resolveClickTarget,
   });
 
@@ -322,22 +322,65 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
                 вне монитора — движок рантайма там не запущен. */}
             <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
 
-            {/* Hover-подсветка: один оверлей-Rect вместо пропса в фигуры — иначе каждое
-                движение мыши ре-рендерило бы всю мемоизированную сцену. */}
-            {hoverBounds && !selectionRect && (
-              <Rect
-                x={hoverBounds.x - 2}
-                y={hoverBounds.y - 2}
-                width={hoverBounds.w + 4}
-                height={hoverBounds.h + 4}
-                stroke={themeColors.selection}
-                strokeWidth={1.5}
-                dash={[5, 3]}
-                opacity={0.7}
-                cornerRadius={2}
-                listening={false}
-              />
-            )}
+            {/* Hover-подсветка: один оверлей вместо пропса в фигуры — иначе каждое
+                движение мыши ре-рендерило бы всю мемоизированную сцену.
+
+                Форма повторяет геометрию фигуры, а не её габарит: у наклонного отрезка
+                габаритный прямоугольник накрывает пол-листа вместе с соседями, и понять
+                по нему, что именно выберется, невозможно (см. useHoverHighlight).
+
+                strokeScaleEnabled={false} — толщина и штрих в ЭКРАННЫХ пикселях: подсветка
+                остаётся одинаково тонкой и на общем виде листа, и при сильном приближении. */}
+            {hoverHighlight && !selectionRect && (() => {
+              const common = {
+                stroke: themeColors.selection,
+                strokeWidth: 1.5,
+                dash: [5, 3],
+                opacity: 0.7,
+                strokeScaleEnabled: false,
+                listening: false,
+              };
+
+              if (hoverHighlight.kind === "line") {
+                return (
+                  <Line
+                    {...common}
+                    points={hoverHighlight.points}
+                    // Сплошная и толще: подсветка ложится поверх самой линии, и пунктир
+                    // на пунктире читался бы хуже, чем «утолщение» под курсором.
+                    dash={undefined}
+                    strokeWidth={4}
+                    opacity={0.45}
+                  />
+                );
+              }
+
+              if (hoverHighlight.kind === "circle") {
+                return (
+                  <Circle
+                    {...common}
+                    x={hoverHighlight.x}
+                    y={hoverHighlight.y}
+                    radius={hoverHighlight.radius + 2}
+                  />
+                );
+              }
+
+              if (hoverHighlight.kind === "polygon") {
+                return <Line {...common} points={hoverHighlight.points} closed />;
+              }
+
+              return (
+                <Rect
+                  {...common}
+                  x={hoverHighlight.x - 2}
+                  y={hoverHighlight.y - 2}
+                  width={hoverHighlight.w + 4}
+                  height={hoverHighlight.h + 4}
+                  cornerRadius={2}
+                />
+              );
+            })()}
 
             {/* Smart-guides: линии привязки к соседям во время перетаскивания */}
             {guides.v !== null && (

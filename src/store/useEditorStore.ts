@@ -22,6 +22,7 @@ import {TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
+import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   fetchCurrentVersion,
@@ -228,7 +229,17 @@ type EditorState = {
   dismissStaleBaseVersion: () => void;
   /** Пересохранить поверх чужой версии: based_on_version = current_version из 409. */
   saveOverConflict: () => Promise<boolean>;
-  importElementsFromJson: (rawElements: Record<string, unknown>[]) => void;
+  /**
+   * Импорт элементов из JSON. Выгрузка CONTUR распознаётся и переводится автоматически
+   * (см. `src/lib/editor/conturImport.ts`); всё прочее импортируется как раньше.
+   *
+   * `mode: "replace"` кладёт на холст только импортированное — иначе повторный импорт того
+   * же листа удвоит схему. Возвращает разбивку по типам для выгрузки CONTUR либо `null`.
+   */
+  importElementsFromJson: (
+    rawElements: Record<string, unknown>[],
+    opts?: {mode?: "append" | "replace"},
+  ) => ConturImportStats | null;
   /**
    * `keepHistory` — не чистить стек undo. Нужен только для перезагрузки ТОЙ ЖЕ сцены
    * после сохранения: границу сцены/проекта мы не пересекаем, поэтому история остаётся
@@ -1546,13 +1557,18 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
 
       },
-      importElementsFromJson: (rawElements) => {
+      importElementsFromJson: (rawElements, importOpts) => {
         const {scene, currentProject} = get();
 
         if (!sceneBelongsToCurrentProject(scene, currentProject)) {
           toast.error("Нельзя импортировать: сцена не принадлежит выбранному проекту");
-          return;
+          return null;
         }
+
+        // Выгрузка CONTUR приходит в своих именах полей и своей системе координат —
+        // переводим ДО общей нормализации, чтобы дальше всё шло одним путём.
+        const contur = isConturExport(rawElements) ? normalizeConturElements(rawElements) : null;
+        if (contur) rawElements = contur.elements;
 
         const CANVAS_W = 5000;
         const CANVAS_H = 5000;
@@ -1652,7 +1668,11 @@ export const useEditorStore = create<EditorState>()(temporal(
           } as DiagramElement;
         });
 
-        set(state => ({ elements: [...state.elements, ...imported] }));
+        set(state => ({
+          elements: importOpts?.mode === "replace" ? imported : [...state.elements, ...imported],
+        }));
+
+        return contur?.stats ?? null;
       },
       addElementAt: (screenX, screenY, type, extraProps) => {
         const {scene, currentProject} = get();

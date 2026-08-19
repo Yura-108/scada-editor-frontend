@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
+import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
 
 export type ConfirmEntry =
   | {
@@ -12,6 +12,13 @@ export type ConfirmEntry =
       id: number;
       kind: "prompt";
       options: PromptModalOptions;
+      resolve: (value: string | null) => void;
+    }
+  | {
+      id: number;
+      kind: "choice";
+      options: ChoiceModalOptions;
+      /** id выбранного варианта либо null — диалог закрыли без выбора. */
       resolve: (value: string | null) => void;
     };
 

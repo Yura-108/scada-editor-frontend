@@ -25,6 +25,21 @@ export function beginHistoryGroup(): void {
   useEditorStore.temporal.getState().pause();
 }
 
+/**
+ * Закрывает группу БЕЗ записи в историю.
+ *
+ * Нужна там, где правки применялись на лету, а пользователь их отменил (Escape в поле
+ * ввода): состояние уже возвращено к исходному, и шаг undo, ведущий туда же, был бы
+ * ложным — Ctrl+Z один раз «ничего не делал» бы.
+ */
+export function cancelHistoryGroup(): void {
+  if (depth === 0) return;
+  if (--depth > 0) return;
+
+  snapshot = null;
+  useEditorStore.temporal.getState().resume();
+}
+
 export function endHistoryGroup(): void {
   if (depth === 0) return;
   if (--depth > 0) return;

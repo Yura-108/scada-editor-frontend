@@ -22,6 +22,18 @@ import { TableShapeElement } from "./TableShapeElement";
 import { TrendShapeElement } from "./TrendShapeElement";
 import { ChartShapeElement } from "./ChartShapeElement";
 
+/**
+ * Стиль пунктира: "5 5" / "10 5 2 5" → [5,5] / [10,5,2,5]; пусто → сплошная линия.
+ *
+ * Общая для линии и прямоугольника: рамки техобъектов, приезжающие из импорта CONTUR,
+ * рисуются прямоугольником и тоже пунктирные.
+ */
+const parseDashArray = (raw: string | undefined): number[] | undefined => {
+  const parts = (raw || "").trim().split(/\s+/).map(Number);
+  const nums = parts.filter((n) => Number.isFinite(n) && n >= 0);
+  return nums.length ? nums : undefined;
+};
+
 interface ShapeElementProps {
   el: DiagramElement;
   ctx: EditorRenderContext;
@@ -180,12 +192,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: Shape
 
     const lineStroke = isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault);
     const lineWidth = rendered.strokeWidth || 2;
-    // Стиль пунктира: "5 5" / "10 5 2 5" → [5,5] / [10,5,2,5]; пусто → сплошная.
-    const dashArr = (() => {
-      const parts = (rendered.strokeDasharray || "").trim().split(/\s+/).map(Number);
-      const nums = parts.filter((n) => Number.isFinite(n) && n >= 0);
-      return nums.length ? nums : undefined;
-    })();
+    const dashArr = parseDashArray(rendered.strokeDasharray);
     const arrowStart = !!rendered.arrowStart;
     const arrowEnd = !!rendered.arrowEnd;
     // Размер наконечника зависит от толщины линии.
@@ -365,6 +372,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: Shape
         fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
         stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
         strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
+        dash={parseDashArray(rendered.strokeDasharray)}
         cornerRadius={rendered.rx || 0}
       />
       {rendered.label && (
