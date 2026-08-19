@@ -32,17 +32,25 @@ const FRAME_DASH = "6 4";
 export type ConturImportStats = {
   /** Техобъекты, ставшие группами. */
   groups: number;
-  /** Линии перерисованного чертежа. */
+  /** Линии перерисованного чертежа — вместе с рамкой листа. */
   lines: number;
+  /** Из них рамка чертежа и разлиновка штампа (`frame: true`). */
+  frameLines: number;
   /** Кружки сопоставленных устройств. */
   circles: number;
-  /** Подписи устройств (`text` без `contour`). */
+  /** Подписи устройств (`text` без `contour` и без `drawing`). */
   labels: number;
+  /** Надписи самого чертежа (`text` с `drawing: true`) — обозначения Eplan, штамп. */
+  drawingTexts: number;
   /** Имена техобъектов (`text` с `contour: true`). */
   contourNames: number;
-  /** Прямоугольники рамок, добавленные нами (по одному на группу). */
+  /** Рамки техобъектов, пришедшие из файла прямоугольником (`contour: true`). */
+  contourFrames: number;
+  /** Прямоугольники рамок, добавленные нами (у групп, где своей рамки нет). */
   frames: number;
-  /** Сколько элементов уходит в импорт — вместе с рамками. */
+  /** Служебные элементы с данными листа (`contur_meta`) — на холсте не рисуются. */
+  meta: number;
+  /** Сколько элементов уходит в импорт — вместе с рамками и служебными. */
   total: number;
   /** Связи «родитель ↔ ребёнок», которые пришлось достроить. В норме 0. */
   repairedLinks: number;
@@ -66,12 +74,34 @@ const str = (v: unknown): string | null => (typeof v === "string" && v ? v : nul
 export const isConturExport = (raw: unknown[]): boolean =>
   raw.some(el =>
     !!el && typeof el === "object" &&
-    ("stroke_width" in el || "contour" in el || "tech_object" in el || "lua_name" in el),
+    ("stroke_width" in el || "contour" in el || "tech_object" in el || "lua_name" in el
+      // Признаки состава от 19.08.2026: служебный элемент с данными листа и смысловая
+      // метка линии. Держим их в детекторе на случай, если CONTUR когда-нибудь уберёт
+      // `stroke_width` (толщины уже квантованы) — режим нормализации терять нельзя.
+      || "contur_meta" in el || "contur_color" in el),
   );
+
+/**
+ * Служебный элемент с данными листа: трубопроводы, связи, точки сопряжения, программы
+ * операций. Придуман CONTUR, потому что в плоском массиве фигур этим данным места нет,
+ * а вторым файлом слать хуже — файлы разъезжаются.
+ *
+ * Фигурой не является (`visible: false`, нулевой габарит) и на холст не попадает:
+ * рендер пропускает `visible === false`. Импортируем, а не выбрасываем, ради двух
+ * ссылок от фигур внутрь него — `pipeline_id` у синей линии и `operation_id`
+ * в `contur_states` у кружка.
+ */
+export const isConturMeta = (el: Raw): boolean =>
+  el.contur_meta === true || String(el.type ?? "") === "meta";
 
 /** Один элемент: имена полей и координаты. */
 const normalizeOne = (el: Raw): Raw => {
   const type = String(el.type ?? "");
+
+  // Данные листа, а не фигура: переводить в нём нечего. Габарит и `visible` проставляем
+  // жёстко — по ним рендер и рамка выделения его пропускают, каким бы ни пришёл файл.
+  if (isConturMeta(el)) return {...el, visible: false, w: 0, h: 0};
+
   const out: Raw = {...el};
 
   // Толщина линии: наш рендер читает strokeWidth (ShapeElement), CONTUR шлёт пункты PDF.
@@ -229,33 +259,60 @@ export const normalizeConturElements = (raw: Raw[]): {elements: Raw[]; stats: Co
   const normalized = raw.map(normalizeOne);
 
   const stats: ConturImportStats = {
-    groups: 0, lines: 0, circles: 0, labels: 0, contourNames: 0, frames: 0,
+    groups: 0, lines: 0, frameLines: 0, circles: 0, labels: 0, drawingTexts: 0,
+    contourNames: 0, contourFrames: 0, frames: 0, meta: 0,
     total: 0, repairedLinks: 0,
   };
 
   const frames: Raw[] = [];
 
+  const byKey = new Map<string, Raw>();
   for (const el of normalized) {
+    const key = str(el.key);
+    if (key) byKey.set(key, el);
+  }
+
+  for (const el of normalized) {
+    if (isConturMeta(el)) {
+      stats.meta += 1;
+      continue;
+    }
+
     switch (String(el.type ?? "")) {
       case "group": {
         stats.groups += 1;
+        const children = Array.isArray(el.children) ? (el.children as string[]) : [];
+        // С состава от 19.08.2026 рамку кладёт сам CONTUR — первым ребёнком, локальными
+        // (0, 0) размером с группу (`INTEGRATION`, §7.1). Своя добавляется только там, где
+        // её нет: иначе у каждого техобъекта окажется две рамки, одна поверх другой.
+        const first = byKey.get(children[0] ?? "");
+        if (String(first?.type ?? "") === "rectangle") break;
+
         const frame = buildFrame(el);
         frames.push(frame);
         // Первым ребёнком: `GroupNode` рисует состав по порядку массива, и рамка обязана
         // оказаться под устройствами, а не поверх них.
-        const children = Array.isArray(el.children) ? (el.children as string[]) : [];
         el.children = [frame.key as string, ...children];
         break;
       }
       case "line":
         stats.lines += 1;
+        // Рамка чертежа и разлиновка штампа листа: тот же `line`, но не трубопровод и не
+        // контур устройства — считаем отдельно, чтобы числа приёмки сходились с CONTUR.
+        if (el.frame === true) stats.frameLines += 1;
         break;
       case "circle":
         stats.circles += 1;
         break;
+      case "rectangle":
+        // Рамка техобъекта из файла (раньше приезжала четырьмя линиями, теперь фигурой).
+        if (el.contour === true) stats.contourFrames += 1;
+        break;
       case "text":
-        // `contour: true` есть только у имён техобъектов; у подписей устройств поля нет.
+        // Три вида текста: имя техобъекта (`contour`), надпись самого чертежа (`drawing`)
+        // и наша подпись устройства — без обоих полей.
         if (el.contour === true) stats.contourNames += 1;
+        else if (el.drawing === true) stats.drawingTexts += 1;
         else stats.labels += 1;
         break;
     }

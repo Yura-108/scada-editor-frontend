@@ -23,7 +23,9 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
   const zoomFit = useCallback(() => {
     if (!canvasRect) return;
     const { elements: els, scene: sc } = useEditorStore.getState();
-    const roots = els.filter(el => el.parentKey === String(sc?.id));
+    // `visible: false` (служебный элемент импорта) в габарит не входит: он стоит в (0, 0)
+    // нулевого размера и растянул бы «вписать в экран» до начала координат.
+    const roots = els.filter(el => el.parentKey === String(sc?.id) && el.visible !== false);
     if (!roots.length) { setCamera(0, 0, 1); return; }
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

@@ -31,6 +31,12 @@ function CanvasNodeBase({ elementKey, ctx }: CanvasNodeProps) {
   // Элемент удалён (или ещё не подгружен) — рисовать нечего.
   if (!el) return null;
 
+  // `visible: false` — элемент есть в схеме и сохраняется, но фигурой не является.
+  // Так приезжает служебный элемент импорта CONTUR (`contur_meta`) с данными листа:
+  // трубопроводы, связи, программы операций. Без этой проверки он попадал бы в
+  // запасную ветку ShapeElement и рисовался прямоугольником 0×0 с подписью.
+  if (el.visible === false) return null;
+
   if (el.type === "group") {
     return <GroupNode group={el as GroupElement} ctx={ctx} state={state} />;
   }

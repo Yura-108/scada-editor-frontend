@@ -244,6 +244,9 @@ export function useStageInteractions({
 
     const selected = elements
       .filter(el => String(el.parentKey) === scopeKey)
+      // Невидимое рамкой не ловим: служебный элемент импорта (`visible: false`) стоит
+      // в (0, 0) с нулевым габаритом и иначе попадал бы в любое выделение от угла схемы.
+      .filter(el => el.visible !== false)
       .filter(el => isIntersecting(
         { x: sx, y: sy, width: sw, height: sh },
         getSelectionBounds(el, elementsMap),
