@@ -16,6 +16,16 @@ export interface ElementBounds {
   absY2?: number;
 }
 
+/**
+ * Поворот габарита элемента, °.
+ *
+ * У дуги `rotate` — это начало дуги, а не поворот фигуры: её габарит — описанный
+ * квадрат `2r × 2r`, от угла он не зависит. Крутить его как бокс значило бы раздувать
+ * рамку выделения (и рамку группы-предка) на ровном месте при каждом повороте дуги.
+ */
+const rotationOf = (rendered: LeafElement): number =>
+  rendered.type === "arc" ? 0 : (rendered.rotate || 0);
+
 /** Габаритный прямоугольник повёрнутого бокса w×h с левым верхним углом в (x, y). */
 const rotatedBoxBounds = (x: number, y: number, w: number, h: number, rotate: number): ElementBounds => {
   const cx = x + w / 2;
@@ -114,7 +124,7 @@ export function elementBounds(el: DiagramElement, index: ElementIndex): ElementB
   const rendered = getRenderedElement(el) as LeafElement;
   const w = rendered.w || 0;
   const h = rendered.h || 0;
-  const rotate = rendered.rotate || 0;
+  const rotate = rotationOf(rendered);
 
   if (rotate) return rotatedBoxBounds(abs.x, abs.y, w, h, rotate);
 
@@ -179,7 +189,7 @@ export function elementBoundsRendered(el: DiagramElement, index: ElementIndex): 
 
   const w = rendered.w || 0;
   const h = rendered.h || 0;
-  const rotate = rendered.rotate || 0;
+  const rotate = rotationOf(rendered);
 
   if (rotate) return rotatedBoxBounds(abs.x, abs.y, w, h, rotate);
 

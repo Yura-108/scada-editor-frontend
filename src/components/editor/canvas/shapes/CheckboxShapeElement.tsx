@@ -4,12 +4,12 @@ import React from "react";
 import { useTheme } from "next-themes";
 import { Group, Rect, Line, Text } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
 
-export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual }: ShapeElementProps) {
-  const rendered = getRenderedElement(el) as LeafElement;
+export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 

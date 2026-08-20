@@ -5,7 +5,7 @@ import { Group, Rect } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { EditorRenderContext } from "../types";
 import { useElementRenderState } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
@@ -50,6 +50,11 @@ function CanvasNodeBase({ elementKey, ctx }: CanvasNodeProps) {
       isSelected={state.isSelected && !state.isTransformerTarget}
       isEditing={state.isEditing}
       focusedCell={state.focusedCell}
+      // Смена состояния (и рантайм-значения монитора) не меняют сам элемент —
+      // без этих пропов React.memo фигуры возвращал бы прошлый рендер, и холст
+      // на переключение состояния не реагировал вовсе.
+      stateId={state.stateId}
+      runtime={state.runtime}
     />
   );
 }
@@ -73,7 +78,10 @@ interface GroupNodeProps {
 function GroupNode({ group, ctx, state }: GroupNodeProps) {
   const { updateElementVisual, onElementClick, resolveClickTarget, enterGroup, themeColors } = ctx;
   const { isSelected, isActiveGroup } = state;
-  const rendered = getRenderedElement(group);
+  // Состояние группы берём из подписки узла (state), а не из стора нереактивно:
+  // у контейнера в overrides лежат x/y/w/h, и при переключении состояния рамка
+  // должна ехать вместе с содержимым.
+  const rendered = getRenderedElementWith(group, state.stateId, state.runtime);
 
   return (
     <Group

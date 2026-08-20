@@ -5,15 +5,15 @@ import { Group, Rect, Text } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { useEditorStore } from "@/store/useEditorStore";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";
 import { SelectionOutline } from "./SelectionOutline";
 
-export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual }: ShapeElementProps) {
-  const rendered = getRenderedElement(el) as LeafElement;
+export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
   const textRef = useRef<Konva.Text>(null);
   // Через общий источник цветов холста, а не своим `resolvedTheme === "dark"`:
   // раньше здесь дублировалась палитра, а синий выделения был захардкожен.

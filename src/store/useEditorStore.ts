@@ -88,7 +88,7 @@ type EditorState = {
    * Ключи элементов, привязанных к тегу с quality != GOOD (или ещё не получавших
    * ни одного сообщения — холодный старт). Рисуется оверлеем «нет данных» поверх
    * готовой сцены (NoDataOverlay), не завязано на elements/undo/автосейв —
-   * TAG_CONTRACT_CHANGES.md B2/B4.
+   * docs/contract/TAG_CONTRACT_CHANGES.md B2/B4.
    */
   noDataElementKeys: Set<string>;
   /**
@@ -1726,6 +1726,25 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
+        if (type === 'arc') {
+          // Радиус 60 = три клетки; габарит — описанный квадрат 2r×2r, как у круга
+          // (см. ArcShapeElement). Раствор 90°, начало 0° — четверть окружности
+          // от «трёх часов» по часовой стрелке.
+          const radius = 60;
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: 2 * radius, h: 2 * radius,
+            radius, innerRadius: 0, angle: 90, rotate: 0, arcClosed: false,
+            label: "",
+            bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2, strokeDasharray: "",
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
+          return;
+        }
+
         if (type === 'checkbox') {
           const newElement: DiagramElement = {
             id: null, key: createUuid(), type, composition,
@@ -1872,6 +1891,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           y,
           w: 80,
           h: 80,
+          // У круга рендер и панель свойств читают radius, а не w/h. Без него фигура
+          // рисовалась по w/2, но в панели «Радиус» стоял 0, а первая же правка радиуса
+          // прыгала с 40 на введённое. Держим тройку radius/w/h согласованной с рождения.
+          ...(type === "circle" ? {radius: 40} : {}),
           parentId: scene?.id || null,
           parentKey: String(scene?.id) || null,
           children: [],

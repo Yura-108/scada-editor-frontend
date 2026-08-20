@@ -9,6 +9,7 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   path: { complex: false },
   rectangle: { complex: false },
   circle: { complex: false },
+  arc: { complex: false },
   line: { complex: false },
   group: { complex: false },
   toggle: { complex: false },
@@ -40,6 +41,7 @@ export const elementTypeLabels: Record<ElementType, string> = {
   path: "Кривая",
   rectangle: "Прямоугольник",
   circle: "Окружность",
+  arc: "Дуга",
   line: "Линия",
   group: "Группа",
   toggle: "Переключатель",
@@ -153,6 +155,55 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       min: 0,
       max: 20,
       defaultValue: 2,
+    },
+  ],
+  arc: [
+    // Радиус, начало и раствор правятся в блоке «Геометрия» и ручками на холсте —
+    // здесь только то, чего на холсте нет.
+    {
+      key: "innerRadius",
+      label: "Внутренний радиус",
+      type: "number",
+      min: 0,
+      max: 1000,
+      defaultValue: 0,
+    },
+    {
+      key: "arcClosed",
+      label: "Замкнуть радиусами (сектор)",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "bg",
+      label: "Цвет заливки",
+      type: "color",
+      defaultValue: "transparent",
+    },
+    {
+      key: "strokeColor",
+      label: "Цвет обводки",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина обводки",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: 2,
+    },
+    {
+      key: "strokeDasharray",
+      label: "Стиль (пунктир)",
+      type: "select",
+      options: [
+        {label: "Сплошная", value: ""},
+        {label: "Пунктир", value: "5 5"},
+        {label: "Штрих-пунктир", value: "10 5 2 5"},
+      ],
+      defaultValue: "",
     },
   ],
   line: [

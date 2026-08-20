@@ -42,6 +42,17 @@ export interface CanvasMenuItem {
 export interface ShapeElementProps {
   el: DiagramElement;
   isSelected: boolean;
+  /**
+   * Активное состояние элемента и рантайм-оверрайды монитора.
+   *
+   * Приходят пропами, а не читаются из стора: состояние живёт отдельной картой
+   * (`currentComponentStateByElementKey`), при его смене сам элемент не меняется —
+   * и любая мемоизация по пропам вернула бы прошлый рендер. Считать вид фигуры
+   * нужно через `getRenderedElementWith(el, stateId, runtime)`; нереактивный
+   * `getRenderedElement(el)` здесь — скрытая мина на будущее.
+   */
+  stateId: string | undefined;
+  runtime: Record<string, unknown> | undefined;
   snap: (v: number) => number;
   onElementClick: (key: string, multi: boolean) => void;
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;

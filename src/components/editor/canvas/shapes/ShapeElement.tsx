@@ -4,7 +4,8 @@ import React from "react";
 import { Group, Rect, Circle, Line, Text, Arrow } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import { parseDashArray } from "@/lib/editor/dashArray";
 import { EditorRenderContext } from "../types";
 import { Anchor } from "./Anchor";
 import { CircleResizeHandle } from "./CircleResizeHandle";
@@ -21,18 +22,7 @@ import { GaugeShapeElement } from "./GaugeShapeElement";
 import { TableShapeElement } from "./TableShapeElement";
 import { TrendShapeElement } from "./TrendShapeElement";
 import { ChartShapeElement } from "./ChartShapeElement";
-
-/**
- * Стиль пунктира: "5 5" / "10 5 2 5" → [5,5] / [10,5,2,5]; пусто → сплошная линия.
- *
- * Общая для линии и прямоугольника: рамки техобъектов, приезжающие из импорта CONTUR,
- * рисуются прямоугольником и тоже пунктирные.
- */
-const parseDashArray = (raw: string | undefined): number[] | undefined => {
-  const parts = (raw || "").trim().split(/\s+/).map(Number);
-  const nums = parts.filter((n) => Number.isFinite(n) && n >= 0);
-  return nums.length ? nums : undefined;
-};
+import { ArcShapeElement } from "./ArcShapeElement";
 
 interface ShapeElementProps {
   el: DiagramElement;
@@ -43,6 +33,10 @@ interface ShapeElementProps {
   isEditing: boolean;
   /** Сфокусированная ячейка таблицы, если она принадлежит этому элементу. */
   focusedCell: { elementKey: string; row: number; col: number } | null;
+  /** Активное состояние элемента: его overrides и рисуются поверх базовых полей. */
+  stateId: string | undefined;
+  /** Рантайм-оверрайды монитора (значения тегов) — поверх состояния. */
+  runtime: Record<string, unknown> | undefined;
 }
 
 /**
@@ -52,13 +46,20 @@ interface ShapeElementProps {
  * стора: раньше эти же данные читались из общего контекста, и любое изменение
  * схемы перерисовывало все фигуры сразу.
  */
-function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: ShapeElementProps) {
+function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId, runtime }: ShapeElementProps) {
   const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
   // Ref объявляем на верхнем уровне (правила хуков — ниже идут условные return).
   // Раньше в ветке круга вызывался React.createRef() прямо в рендере: он создаёт
   // НОВЫЙ ref на каждый рендер, и CircleResizeHandle мог получить отцепленный.
   const circleRef = React.useRef<Konva.Circle>(null);
-  const rendered = getRenderedElement(el) as LeafElement;
+  // Именно `…With`, а не `getRenderedElement`: тот читает активное состояние из стора
+  // нереактивно, и фигура под `React.memo` не узнавала бы о его смене.
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
+
+  // Общий набор пропов всех листовых компонентов. Раньше каждая ветка перечисляла
+  // их вручную, и добавление пропы означало пятнадцать одинаковых правок — ровно
+  // так `stateId`/`runtime` и потерялись бы у половины типов.
+  const leafProps = { el, isSelected, snap, onElementClick, updateElementVisual, stateId, runtime };
 
   if (rendered.type === "polygon") {
     let pts: number[] = [];
@@ -156,12 +157,13 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: Shape
           strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
           draggable
           onDragEnd={(e) => {
+            // Позиция узла круга — это его ЦЕНТР, и он уже привязан к сетке общим
+            // обработчиком Stage (useMultiDragAndGuides). В модели у элемента лежит
+            // левый верхний угол габарита, поэтому вычитаем радиус.
             const nx = e.target.x();
             const ny = e.target.y();
-            const dx = nx - cx;
-            const dy = ny - cy;
             e.target.position({ x: cx, y: cy });
-            updateElementVisual(el.key, { x: rendered.x + dx, y: rendered.y + dy });
+            updateElementVisual(el.key, { x: nx - r, y: ny - r });
           }}
           onClick={(e) => {
             e.cancelBubble = true;
@@ -262,73 +264,56 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: Shape
     );
   }
 
+  if (rendered.type === "arc") {
+    return <ArcShapeElement {...leafProps} />;
+  }
+
   if (rendered.type === "text") {
     return (
       <TextShapeElement
-        el={el}
-        isSelected={isSelected}
+        {...leafProps}
         isEditing={isEditing}
-        snap={snap}
-        onElementClick={onElementClick}
         onStartTextEdit={ctx.onStartTextEdit}
-        updateElementVisual={updateElementVisual}
       />
     );
   }
 
   if (rendered.type === "checkbox") {
-    return (
-      <CheckboxShapeElement
-        el={el}
-        isSelected={isSelected}
-        snap={snap}
-        onElementClick={onElementClick}
-        updateElementVisual={updateElementVisual}
-      />
-    );
+    return <CheckboxShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "progress_bar") {
-    return (
-      <ProgressBarShapeElement
-        el={el}
-        isSelected={isSelected}
-        snap={snap}
-        onElementClick={onElementClick}
-        updateElementVisual={updateElementVisual}
-      />
-    );
+    return <ProgressBarShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "button") {
-    return <ButtonShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <ButtonShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "toggle") {
-    return <ToggleShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <ToggleShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "slider") {
-    return <SliderShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <SliderShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "dropdown") {
-    return <DropdownShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <DropdownShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "input") {
-    return <InputShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <InputShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "gauge") {
-    return <GaugeShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <GaugeShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "table") {
     return (
       <TableShapeElement
-        el={el} isSelected={isSelected} snap={snap}
-        onElementClick={onElementClick} updateElementVisual={updateElementVisual}
+        {...leafProps}
         focusedCell={focusedCell}
         onCellClick={ctx.onTableCellClick}
       />
@@ -336,15 +321,15 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell }: Shape
   }
 
   if (rendered.type === "trend") {
-    return <TrendShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <TrendShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "chart") {
-    return <ChartShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <ChartShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "image") {
-    return <ImageShapeElement el={el} isSelected={isSelected} snap={snap} onElementClick={onElementClick} updateElementVisual={updateElementVisual} />;
+    return <ImageShapeElement {...leafProps} />;
   }
 
   return (

@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect, Text, Image as KonvaImage } from "react-konva";
 import { useImage } from "react-konva-utils";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
@@ -17,8 +17,8 @@ import { SelectionOutline } from "./SelectionOutline";
  *  - cover   — заполнить рамку с обрезкой (через crop исходника);
  *  - fill    — растянуть по рамке.
  */
-export function ImageShapeElement({ el, isSelected, onElementClick, updateElementVisual }: ShapeElementProps) {
-  const rendered = getRenderedElement(el) as LeafElement;
+export function ImageShapeElement({ el, isSelected, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
   const w = rendered.w || 120;
   const h = rendered.h || 120;
   const src = rendered.src || "";

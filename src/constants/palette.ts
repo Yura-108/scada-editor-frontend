@@ -17,6 +17,15 @@ export const paletteItems: PaletteItemType[] = [
     defaultProps: {name: "Circle"}
   },
   {
+    id: 10 ** 5 + 2,
+    type: "arc",
+    name: "Дуга",
+    category: "Базовые",
+    // Радиус 60 = три клетки, раствор 90° — четверть окружности. Габарит 120×120
+    // (описанный квадрат) кратен сетке, поэтому дуга ложится по клеткам сразу.
+    defaultProps: {name: "Arc", w: 120, h: 120, radius: 60, innerRadius: 0, angle: 90, rotate: 0, bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2},
+  },
+  {
     id: 10 ** 5 + 3,
     type: "polygon",
     name: "Многоугольник",

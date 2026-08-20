@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {ChevronDown, ChevronRight, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
+import {ChevronDown, ChevronRight, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, Radius, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils";
@@ -9,6 +9,7 @@ import {cn} from "@/lib/utils";
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   rectangle: <Square size={13} />,
   circle: <CircleIcon size={13} />,
+  arc: <Radius size={13} />,
   line: <Minus size={13} />,
   polygon: <Spline size={13} />,
   text: <Type size={13} />,

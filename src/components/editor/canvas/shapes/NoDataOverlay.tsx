@@ -3,7 +3,8 @@
 import React from "react";
 import { Group, Rect, Circle, Text } from "react-konva";
 import { DiagramElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import { useEditorStore } from "@/store/useEditorStore";
 import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";
 
@@ -16,13 +17,19 @@ interface NoDataOverlayProps {
 const BADGE_RADIUS = 9;
 
 /**
- * Оверлей «нет данных» (TAG_CONTRACT_CHANGES.md B2): приглушает компонент,
+ * Оверлей «нет данных» (docs/contract/TAG_CONTRACT_CHANGES.md B2): приглушает компонент,
  * привязанный к тегу с quality != GOOD (или ещё не получавший ни одного
  * сообщения — B4), и рисует бейдж-«?» в углу его bounding box. Рисуется
  * отдельным слоем поверх готовой сцены — ShapeElement/GroupNode не меняются,
  * оверлей не зависит от того, что насчитал сам биндинг компонента.
  */
 export function NoDataOverlay({ noDataElementKeys, elements, elementsMap }: NoDataOverlayProps) {
+  // Габариты считаются по активному состоянию, а его меняют теги (applyRuntimeBatch),
+  // не трогая `elements`. Без подписки бейдж «нет данных» остался бы от прошлого
+  // состояния — там, где компонент стоял до переключения.
+  const stateByKey = useEditorStore(s => s.currentComponentStateByElementKey);
+  const runtimeByKey = useEditorStore(s => s.runtimeOverridesByElementKey);
+
   if (!noDataElementKeys.size) return null;
 
   return (
@@ -34,7 +41,7 @@ export function NoDataOverlay({ noDataElementKeys, elements, elementsMap }: NoDa
         let bounds: { x: number; y: number; w: number; h: number };
         if (el.type === "group") {
           const abs = getAbsoluteRenderedPos(el, elementsMap);
-          const rendered = getRenderedElement(el);
+          const rendered = getRenderedElementWith(el, stateByKey[key], runtimeByKey[key]);
           bounds = { x: abs.x, y: abs.y, w: rendered.w ?? 0, h: rendered.h ?? 0 };
         } else {
           const b = getElementBoundsRendered(el, elements);

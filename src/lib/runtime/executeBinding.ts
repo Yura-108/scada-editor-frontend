@@ -30,7 +30,7 @@ export interface CompiledBinding {
 
 /** Значение тега в скоупе кода: `Test.V` — число, если парсится, `Test.RAW` — сырая строка.
  *  raw может быть `null` (тег с quality != GOOD без последнего достоверного значения,
- *  см. TAG_CONTRACT_CHANGES.md A3/B4) — важно не звать `.trim()` на нём. */
+ *  см. docs/contract/TAG_CONTRACT_CHANGES.md A3/B4) — важно не звать `.trim()` на нём. */
 export const buildTagObject = (raw: string | null | undefined) => {
   const num = raw != null && raw.trim() !== "" ? Number(raw) : NaN;
   return {

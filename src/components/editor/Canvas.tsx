@@ -318,7 +318,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
               Живёт отдельно, чтобы движение мыши при протяжке рамки или
               перетаскивании перерисовывало только его, а не всю сцену. */}
           <Layer listening={!readOnly}>
-            {/* «Нет данных» (монитор, TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
+            {/* «Нет данных» (монитор, docs/contract/TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
                 вне монитора — движок рантайма там не запущен. */}
             <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
 

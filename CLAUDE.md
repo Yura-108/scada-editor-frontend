@@ -55,6 +55,8 @@ Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===tru
 
 `snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/lib/utils.ts`). **Snapping must happen in world coordinates.** Konva's `e.target.x()` is already parent-local/world (independent of camera pan/zoom), so `snap(e.target.x())` on drag is correct. Drops convert screen→world *before* snapping in `EditorClient.tsx` (`(localX - camera.x)/camera.zoom`). All group paddings are multiples of `GRID`, so grouping/move preserve alignment. When adding a new interaction that sets position/size, snap it.
 
+**The circle is the one type with two anchor points.** The model stores the bbox top-left in `x/y` (plus `radius` and `w = h = 2·radius` — keep all three in sync), but every interaction speaks in terms of the **centre**: the dragged Konva node's position *is* the centre, so `useMultiDragAndGuides` snaps it absolutely (`snapAbsolute`, unlike line/polygon whose inner node carries an offset), `CircleResizeHandle` snaps the radius to `GRID` live and keeps the centre fixed by committing `x = cx − r`, and the properties panel shows «X/Y центра». Centre on a node + radius a multiple of 20 puts the bbox on the grid too. Break the pairing and the shape jumps at drop — the preview grows around the centre while the commit grows around the corner.
+
 ### Serialization round-trip (bake ↔ unbake)
 
 The backend stores each component's visual state as an **opaque JSON string** in `states[].image`, so the frontend can enrich it without a contract change.
@@ -68,7 +70,7 @@ When changing one side, keep the round-trip symmetric. There is a headless way t
 
 ### Document versions (undo → versioning)
 
-Contract: `frontend-contract-changes.md` in the repo root (revision of 17.08.2026). The unit of history is the **whole scene**, not an action. Client-side Ctrl+Z (zundo) is unrelated and stays.
+Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026). The unit of history is the **whole scene**, not an action. Client-side Ctrl+Z (zundo) is unrelated and stays.
 
 - **Save envelope.** `exportScene` sends `PUT {components, scene_id, based_on_version, save_kind}`. `save_kind` comes from an explicit `kind` option (`MANUAL` / `AUTOSAVE`) — never inferred from `silent`, which only means "no toast"; `"RESTORE"` is server-only and sending it is a 400. The BFF (`src/lib/saveEnvelope.ts` + `api/editor/components/route.ts`) forwards that `PUT` to the backend unchanged — one shape, no alternatives; the transitional `EDITOR_SAVE_ENVELOPE` flag that used to switch body *and* method has been removed along with the legacy `POST`-with-a-bare-array path. Responses are still normalized to `{components, version_no}` (`normalizeSaveResponse`), and a missing `version_no` is the signal that the response shape is not guaranteed — the store then reloads the scene instead of trusting the returned tree.
 - **`PUT` means "here is the entire scene".** A component missing from the body is **deleted** by the backend. `buildComponentTree` already serializes every element of the scene, so this needs no diffing — but it also means there is deliberately **no out-of-band `DELETE`** any more: `deleteSelectedElement` and `ungroupSelected` only mutate local state and let the next save persist the removal. The BFF `DELETE` route is gone entirely — nothing called it. Consequence to keep in mind: a deletion that is never saved is a deletion that never happened.

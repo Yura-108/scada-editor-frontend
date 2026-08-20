@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect, Line, Text } from "react-konva";
 import Konva from "konva";
 import { LeafElement, TableCellData } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
@@ -20,8 +20,8 @@ interface TableShapeElementProps extends ShapeElementProps {
  *  рамки выделения таблицы и розовых smart-guides (цвета — в useThemeColors). */
 const CELL_FOCUS_COLOR = "#f59e0b";
 
-export function TableShapeElement({ el, isSelected, onElementClick, updateElementVisual, focusedCell, onCellClick }: TableShapeElementProps) {
-  const rendered = getRenderedElement(el) as LeafElement;
+export function TableShapeElement({ el, isSelected, onElementClick, updateElementVisual, focusedCell, onCellClick, stateId, runtime }: TableShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
   const renderedAny = rendered as unknown as Record<string, unknown>;
   const pad = 4;
 

@@ -148,6 +148,7 @@ export interface BaseCanvasElement {
 export type ElementType =
   | "polygon"
   | "circle"
+  | "arc"
   | "line"
   | "text"
   | "group"
@@ -174,6 +175,15 @@ export interface LeafElement extends BaseCanvasElement {
   points?: number[]; // Array of [x1,y1, x2,y2, ...] relative to element x,y or absolute? Let's use absolute or relative depending on implementation
   sides?: number; // for polygon initial generation
   radius?: number; // for circle and regular polygon initial generation
+
+  // Дуга окружности (`arc`). Внешний радиус — общий `radius`, начало дуги — `rotate`,
+  // габарит — описанный квадрат 2r×2r (как у круга).
+  /** Внутренний радиус: 0 — дуга/сектор, >0 — кольцевой сегмент. */
+  innerRadius?: number;
+  /** Раствор дуги в градусах, (0…360]. */
+  angle?: number;
+  /** Замкнуть радиусами — сектор («пирог»). При `innerRadius > 0` не нужен. */
+  arcClosed?: boolean;
   size?: number | "small" | "medium" | "large";
   status?: "open" | "closed" | "error" | "on" | "off" | "warning";
   value?: number | string;

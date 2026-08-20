@@ -251,19 +251,58 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
    * (см. ROTATABLE_TYPES); а у круга правились «Ширина»/«Высота», тогда как
    * рендерер берёт `radius || w / 2` — то есть ввод ширины ничего не менял.
    */
-  const geometryFields: {key: string; label: string; commit?: (v: number) => Record<string, unknown>}[] =
+  const geometryFields: {key: string; label: string; value?: number; commit?: (v: number) => Record<string, unknown>}[] =
     element.type === "line"
       ? [
           {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
           {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
         ]
-      : element.type === "circle"
-        ? [
-            {key: "x", label: "X"}, {key: "y", label: "Y"},
-            // Пишем и radius, и w/h — так же, как ручка изменения размера круга
-            // (CircleResizeHandle), иначе габариты элемента разъедутся с фигурой.
-            {key: "radius", label: "Радиус", commit: (v) => ({radius: v, w: v * 2, h: v * 2})},
-          ]
+      : element.type === "circle" || element.type === "arc"
+        ? (() => {
+            // Круг и дуга описываются ЦЕНТРОМ и радиусом — так их двигает холст (центр
+            // садится в узел сетки), так их задают ручки и так приходит выгрузка CONTUR.
+            // В модели же в `x, y` лежит левый верхний угол габарита, поэтому панель
+            // переводит одно в другое, а не показывает угол: иначе поля и жест на холсте
+            // описывали бы разные точки.
+            // Тот же порядок запасных значений, что у рендера (`radius || w / 2 || …`):
+            // панель обязана описывать ровно то, что нарисовано.
+            const isArc = element.type === "arc";
+            const r =
+              getNumberValue(renderedElementValues.radius, getNumberValue(renderedElementValues.w) / 2)
+              || (isArc ? 60 : 40);
+            const cx = getNumberValue(renderedElementValues.x) + r;
+            const cy = getNumberValue(renderedElementValues.y) + r;
+            return [
+              {key: "cx", label: "X центра", value: cx, commit: (v: number) => ({x: v - r})},
+              {key: "cy", label: "Y центра", value: cy, commit: (v: number) => ({y: v - r})},
+              {
+                key: "radius",
+                label: "Радиус",
+                // Растём вокруг центра — как ручка на холсте. `w/h` держим равными
+                // диаметру: рендер берёт radius, а выделение и рамка группы — w/h.
+                commit: (v: number) => {
+                  const nr = Math.max(1, v);
+                  return {radius: nr, w: nr * 2, h: nr * 2, x: cx - nr, y: cy - nr};
+                },
+              },
+              // Дуга: начало живёт в общем `rotate` (своего поворота у неё нет —
+              // поворот дуги это и есть её начальный угол), раствор — в `angle`.
+              ...(isArc
+                ? [
+                    {
+                      key: "rotate",
+                      label: "Начало, °",
+                      commit: (v: number) => ({rotate: ((v % 360) + 360) % 360}),
+                    },
+                    {
+                      key: "angle",
+                      label: "Раствор, °",
+                      commit: (v: number) => ({angle: Math.min(360, Math.max(1, Math.round(v)))}),
+                    },
+                  ]
+                : []),
+            ];
+          })()
         : [
             {key: "x", label: "X"}, {key: "y", label: "Y"},
             {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
@@ -647,7 +686,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     <NumberInput
                       id={`geom-${field.key}`}
                       className={baseInputClasses}
-                      value={getNumberValue(renderedElementValues[field.key])}
+                      value={field.value ?? getNumberValue(renderedElementValues[field.key])}
                       step={1}
                       onCommit={(v) =>
                         updateElementVisual(element.key, field.commit ? field.commit(v) : {[field.key]: v})

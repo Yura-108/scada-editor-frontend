@@ -34,7 +34,7 @@ const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 
 /**
  * Элементы, у которых хотя бы один тег-свойство сейчас недостоверен (quality != GOOD)
- * ИЛИ по нему ещё не было ни одного сообщения (холодный старт, TAG_CONTRACT_CHANGES.md B4).
+ * ИЛИ по нему ещё не было ни одного сообщения (холодный старт, docs/contract/TAG_CONTRACT_CHANGES.md B4).
  */
 const computeNoDataElementKeys = (
   idx: BindingIndex,
@@ -101,7 +101,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   // быть null — тег с quality != GOOD без последнего достоверного значения.
   const pendingRef = useRef(new Map<string, string | null>());
   const valuesRef = useRef(new Map<string, string | null>());
-  // Последнее известное качество/момент снятия по тегу (TAG_CONTRACT_CHANGES.md B1/B3).
+  // Последнее известное качество/момент снятия по тегу (docs/contract/TAG_CONTRACT_CHANGES.md B1/B3).
   const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
   // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
   // чтобы не пересчитывать noDataElementKeys на каждый тик без надобности.

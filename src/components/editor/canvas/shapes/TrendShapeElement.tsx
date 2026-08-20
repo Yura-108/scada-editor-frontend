@@ -3,7 +3,7 @@
 import React from "react";
 import { Group, Rect, Line, Text, Circle } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
 
@@ -13,8 +13,8 @@ const DEMO_VALUES = Array.from({ length: DEMO_POINTS_COUNT }, (_, i) =>
   50 + 35 * Math.sin((i / (DEMO_POINTS_COUNT - 1)) * Math.PI * 2.2)
 );
 
-export function TrendShapeElement({ el, isSelected, onElementClick, updateElementVisual }: ShapeElementProps) {
-  const rendered = getRenderedElement(el) as LeafElement;
+export function TrendShapeElement({ el, isSelected, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
   const pad = 4;
 
   const w = rendered.w || 300;
