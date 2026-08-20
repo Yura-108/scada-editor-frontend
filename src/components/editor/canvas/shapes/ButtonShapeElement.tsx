@@ -1,0 +1,51 @@
+"use client";
+
+import React from "react";
+import { Group, Rect, Text } from "react-konva";
+import { LeafElement } from "@/types/editorElement.type";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import type { ShapeElementProps } from "../types";
+import { SelectionOutline } from "./SelectionOutline";
+
+export function ButtonShapeElement({ el, isSelected, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
+
+  const pad = 4;
+  const w = rendered.w || 120;
+  const h = rendered.h || 40;
+  const color = rendered.color || "#3b82f6";
+  const textColor = rendered.textColor || "#ffffff";
+  const label = rendered.label ?? "Кнопка";
+  const rx = rendered.rx ?? 6;
+  const pressed = !!rendered.pressed;
+  const enabled = rendered.enabled !== false;
+  const fontSize = Math.max(11, Math.min(18, Math.floor(h * 0.4)));
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      rotation={rendered.rotate || 0}
+      opacity={enabled ? 1 : 0.5}
+      draggable
+      onDragEnd={(e) => {
+        if (e.target !== e.currentTarget) return;
+        updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() });
+      }}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <SelectionOutline x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2} />
+      )}
+      <Rect x={0} y={0} width={w} height={h} fill={color} cornerRadius={rx} />
+      {pressed && <Rect x={0} y={0} width={w} height={h} fill="rgba(0,0,0,0.18)" cornerRadius={rx} listening={false} />}
+      <Text
+        x={0} y={pressed ? 1 : 0} width={w} height={h}
+        text={label} fontSize={fontSize} fill={textColor}
+        align="center" verticalAlign="middle" listening={false}
+      />
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
+    </Group>
+  );
+}

@@ -1,0 +1,51 @@
+"use client";
+
+import React from "react";
+import { Group, Rect, Text } from "react-konva";
+import { LeafElement } from "@/types/editorElement.type";
+import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import type { ShapeElementProps } from "../types";
+import { SelectionOutline } from "./SelectionOutline";
+
+export function InputShapeElement({ el, isSelected, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
+  const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
+
+  const pad = 4;
+  const w = rendered.w || 160;
+  const h = rendered.h || 40;
+  const bg = rendered.backgroundColor || "#ffffff";
+  const stroke = rendered.strokeColor || "#9ca3af";
+  const textCol = rendered.textColor || "#1a1a1a";
+  const value = String(rendered.value ?? "");
+  const placeholder = rendered.placeholder ?? "";
+  const hasValue = value.length > 0;
+  const shown = hasValue ? value : placeholder;
+  const fontSize = Math.max(11, Math.min(16, Math.floor(h * 0.35)));
+
+  return (
+    <Group
+      id={el.key}
+      x={rendered.x}
+      y={rendered.y}
+      rotation={rendered.rotate || 0}
+      draggable
+      onDragEnd={(e) => {
+        if (e.target !== e.currentTarget) return;
+        updateElementVisual(el.key, { x: e.target.x(), y: e.target.y() });
+      }}
+      onClick={(e) => { e.cancelBubble = true; onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey); }}
+    >
+      {isSelected && (
+        <SelectionOutline x={-pad} y={-pad} width={w + pad * 2} height={h + pad * 2} />
+      )}
+      <Rect x={0} y={0} width={w} height={h} fill={bg} stroke={stroke} strokeWidth={1} cornerRadius={6} />
+      <Text
+        x={12} y={0} width={w - 24} height={h}
+        text={shown} fontSize={fontSize}
+        fill={hasValue ? textCol : "#9ca3af"}
+        verticalAlign="middle" wrap="none" ellipsis listening={false}
+      />
+      {/* Ресайз/поворот делает SelectionTransformer (Canvas). */}
+    </Group>
+  );
+}

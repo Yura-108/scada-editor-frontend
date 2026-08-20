@@ -1,0 +1,338 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Тёмная тема включается классом `.dark` на <html> (next-themes, attribute="class").
+   Вариант матчит и сам элемент с классом, и всех его потомков. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  /* Акцент приложения — индиго (совпадает с логотипом в шапке, bg-indigo-600).
+     В shadcn-пресете здесь был нейтральный почти-чёрный, из-за чего главное
+     действие редактора («Сохранить») визуально не отличалось от вторичных. */
+  --primary: oklch(0.51 0.23 277);
+  --primary-foreground: oklch(0.985 0 0);
+  /* Цвет обводки фокуса. Не `--ring` (нейтрально-серый из shadcn-пресета):
+     на серых панелях редактора его почти не видно. */
+  --focus-ring: oklch(0.51 0.23 277);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.62 0.19 277);
+  --primary-foreground: oklch(0.985 0 0);
+  --focus-ring: oklch(0.72 0.16 277);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@theme inline {
+  /* Шрифт объявляется один раз: Geist подключается в layout.tsx как --font-geist-sans.
+     Раньше здесь стояли ссылки на --font-geist-sans/--font-geist-mono, которых никто
+     не определял, поэтому утилиты font-sans/font-mono не работали вовсе. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Шкала слоёв (z-index)
+
+   До этого в коде сосуществовали z-50 (13 мест, включая шапку), z-100, z-999,
+   z-[999], z-9999 и инлайновые zIndex: 9999 / 20 — соседние слои различались
+   на три порядка, а модалка и шапка стояли на одном уровне и разводились
+   только порядком в DOM.
+
+   Порядок снизу вверх: холст → панели редактора → шапка → модалка →
+   вложенная модалка → подтверждение → выпадающие списки и контекстные меню →
+   тосты.
+
+   Выпадающие списки специально ВЫШЕ модалок: Radix порталит содержимое
+   Select/Popover/контекстного меню в body, то есть рядом с диалогом, а не
+   внутрь него — открытый внутри модалки список обязан её перекрывать.
+   Подтверждение выше вложенной модалки, потому что confirmModal вызывается
+   из любого диалога (см. «Записать рецепт в ПЛК»).
+   ───────────────────────────────────────────────────────────────────────── */
+/* Высота sticky-шапки в одном месте. Раньше её знали три разных способа:
+   `h-16` в самой шапке, `min-h-screen` у страниц (документ получался высотой
+   100vh + 64px → вечная полоса прокрутки) и захардкоженный `top-16` у
+   редактора и монитора. */
+:root {
+  --app-header-h: 4rem;
+}
+
+/* Высота/минимальная высота области ПОД шапкой. dvh, а не vh: на мобильных
+   адресная строка иначе даёт лишнюю прокрутку. */
+@utility min-h-app {
+  min-height: calc(100dvh - var(--app-header-h));
+}
+@utility h-app {
+  height: calc(100dvh - var(--app-header-h));
+}
+
+:root {
+  --z-canvas: 0;
+  --z-canvas-overlay: 10; /* редактор текста поверх фигуры на холсте */
+  --z-toolbar: 30; /* плавающая панель инструментов, зум */
+  --z-panel: 40; /* боковые панели редактора */
+  --z-panel-handle: 45; /* ручки изменения ширины панелей */
+  --z-header: 50; /* sticky-шапка приложения */
+  --z-modal: 100; /* ModalRoot и одиночные диалоги */
+  --z-modal-nested: 110; /* диалог, открытый из другого диалога */
+  --z-confirm: 120; /* подтверждения — всегда поверх всего диалогового стека */
+  --z-dropdown: 150; /* Select/Popover/контекстные меню */
+  --z-toast: 200;
+}
+
+@utility z-canvas {
+  z-index: var(--z-canvas);
+}
+@utility z-canvas-overlay {
+  z-index: var(--z-canvas-overlay);
+}
+@utility z-toolbar {
+  z-index: var(--z-toolbar);
+}
+@utility z-panel {
+  z-index: var(--z-panel);
+}
+@utility z-panel-handle {
+  z-index: var(--z-panel-handle);
+}
+@utility z-header {
+  z-index: var(--z-header);
+}
+@utility z-modal {
+  z-index: var(--z-modal);
+}
+@utility z-modal-nested {
+  z-index: var(--z-modal-nested);
+}
+@utility z-confirm {
+  z-index: var(--z-confirm);
+}
+@utility z-dropdown {
+  z-index: var(--z-dropdown);
+}
+@utility z-toast {
+  z-index: var(--z-toast);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /* Место под полосу прокрутки зарезервировано всегда. Именно это, а не
+     `overflow: visible !important`, решает проблему «страница дёргается при
+     открытии модалки»: раньше переопределение отключало scroll lock Radix
+     для каждого диалога, поповера и селекта — фон прокручивался под
+     открытой модалкой. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* Видимый фокус по умолчанию для всего интерактивного.
+     До этого во всём `src/components/editor` не было ни одного `focus-visible`:
+     пройти редактор с клавиатуры было можно, но понять, где находится фокус, —
+     нет. `:where()` даёт нулевую специфичность, поэтому любое собственное
+     оформление фокуса (кольцо у полей ввода, `focus:outline-none` у контейнеров
+     Radix) по-прежнему перебивает это правило. */
+  :where(
+      a[href],
+      button,
+      input,
+      select,
+      textarea,
+      summary,
+      [role='button'],
+      [role='tab'],
+      [role='treeitem'],
+      [role='menuitem'],
+      [role='separator'][tabindex],
+      [tabindex]:not([tabindex='-1'])
+    ):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Гаттер уже зарезервирован выше, поэтому компенсация ширины полосы
+     прокрутки от react-remove-scroll не нужна — иначе контент сдвинется. */
+  body[data-scroll-locked] {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important; /* на всякий случай для RTL */
+  }
+}
+
+.custom-tree .rc-tree-treenode {
+  padding: 3px 0;
+  display: flex;
+  align-items: center; /* строка выровнена по центру по вертикали */
+}
+
+.custom-tree .rc-tree-node-content-wrapper {
+  padding: 0 !important;
+  border-radius: 8px;
+}
+
+/* Контейнер отступа вложенности: юниты в один ряд, высота — на всю строку */
+.custom-tree .rc-tree-indent {
+  display: inline-flex;
+  align-self: stretch;
+}
+
+.custom-tree .rc-tree-switcher {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 24px; /* фиксированная ширина: лист и узел выровнены одинаково */
+  height: 24px;
+  flex: none; /* никогда не сжимается */
+  cursor: pointer;
+}
+
+/* У листа стрелки нет — ширину сохраняем, курсор-действие убираем */
+.custom-tree .rc-tree-switcher.rc-tree-switcher-noop {
+  cursor: default;
+}
+
+.custom-tree .rc-tree-switcher-line-icon {
+  display: none !important;
+}
+
+.rc-tree .rc-tree-indent-unit {
+  width: 16px; /* ширина одного уровня вложенности */
+  display: inline-block;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  scrollbar-gutter: stable;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #404040;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+/* Скрытый скролл-бар (для полосы вкладок, прокрутка стрелками) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE и Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
