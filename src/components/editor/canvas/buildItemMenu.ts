@@ -54,6 +54,10 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
     // выбиралось СРАВНЕНИЕМ РУССКОЙ ПОДПИСИ; исходные обработчики там — заглушки
     // console.log, поэтому любая опечатка или переименование подписи молча
     // превращали пункт в no-op.
+    { label: "Повернуть по часовой", onClick: () => { useEditorStore.getState().transformSelected("cw"); closeMenu(); } },
+    { label: "Повернуть против часовой", onClick: () => { useEditorStore.getState().transformSelected("ccw"); closeMenu(); } },
+    { label: "Отразить по горизонтали", onClick: () => { useEditorStore.getState().transformSelected("flipH"); closeMenu(); } },
+    { label: "Отразить по вертикали", onClick: () => { useEditorStore.getState().transformSelected("flipV"); closeMenu(); } },
     { label: "Копировать", onClick: () => { copySelectedElement(); closeMenu(); } },
     { label: "Переместить в группу", onClick: () => { openMoveToGroup(el.key); closeMenu(); } },
     { label: "Удалить", onClick: () => { deleteSelectedElement(); closeMenu(); }, variant: "danger" },

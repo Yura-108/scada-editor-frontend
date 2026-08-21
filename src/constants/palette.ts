@@ -26,6 +26,14 @@ export const paletteItems: PaletteItemType[] = [
     defaultProps: {name: "Arc", w: 120, h: 120, radius: 60, innerRadius: 0, angle: 90, rotate: 0, bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2},
   },
   {
+    id: 10 ** 5 + 6,
+    type: "curve",
+    name: "Кривая линия",
+    category: "Базовые",
+    // Арка 160×60: концы внизу, направляющие сверху — сразу видно, что фигура гнётся.
+    defaultProps: {name: "Curve", w: 160, h: 60, points: [0, 60, 40, 0, 120, 0, 160, 60], strokeColor: "#9ca3af", strokeWidth: 2},
+  },
+  {
     id: 10 ** 5 + 3,
     type: "polygon",
     name: "Многоугольник",

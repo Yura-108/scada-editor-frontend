@@ -1,14 +1,16 @@
 import React, {useRef, useState} from "react";
 import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore, SCENE_EXPORT_FORMAT} from "@/store/useEditorStore";
 import {
-  Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload,
+  Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
   Undo2, Redo2, Loader2, History, RotateCcw,
+  RotateCw, FlipHorizontal, FlipVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
 } from "lucide-react";
+import {downloadJson, safeFileName} from "@/lib/downloadJson";
 import {choiceModal} from "@/components/ui/ConfirmModal";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
@@ -135,6 +137,24 @@ export default function ToolsPanel() {
     importInputRef.current?.click();
   };
 
+  const handleExport = () => {
+    if (!scene) {
+      toast.info("Сначала загрузите или создайте схему");
+      return;
+    }
+
+    const file = useEditorStore.getState().buildSceneExport();
+    if (!file.elements.length) {
+      toast.info("Схема пуста — экспортировать нечего");
+      return;
+    }
+
+    // Дата в имени: файл кладут «себе на компьютер», и через неделю их там несколько.
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadJson(`${safeFileName(scene.name, "scheme")}_${stamp}.json`, file);
+    toast.success(`Сохранено элементов: ${file.elements.length}`);
+  };
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -147,7 +167,16 @@ export default function ToolsPanel() {
     reader.onload = async (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        const arr = Array.isArray(json) ? json : [json];
+
+        // Свой файл приезжает конвертом (см. buildSceneExport), чужая выгрузка — голым
+        // массивом. Флаг `native` важнее удобства: без него нормализатор CONTUR второй
+        // раз пересчитал бы координаты схемы, однажды пришедшей из выгрузки.
+        const native = !Array.isArray(json)
+          && json?.format === SCENE_EXPORT_FORMAT
+          && Array.isArray(json.elements);
+        const arr: Record<string, unknown>[] = native
+          ? json.elements
+          : (Array.isArray(json) ? json : [json]);
 
         // На непустой схеме спрашиваем: без этого повторный импорт того же листа молча
         // удваивал схему, а замена была недоступна вовсе.
@@ -174,7 +203,7 @@ export default function ToolsPanel() {
           mode = answer as "append" | "replace";
         }
 
-        const stats = useEditorStore.getState().importElementsFromJson(arr, {mode});
+        const stats = useEditorStore.getState().importElementsFromJson(arr, {mode, native});
 
         if (!stats) {
           toast.success(`Импортировано элементов: ${arr.length}`);
@@ -283,6 +312,10 @@ export default function ToolsPanel() {
           icon={<Upload size={16} />} label="Импорт" onClick={handleImport}
           disabled={!canEdit}
         />
+        <TooltipBtn
+          icon={<Download size={16} />} label="Экспорт в файл" onClick={handleExport}
+          disabled={!scene || !elements.length}
+        />
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
 
@@ -330,6 +363,34 @@ export default function ToolsPanel() {
           label="Разгруппировать"
           onClick={() => useEditorStore.getState().ungroupSelected()}
           disabled={!canEdit || !selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
+        />
+
+        {/* Поворот на 90° и отражения. Работают и для одного элемента, и для набора,
+            и для группы целиком: геометрия пересчитывается по-настоящему (см.
+            lib/editor/transformSelection.ts), поэтому всё остаётся на сетке. */}
+        <TooltipBtn
+          icon={<RotateCw size={16} />}
+          label="Повернуть по часовой (Shift + >)"
+          onClick={() => useEditorStore.getState().transformSelected("cw")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<RotateCcw size={16} />}
+          label="Повернуть против часовой (Shift + <)"
+          onClick={() => useEditorStore.getState().transformSelected("ccw")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<FlipHorizontal size={16} />}
+          label="Отразить по горизонтали (Shift + H)"
+          onClick={() => useEditorStore.getState().transformSelected("flipH")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<FlipVertical size={16} />}
+          label="Отразить по вертикали (Shift + V)"
+          onClick={() => useEditorStore.getState().transformSelected("flipV")}
+          disabled={!canEdit || !selectedIds.length}
         />
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />

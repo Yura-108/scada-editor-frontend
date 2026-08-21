@@ -145,6 +145,23 @@ export function useEditorHotkeys({
         else groupSelected();
       }
 
+      // Поворот на 90° и отражения. Читаем `e.code`, а не `e.key`: на русской
+      // раскладке те же клавиши дают «Ю», «Б», «Р», «М», и по символу они бы не ловились.
+      // Ctrl исключён намеренно — Ctrl+Shift+V у браузера своя роль.
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const TRANSFORMS: Record<string, "cw" | "ccw" | "flipH" | "flipV"> = {
+          Period: "cw",   // Shift + > — по часовой
+          Comma: "ccw",   // Shift + < — против часовой
+          KeyH: "flipH",
+          KeyV: "flipV",
+        };
+        const op = TRANSFORMS[e.code];
+        if (op) {
+          e.preventDefault();
+          useEditorStore.getState().transformSelected(op);
+        }
+      }
+
       // Стрелки: сдвиг выделения на шаг сетки; Shift — точная подстройка на 1px.
       if (ARROW_STEPS[e.key]) {
         e.preventDefault();

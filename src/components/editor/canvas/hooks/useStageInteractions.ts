@@ -2,6 +2,7 @@ import { RefObject, useEffect, useRef, useState } from "react";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { useEditorStore } from "@/store/useEditorStore";
+import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
 import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
@@ -220,6 +221,18 @@ export function useStageInteractions({
   };
 
   const handleStageMouseMove = () => {
+    // Позиция курсора в мировых координатах — для вставки «сюда» (Ctrl+V и пункт меню).
+    // Пишем в модульную переменную, а не в стор: на каждый mousemove запись в стор
+    // перерисовывала бы всю сцену (см. canvasPointer.ts).
+    const stage = stageRef.current;
+    const pointer = stage?.getPointerPosition();
+    if (stage && pointer) {
+      setCanvasPointerWorld({
+        x: (pointer.x - stage.x()) / stage.scaleX(),
+        y: (pointer.y - stage.y()) / stage.scaleX(),
+      });
+    }
+
     if (selectionRect && stageRef.current) {
       const pos = stageRef.current.getPointerPosition();
       if (pos) {

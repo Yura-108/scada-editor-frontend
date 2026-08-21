@@ -170,7 +170,9 @@ export function elementBoundsRendered(el: DiagramElement, index: ElementIndex): 
     };
   }
 
-  if (el.type === "polygon" || rendered.type === "polygon") {
+  // Кривая — те же локальные точки, что у полигона (у неё это концы и направляющие).
+  const isPointsShape = (t: string) => t === "polygon" || t === "curve";
+  if (isPointsShape(el.type) || isPointsShape(rendered.type)) {
     const pts = parsePoints(rendered.points);
 
     if (pts.length >= 2) {

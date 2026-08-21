@@ -6,7 +6,7 @@ import { DiagramElement } from "@/types/editorElement.type";
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 // Дуга — со своими ручками (начало/раствор/радиус), рамка Transformer'а ей не нужна:
 // её масштабирование записало бы w/h в обход `radius`, который читает рендер.
-export const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "arc", "line", "polygon"]);
+export const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "arc", "curve", "line", "polygon"]);
 
 export interface ElementRenderState {
   /** Сам элемент (undefined — удалён из схемы). */

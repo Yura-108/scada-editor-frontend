@@ -10,6 +10,7 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   rectangle: { complex: false },
   circle: { complex: false },
   arc: { complex: false },
+  curve: { complex: false },
   line: { complex: false },
   group: { complex: false },
   toggle: { complex: false },
@@ -42,6 +43,7 @@ export const elementTypeLabels: Record<ElementType, string> = {
   rectangle: "Прямоугольник",
   circle: "Окружность",
   arc: "Дуга",
+  curve: "Кривая линия",
   line: "Линия",
   group: "Группа",
   toggle: "Переключатель",
@@ -88,8 +90,46 @@ export const basePropertySchema: PropertySchema[] = [
   },
 ];
 
+/**
+ * Стиль обводки — один и тот же пункт у всех фигур с контуром.
+ *
+ * Значение уходит в `strokeDasharray` и разбирается общим `parseDashArray`
+ * (`lib/editor/dashArray.ts`), который читают все ветки рендера.
+ */
+const DASH_FIELD: PropertySchema = {
+  key: "strokeDasharray",
+  label: "Стиль (пунктир)",
+  type: "select",
+  options: [
+    {label: "Сплошная", value: ""},
+    {label: "Пунктир", value: "5 5"},
+    {label: "Штрих-пунктир", value: "10 5 2 5"},
+  ],
+  defaultValue: "",
+};
+
 export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   rectangle: [
+    {
+      key: "text",
+      label: "Надпись",
+      type: "text",
+      defaultValue: "",
+    },
+    {
+      key: "fontSize",
+      label: "Кегль надписи",
+      type: "number",
+      min: 6,
+      max: 200,
+      defaultValue: 14,
+    },
+    {
+      key: "textColor",
+      label: "Цвет надписи",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
     {
       key: "bg",
       label: "Цвет заливки",
@@ -110,6 +150,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
+    DASH_FIELD,
     {
       key: "rx",
       label: "Скругление углов (X)",
@@ -128,6 +169,26 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     },
   ],
   circle: [
+    {
+      key: "text",
+      label: "Надпись",
+      type: "text",
+      defaultValue: "",
+    },
+    {
+      key: "fontSize",
+      label: "Кегль надписи",
+      type: "number",
+      min: 6,
+      max: 200,
+      defaultValue: 14,
+    },
+    {
+      key: "textColor",
+      label: "Цвет надписи",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
     {
       key: "radius",
       label: "Радиус",
@@ -194,16 +255,36 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
+    DASH_FIELD,
+  ],
+  curve: [
+    // Форма правится ручками на холсте: два конца и две направляющие точки.
     {
-      key: "strokeDasharray",
-      label: "Стиль (пунктир)",
-      type: "select",
-      options: [
-        {label: "Сплошная", value: ""},
-        {label: "Пунктир", value: "5 5"},
-        {label: "Штрих-пунктир", value: "10 5 2 5"},
-      ],
-      defaultValue: "",
+      key: "strokeColor",
+      label: "Цвет линии",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: 2,
+    },
+    DASH_FIELD,
+    {
+      key: "arrowStart",
+      label: "Стрелка в начале",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "arrowEnd",
+      label: "Стрелка в конце",
+      type: "boolean",
+      defaultValue: false,
     },
   ],
   line: [
@@ -221,17 +302,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 3,
     },
-    {
-      key: "strokeDasharray",
-      label: "Стиль (пунктир)",
-      type: "select",
-      options: [
-        {label: "Сплошная", value: ""},
-        {label: "Пунктир", value: "5 5"},
-        {label: "Штрих-пунктир", value: "10 5 2 5"},
-      ],
-      defaultValue: "",
-    },
+    DASH_FIELD,
     {
       key: "arrowEnd",
       label: "Стрелка в конце",
@@ -268,6 +339,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
+    DASH_FIELD,
   ],
   path: [
     {

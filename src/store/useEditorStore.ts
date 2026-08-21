@@ -1,4 +1,4 @@
-import {snap} from "@/lib/utils";
+import {snap, GRID} from "@/lib/utils";
 import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
@@ -23,6 +23,9 @@ import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
+import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
+import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
+import {getCanvasPointerWorld, clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   fetchCurrentVersion,
@@ -135,6 +138,11 @@ type EditorState = {
   bringToFront: (key: string) => void;
   sendToBack: (key: string) => void;
   /** Выравнивание верхнеуровневых выделенных (≥2) по краю/центру общей рамки. */
+  /**
+   * Поворот на 90° и отражение выделения (в т.ч. групп) — пересчётом геометрии.
+   * Подробности и причина, почему не полем `rotate`, — в transformSelection.ts.
+   */
+  transformSelected: (op: TransformOp) => void;
   alignSelected: (mode: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom') => void;
   /** Распределение верхнеуровневых выделенных (≥3) с равными зазорами по оси. */
   distributeSelected: (axis: 'h' | 'v') => void;
@@ -236,9 +244,15 @@ type EditorState = {
    * `mode: "replace"` кладёт на холст только импортированное — иначе повторный импорт того
    * же листа удвоит схему. Возвращает разбивку по типам для выгрузки CONTUR либо `null`.
    */
+  /**
+   * Сцена как переносимый JSON-файл: конверт с плоским массивом элементов в том же
+   * формате, который принимает импорт (см. docs/contur/IMPORT_SCHEME_SPEC.md).
+   */
+  buildSceneExport: () => SceneExportFile;
   importElementsFromJson: (
     rawElements: Record<string, unknown>[],
-    opts?: {mode?: "append" | "replace"},
+    /** `native` — файл нашего экспорта: нормализатор чужого диалекта не запускается. */
+    opts?: {mode?: "append" | "replace"; native?: boolean},
   ) => ConturImportStats | null;
   /**
    * `keepHistory` — не чистить стек undo. Нужен только для перезагрузки ТОЙ ЖЕ сцены
@@ -401,7 +415,9 @@ const detachServerEventIds = (
 const cloneElementsWithOffset = (
   source: DiagramElement[],
   scene: SceneType | null,
-  offset = 60,
+  /** Смещение корней. Вектор, а не одно число: вставка «под курсор» двигает набор
+   *  по X и Y на разную величину. */
+  offset: {dx: number; dy: number} = {dx: 60, dy: 60},
 ): {newElements: DiagramElement[]; newRootKeys: string[]} => {
   // Новые уникальные ключи для каждого элемента набора
   const keyMap: Record<string, string> = {};
@@ -438,7 +454,7 @@ const cloneElementsWithOffset = (
     // сдвигаются все позиционные поля — см. shiftElementPositions.
     if (!isRoot) return remapped;
 
-    return shiftElementPositions(remapped, offset, offset);
+    return shiftElementPositions(remapped, offset.dx, offset.dy);
   });
 
   const newRootKeys = newElements
@@ -802,12 +818,38 @@ const queuePropertyWrite = <T,>(task: () => Promise<T>): Promise<T> => {
   return run;
 };
 
+/** Метка нашего формата файла схемы — по ней импорт отличает свой файл от чужой выгрузки. */
+export const SCENE_EXPORT_FORMAT = "SCADA_EDITOR_SCENE";
+
+/** Файл экспорта схемы: конверт с метаданными и плоским массивом элементов. */
+export interface SceneExportFile {
+  format: typeof SCENE_EXPORT_FORMAT;
+  version: number;
+  exported_at: string;
+  scene: {name: string | null};
+  elements: Record<string, unknown>[];
+}
+
 /**
  * Сколько раз вставляли текущий буфер обмена. Смещение копии считается как
  * `60 * pasteCount`, иначе повторный Ctrl+V кладёт копию точно на предыдущую.
  * Сбрасывается при копировании и при смене сцены/проекта.
+ *
+ * Запасной путь: работает, когда курсор ни разу не был над холстом и вставлять «сюда»
+ * попросту некуда (см. `pasteSelectedElement`).
  */
 let pasteCount = 0;
+
+/**
+ * Точка последней вставки под курсор и счётчик вставок в неё же.
+ *
+ * Вставка идёт туда, где стоит мышь, но если жать Ctrl+V не двигая её, копии легли бы
+ * ровно друг на друга и выглядело бы это как «ничего не произошло» — ровно та жалоба,
+ * ради которой когда-то завели `pasteCount`. Поэтому вторая и следующие вставки в ту же
+ * точку сдвигаются лесенкой по клетке.
+ */
+let lastPastePoint: {x: number; y: number} | null = null;
+let stackedPastes = 0;
 
 /**
  * Снимок `elements` на момент последнего успешного сохранения/загрузки.
@@ -1132,6 +1174,21 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const shifts = new Map(keysToMove.map(k => [k, {dx, dy}] as const));
         set({elements: applyShifts(elements, shifts, scene?.id)});
+      },
+      transformSelected: (op) => {
+        const {selectedIds, elements, scene} = get();
+        if (!selectedIds.length) return;
+
+        // Только верхнеуровневые: у элемента с выделенным предком геометрию пересчитает
+        // сам предок, иначе поворот применился бы к нему дважды.
+        const keys = topLevelSelectedKeys(selectedIds, elements);
+        if (!keys.length) return;
+
+        const next = transformSelection(elements, keys, op, snap);
+        if (next === elements) return;
+
+        // Одним set() — значит одним шагом undo на всю операцию.
+        set({elements: recomputeAncestorBounds(next, keys, scene?.id)});
       },
       alignSelected: (mode) => {
         const {selectedIds, elements, scene} = get();
@@ -1557,6 +1614,43 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
 
       },
+      buildSceneExport: () => {
+        const {elements, scene} = get();
+        const ownKeys = new Set(elements.map(el => el.key));
+
+        const exported = elements.map(el => {
+          // Серверные id снимаем те же, что и при копировании (см. detachServer*Ids):
+          // файл может уехать в другую сцену или другой проект, и чужой id там означает
+          // «эта сущность переехала» — оригинал потеряет своё, а слияние выдаст конфликт.
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const {id: _id, parentId: _parentId, ...rest} = el as unknown as Record<string, unknown>;
+
+          return {
+            ...rest,
+            id: null,
+            parentId: null,
+            // Корни помечаем так, как описано в нашей же спецификации импорта: ключа
+            // сцены в файле нет, и «undefined» честнее, чем id чужой сцены.
+            parentKey: el.parentKey && ownKeys.has(el.parentKey) ? el.parentKey : "undefined",
+            states: detachServerStateIds(el.states),
+            scripts: detachServerScriptIds(el.scripts),
+            bindings: detachServerBindingIds(el.bindings),
+            ...(el.events ? {events: detachServerEventIds(el.events)} : {}),
+          };
+        });
+
+        // Конверт, а не голый массив: по нему импорт узнаёт СВОЙ файл и не запускает
+        // нормализатор CONTUR повторно. Схема, однажды пришедшая из выгрузки, хранит её
+        // поля (`lua_name`, `tech_object`) — детектор диалекта сработал бы на них снова
+        // и второй раз вычел радиус из координат каждого кружка.
+        return {
+          format: SCENE_EXPORT_FORMAT,
+          version: 1,
+          exported_at: new Date().toISOString(),
+          scene: {name: scene?.name ?? null},
+          elements: exported,
+        };
+      },
       importElementsFromJson: (rawElements, importOpts) => {
         const {scene, currentProject} = get();
 
@@ -1567,7 +1661,10 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // Выгрузка CONTUR приходит в своих именах полей и своей системе координат —
         // переводим ДО общей нормализации, чтобы дальше всё шло одним путём.
-        const contur = isConturExport(rawElements) ? normalizeConturElements(rawElements) : null;
+        // `native` — файл нашего же экспорта: поля уже в наших именах и координатах.
+        const contur = !importOpts?.native && isConturExport(rawElements)
+          ? normalizeConturElements(rawElements)
+          : null;
         if (contur) rawElements = contur.elements;
 
         const CANVAS_W = 5000;
@@ -1723,6 +1820,26 @@ export const useEditorStore = create<EditorState>()(temporal(
             elements: [...state.elements, newElement]
           }))
 
+          return;
+        }
+
+        if (type === 'curve') {
+          // Кубическая кривая Безье: точки локальны относительно x/y (как у полигона),
+          // поэтому перетаскивание меняет только x/y, а форма живёт в points.
+          const points = [...DEFAULT_CURVE_POINTS];
+          const bounds = curvePointsBounds(points);
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY,
+            points,
+            label: "",
+            bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2, strokeDasharray: "",
+            arrowStart: false, arrowEnd: false,
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
           return;
         }
 
@@ -2104,8 +2221,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         }
 
         set({ clipboard: elements.filter(el => allKeys.has(el.key)) });
-        // Новый буфер — счётчик вставок с нуля (см. pasteSelectedElement).
+        // Новый буфер — счётчики вставок с нуля (см. pasteSelectedElement).
         pasteCount = 0;
+        lastPastePoint = null;
+        stackedPastes = 0;
         toast.success('Скопировано');
       },
       pasteSelectedElement: () => {
@@ -2120,11 +2239,47 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
-        // Смещение накапливается: раньше оно всегда отсчитывалось от оригинала,
-        // поэтому вторая вставка ложилась ровно на первую и выглядела как «ничего
-        // не произошло».
-        pasteCount += 1;
-        const {newElements, newRootKeys} = cloneElementsWithOffset(clipboard, scene, 60 * pasteCount);
+        // Вставляем туда, где курсор: центр вставляемого набора встаёт под мышь.
+        // Так вставка перестаёт быть лотереей «куда упадёт» — место выбирает человек.
+        const pointer = getCanvasPointerWorld();
+        let offset: {dx: number; dy: number};
+
+        if (pointer) {
+          const target = {x: snap(pointer.x), y: snap(pointer.y)};
+
+          // Повторная вставка в ту же точку — лесенкой, иначе копии сложатся невидимо.
+          if (lastPastePoint && lastPastePoint.x === target.x && lastPastePoint.y === target.y) {
+            stackedPastes += 1;
+          } else {
+            stackedPastes = 0;
+          }
+          lastPastePoint = target;
+
+          // Габарит считаем по самому буферу: у корней в нём свои координаты, а
+          // getElementBoundsRendered умеет и линию (концы), и кривую с полигоном (точки).
+          const roots = clipboard.filter(el => !clipboard.some(other => other.key === el.parentKey));
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const root of roots) {
+            const b = getElementBoundsRendered(root, clipboard);
+            if (!Number.isFinite(b.minX)) continue;
+            minX = Math.min(minX, b.minX); minY = Math.min(minY, b.minY);
+            maxX = Math.max(maxX, b.maxX); maxY = Math.max(maxY, b.maxY);
+          }
+
+          const step = stackedPastes * GRID;
+          offset = Number.isFinite(minX)
+            ? {
+                dx: snap(target.x - (minX + maxX) / 2) + step,
+                dy: snap(target.y - (minY + maxY) / 2) + step,
+              }
+            : {dx: step, dy: step};
+        } else {
+          // Курсор над холстом ещё не появлялся — прежнее поведение: каскад от оригинала.
+          pasteCount += 1;
+          offset = {dx: 60 * pasteCount, dy: 60 * pasteCount};
+        }
+
+        const {newElements, newRootKeys} = cloneElementsWithOffset(clipboard, scene, offset);
 
         set(state => ({
           elements: [...state.elements, ...newElements],
@@ -2731,6 +2886,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           staleBaseVersion: null,
         }));
         pasteCount = 0;
+        // Координата курсора и точка последней вставки принадлежали прошлой схеме.
+        lastPastePoint = null;
+        stackedPastes = 0;
+        clearCanvasPointerWorld();
         discardVersionPreview();
         // История undo принадлежала прошлому проекту — иначе Ctrl+Z «воскресит» его элементы.
         useEditorStore.temporal.getState().clear();
