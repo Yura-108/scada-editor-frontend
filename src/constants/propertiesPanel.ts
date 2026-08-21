@@ -111,6 +111,26 @@ const DASH_FIELD: PropertySchema = {
 export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   rectangle: [
     {
+      key: "text",
+      label: "Надпись",
+      type: "text",
+      defaultValue: "",
+    },
+    {
+      key: "fontSize",
+      label: "Кегль надписи",
+      type: "number",
+      min: 6,
+      max: 200,
+      defaultValue: 14,
+    },
+    {
+      key: "textColor",
+      label: "Цвет надписи",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
+    {
       key: "bg",
       label: "Цвет заливки",
       type: "color",
@@ -149,6 +169,26 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     },
   ],
   circle: [
+    {
+      key: "text",
+      label: "Надпись",
+      type: "text",
+      defaultValue: "",
+    },
+    {
+      key: "fontSize",
+      label: "Кегль надписи",
+      type: "number",
+      min: 6,
+      max: 200,
+      defaultValue: 14,
+    },
+    {
+      key: "textColor",
+      label: "Цвет надписи",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
     {
       key: "radius",
       label: "Радиус",

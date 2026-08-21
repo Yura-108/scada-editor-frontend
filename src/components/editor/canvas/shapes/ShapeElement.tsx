@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Group, Rect, Circle, Line, Text, Arrow } from "react-konva";
+import { Group, Rect, Circle, Line, Arrow } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
@@ -23,6 +23,7 @@ import { TableShapeElement } from "./TableShapeElement";
 import { TrendShapeElement } from "./TrendShapeElement";
 import { ChartShapeElement } from "./ChartShapeElement";
 import { ArcShapeElement } from "./ArcShapeElement";
+import { ShapeInscription } from "./ShapeInscription";
 import { CurveShapeElement } from "./CurveShapeElement";
 
 interface ShapeElementProps {
@@ -171,6 +172,31 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
             e.cancelBubble = true;
             onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
           }}
+          onDblClick={(e) => {
+            // Тот же жест, что у текстового элемента: двойной клик — правка надписи
+            // на месте. Оверлей пишет в `text`, то есть ровно в то поле, что рисуется ниже.
+            e.cancelBubble = true;
+            ctx.onStartTextEdit?.(el.key);
+          }}
+          onDblTap={(e) => {
+            e.cancelBubble = true;
+            ctx.onStartTextEdit?.(el.key);
+          }}
+        />
+        {/* Надпись внутри круга: на схемах обозначение устройства пишут прямо в нём.
+            `inset` в 15% диаметра — примерно вписанный в окружность квадрат, иначе длинная
+            строка вылезала бы за края там, где круг уже сузился. */}
+        <ShapeInscription
+          text={isEditing ? "" : (rendered.text ?? "")}
+          x={rendered.x}
+          y={rendered.y}
+          w={2 * r}
+          h={2 * r}
+          inset={0.15 * 2 * r}
+          fontSize={rendered.fontSize ?? 14}
+          fontFamily={rendered.fontFamily}
+          bold={rendered.bold}
+          color={rendered.textColor || themeColors.labelDefault}
         />
         {isSelected && (
           <CircleResizeHandle
@@ -366,16 +392,18 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
         dash={parseDashArray(rendered.strokeDasharray)}
         cornerRadius={rendered.rx || 0}
       />
-      {rendered.label && (
-        <Text
-          text={rendered.label}
-          width={rendered.w}
-          height={rendered.h}
-          align="center"
-          verticalAlign="middle"
-          fill={rendered.textColor || themeColors.labelDefault}
-        />
-      )}
+      {/* Надпись читаем из `text`, а `label` оставляем запасным: в старых схемах
+          подпись прямоугольника лежит именно в нём (а `label` — ещё и имя в «Слоях»). */}
+      <ShapeInscription
+        text={rendered.text || rendered.label || ""}
+        w={rendered.w}
+        h={rendered.h}
+        inset={4}
+        fontSize={rendered.fontSize ?? 14}
+        fontFamily={rendered.fontFamily}
+        bold={rendered.bold}
+        color={rendered.textColor || themeColors.labelDefault}
+      />
 
       {/* Ресайз/поворот одиночного выделения делает SelectionTransformer (Canvas). */}
     </Group>
