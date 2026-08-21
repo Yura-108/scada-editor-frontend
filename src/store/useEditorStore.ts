@@ -1,4 +1,4 @@
-import {snap} from "@/lib/utils";
+import {snap, GRID} from "@/lib/utils";
 import {create} from "zustand/react";
 import {GroupElement, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
@@ -25,6 +25,7 @@ import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementB
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
+import {getCanvasPointerWorld, clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   fetchCurrentVersion,
@@ -408,7 +409,9 @@ const detachServerEventIds = (
 const cloneElementsWithOffset = (
   source: DiagramElement[],
   scene: SceneType | null,
-  offset = 60,
+  /** Смещение корней. Вектор, а не одно число: вставка «под курсор» двигает набор
+   *  по X и Y на разную величину. */
+  offset: {dx: number; dy: number} = {dx: 60, dy: 60},
 ): {newElements: DiagramElement[]; newRootKeys: string[]} => {
   // Новые уникальные ключи для каждого элемента набора
   const keyMap: Record<string, string> = {};
@@ -445,7 +448,7 @@ const cloneElementsWithOffset = (
     // сдвигаются все позиционные поля — см. shiftElementPositions.
     if (!isRoot) return remapped;
 
-    return shiftElementPositions(remapped, offset, offset);
+    return shiftElementPositions(remapped, offset.dx, offset.dy);
   });
 
   const newRootKeys = newElements
@@ -813,8 +816,22 @@ const queuePropertyWrite = <T,>(task: () => Promise<T>): Promise<T> => {
  * Сколько раз вставляли текущий буфер обмена. Смещение копии считается как
  * `60 * pasteCount`, иначе повторный Ctrl+V кладёт копию точно на предыдущую.
  * Сбрасывается при копировании и при смене сцены/проекта.
+ *
+ * Запасной путь: работает, когда курсор ни разу не был над холстом и вставлять «сюда»
+ * попросту некуда (см. `pasteSelectedElement`).
  */
 let pasteCount = 0;
+
+/**
+ * Точка последней вставки под курсор и счётчик вставок в неё же.
+ *
+ * Вставка идёт туда, где стоит мышь, но если жать Ctrl+V не двигая её, копии легли бы
+ * ровно друг на друга и выглядело бы это как «ничего не произошло» — ровно та жалоба,
+ * ради которой когда-то завели `pasteCount`. Поэтому вторая и следующие вставки в ту же
+ * точку сдвигаются лесенкой по клетке.
+ */
+let lastPastePoint: {x: number; y: number} | null = null;
+let stackedPastes = 0;
 
 /**
  * Снимок `elements` на момент последнего успешного сохранения/загрузки.
@@ -2146,8 +2163,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         }
 
         set({ clipboard: elements.filter(el => allKeys.has(el.key)) });
-        // Новый буфер — счётчик вставок с нуля (см. pasteSelectedElement).
+        // Новый буфер — счётчики вставок с нуля (см. pasteSelectedElement).
         pasteCount = 0;
+        lastPastePoint = null;
+        stackedPastes = 0;
         toast.success('Скопировано');
       },
       pasteSelectedElement: () => {
@@ -2162,11 +2181,47 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
-        // Смещение накапливается: раньше оно всегда отсчитывалось от оригинала,
-        // поэтому вторая вставка ложилась ровно на первую и выглядела как «ничего
-        // не произошло».
-        pasteCount += 1;
-        const {newElements, newRootKeys} = cloneElementsWithOffset(clipboard, scene, 60 * pasteCount);
+        // Вставляем туда, где курсор: центр вставляемого набора встаёт под мышь.
+        // Так вставка перестаёт быть лотереей «куда упадёт» — место выбирает человек.
+        const pointer = getCanvasPointerWorld();
+        let offset: {dx: number; dy: number};
+
+        if (pointer) {
+          const target = {x: snap(pointer.x), y: snap(pointer.y)};
+
+          // Повторная вставка в ту же точку — лесенкой, иначе копии сложатся невидимо.
+          if (lastPastePoint && lastPastePoint.x === target.x && lastPastePoint.y === target.y) {
+            stackedPastes += 1;
+          } else {
+            stackedPastes = 0;
+          }
+          lastPastePoint = target;
+
+          // Габарит считаем по самому буферу: у корней в нём свои координаты, а
+          // getElementBoundsRendered умеет и линию (концы), и кривую с полигоном (точки).
+          const roots = clipboard.filter(el => !clipboard.some(other => other.key === el.parentKey));
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const root of roots) {
+            const b = getElementBoundsRendered(root, clipboard);
+            if (!Number.isFinite(b.minX)) continue;
+            minX = Math.min(minX, b.minX); minY = Math.min(minY, b.minY);
+            maxX = Math.max(maxX, b.maxX); maxY = Math.max(maxY, b.maxY);
+          }
+
+          const step = stackedPastes * GRID;
+          offset = Number.isFinite(minX)
+            ? {
+                dx: snap(target.x - (minX + maxX) / 2) + step,
+                dy: snap(target.y - (minY + maxY) / 2) + step,
+              }
+            : {dx: step, dy: step};
+        } else {
+          // Курсор над холстом ещё не появлялся — прежнее поведение: каскад от оригинала.
+          pasteCount += 1;
+          offset = {dx: 60 * pasteCount, dy: 60 * pasteCount};
+        }
+
+        const {newElements, newRootKeys} = cloneElementsWithOffset(clipboard, scene, offset);
 
         set(state => ({
           elements: [...state.elements, ...newElements],
@@ -2773,6 +2828,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           staleBaseVersion: null,
         }));
         pasteCount = 0;
+        // Координата курсора и точка последней вставки принадлежали прошлой схеме.
+        lastPastePoint = null;
+        stackedPastes = 0;
+        clearCanvasPointerWorld();
         discardVersionPreview();
         // История undo принадлежала прошлому проекту — иначе Ctrl+Z «воскресит» его элементы.
         useEditorStore.temporal.getState().clear();
