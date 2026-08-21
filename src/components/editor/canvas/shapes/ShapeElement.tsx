@@ -95,6 +95,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
           fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
           stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
           strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+          dash={parseDashArray(rendered.strokeDasharray)}
           draggable
           onDragEnd={(e) => {
             const node = e.target;

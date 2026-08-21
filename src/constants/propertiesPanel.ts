@@ -88,6 +88,24 @@ export const basePropertySchema: PropertySchema[] = [
   },
 ];
 
+/**
+ * Стиль обводки — один и тот же пункт у всех фигур с контуром.
+ *
+ * Значение уходит в `strokeDasharray` и разбирается общим `parseDashArray`
+ * (`lib/editor/dashArray.ts`), который читают все ветки рендера.
+ */
+const DASH_FIELD: PropertySchema = {
+  key: "strokeDasharray",
+  label: "Стиль (пунктир)",
+  type: "select",
+  options: [
+    {label: "Сплошная", value: ""},
+    {label: "Пунктир", value: "5 5"},
+    {label: "Штрих-пунктир", value: "10 5 2 5"},
+  ],
+  defaultValue: "",
+};
+
 export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   rectangle: [
     {
@@ -110,6 +128,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
+    DASH_FIELD,
     {
       key: "rx",
       label: "Скругление углов (X)",
@@ -194,17 +213,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
-    {
-      key: "strokeDasharray",
-      label: "Стиль (пунктир)",
-      type: "select",
-      options: [
-        {label: "Сплошная", value: ""},
-        {label: "Пунктир", value: "5 5"},
-        {label: "Штрих-пунктир", value: "10 5 2 5"},
-      ],
-      defaultValue: "",
-    },
+    DASH_FIELD,
   ],
   line: [
     {
@@ -221,17 +230,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 3,
     },
-    {
-      key: "strokeDasharray",
-      label: "Стиль (пунктир)",
-      type: "select",
-      options: [
-        {label: "Сплошная", value: ""},
-        {label: "Пунктир", value: "5 5"},
-        {label: "Штрих-пунктир", value: "10 5 2 5"},
-      ],
-      defaultValue: "",
-    },
+    DASH_FIELD,
     {
       key: "arrowEnd",
       label: "Стрелка в конце",
@@ -268,6 +267,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       max: 20,
       defaultValue: 2,
     },
+    DASH_FIELD,
   ],
   path: [
     {
