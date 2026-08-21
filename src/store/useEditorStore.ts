@@ -244,9 +244,15 @@ type EditorState = {
    * `mode: "replace"` кладёт на холст только импортированное — иначе повторный импорт того
    * же листа удвоит схему. Возвращает разбивку по типам для выгрузки CONTUR либо `null`.
    */
+  /**
+   * Сцена как переносимый JSON-файл: конверт с плоским массивом элементов в том же
+   * формате, который принимает импорт (см. docs/contur/IMPORT_SCHEME_SPEC.md).
+   */
+  buildSceneExport: () => SceneExportFile;
   importElementsFromJson: (
     rawElements: Record<string, unknown>[],
-    opts?: {mode?: "append" | "replace"},
+    /** `native` — файл нашего экспорта: нормализатор чужого диалекта не запускается. */
+    opts?: {mode?: "append" | "replace"; native?: boolean},
   ) => ConturImportStats | null;
   /**
    * `keepHistory` — не чистить стек undo. Нужен только для перезагрузки ТОЙ ЖЕ сцены
@@ -811,6 +817,18 @@ const queuePropertyWrite = <T,>(task: () => Promise<T>): Promise<T> => {
   propertyWriteChain = run.catch(() => undefined);
   return run;
 };
+
+/** Метка нашего формата файла схемы — по ней импорт отличает свой файл от чужой выгрузки. */
+export const SCENE_EXPORT_FORMAT = "SCADA_EDITOR_SCENE";
+
+/** Файл экспорта схемы: конверт с метаданными и плоским массивом элементов. */
+export interface SceneExportFile {
+  format: typeof SCENE_EXPORT_FORMAT;
+  version: number;
+  exported_at: string;
+  scene: {name: string | null};
+  elements: Record<string, unknown>[];
+}
 
 /**
  * Сколько раз вставляли текущий буфер обмена. Смещение копии считается как
@@ -1596,6 +1614,43 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
 
       },
+      buildSceneExport: () => {
+        const {elements, scene} = get();
+        const ownKeys = new Set(elements.map(el => el.key));
+
+        const exported = elements.map(el => {
+          // Серверные id снимаем те же, что и при копировании (см. detachServer*Ids):
+          // файл может уехать в другую сцену или другой проект, и чужой id там означает
+          // «эта сущность переехала» — оригинал потеряет своё, а слияние выдаст конфликт.
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const {id: _id, parentId: _parentId, ...rest} = el as unknown as Record<string, unknown>;
+
+          return {
+            ...rest,
+            id: null,
+            parentId: null,
+            // Корни помечаем так, как описано в нашей же спецификации импорта: ключа
+            // сцены в файле нет, и «undefined» честнее, чем id чужой сцены.
+            parentKey: el.parentKey && ownKeys.has(el.parentKey) ? el.parentKey : "undefined",
+            states: detachServerStateIds(el.states),
+            scripts: detachServerScriptIds(el.scripts),
+            bindings: detachServerBindingIds(el.bindings),
+            ...(el.events ? {events: detachServerEventIds(el.events)} : {}),
+          };
+        });
+
+        // Конверт, а не голый массив: по нему импорт узнаёт СВОЙ файл и не запускает
+        // нормализатор CONTUR повторно. Схема, однажды пришедшая из выгрузки, хранит её
+        // поля (`lua_name`, `tech_object`) — детектор диалекта сработал бы на них снова
+        // и второй раз вычел радиус из координат каждого кружка.
+        return {
+          format: SCENE_EXPORT_FORMAT,
+          version: 1,
+          exported_at: new Date().toISOString(),
+          scene: {name: scene?.name ?? null},
+          elements: exported,
+        };
+      },
       importElementsFromJson: (rawElements, importOpts) => {
         const {scene, currentProject} = get();
 
@@ -1606,7 +1661,10 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // Выгрузка CONTUR приходит в своих именах полей и своей системе координат —
         // переводим ДО общей нормализации, чтобы дальше всё шло одним путём.
-        const contur = isConturExport(rawElements) ? normalizeConturElements(rawElements) : null;
+        // `native` — файл нашего же экспорта: поля уже в наших именах и координатах.
+        const contur = !importOpts?.native && isConturExport(rawElements)
+          ? normalizeConturElements(rawElements)
+          : null;
         if (contur) rawElements = contur.elements;
 
         const CANVAS_W = 5000;
