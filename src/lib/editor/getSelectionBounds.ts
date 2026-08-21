@@ -4,7 +4,7 @@ import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 
 /**
  * Абсолютный bbox элемента для проверки попадания в рамку выделения (marquee).
- * Учитывает специфику polygon (локальные вершины) и line (x1/y1/x2/y2).
+ * Учитывает специфику polygon и curve (локальные точки) и line (x1/y1/x2/y2).
  */
 export function getSelectionBounds(
   el: DiagramElement,
@@ -13,8 +13,8 @@ export function getSelectionBounds(
   const rendered = getRenderedElement(el);
   const absPos = getAbsoluteRenderedPos(el, elementsMap);
 
-  if (rendered.type === "polygon") {
-    // Вершины хранятся локально внутри polygon Group.
+  if (rendered.type === "polygon" || rendered.type === "curve") {
+    // Вершины (у кривой — концы и направляющие) хранятся локально внутри Group.
     const pts: number[] = Array.isArray(rendered.points)
       ? (rendered.points as number[])
       : (() => { try { return JSON.parse((rendered.points as string | undefined) ?? "[]"); } catch { return []; } })();

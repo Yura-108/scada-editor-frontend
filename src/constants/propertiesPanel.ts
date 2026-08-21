@@ -10,6 +10,7 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   rectangle: { complex: false },
   circle: { complex: false },
   arc: { complex: false },
+  curve: { complex: false },
   line: { complex: false },
   group: { complex: false },
   toggle: { complex: false },
@@ -42,6 +43,7 @@ export const elementTypeLabels: Record<ElementType, string> = {
   rectangle: "Прямоугольник",
   circle: "Окружность",
   arc: "Дуга",
+  curve: "Кривая линия",
   line: "Линия",
   group: "Группа",
   toggle: "Переключатель",
@@ -214,6 +216,36 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
       defaultValue: 2,
     },
     DASH_FIELD,
+  ],
+  curve: [
+    // Форма правится ручками на холсте: два конца и две направляющие точки.
+    {
+      key: "strokeColor",
+      label: "Цвет линии",
+      type: "color",
+      defaultValue: "#9ca3af",
+    },
+    {
+      key: "strokeWidth",
+      label: "Толщина",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: 2,
+    },
+    DASH_FIELD,
+    {
+      key: "arrowStart",
+      label: "Стрелка в начале",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "arrowEnd",
+      label: "Стрелка в конце",
+      type: "boolean",
+      defaultValue: false,
+    },
   ],
   line: [
     {

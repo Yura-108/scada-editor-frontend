@@ -149,6 +149,7 @@ export type ElementType =
   | "polygon"
   | "circle"
   | "arc"
+  | "curve"
   | "line"
   | "text"
   | "group"
@@ -172,7 +173,9 @@ export type ElementType =
 export interface LeafElement extends BaseCanvasElement {
   type: ElementType;
   color?: string;
-  points?: number[]; // Array of [x1,y1, x2,y2, ...] relative to element x,y or absolute? Let's use absolute or relative depending on implementation
+  /** Полигон: вершины; кривая (`curve`): начало, две направляющие, конец.
+   *  В обоих случаях ЛОКАЛЬНО относительно `x, y` элемента. */
+  points?: number[];
   sides?: number; // for polygon initial generation
   radius?: number; // for circle and regular polygon initial generation
 

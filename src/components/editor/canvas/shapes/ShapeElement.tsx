@@ -23,6 +23,7 @@ import { TableShapeElement } from "./TableShapeElement";
 import { TrendShapeElement } from "./TrendShapeElement";
 import { ChartShapeElement } from "./ChartShapeElement";
 import { ArcShapeElement } from "./ArcShapeElement";
+import { CurveShapeElement } from "./CurveShapeElement";
 
 interface ShapeElementProps {
   el: DiagramElement;
@@ -267,6 +268,10 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
 
   if (rendered.type === "arc") {
     return <ArcShapeElement {...leafProps} />;
+  }
+
+  if (rendered.type === "curve") {
+    return <CurveShapeElement {...leafProps} />;
   }
 
   if (rendered.type === "text") {

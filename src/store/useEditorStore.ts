@@ -23,6 +23,7 @@ import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
+import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   fetchCurrentVersion,
@@ -1723,6 +1724,26 @@ export const useEditorStore = create<EditorState>()(temporal(
             elements: [...state.elements, newElement]
           }))
 
+          return;
+        }
+
+        if (type === 'curve') {
+          // Кубическая кривая Безье: точки локальны относительно x/y (как у полигона),
+          // поэтому перетаскивание меняет только x/y, а форма живёт в points.
+          const points = [...DEFAULT_CURVE_POINTS];
+          const bounds = curvePointsBounds(points);
+          const newElement: DiagramElement = {
+            id: null, key: createUuid(), type, composition,
+            x, y, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY,
+            points,
+            label: "",
+            bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2, strokeDasharray: "",
+            arrowStart: false, arrowEnd: false,
+            parentId: scene?.id || null, parentKey: String(scene?.id) || null,
+            children: [], scripts: [], bindings: [], properties: [],
+            states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
+          };
+          set(state => ({ elements: [...state.elements, newElement] }));
           return;
         }
 

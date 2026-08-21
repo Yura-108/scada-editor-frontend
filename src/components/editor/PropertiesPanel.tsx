@@ -257,6 +257,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
           {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
           {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
         ]
+      : element.type === "curve"
+        // Форму кривой задают четыре точки — их правят ручками на холсте, числами это
+        // было бы восемь полей. В панели остаётся положение; w/h пересчитываются сами.
+        ? [{key: "x", label: "X"}, {key: "y", label: "Y"}]
       : element.type === "circle" || element.type === "arc"
         ? (() => {
             // Круг и дуга описываются ЦЕНТРОМ и радиусом — так их двигает холст (центр
