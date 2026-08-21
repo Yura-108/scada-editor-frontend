@@ -5,6 +5,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {
   Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload,
   Undo2, Redo2, Loader2, History, RotateCcw,
+  RotateCw, FlipHorizontal, FlipVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
@@ -330,6 +331,34 @@ export default function ToolsPanel() {
           label="Разгруппировать"
           onClick={() => useEditorStore.getState().ungroupSelected()}
           disabled={!canEdit || !selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
+        />
+
+        {/* Поворот на 90° и отражения. Работают и для одного элемента, и для набора,
+            и для группы целиком: геометрия пересчитывается по-настоящему (см.
+            lib/editor/transformSelection.ts), поэтому всё остаётся на сетке. */}
+        <TooltipBtn
+          icon={<RotateCw size={16} />}
+          label="Повернуть по часовой (Shift + >)"
+          onClick={() => useEditorStore.getState().transformSelected("cw")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<RotateCcw size={16} />}
+          label="Повернуть против часовой (Shift + <)"
+          onClick={() => useEditorStore.getState().transformSelected("ccw")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<FlipHorizontal size={16} />}
+          label="Отразить по горизонтали (Shift + H)"
+          onClick={() => useEditorStore.getState().transformSelected("flipH")}
+          disabled={!canEdit || !selectedIds.length}
+        />
+        <TooltipBtn
+          icon={<FlipVertical size={16} />}
+          label="Отразить по вертикали (Shift + V)"
+          onClick={() => useEditorStore.getState().transformSelected("flipV")}
+          disabled={!canEdit || !selectedIds.length}
         />
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />

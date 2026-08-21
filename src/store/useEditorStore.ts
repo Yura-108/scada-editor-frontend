@@ -24,6 +24,7 @@ import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/p
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
+import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   fetchCurrentVersion,
@@ -136,6 +137,11 @@ type EditorState = {
   bringToFront: (key: string) => void;
   sendToBack: (key: string) => void;
   /** Выравнивание верхнеуровневых выделенных (≥2) по краю/центру общей рамки. */
+  /**
+   * Поворот на 90° и отражение выделения (в т.ч. групп) — пересчётом геометрии.
+   * Подробности и причина, почему не полем `rotate`, — в transformSelection.ts.
+   */
+  transformSelected: (op: TransformOp) => void;
   alignSelected: (mode: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom') => void;
   /** Распределение верхнеуровневых выделенных (≥3) с равными зазорами по оси. */
   distributeSelected: (axis: 'h' | 'v') => void;
@@ -1133,6 +1139,21 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         const shifts = new Map(keysToMove.map(k => [k, {dx, dy}] as const));
         set({elements: applyShifts(elements, shifts, scene?.id)});
+      },
+      transformSelected: (op) => {
+        const {selectedIds, elements, scene} = get();
+        if (!selectedIds.length) return;
+
+        // Только верхнеуровневые: у элемента с выделенным предком геометрию пересчитает
+        // сам предок, иначе поворот применился бы к нему дважды.
+        const keys = topLevelSelectedKeys(selectedIds, elements);
+        if (!keys.length) return;
+
+        const next = transformSelection(elements, keys, op, snap);
+        if (next === elements) return;
+
+        // Одним set() — значит одним шагом undo на всю операцию.
+        set({elements: recomputeAncestorBounds(next, keys, scene?.id)});
       },
       alignSelected: (mode) => {
         const {selectedIds, elements, scene} = get();

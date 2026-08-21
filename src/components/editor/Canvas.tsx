@@ -214,7 +214,11 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     const elId = tg.attrs.id || tg.parent?.attrs.id || tg.parent?.parent?.attrs.id;
     if (!elId) return;
 
-    selectMultiple([elId]);
+    // Выделение сбрасываем только если кликнули ВНЕ него: иначе правый клик по одному
+    // из нескольких выделенных схлопывал набор, и пункты меню («Повернуть», «Копировать»,
+    // «Удалить») применялись к одному элементу вместо всех. Правило то же, что у левого
+    // нажатия (см. selectOnPress).
+    if (!useEditorStore.getState().selectedIds.includes(elId)) selectMultiple([elId]);
     const el = elementsMap[elId];
     if (!el) return;
 
