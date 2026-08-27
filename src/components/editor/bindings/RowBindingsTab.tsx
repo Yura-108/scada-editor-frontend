@@ -7,6 +7,7 @@ import {DiagramElement, ComponentPropertyDto, TableCellData} from "@/types/edito
 import {useEditorStore} from "@/store/useEditorStore";
 import {getCellData} from "@/lib/editor/tableCells";
 import openRowTagBindingModal from "./RowTagBindingModal";
+import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
 
 interface RowBindingsTabProps {
   element: DiagramElement;
@@ -68,10 +69,24 @@ export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, ce
     }
   };
 
-  // Пока нет бэкенд-эндпоинта на удаление свойства — снимаем привязку только
-  // локально (как и для обычных свойств-тегов, для которых удаления тоже нет).
   const updateElement = useEditorStore(s => s.updateElement);
-  const removeBinding = (row: number) => {
+  const removeBinding = async (row: number) => {
+    const existing = bindingForRow(row);
+    if (!existing) return;
+
+    // Сохранённая строка удаляется на сервере: локальная фильтрация была ложью —
+    // properties едут отдельным REST-путём, и при следующей загрузке схемы строка
+    // возвращалась. Ещё не уехавшую на сервер строку (без id) убираем локально.
+    if (typeof existing.id === "number" && element.id) {
+      setSavingRow(row);
+      try {
+        await confirmDeleteProperty(existing, element.id);
+      } finally {
+        setSavingRow(null);
+      }
+      return;
+    }
+
     updateElement(element.key, {
       properties: properties.filter(p => p.position !== row),
     });
@@ -136,9 +151,10 @@ export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, ce
                     <Pencil size={14} />
                   </button>
                   <button
-                    className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                    className="p-1 text-gray-500 hover:text-red-500 transition-colors disabled:opacity-50"
                     title="Отвязать"
-                    onClick={() => removeBinding(row)}
+                    disabled={savingRow === row}
+                    onClick={() => void removeBinding(row)}
                   >
                     <Trash2 size={14} />
                   </button>

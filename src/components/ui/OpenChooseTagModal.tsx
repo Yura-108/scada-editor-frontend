@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
-import { ChevronDown, List, TextCursorInput, Type, Waypoints } from "lucide-react";
+import { ChevronDown, List, TextCursorInput, Trash2, Type, Waypoints } from "lucide-react";
 import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import SelectItem from "@/components/ui/SelectItem";
 import { selectContentClassName, selectIconClassName, selectTriggerClassName } from "@/components/ui/selectStyles";
@@ -14,6 +14,7 @@ import { useEditorStore } from "@/store/useEditorStore";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { isBooleanValueType } from "@/lib/editor/valueTypes";
 import { Button, ModalFooter } from "@/components/ui/Button";
+import { confirmDeleteProperty } from "@/lib/editor/confirmDeleteProperty";
 
 interface Props {
   component_id: number;
@@ -104,6 +105,19 @@ export function AddPropertyContent({ component_id, property }: Props) {
       closeModal();
     } catch (error) {
       console.error("Failed to add property:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!property?.id) return;
+
+    setIsLoading(true);
+    try {
+      // Форму закрываем только при реальном удалении: при отказе в подтверждении или
+      // конфликте версий пользователь остаётся в ней и видит те же данные.
+      if (await confirmDeleteProperty(property, component_id)) closeModal();
     } finally {
       setIsLoading(false);
     }
@@ -348,6 +362,12 @@ export function AddPropertyContent({ component_id, property }: Props) {
 
       {/* Footer buttons */}
       <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
+        {property?.id ? (
+          <Button variant="danger" onClick={handleDelete} disabled={isLoading} className="mr-auto">
+            <Trash2 size={16} />
+            Удалить свойство
+          </Button>
+        ) : null}
         <Button onClick={closeModal}>Отмена</Button>
         <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm}>
           {isLoading ? "Сохранение..." : property ? "Сохранить" : "Добавить свойство"}

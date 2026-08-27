@@ -13,6 +13,7 @@ import {
 } from "@/lib/groupLayout";
 import {ElementIndex, getElementIndex} from "@/lib/editor/elementIndex";
 import {rootComponentsOf} from "@/lib/editor/documentComponents";
+import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
@@ -160,6 +161,8 @@ type EditorState = {
   addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
   addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
   editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
+  /** Удаление свойства на сервере + уборка всех ссылок на него по сцене. */
+  deleteProperty: (propertyId: number, componentId: number) => Promise<void>;
   /** CRUD биндингов (JS-скрипты монитора) — design-time правки, попадают в undo. */
   addBinding: (elementKey: string, binding: TagBinding) => void;
   updateBinding: (elementKey: string, bindingId: string, patch: Partial<Omit<TagBinding, "v" | "id">>) => void;
@@ -1031,6 +1034,15 @@ export const hasUnsavedWork = (): boolean => {
 const propertyVersionField = (): {based_on_version?: number} => {
   const version = useEditorStore.getState().sceneVersion;
   return version != null ? {based_on_version: version} : {};
+};
+
+/**
+ * То же правило, что у `propertyVersionField`, но строкой запроса: у `DELETE` номер
+ * версии по §8 контракта передаётся query-параметром, а не полем тела.
+ */
+const propertyVersionQuery = (): string => {
+  const version = useEditorStore.getState().sceneVersion;
+  return version != null ? `?based_on_version=${version}` : "";
 };
 
 /**
@@ -2113,6 +2125,34 @@ export const useEditorStore = create<EditorState>()(temporal(
                   } as DiagramElement
                 : el
             )
+          }));
+          temporal.resume();
+
+          await syncSceneVersionAfterPropertyWrite();
+        });
+      },
+      deleteProperty: async (propertyId: number, componentId: number) => {
+        // Просмотр версии — режим только для чтения: удаление ушло бы на сервер по-настоящему,
+        // а с холста пропало бы вместе со стешем при выходе из просмотра.
+        if (get().versionPreview) return;
+
+        // В очередь — как addTags/editProperty: удаление тоже двигает версию сцены.
+        await queuePropertyWrite(async () => {
+          const res = await fetch(`/api/editor/tags/${propertyId}${propertyVersionQuery()}`, {
+            method: "DELETE",
+          });
+
+          if (!res.ok) throw await propertyWriteError(res, "Не удалось удалить свойство");
+
+          // Серверная мутация — вне истории undo (см. addTags): Ctrl+Z вернул бы свойство
+          // только на клиенте, и следующее сохранение ушло бы с фантомной строкой.
+          const temporal = useEditorStore.temporal.getState();
+          temporal.pause();
+          set(state => ({
+            // Не только `properties` хозяина: висячий `component_property_id` роняет
+            // сохранение ВСЕЙ сцены 400-м, а висячий propertyRef тихо ломает логику
+            // (см. lib/editor/propertyDependents.ts).
+            elements: purgePropertyRefs(state.elements, propertyId, componentId),
           }));
           temporal.resume();
 

@@ -10,6 +10,7 @@ import {PropertyCreateDto} from "@/types/tags.types";
 import {elementPropertyMap, basePropertySchema, elementTypeLabel, ROTATABLE_TYPES} from "@/constants/propertiesPanel";
 import {Plus, AlertTriangle, Trash2, Boxes, GripVertical} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
+import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {openInputModal} from "@/components/ui/OpenInputModal";
 import {ColorField} from "@/components/ui/ColorField";
@@ -38,7 +39,7 @@ interface PropertiesPanelProps {
  * dnd-kit) висит ТОЛЬКО на иконке — остальная часть таблетки сохраняет исходный
  * onClick открытия модалки редактирования, drag и клик не конфликтуют.
  */
-function SortablePropertyPill({property, onClick}: {property: PropertyCreateDto; onClick: () => void}) {
+function SortablePropertyPill({property, onClick, onDelete}: {property: PropertyCreateDto; onClick: () => void; onDelete: () => void}) {
   const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: property.id});
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -78,6 +79,15 @@ function SortablePropertyPill({property, onClick}: {property: PropertyCreateDto;
       </button>
       <button type="button" onClick={onClick} className="cursor-pointer text-left">
         {label}
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="text-indigo-400/70 hover:text-red-400 transition-colors -mr-1"
+        title="Удалить свойство"
+        aria-label={`Удалить «${label}»`}
+      >
+        <Trash2 size={12} />
       </button>
     </span>
   );
@@ -805,6 +815,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                         key={property.id}
                         property={property}
                         onClick={() => handleAddProperty(element?.id, property)}
+                        onDelete={() => {
+                          if (element?.id == null) return;
+                          void confirmDeleteProperty(property, element.id);
+                        }}
                       />
                     ))}
                   </div>
