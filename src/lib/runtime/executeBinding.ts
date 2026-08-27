@@ -1,5 +1,5 @@
 import type {TagBinding} from "@/types/binding.types";
-import type {TagScope} from "@/lib/runtime/bindingScope";
+import {modernizeScopeCode, type TagScope} from "@/lib/runtime/bindingScope";
 
 /**
  * Компиляция и исполнение биндингов — чистый модуль без зависимостей от стора
@@ -28,15 +28,31 @@ export interface CompiledBinding {
   fn: (...args: unknown[]) => unknown;
 }
 
-/** Значение тега в скоупе кода: `Test.V` — число, если парсится, `Test.RAW` — сырая строка.
- *  raw может быть `null` (тег с quality != GOOD без последнего достоверного значения,
- *  см. docs/contract/TAG_CONTRACT_CHANGES.md A3/B4) — важно не звать `.trim()` на нём. */
-export const buildTagObject = (raw: string | null | undefined) => {
+/**
+ * Значение в скоупе кода: переменная — это САМО значение (`Test > 100`), число, если
+ * строка парсится как число, иначе сама строка.
+ *
+ * Обёртки `{V, RAW}` здесь больше нет: обращение через точку читалось как часть пути
+ * тега (`ST.V` выглядело адресом канала, хотя `ST` — имя свойства элемента). Исходная
+ * строка осталась доступна отдельным объектом `RAW` (см. buildRawScope), а старый код
+ * переводится на новый синтаксис в compileBinding (modernizeScopeCode).
+ *
+ * `raw` может быть `null` (тег с quality != GOOD без последнего достоверного значения,
+ * см. docs/contract/TAG_CONTRACT_CHANGES.md A3/B4) — важно не звать `.trim()` на нём.
+ */
+export const toScopeValue = (raw: string | null | undefined): number | string | null => {
   const num = raw != null && raw.trim() !== "" ? Number(raw) : NaN;
-  return {
-    V: Number.isFinite(num) ? num : (raw ?? null),
-    RAW: raw ?? null,
-  };
+  return Number.isFinite(num) ? num : (raw ?? null);
+};
+
+/** Объект `RAW` в скоупе: исходные строки значений по имени переменной. */
+export const buildRawScope = (
+  names: readonly string[],
+  rawOf: (name: string) => string | null | undefined,
+): Record<string, string | null> => {
+  const raw: Record<string, string | null> = {};
+  for (const name of names) raw[name] = rawOf(name) ?? null;
+  return raw;
 };
 
 /** Компилирует биндинг; ошибка синтаксиса возвращается строкой, не бросается. */
@@ -46,7 +62,10 @@ export const compileBinding = (
   scope: TagScope,
 ): CompiledBinding | {error: string} => {
   try {
-    const fn = new Function(...scope.names, "setState", "setProp", "self", binding.code) as
+    // Код старых схем («Имя.V») переводим на новый синтаксис перед компиляцией: иначе
+    // `.V` на числе даст undefined и условие тихо перестанет выполняться.
+    const code = modernizeScopeCode(binding.code, scope.names);
+    const fn = new Function(...scope.names, "RAW", "setState", "setProp", "self", code) as
       (...args: unknown[]) => unknown;
 
     const scopeTagIds = scope.names
@@ -95,15 +114,15 @@ export const executeBinding = (
     }
   };
 
-  const args = cb.scope.names.map(name => {
-    if (name in cb.scope.tagIdByName) {
-      return buildTagObject(valuesByTagId.get(cb.scope.tagIdByName[name]));
-    }
-    return buildTagObject(valuesByPropertyId.get(cb.scope.propertyIdByName[name]));
-  });
+  const rawOf = (name: string): string | null | undefined =>
+    name in cb.scope.tagIdByName
+      ? valuesByTagId.get(cb.scope.tagIdByName[name])
+      : valuesByPropertyId.get(cb.scope.propertyIdByName[name]);
+
+  const args = cb.scope.names.map(name => toScopeValue(rawOf(name)));
 
   try {
-    cb.fn(...args, setState, setProp, self ?? null);
+    cb.fn(...args, buildRawScope(cb.scope.names, rawOf), setState, setProp, self ?? null);
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
   }

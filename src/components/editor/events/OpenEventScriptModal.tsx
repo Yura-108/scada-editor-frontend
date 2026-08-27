@@ -14,7 +14,7 @@ import {
   ElementEvents,
   PropertyRef,
 } from "@/types/binding.types";
-import {collectTagScope, uniqueVarName, withPropertyRefs} from "@/lib/runtime/bindingScope";
+import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
@@ -40,7 +40,15 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
 
   const [propertyRefs, setPropertyRefs] = useState<PropertyRef[]>(existing?.propertyRefs ?? []);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [code, setCode] = useState(existing?.code ?? "");
+  // Старый синтаксис «Имя.V» показываем уже переведённым — см. OpenBindingEditorModal.
+  // Скоуп для перевода собираем прямо здесь: `scope` ниже зависит от состояния, а
+  // инициализатор useState выполняется раньше него ровно один раз.
+  const [code, setCode] = useState(() =>
+    modernizeScopeCode(
+      existing?.code ?? "",
+      withPropertyRefs(collectTagScope(element.properties), existing?.propertyRefs).names,
+    ),
+  );
   const [mockValues, setMockValues] = useState<Record<string, string>>({});
   const [testResult, setTestResult] = useState<TestResult>(null);
 
@@ -66,7 +74,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
     setPickerOpen(false);
     const found = propertyRefs.find(r => r.propertyId === picked.propertyId);
     if (found) {
-      insertAtCursor(`setProperty("${found.varName}", ${found.varName}.V + 1)`);
+      insertAtCursor(`setProperty("${found.varName}", ${found.varName} + 1)`);
       return;
     }
     const taken = new Set<string>([...scope.names, ...propertyRefs.map(r => r.varName)]);
@@ -83,7 +91,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         valueType: picked.valueType,
       },
     ]);
-    insertAtCursor(`setProperty("${varName}", ${varName}.V + 1)`);
+    insertAtCursor(`setProperty("${varName}", ${varName} + 1)`);
   };
 
   const removePropertyRef = (propertyId: number) =>
@@ -146,7 +154,8 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         title={<>Событие {EVENT_LABEL[event]}</>}
         description={
           <>
-            JavaScript исполняется в мониторе по событию. Чтение: <code>Имя.V</code> (тег/свойство).
+            JavaScript исполняется в мониторе по событию. Чтение: <code>Имя</code> — переменная это
+            само значение тега/свойства (исходная строка — <code>RAW.Имя</code>).
             Запись свойства объекта: <code>setProperty(&quot;Имя&quot;, значение)</code> — на неё
             реагируют привязки других элементов. Серверный скрипт (запись тега в ПЛК):{" "}
             <code>runScript(&quot;Имя&quot;)</code>. Также доступны <code>setProp</code>,{" "}
@@ -167,7 +176,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
                   key={tagName}
                   className={chipClasses}
                   title={scope.tagIdByName[tagName]}
-                  onClick={() => insertAtCursor(`${tagName}.V`)}
+                  onClick={() => insertAtCursor(tagName)}
                 >
                   <Tag size={12} />
                   {tagName}
@@ -183,7 +192,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
               key={ref.propertyId}
               className={cn(chipClasses, "bg-emerald-950/60 text-emerald-300 border-emerald-800/40 hover:bg-emerald-900/70")}
               title={`${ref.componentLabel} · ${ref.propertyName} — клик вставит setProperty`}
-              onClick={() => insertAtCursor(`setProperty("${ref.varName}", ${ref.varName}.V + 1)`)}
+              onClick={() => insertAtCursor(`setProperty("${ref.varName}", ${ref.varName} + 1)`)}
             >
               <Boxes size={12} />
               {ref.varName}

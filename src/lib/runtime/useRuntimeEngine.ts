@@ -390,7 +390,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
           tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
         }
         // properties[] — записи серверных Java-скриптов в свойства компонентов;
-        // маршрутизируются по propertyId (значение → строка, buildTagObject распарсит).
+        // маршрутизируются по propertyId (значение → строка, toScopeValue распарсит).
         // Плюс по propertyName — отдельный путь для live-ячеек строк таблиц:
         // propertyId нестабилен между пересохранениями таблицы, а имя — нет.
         for (const p of properties) {

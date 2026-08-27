@@ -1,6 +1,6 @@
 import type {ElementEventHandler} from "@/types/binding.types";
-import type {TagScope} from "@/lib/runtime/bindingScope";
-import {buildTagObject, type BindingIntent} from "@/lib/runtime/executeBinding";
+import {modernizeScopeCode, type TagScope} from "@/lib/runtime/bindingScope";
+import {buildRawScope, toScopeValue, type BindingIntent} from "@/lib/runtime/executeBinding";
 
 /**
  * Компиляция и исполнение обработчиков событий (onClick/onDoubleClick) — чистый
@@ -38,12 +38,14 @@ export const compileEventScript = (
   try {
     const fn = new Function(
       ...scope.names,
+      "RAW",
       "setProperty",
       "setProp",
       "setState",
       "self",
       "runScript",
-      handler.code,
+      // Старый синтаксис «Имя.V» переводим на новый — см. modernizeScopeCode.
+      modernizeScopeCode(handler.code, scope.names),
     ) as (...args: unknown[]) => unknown;
     return {elementKey, scope, fn};
   } catch (err) {
@@ -87,15 +89,23 @@ export const executeEventScript = (
     if (typeof name === "string" && name && runScript) runScript(name);
   };
 
-  const args = cb.scope.names.map(name => {
-    if (name in cb.scope.tagIdByName) {
-      return buildTagObject(valuesByTagId.get(cb.scope.tagIdByName[name]));
-    }
-    return buildTagObject(valuesByPropertyId.get(cb.scope.propertyIdByName[name]));
-  });
+  const rawOf = (name: string): string | null | undefined =>
+    name in cb.scope.tagIdByName
+      ? valuesByTagId.get(cb.scope.tagIdByName[name])
+      : valuesByPropertyId.get(cb.scope.propertyIdByName[name]);
+
+  const args = cb.scope.names.map(name => toScopeValue(rawOf(name)));
 
   try {
-    cb.fn(...args, setProperty, setProp, setState, self ?? null, runScriptFn);
+    cb.fn(
+      ...args,
+      buildRawScope(cb.scope.names, rawOf),
+      setProperty,
+      setProp,
+      setState,
+      self ?? null,
+      runScriptFn,
+    );
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
   }

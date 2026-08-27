@@ -35,7 +35,7 @@ export interface PropertyRef {
  * `setState("Имя состояния")`, `setProp("color", "#f00")`, `self` (rendered-снимок
  * элемента, только чтение).
  *
- * Пример: `if (LINE1FQT1.V > 100) { setState("Авария") } else { setState("Нормальное") }`
+ * Пример: `if (LINE1FQT1 > 100) { setState("Авария") } else { setState("Нормальное") }`
  *
  * Сериализация: биндинг целиком уезжает JSON-строкой в DTO-поле `script`
  * (бэкенд хранит его как опак-строку — контракт не меняется; поэтому `propertyRefs`
@@ -62,7 +62,7 @@ export interface TagBinding {
   propertyRefs?: PropertyRef[];
   /**
    * Прямая привязка «значение элемента ← значение свойства» без кода/имени:
-   * `code` сгенерирован автоматически (`setProp(target, <ref>.V)`), UI не
+   * `code` сгенерирован автоматически (`setProp(target, <ref>)`), UI не
    * показывает редактор кода. Внутри — обычный биндинг (движок не меняется).
    */
   direct?: boolean;
@@ -119,12 +119,12 @@ export type BindingDto = {
  * `setProp("key", v)` / `setState("Имя")` — визуал/состояние самого элемента;
  * `self` — rendered-снимок.
  *
- * Пример: `setProperty("Test", Test.V + 1)` — инкремент свойства объекта.
+ * Пример: `setProperty("Test", Test + 1)` — инкремент свойства объекта.
  */
 export interface ElementEventHandler {
   /** JavaScript-исходник обработчика. */
   code: string;
-  /** Свойства объектов сцены в скоупе (чтение `Имя.V` + запись `setProperty`). */
+  /** Свойства объектов сцены в скоупе (чтение `Имя` + запись `setProperty`). */
   propertyRefs?: PropertyRef[];
 }
 

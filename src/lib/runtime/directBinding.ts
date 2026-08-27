@@ -4,7 +4,7 @@ import type {TagBinding} from "@/types/binding.types";
 import type {PickedProperty} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";
 
 /**
- * Строит прямую привязку «target ← свойство»: `setProp(target, var.V)`, без кода/имени
+ * Строит прямую привязку «target ← свойство»: `setProp(target, var)`, без кода/имени
  * в UI. `target` — любой ключ рендер-пропа элемента: `"value"` (весь элемент, см.
  * BindingsTab) или `"cell_${row}_${col}"` (конкретная ячейка таблицы, см. tableCells.ts).
  */
@@ -21,7 +21,7 @@ export function buildDirectBinding(
     enabled: true,
     direct: true,
     directTarget: target,
-    code: `setProp(${JSON.stringify(target)}, ${varName}.V)`,
+    code: `setProp(${JSON.stringify(target)}, ${varName})`,
     propertyRefs: [
       {
         varName,

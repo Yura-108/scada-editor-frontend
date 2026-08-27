@@ -20,7 +20,7 @@ const EVENTS: Array<{name: ElementEventName; label: string; hint: string}> = [
 /**
  * Вкладка «События»: JS-обработчики onClick/onDoubleClick, исполняемые на клиенте
  * в режиме монитора. Например — изменение значения свойства объекта
- * (`setProperty("Test", Test.V + 1)`), на которое реагируют привязки других элементов.
+ * (`setProperty("Test", Test + 1)`), на которое реагируют привязки других элементов.
  */
 export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
   const updateElement = useEditorStore(s => s.updateElement);
