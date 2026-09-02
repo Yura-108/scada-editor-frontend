@@ -5,7 +5,8 @@ import { Group, Rect, Line, Text } from "react-konva";
 import Konva from "konva";
 import { LeafElement, TableCellData } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
+import { getCellData } from "@/lib/editor/tableCells";
+import { cellBindingAt, resolveCellText } from "@/lib/editor/tableBindings";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
 
@@ -19,6 +20,10 @@ interface TableShapeElementProps extends ShapeElementProps {
 /** Цвет подсветки сфокусированной ячейки — намеренно отличается от синей пунктирной
  *  рамки выделения таблицы и розовых smart-guides (цвета — в useThemeColors). */
 const CELL_FOCUS_COLOR = "#f59e0b";
+
+/** Уголок-пометка привязанной ячейки: размер и цвет. */
+const CELL_BOUND_MARK = 6;
+const CELL_BOUND_COLOR = "#10b981";
 
 export function TableShapeElement({ el, isSelected, onElementClick, updateElementVisual, focusedCell, onCellClick, stateId, runtime }: TableShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
@@ -42,16 +47,6 @@ export function TableShapeElement({ el, isSelected, onElementClick, updateElemen
   const fontSize = Math.max(8, Math.min(24, Number(rendered.fontSize ?? 12)));
 
   const cellsMap = rendered.cells as Record<string, TableCellData> | undefined;
-
-  // Привязки строк (тег/локальный параметр) — конвенция колонок: 0 — номер строки
-  // (из position), 1 — имя тега/параметра, 2 — live-значение (см. cellRuntimeKey).
-  // Колонки 0/1 для привязанных строк выводятся из привязки, а не из статики cells.
-  const rowBindingByRow = new Map<number, {name: string}>();
-  if (el.type === "table") {
-    for (const p of el.properties ?? []) {
-      if (typeof p.position === "number") rowBindingByRow.set(p.position, p);
-    }
-  }
 
   const headerH = showHeader ? Math.max(20, fontSize + 10) : 0;
   const bodyH = h - headerH;
@@ -102,18 +97,10 @@ export function TableShapeElement({ el, isSelected, onElementClick, updateElemen
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const data = getCellData(cellsMap, r, c);
-      const rowBinding = rowBindingByRow.get(r);
-      let displayValue: string;
-      if (rowBinding && c === 0) {
-        displayValue = String(r + 1);
-      } else if (rowBinding && c === 1) {
-        displayValue = rowBinding.name;
-      } else {
-        const liveRaw = renderedAny[cellRuntimeKey(r, c)];
-        displayValue = typeof liveRaw === "string" || typeof liveRaw === "number"
-          ? String(liveRaw)
-          : (data.value ?? "");
-      }
+      // Раскладку задаёт пользователь привязками ячеек, а не рендер: прежняя жёсткая
+      // конвенция «0 — номер, 1 — имя, 2 — значение» ушла вместе со строковыми привязками.
+      const displayValue = resolveCellText(el, renderedAny, r, c);
+      const bound = cellBindingAt(el, r, c) !== undefined;
       const cx = c * colW;
       const cy = headerH + r * rowH;
       const focused = focusedCell !== null && focusedCell.elementKey === el.key
@@ -130,6 +117,19 @@ export function TableShapeElement({ el, isSelected, onElementClick, updateElemen
           }}
         />
       );
+      // Привязанная ячейка помечена уголком: иначе в редакторе её не отличить от
+      // ячейки со свободным текстом — обе показывают просто строку.
+      if (bound) {
+        cellNodes.push(
+          <Line
+            key={`cell-bound-${r}-${c}`}
+            points={[cx + colW - CELL_BOUND_MARK, cy, cx + colW, cy, cx + colW, cy + CELL_BOUND_MARK]}
+            closed
+            fill={CELL_BOUND_COLOR}
+            listening={false}
+          />
+        );
+      }
       cellNodes.push(
         <Text
           key={`cell-text-${r}-${c}`}

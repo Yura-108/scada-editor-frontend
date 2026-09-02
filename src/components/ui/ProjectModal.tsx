@@ -1,20 +1,14 @@
 "use client";
 
 import {useModalStore} from "@/store/modalStore";
-import * as Select from "@radix-ui/react-select";
 import {cn} from "@/lib/utils";
-import {ChevronDown} from "lucide-react";
+import {X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import SelectItem from "./SelectItem";
-import {
-  selectContentClassName,
-  selectIconClassName,
-  selectScrollButtonClassName,
-  selectTriggerClassName,
-} from "@/components/ui/selectStyles";
 import {useState, useEffect} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
+import {confirmModal} from "@/components/ui/ConfirmModal";
+import {Button, ModalFooter} from "@/components/ui/Button";
 
 async function selectProjectAndOpenScenes(
   projectId: number,
@@ -41,6 +35,7 @@ export function ProjectContent() {
   const projectList = useEditorStore(state => state.projectList);
   const loadProjectList = useEditorStore(state => state.loadProjectList);
   const createProject = useEditorStore(state => state.createProject);
+  const deleteProject = useEditorStore(state => state.deleteProject);
   const [selectedValue, setSelectedValue] = useState<string>("");
   const [newName, setNewName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -59,6 +54,22 @@ export function ProjectContent() {
     const proj = projectList.find(p => String(p.id) === selectedValue);
     if (!proj) return;
     await selectProjectAndOpenScenes(proj.id, proj.name);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, proj: EditorProject) => {
+    e.stopPropagation();
+    const ok = await confirmModal({
+      title: `Удалить проект «${proj.name}»?`,
+      description: "Проект и все его схемы со всеми элементами будут удалены. Действие необратимо.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!ok) return;
+
+    await deleteProject(proj.id);
+    // Локальную копию списка не держим: projectList приходит из стора, deleteProject его
+    // уже обновил. Сброс выбора отдаёт его эффекту выше — тот подставит первый оставшийся.
+    if (selectedValue === String(proj.id)) setSelectedValue("");
   };
 
   const handleCreate = async () => {
@@ -83,38 +94,45 @@ export function ProjectContent() {
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         Выберите существующий проект или создайте новый. После выбора откроется список схем проекта.
       </Dialog.Description>
-      {projectList.length > 0 ? (
-        <Select.Root value={selectedValue} onValueChange={setSelectedValue}>
-          <Select.Trigger className={selectTriggerClassName}>
-            <Select.Value placeholder="Выберите проект..." />
-            <Select.Icon>
-              <ChevronDown className={selectIconClassName} />
-            </Select.Icon>
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Content position="popper" sideOffset={6} className={selectContentClassName}>
-              <Select.ScrollUpButton className={selectScrollButtonClassName}>
-                <ChevronDown className="h-4 w-4 rotate-180" />
-              </Select.ScrollUpButton>
-              <Select.Viewport className="p-1.5">
-                <Select.Group>
-                  {projectList.map((proj) => (
-                    <SelectItem key={proj.id} value={String(proj.id)}>
-                      {proj.name}
-                    </SelectItem>
-                  ))}
-                </Select.Group>
-              </Select.Viewport>
-              <Select.ScrollDownButton className={selectScrollButtonClassName}>
-                <ChevronDown className="h-4 w-4" />
-              </Select.ScrollDownButton>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
-      ) : (
+      {projectList.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Проектов пока нет. Создайте первый проект ниже.
         </p>
+      ) : (
+        <ul className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
+          {projectList.map(proj => (
+            // Раньше это был выпадающий Select. Кнопку удаления в Select.Item вложить
+            // нельзя (он сам интерактивен), поэтому строка — <li> с двумя кнопками,
+            // ровно как в модалке выбора схемы.
+            <li
+              key={proj.id}
+              className={cn(
+                "flex items-center justify-between px-3 py-2.5 text-sm transition-colors",
+                selectedValue === String(proj.id)
+                  ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                  : "hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
+              )}
+            >
+              <button
+                type="button"
+                aria-pressed={selectedValue === String(proj.id)}
+                onClick={() => setSelectedValue(String(proj.id))}
+                className="min-w-0 flex-1 truncate text-left cursor-pointer"
+              >
+                {proj.name}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => void handleDelete(e, proj)}
+                className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
+                title="Удалить проект"
+                aria-label={`Удалить проект «${proj.name}»`}
+              >
+                <X size={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="mt-4 flex items-center gap-2">
@@ -141,21 +159,16 @@ export function ProjectContent() {
         </button>
       </div>
 
-      <div className="mt-8 flex gap-3 justify-end">
-        <button
-          onClick={closeModal}
-          className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-700 border border-gray-300 dark:border-gray-700 hover:border-gray-600 transition-colors"
-        >
-          Отмена
-        </button>
-        <button
+      <ModalFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button
+          variant="primary"
           onClick={() => void handleConfirm()}
           disabled={projectList.length === 0 || !selectedValue}
-          className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-40"
         >
           Выбрать
-        </button>
-      </div>
+        </Button>
+      </ModalFooter>
     </>
   );
 }

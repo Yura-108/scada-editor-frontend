@@ -61,6 +61,7 @@ type EditorState = {
   loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
   loadProjectList: () => Promise<EditorProject[] | void>;
   createProject: (name: string) => Promise<EditorProject | void>;
+  deleteProject: (id: number) => Promise<void>;
   setCurrentProject: (project: EditorProject | null) => void;
   elements: DiagramElement[];
   selectedIds: string[];
@@ -3216,6 +3217,32 @@ export const useEditorStore = create<EditorState>()(temporal(
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка создания проекта"));
+        }
+      },
+      deleteProject: async (id: number) => {
+        try {
+          // Проект и сцена — один вид компонента, поэтому адрес общий.
+          // Схемы проекта удаляет каскадом бэкенд.
+          const res = await fetch(`/api/editor/components/${id}`, {method: 'DELETE'});
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ошибка ${res.status}: ${text}`);
+          }
+
+          set(state => ({projectList: state.projectList.filter(p => p.id !== id)}));
+
+          // Удалили текущий проект — вместе с ним ушли и все его схемы. Сброс на стороне
+          // клиента уже написан в setCurrentProject: он гасит открытую сцену, elements,
+          // sceneList, буфер обмена, всё версионирование, просмотр версии и историю undo
+          // (иначе Ctrl+Z воскресил бы элементы несуществующего проекта).
+          if (get().currentProject?.id === id) {
+            get().setCurrentProject(null);
+          }
+
+          toast.success("Проект удалён");
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка удаления проекта"));
         }
       },
       setCurrentProject: (project) => {

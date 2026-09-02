@@ -69,7 +69,51 @@ export default function transformElements(
     return [];
   }
 
-  const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
+  /**
+ * Переводит старую таблицу на привязки ячеек.
+ *
+ * До переработки строкой таблицы считалось свойство с числовым `position`, а рендер
+ * жёстко раскладывал его по колонкам: 0 — номер строки, 1 — имя, 2 — живое значение.
+ * Теперь раскладку задают привязки, и старую схему надо привести к ней, сохранив вид
+ * один в один.
+ *
+ * Идемпотентна: таблица, где уже есть хоть одна привязка ячейки, не трогается.
+ * Номер строки уезжает статикой — за ним не стояло данных, рендер синтезировал его
+ * из индекса цикла.
+ */
+const migrateTableRowBindings = (el: DiagramElement): void => {
+  if (el.type !== "table") return;
+  if ((el.bindings ?? []).some(b => b.cell)) return;
+
+  const rows = (el.properties ?? []).filter(p => typeof p.position === "number");
+  if (!rows.length) return;
+
+  const bindings = [...(el.bindings ?? [])];
+  const cells: Record<string, {value?: string}> = {
+    ...((el as unknown as {cells?: Record<string, {value?: string}>}).cells ?? {}),
+  };
+
+  for (const p of rows) {
+    const row = p.position as number;
+    for (const [col, field] of [[1, "name"], [2, "value"]] as const) {
+      bindings.push({
+        v: 1,
+        id: createUuid(),
+        name: p.name,
+        enabled: true,
+        code: "",
+        cell: {row, col, propertyName: p.name, field},
+      });
+    }
+    // Колонка 0 показывала синтетический номер — закрепляем его текстом.
+    cells[`${row}_0`] = {...(cells[`${row}_0`] ?? {}), value: String(row + 1)};
+  }
+
+  el.bindings = bindings;
+  (el as unknown as {cells?: Record<string, unknown>}).cells = cells;
+};
+
+const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, fallbackParentKey: string | null = null): DiagramElement[] => {
     // 1. Ensure every element has a truly unique key for the editor session.
     // We cannot rely on api id because it might be 0 or non-unique across different types.
     const elementKey = el.key && el.key !== "0" ? el.key : createUuid();
@@ -248,6 +292,8 @@ export default function transformElements(
     });
 
     flattenedElement.children = childKeys;
+
+    migrateTableRowBindings(flattenedElement as unknown as DiagramElement);
 
     return [
       flattenedElement as DiagramElement,

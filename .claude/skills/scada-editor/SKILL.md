@@ -210,6 +210,35 @@ convert screen→world before placing.
   `ButtonShapeElement`, `TextShapeElement`). The handle itself sets `e.cancelBubble=true` on
   `onDragStart` only — that stops the group from *starting* a drag, not the bubbled move/end.
 
+## Table: properties + per-cell bindings
+
+A table's tag properties belong to the **whole element** (`element.properties`, edited on the
+ordinary «Свойства» tab like any other element). Which field of which property lands in which
+cell is described by **`bindings[].cell`** (`{row, col, propertyName, field}`), and the single
+place that knows the rule is `src/lib/editor/tableBindings.ts` (`resolveCellText`,
+`cellBindingAt`, `cellBindings`, `CELL_SOURCE_FIELDS`).
+
+- **Only `field: "value"` goes through the runtime.** `name`/`tag_id`/`value_type`/
+  `property_type`/`default_value`/`description` are static — they live in `element.properties`
+  and the renderer reads them directly, identically in editor and monitor. That is why the
+  feature costs almost no new plumbing.
+- **The property is addressed by NAME**, never by `id`: `propertyId` is unstable across
+  table re-saves (`runtimeConnection.ts`), and recipes (`row_name`) and the WS frame
+  (`propertyName`) already key by name.
+- Cell text precedence: bound static field → property field; bound `value` → runtime override
+  `cell_R_C`, falling back to the property's `default_value`; unbound → free text in
+  `cells["R_C"].value`. A binding pointing at a deleted/renamed property renders **empty**,
+  never the stale name.
+- Runtime routing lives in `bindingIndex.tableCellsByTagId` / `tableCellsByPropertyName`, built
+  from the bindings; one property may feed several cells. The old `TABLE_ROW_VALUE_COL = 2`
+  constant and the `position`-as-row convention are gone.
+- **Recipes need nothing table-specific**: `RecipesPanel`/`ApplyRecipeModal` take
+  `sortByRow(component.properties)` — all table properties, keyed by name. `position` is only
+  display order (as its own doc says).
+- Legacy tables (properties with numeric `position`, no cell bindings) are converted on load by
+  `migrateTableRowBindings` in `transformElements.ts` — name→col 1, value→col 2, and the old
+  synthetic row number frozen into `cells["R_0"]`. Idempotent, guarded by "has no cell binding".
+
 ## Adding a new element type (5 touch points)
 
 Example to copy: the "Управление" controls (`button/toggle/slider/dropdown/input`).

@@ -11,10 +11,8 @@ import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript"
 import {setRuntimeEventHandler} from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
+import {cellBindings, isLiveField, propertyByName} from "@/lib/editor/tableBindings";
 import type {ElementEventName} from "@/types/binding.types";
-
-/** Колонка live-значения строки таблицы (конвенция: 0 — номер, 1 — имя, 2 — значение). */
-const TABLE_ROW_VALUE_COL = 2;
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
 const FLUSH_INTERVAL_MS = 200;
@@ -167,17 +165,18 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       changedNames.push({name, value});
     }
 
-    // Живые значения строк таблиц (тег- и локальные, маршрутизация по tag_id/имени,
-    // НЕ через CompiledBinding — это не JS-биндинги, а прямая запись в ячейку 2).
+    // Живые значения ячеек таблиц (тег- и локальные, маршрутизация по tag_id/имени,
+    // НЕ через CompiledBinding — это не JS-биндинги, а прямая запись в ячейку,
+    // адрес которой задан привязкой; см. tableBindings.ts).
     const tableRowProps: Record<string, Record<string, unknown>> = {};
     for (const {tagId, value} of changedTags) {
-      for (const target of idx.tableRowsByTagId.get(tagId) ?? []) {
-        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, TABLE_ROW_VALUE_COL)] = value;
+      for (const target of idx.tableCellsByTagId.get(tagId) ?? []) {
+        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, target.col)] = value;
       }
     }
     for (const {name, value} of changedNames) {
-      for (const target of idx.tableRowsByPropertyName.get(name) ?? []) {
-        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, TABLE_ROW_VALUE_COL)] = value;
+      for (const target of idx.tableCellsByPropertyName.get(name) ?? []) {
+        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, target.col)] = value;
       }
     }
 
@@ -270,16 +269,20 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       }
     }
 
-    // Сид ячеек локальных строк таблиц из default_value — до первого WS-апдейта
-    // ячейка 2 не должна быть пустой (доку: «до первого изменения» показывается default_value).
+    // Сид ячеек локальных свойств из default_value — до первого WS-апдейта ячейка не
+    // должна быть пустой (доку: «до первого изменения» показывается default_value).
+    // Теговые ячейки не сидируем: у них значение приходит из ПЛК, а до первого кадра
+    // элемент и так накрыт оверлеем «нет данных».
     const propsByKey: Record<string, Record<string, unknown>> = {};
     for (const el of useEditorStore.getState().elements) {
       if (el.type !== "table") continue;
-      for (const p of el.properties ?? []) {
-        if (p.tag_id || typeof p.position !== "number") continue;
+      for (const {cell} of cellBindings(el)) {
+        if (!isLiveField(cell.field)) continue;
+        const p = propertyByName(el, cell.propertyName);
+        if (!p || p.tag_id) continue;
         const value = String(p.default_value ?? "");
         valuesByPropNameRef.current.set(p.name, value);
-        (propsByKey[el.key] ??= {})[cellRuntimeKey(p.position, TABLE_ROW_VALUE_COL)] = value;
+        (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = value;
       }
     }
     // Начальный расчёт «нет данных» (B4): тег, по которому ещё не было ни одного

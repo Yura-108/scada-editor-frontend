@@ -2,11 +2,13 @@ import {devLog, isDev} from "@/lib/devLog";
 import type {DiagramElement} from "@/types/editorElement.type";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
+import {cellBindings, isLiveField, propertyByName} from "@/lib/editor/tableBindings";
 
-/** Строка таблицы, живое значение которой пишется в ячейку колонки 2 (см. TableShapeElement). */
-export interface TableRowTarget {
+/** Ячейка таблицы, в которую пишется живое значение свойства (см. tableBindings.ts). */
+export interface TableCellTarget {
   elementKey: string;
   row: number;
+  col: number;
 }
 
 export interface BindingIndex {
@@ -22,10 +24,10 @@ export interface BindingIndex {
   tagIds: Set<string>;
   /** Все propertyId, задействованные скомпилированными биндингами. */
   propertyIds: Set<number>;
-  /** tag_id → строки таблиц, привязанные к этому тегу (row-binding, НЕ JS-биндинг). */
-  tableRowsByTagId: Map<string, TableRowTarget[]>;
-  /** Имя локального параметра-строки → строки таблиц (WS properties[] по propertyName). */
-  tableRowsByPropertyName: Map<string, TableRowTarget[]>;
+  /** tag_id → ячейки таблиц, привязанные к этому тегу (привязка ячейки, НЕ JS-биндинг). */
+  tableCellsByTagId: Map<string, TableCellTarget[]>;
+  /** Имя локального свойства → ячейки таблиц (WS properties[] по propertyName). */
+  tableCellsByPropertyName: Map<string, TableCellTarget[]>;
   /**
    * tag_id → элементы, у которых этот тег — свойство типа "Тег" (`property_type
    * === "Тег" && tag_id`), НЕЗАВИСИМО от наличия скомпилированного JS-биндинга.
@@ -48,8 +50,8 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   const compileErrors = new Map<string, string>();
   const tagIds = new Set<string>();
   const propertyIds = new Set<number>();
-  const tableRowsByTagId = new Map<string, TableRowTarget[]>();
-  const tableRowsByPropertyName = new Map<string, TableRowTarget[]>();
+  const tableCellsByTagId = new Map<string, TableCellTarget[]>();
+  const tableCellsByPropertyName = new Map<string, TableCellTarget[]>();
   const elementKeysByTagId = new Map<string, Set<string>>();
 
   for (const el of elements) {
@@ -59,17 +61,19 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
       if (set) set.add(el.key); else elementKeysByTagId.set(p.tag_id, new Set([el.key]));
     }
 
-    if (el.type === "table") {
-      for (const p of el.properties ?? []) {
-        if (typeof p.position !== "number") continue;
-        const target: TableRowTarget = {elementKey: el.key, row: p.position};
-        if (p.tag_id) {
-          const list = tableRowsByTagId.get(p.tag_id);
-          if (list) list.push(target); else tableRowsByTagId.set(p.tag_id, [target]);
-        } else if (p.name) {
-          const list = tableRowsByPropertyName.get(p.name);
-          if (list) list.push(target); else tableRowsByPropertyName.set(p.name, [target]);
-        }
+    // Живые значения ячеек: цели берём из ПРИВЯЗОК, а не из position. Одно свойство
+    // может кормить несколько ячеек — списки целей это допускают.
+    for (const {cell} of cellBindings(el)) {
+      if (!isLiveField(cell.field)) continue;
+      const p = propertyByName(el, cell.propertyName);
+      if (!p) continue;
+      const target: TableCellTarget = {elementKey: el.key, row: cell.row, col: cell.col};
+      if (p.tag_id) {
+        const list = tableCellsByTagId.get(p.tag_id);
+        if (list) list.push(target); else tableCellsByTagId.set(p.tag_id, [target]);
+      } else if (p.name) {
+        const list = tableCellsByPropertyName.get(p.name);
+        if (list) list.push(target); else tableCellsByPropertyName.set(p.name, [target]);
       }
     }
 
@@ -116,6 +120,6 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
 
   return {
     byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds,
-    tableRowsByTagId, tableRowsByPropertyName, elementKeysByTagId,
+    tableCellsByTagId, tableCellsByPropertyName, elementKeysByTagId,
   };
 };
