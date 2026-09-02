@@ -18,6 +18,7 @@ import {
 } from "@/lib/editor/sheet";
 import {findStateNameRefs, renameStateNameInCode, type StateNameRef} from "@/lib/editor/stateNameRefs";
 import {rootComponentsOf} from "@/lib/editor/documentComponents";
+import {findTemplateRoot} from "@/lib/editor/templateRoot";
 import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
@@ -1881,7 +1882,19 @@ export const useEditorStore = create<EditorState>()(temporal(
           keyMap[el.key] = createUuid();
         });
 
-        const root = template.find(el => el.type === "group") || template[0];
+        const root = findTemplateRoot(template) ?? template[0];
+
+        // Куда встанет корень. У группы позиция всегда в базе — её достаточно
+        // записать. У одиночного элемента (в палитру сохраняют и такие) живая
+        // позиция лежит в overrides состояния, а у линии её нет вовсе: там
+        // x1/y1/x2/y2. Поэтому не-группу СДВИГАЕМ на разницу между точкой
+        // постановки и её отрисованным габаритом: запись x/y в базу оставила бы
+        // overrides со старой позицией, и элемент приехал бы туда, где его
+        // сохранили.
+        const rootIsGroup = root.type === "group";
+        const rootBounds = rootIsGroup ? null : getElementBoundsRendered(root, template);
+        const rootDx = rootBounds ? x - rootBounds.minX : 0;
+        const rootDy = rootBounds ? y - rootBounds.minY : 0;
 
         const newElements = template.map(el => {
           // 1. Формируем базовый обновленный элемент (меняем только ключи и связи)
@@ -1918,10 +1931,15 @@ export const useEditorStore = create<EditorState>()(temporal(
           // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
           //    и привязываем к текущей сцене (parentId = scene.id, parentKey = String(scene.id)).
           if (el.key === root.key) {
-            updatedElement.x = x;
-            updatedElement.y = y;
             updatedElement.parentKey = String(scene?.id);
             updatedElement.parentId = scene?.id ?? null;
+
+            if (rootIsGroup) {
+              updatedElement.x = x;
+              updatedElement.y = y;
+            } else {
+              return shiftElementPositions(updatedElement as DiagramElement, rootDx, rootDy);
+            }
           }
 
           return updatedElement as DiagramElement;

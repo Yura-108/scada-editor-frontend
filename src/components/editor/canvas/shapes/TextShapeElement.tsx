@@ -11,6 +11,7 @@ import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";
 import { SelectionOutline } from "./SelectionOutline";
+import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
 
 export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, stateId, runtime }: ShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
@@ -19,6 +20,10 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
   // раньше здесь дублировалась палитра, а синий выделения был захардкожен.
   const { themeColors } = useThemeColors();
   const textDefaultColor = themeColors.textDefault;
+  // Мелкий текст не рисуем вовсе: ниже ~5 px на экране строки сливаются в кашу, а стоят
+  // полной отрисовки глифов. Рамкой выделения элемент при этом ловится по-прежнему —
+  // она считает по габаритам из стора. Подписка на зум локальная, как у ручек (`Anchor`).
+  const zoom = useEditorStore(s => s.camera.zoom);
 
   const pad = 4;
 
@@ -96,7 +101,7 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
         fill={rendered.color || rendered.textColor || textDefaultColor}
         align={rendered.align || "left"}
         width={width}
-        visible={!isEditing}
+        visible={!isEditing && isTextVisibleAtZoom(fontSize, zoom)}
         listening={true}
       />
 

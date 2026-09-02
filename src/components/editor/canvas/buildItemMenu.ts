@@ -22,6 +22,9 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
   const isPlainGroup = el.type === "group" && !el.isComponent;
   const isComponent = el.type === "group" && !!el.isComponent;
 
+  // В палитру уходит поддерево целиком: и группа с потомками, и одиночный элемент
+  // (у него getDescendants вернёт пустой список). Корень всегда первый в массиве —
+  // на этом порядке стоит findTemplateRoot.
   const handleFaceplate = () => {
     const allDescendants = getDescendants(el.key, elements);
     OpenCreateFaceplateModal([el, ...allDescendants]);
@@ -64,7 +67,7 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
     isPlainGroup ? { label: "Создать компонент", onClick: handleCreateComponent } : null,
     isComponent ? { label: "Добавить компонент", onClick: () => { openAddComponent(el.key); closeMenu(); } } : null,
     isComponent ? { label: "Разобрать компонент", onClick: handleDisassemble } : null,
-    el.type === "group" ? { label: "Сохранить в палитру", onClick: handleFaceplate } : null,
+    { label: "Сохранить в палитру", onClick: handleFaceplate },
   ];
 
   return items.filter((i): i is CanvasMenuItem => Boolean(i));

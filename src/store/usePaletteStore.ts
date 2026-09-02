@@ -3,6 +3,7 @@ import {create} from "zustand";
 import {paletteItems as paletteItemsStatic} from "@/constants/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
+import {findTemplateRoot} from "@/lib/editor/templateRoot";
 import transformElements from "@/lib/transformElements";
 import {DiagramElement} from "@/types/editorElement.type";
 import {isSaveConflictBody, SaveConflictError} from "@/types/editorVersion.types";
@@ -127,7 +128,9 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
   createPaletteItem: async (paletteItem) => {
     try {
       if (!paletteItem.template) return;
-      const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
+      // Корень ищем общим правилом: шаблоном может быть и группа, и одиночный
+      // элемент — у второго группы нет вовсе, и поиск по типу давал undefined.
+      const rootElementKey = findTemplateRoot(paletteItem.template)?.key;
       const normalizedTemplate = normalizeTemplateForPalette(paletteItem.template, rootElementKey);
       const rootComponent = buildPaletteComponentTree(normalizedTemplate, rootElementKey);
 
@@ -176,7 +179,9 @@ export const usePaletteStore = create<PaletteState>((set, get) => ({
   updatePaletteItem: async (id, paletteItem) => {
     try {
       if (!paletteItem.template) return;
-      const rootElementKey = paletteItem.template.find(el => el.type === 'group')?.key;
+      // Корень ищем общим правилом: шаблоном может быть и группа, и одиночный
+      // элемент — у второго группы нет вовсе, и поиск по типу давал undefined.
+      const rootElementKey = findTemplateRoot(paletteItem.template)?.key;
       const normalizedTemplate = normalizeTemplateForPalette(paletteItem.template, rootElementKey);
       const rootComponent = buildPaletteComponentTree(normalizedTemplate, rootElementKey);
 
