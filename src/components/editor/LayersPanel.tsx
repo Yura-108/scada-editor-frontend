@@ -34,6 +34,7 @@ export function LayersPanel() {
   const scene = useEditorStore(s => s.scene);
   const selectMultiple = useEditorStore(s => s.selectMultiple);
   const enterGroup = useEditorStore(s => s.enterGroup);
+  const revealElement = useEditorStore(s => s.revealElement);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -65,7 +66,14 @@ export function LayersPanel() {
   };
 
   const handleSelect = (key: string, additive: boolean) => {
-    selectMultiple(additive ? [...selectedIds.filter(id => id !== key), key] : [key]);
+    if (additive) {
+      selectMultiple([...selectedIds.filter(id => id !== key), key]);
+      return;
+    }
+    // Одиночный выбор ОТКРЫВАЕТ уровень элемента: содержимое неоткрытой группы на холсте
+    // недоступно, и элемент оказался бы выделенным, но неподвижным. Одним действием, а не
+    // «войти, затем выделить»: enterGroup чистит выделение.
+    revealElement(key);
   };
 
   /**

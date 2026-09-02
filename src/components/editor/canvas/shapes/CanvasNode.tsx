@@ -7,7 +7,7 @@ import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { EditorRenderContext } from "../types";
-import { useElementRenderState, useOrderedMemberKeys } from "../useElementRenderState";
+import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
 
 interface CanvasNodeProps {
@@ -80,6 +80,8 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
   const { isSelected, isActiveGroup } = state;
   // Состав в порядке отрисовки: composition + children, отсортированные по zIndex.
   const memberKeys = useOrderedMemberKeys(group);
+  // Содержимое доступно только когда в группу вошли (или находятся глубже).
+  const membersInteractive = useMembersInteractive(group.key);
   // Состояние группы берём из подписки узла (state), а не из стора нереактивно:
   // у контейнера в overrides лежат x/y/w/h, и при переключении состояния рамка
   // должна ехать вместе с содержимым.
@@ -141,9 +143,16 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
           resetCanvasCursor(container);
         }}
       />
-      {memberKeys.map(childKey => (
-        <CanvasNode key={childKey} elementKey={childKey} ctx={ctx} />
-      ))}
+      {/* Обёртка ради listening: выключить сам <Group> нельзя — Konva гасит всё
+          поддерево, и вместе с составом умерла бы фоновая хит-область группы выше,
+          то есть группу нельзя было бы ни выделить, ни открыть двойным кликом.
+          Пока группа не открыта, состав вне хит-графа: клик, двойной клик,
+          перетаскивание и наведение попадают в саму группу. */}
+      <Group listening={membersInteractive}>
+        {memberKeys.map(childKey => (
+          <CanvasNode key={childKey} elementKey={childKey} ctx={ctx} />
+        ))}
+      </Group>
     </Group>
   );
 }

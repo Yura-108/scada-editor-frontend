@@ -242,7 +242,13 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
       return;
     }
 
-    const elId = tg.attrs.id || tg.parent?.attrs.id || tg.parent?.parent?.attrs.id;
+    const hitId = tg.attrs.id || tg.parent?.attrs.id || tg.parent?.parent?.attrs.id;
+    if (!hitId) return;
+
+    // Через resolveClickTarget, как левый клик: иначе правым кликом можно было выделить
+    // вложенный элемент, чего левый не позволяет, и меню применялось бы к тому, что на
+    // холсте недоступно.
+    const elId = resolveClickTarget(hitId);
     if (!elId) return;
 
     // Выделение сбрасываем только если кликнули ВНЕ него: иначе правый клик по одному

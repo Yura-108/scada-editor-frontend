@@ -143,6 +143,21 @@ leaves whose live position sits in overrides.
 - **Grid step follows zoom** (`gridPattern.ts`): the pattern lives in world coords, so at
   fit-A0 a 20-unit cell is ~1px of grey mush. ≥0.25 → fine (20) + `GRID_MAJOR` (200);
   ≥0.01 → major only; below → no grid. Drawn only inside the sheet rect.
+- **Interaction scope — group contents are inert until entered.** `GroupNode` wraps its members
+  in an extra `<Group listening={useMembersInteractive(group.key)}>`; the group's own background
+  hit `Rect` stays listening. The flag is "the active scope is this group **or deeper**" — the
+  ancestor walk is not optional: without it, entering a nested group would switch off the outer
+  group's wrapper and, since Konva's `listening:false` kills the **whole subtree**, the nested
+  group with it. This is also why the flag can't go on the group's own `<Group>` — that would
+  take its hit `Rect` down too, and the group could neither be selected nor opened.
+  One flag kills click, dblclick, drag and hover together, so shapes need no per-handler guards.
+  `resolveClickTarget` still exists but now only re-points what actually reached the hit graph;
+  before this, a nested circle swallowed the double-click (`e.cancelBubble = true`) and opened
+  text editing instead of letting `GroupNode` enter the group. The monitor is unaffected — there
+  the whole layer is `listening={false}` and clicks go through `MonitorInteractionLayer`.
+  Selecting a nested element from the Layers panel goes through `revealElement` (store), which
+  opens the element's level and selects it in one `set()` — `enterGroup` clears `selectedIds`,
+  so doing it in two calls would race.
 - **Hover highlight** (Figma-style "what click will select"): Stage `onMouseOver` resolves the
   target via `resolveClickTarget` → `hoveredKey` (Canvas state); drawn as ONE overlay `Rect`
   in the Layer (group frame for groups, rendered bounds for leaves). Deliberately NOT passed

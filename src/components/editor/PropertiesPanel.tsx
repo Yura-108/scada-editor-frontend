@@ -649,6 +649,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         {/* Визуальные параметры */}
         {activeTab === "visual" && (
           <div className="space-y-5">
+            {/* Текущее состояние — прямо здесь, а не только на вкладке «Состояния».
+                Значения ниже относятся ИМЕННО к нему (у листьев они лежат в
+                states[].overrides), и без этой строки было неочевидно, чей визуал
+                правится: переключил состояние на другой вкладке — и те же поля
+                показывают уже другие числа. */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+                Состояние
+              </label>
+              <StateSelect elementKey={element.key} states={element.states}/>
+              {element.states.length > 1 && (
+                <p className="text-[11px] text-gray-500 dark:text-neutral-500">
+                  Значения ниже относятся к этому состоянию.
+                </p>
+              )}
+            </div>
+
             {/* Ячейка таблицы: показывается только когда фокус (клик по ячейке на холсте)
                 принадлежит этому элементу. Табличные свойства ниже остаются видимы —
                 можно редактировать и таблицу целиком, и конкретную ячейку одновременно. */}

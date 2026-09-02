@@ -68,6 +68,11 @@ type EditorState = {
   enterGroup: (key: string) => void;
   exitGroup: () => void;
   /**
+   * Показать элемент: открыть его уровень и выделить. Для панели «Слои» — там можно
+   * ткнуть во вложенный элемент, не входя в группу, а на холсте он был бы недоступен.
+   */
+  revealElement: (key: string) => void;
+  /**
    * Ячейка таблицы, сфокусированная в панели свойств (для показа cell-специфичных
    * полей). Транзиентно, как selectedIds/activeGroupKey — не в elements, вне undo.
    */
@@ -1825,7 +1830,23 @@ export const useEditorStore = create<EditorState>()(temporal(
         return {selectedIds: same ? state.selectedIds : [...ids], selectedTableCell: null};
       }),
       clearSelection: () => set({selectedIds: [], selectedTableCell: null}),
-      enterGroup: (key) => set({activeGroupKey: key, selectedIds: [], selectedTableCell: null}),
+      // editingTextKey сбрасываем вместе с уровнем: начатая внутри группы правка текста
+      // иначе переживала бы выход из неё, и оверлей висел бы над недоступной фигурой.
+      enterGroup: (key) => set({
+        activeGroupKey: key, selectedIds: [], selectedTableCell: null, editingTextKey: null,
+      }),
+      revealElement: (key) => set(state => {
+        const el = state.elements.find(e => e.key === key);
+        if (!el) return {};
+        // Родитель — группа? Тогда открываем её. Элемент корня сцены поднимает нас в корень.
+        const parent = state.elements.find(e => e.key === el.parentKey);
+        return {
+          activeGroupKey: parent && parent.type === "group" ? parent.key : null,
+          selectedIds: [key],
+          selectedTableCell: null,
+          editingTextKey: null,
+        };
+      }),
       selectTableCell: (elementKey, row, col) => set({selectedTableCell: {elementKey, row, col}}),
       setEditingTextKey: (key) => set({editingTextKey: key}),
       clearTableCellSelection: () => set({selectedTableCell: null}),
@@ -1840,6 +1861,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           activeGroupKey: parentIsGroup ? parentKey! : null,
           selectedIds: [],
           selectedTableCell: null,
+          editingTextKey: null,
         };
       }),
       addTemplate: (screenX, screenY, template) => {

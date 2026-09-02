@@ -92,3 +92,33 @@ export function useOrderedMemberKeys(group: GroupElement): string[] {
     ),
   ));
 }
+
+/**
+ * Слушает ли состав контейнера события мыши.
+ *
+ * Содержимое группы недоступно, пока в группу не вошли двойным кликом: иначе вложенная
+ * фигура перехватывает клик и двойной клик у самой группы (кружок открывал правку надписи
+ * вместо входа в группу — он гасит всплытие раньше, чем событие дойдёт до `GroupNode`),
+ * и её можно утащить из группы, не открыв её.
+ *
+ * Условие — «активная область в этой группе ИЛИ глубже». Проверка предка обязательна:
+ * без неё вход во вложенную группу выключил бы состав внешней, а вместе с ним и саму
+ * вложенную — `listening: false` у контейнера Konva гасит всё поддерево.
+ *
+ * Отдельный хук, а не поле `useElementRenderState`: тот вызывается для КАЖДОГО узла, и
+ * обход предков на каждом листе — лишняя работа. Возвращает булево, поэтому подписка
+ * перерисовывает только те группы, у которых флаг реально изменился.
+ */
+export function useMembersInteractive(groupKey: string): boolean {
+  return useEditorStore(s => {
+    const active = s.activeGroupKey;
+    if (!active) return false;
+    if (active === groupKey) return true;
+
+    const {byKey} = getElementIndex(s.elements);
+    for (let key = byKey[active]?.parentKey; key; key = byKey[key]?.parentKey) {
+      if (key === groupKey) return true;
+    }
+    return false;
+  });
+}
