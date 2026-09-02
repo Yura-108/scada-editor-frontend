@@ -12,8 +12,10 @@ type BackendStateDto = {
 };
 
 type BackendPropertyDto = {
-  id: number;
-  component_id: number;
+  // Необязательные: у DTO шаблона нет id ни на одном уровне (§2 контракта версий),
+  // поэтому свойства шаблона приезжают без номера и владельца — черновиками.
+  id?: number;
+  component_id?: number | null;
   name?: string;
   property_type: string | null;
   tag_id: string | null;
@@ -77,7 +79,10 @@ export default function transformElements(
     // doesn't shadow the base values that recomputeAncestorBounds updates.
     const GROUP_POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
     // Структурные ключи компонента в image (не визуальные overrides).
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent"]);
+    // zIndex — слой отрисовки, живёт в БАЗЕ элемента (см. BASE_ONLY_KEYS в сторе):
+    // оставить его в overrides значило бы, что {...base, ...overrides} на следующем
+    // сохранении вернёт старое значение и правка слоя молча потеряется.
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -139,7 +144,7 @@ export default function transformElements(
         const d = compArr[i] ?? desc;
         // scripts/bindings/properties/events — данные примитива, не визуальные overrides.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, ...overrides } = d;
+        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, ...overrides } = d;
         return {
           id: createUuid(),
           name: cs.name,
@@ -161,6 +166,8 @@ export default function transformElements(
         h: toFiniteNumber(primOverrides.h, 80),
         composition: [],
         ...primOverrides,
+        // Слой примитива — в базу, а не в overrides (симметрия с buildShapeDescriptor).
+        zIndex: toFiniteNumber(desc.zIndex, 0),
         states: primStates.length
           ? primStates
           : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
@@ -195,6 +202,8 @@ export default function transformElements(
       w: toFiniteNumber(defaultRawImage.w, 80),
       h: toFiniteNumber(defaultRawImage.h, 80),
       ...(image || {}),
+      // Слой берём из НЕобрезанного image: из overrides он вырезан как структурный.
+      zIndex: toFiniteNumber(defaultRawImage.zIndex, 0),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,

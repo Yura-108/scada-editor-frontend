@@ -8,7 +8,7 @@ import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {PropertyCreateDto} from "@/types/tags.types";
 import {elementPropertyMap, basePropertySchema, elementTypeLabel, ROTATABLE_TYPES} from "@/constants/propertiesPanel";
-import {Plus, AlertTriangle, Trash2, Boxes, GripVertical} from "lucide-react";
+import {Plus, AlertTriangle, Trash2, Boxes, GripVertical, Pencil} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
@@ -16,7 +16,8 @@ import {openInputModal} from "@/components/ui/OpenInputModal";
 import {ColorField} from "@/components/ui/ColorField";
 import {NumberInput} from "@/components/ui/NumberInput";
 import {TextInput} from "@/components/ui/TextInput";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {choiceModal, confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {toast} from "sonner";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
@@ -26,7 +27,7 @@ import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
 import {RowBindingsTab} from "@/components/editor/bindings/RowBindingsTab";
 import {EventsTab} from "@/components/editor/events/EventsTab";
 import {ChooseObjectPropertyModal} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";
-import {collectTagScope, hasSavedProperty} from "@/lib/runtime/bindingScope";
+import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 
@@ -39,16 +40,32 @@ interface PropertiesPanelProps {
  * dnd-kit) висит ТОЛЬКО на иконке — остальная часть таблетки сохраняет исходный
  * onClick открытия модалки редактирования, drag и клик не конфликтуют.
  */
+/**
+ * Ключ свойства в списке.
+ *
+ * Серверного id может не быть: свойства из шаблона палитры приезжают черновиками (тег
+ * у каждого экземпляра свой, а без тега свойство на сервере не заводится). Для таких
+ * ключом служит имя — в пределах одного элемента оно и так обязано быть уникальным,
+ * по нему идёт разрешение ссылок и сбор скоупа биндингов.
+ */
+const propertyKey = (p: PropertyCreateDto): string =>
+  p.id != null ? `id-${p.id}` : `draft-${p.name}`;
+
+/** Теговое свойство без тега — черновик из шаблона, его надо донастроить. */
+const needsTag = (p: PropertyCreateDto): boolean =>
+  p.property_type === "Тег" && !p.tag_id;
+
 function SortablePropertyPill({property, onClick, onDelete}: {property: PropertyCreateDto; onClick: () => void; onDelete: () => void}) {
-  const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: property.id});
+  const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: propertyKey(property)});
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const wantsTag = needsTag(property);
   const label = `${property.name || property.property_type || "Свойство"}${
-    property.tag_id ? ` • #${property.tag_id}` : ""
+    property.tag_id ? ` • #${property.tag_id}` : wantsTag ? " • нужен тег" : ""
   }`;
 
   // Ручка и подпись — две отдельные кнопки внутри оболочки-таблетки.
@@ -62,16 +79,19 @@ function SortablePropertyPill({property, onClick, onDelete}: {property: Property
       className={cn(
         "inline-flex items-center gap-1 px-2.5 py-1.5",
         "text-xs font-medium rounded-full",
-        "bg-indigo-950/60 text-indigo-300",
-        "border border-indigo-800/40",
-        "hover:bg-indigo-900/70 transition-colors"
+        "border transition-colors",
+        // Ненастроенное теговое свойство видно списком, без раскрытия каждой строки.
+        wantsTag
+          ? "bg-amber-950/60 text-amber-300 border-amber-700/50 hover:bg-amber-900/70"
+          : "bg-indigo-950/60 text-indigo-300 border-indigo-800/40 hover:bg-indigo-900/70"
       )}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-indigo-400/70 hover:text-indigo-200 -ml-1"
+        className={cn("cursor-grab active:cursor-grabbing -ml-1",
+          wantsTag ? "text-amber-400/70 hover:text-amber-200" : "text-indigo-400/70 hover:text-indigo-200")}
         title="Перетащить для изменения порядка"
         aria-label={`Перетащить «${label}» для изменения порядка`}
       >
@@ -83,7 +103,8 @@ function SortablePropertyPill({property, onClick, onDelete}: {property: Property
       <button
         type="button"
         onClick={onDelete}
-        className="text-indigo-400/70 hover:text-red-400 transition-colors -mr-1"
+        className={cn("hover:text-red-400 transition-colors -mr-1",
+          wantsTag ? "text-amber-400/70" : "text-indigo-400/70")}
         title="Удалить свойство"
         aria-label={`Удалить «${label}»`}
       >
@@ -102,6 +123,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const updateElementVisual = useEditorStore(s => s.updateElementVisual);
   const addComponentStateToSubtree = useEditorStore(s => s.addComponentStateToSubtree);
   const removeComponentStateFromSubtree = useEditorStore(s => s.removeComponentStateFromSubtree);
+  const renameComponentStateInSubtree = useEditorStore(s => s.renameComponentStateInSubtree);
+  const findStateUsages = useEditorStore(s => s.findStateUsages);
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
   const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
   const selectedTableCell = useEditorStore(s => s.selectedTableCell);
@@ -122,13 +145,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     () => renderedElement ? (renderedElement as unknown as Record<string, unknown>) : {},
     [renderedElement]
   );
-  const editProperty = useEditorStore(s => s.editProperty);
   const elementProperties = useMemo(() => element?.properties ?? [], [element?.properties]);
   // Локальный порядок во время/сразу после драга — визуальная обратная связь до
   // того, как все editProperty-запросы вернутся и стор пересчитает elementProperties.
   // Сброс при смене элемента — во время рендера (React-паттерн "adjusting state
   // during render"), не в эффекте: избегает лишнего ре-рендера/cascading setState.
-  const [localOrder, setLocalOrder] = useState<number[] | null>(null);
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
   const [localOrderElementKey, setLocalOrderElementKey] = useState(element?.key);
   if (element?.key !== localOrderElementKey) {
     setLocalOrderElementKey(element?.key);
@@ -136,35 +158,37 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   }
   const sortedProperties = useMemo(() => {
     const base = [...elementProperties].sort((a, b) =>
-      (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || a.id - b.id
+      (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER)
+      || (a.id ?? Number.MAX_SAFE_INTEGER) - (b.id ?? Number.MAX_SAFE_INTEGER)
     );
     if (!localOrder) return base;
-    const byId = new Map(base.map(p => [p.id, p] as const));
+    const byId = new Map(base.map(p => [propertyKey(p), p] as const));
     const reordered = localOrder.map(id => byId.get(id)).filter((p): p is PropertyCreateDto => Boolean(p));
-    for (const p of base) if (!localOrder.includes(p.id)) reordered.push(p);
+    for (const p of base) if (!localOrder.includes(propertyKey(p))) reordered.push(p);
     return reordered;
   }, [elementProperties, localOrder]);
   const dndSensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 4}}));
-  const handlePropertyDragEnd = async (event: DragEndEvent) => {
+  const handlePropertyDragEnd = (event: DragEndEvent) => {
     const {active, over} = event;
     if (!over || active.id === over.id) return;
-    const ids = sortedProperties.map(p => p.id);
-    const oldIndex = ids.indexOf(Number(active.id));
-    const newIndex = ids.indexOf(Number(over.id));
+    const ids = sortedProperties.map(propertyKey);
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
 
     const reorderedIds = arrayMove(ids, oldIndex, newIndex);
     setLocalOrder(reorderedIds);
 
-    const byId = new Map(sortedProperties.map(p => [p.id, p] as const));
-    await Promise.all(
-      reorderedIds.map((id, index) => {
-        const prop = byId.get(id);
-        if (!prop || prop.position === index) return null;
-        const {id: propId, ...payload} = prop;
-        return editProperty(propId, {...payload, position: index});
-      })
-    );
+    // Порядок — обычное поле свойства, уезжает со сценой. Раньше это была пачка запросов
+    // editProperty (по одному на сдвинутую строку, каждый ещё и с GET версии), причём
+    // необработанный reject терял половину перестановки молча.
+    const orderByKey = new Map(reorderedIds.map((id, index) => [id, index] as const));
+    updateElement(element!.key, {
+      properties: (element!.properties ?? []).map(p => {
+        const position = orderByKey.get(propertyKey(p));
+        return position === undefined || p.position === position ? p : {...p, position};
+      }),
+    });
   };
   const elementScripts = useMemo(() => element?.scripts ?? [], [element?.scripts]);
 
@@ -227,6 +251,58 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     });
     if (!confirmed) return;
     removeComponentStateFromSubtree(element.key, stateName);
+  }
+
+  const renameComponentState = async (stateName: string) => {
+    const next = (await promptModal({
+      title: "Переименовать состояние",
+      label: "Название состояния",
+      defaultValue: stateName,
+      confirmLabel: "Сохранить",
+    }))?.trim();
+    if (!next || next === stateName) return;
+
+    // Имена состояний обязаны быть уникальными: по имени идут find() в каскаде,
+    // в рантайме и при запекании composition (побеждает первое совпадение), а
+    // удаление сносит все одноимённые разом.
+    if (element.states.some(s => s.name === next)) {
+      toast.error(`Состояние «${next}» уже есть у этого элемента`);
+      return;
+    }
+
+    // Имя состояния лежит в пользовательском коде строковым литералом
+    // (setState("Авария")), и рантайм при несовпадении молча пропускает интент.
+    const usages = findStateUsages(element.key, stateName);
+    let rewriteCode = false;
+
+    if (usages.length) {
+      const choice = await choiceModal({
+        title: `Переименовать «${stateName}» в «${next}»?`,
+        description: (
+          <div className="space-y-1">
+            <p>Старое имя встречается в коде:</p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {usages.map((u, i) => (
+                <li key={`${u.elementKey}-${i}`}>{u.elementLabel} — {u.where}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        options: [
+          {id: "rename-and-fix", label: "Переименовать и заменить в коде"},
+          {
+            id: "rename-only",
+            label: "Переименовать без замены",
+            description: "Скрипты со старым именем перестанут срабатывать",
+            danger: true,
+          },
+        ],
+      });
+      if (!choice) return;
+      rewriteCode = choice === "rename-and-fix";
+    }
+
+    renameComponentStateInSubtree(element.key, stateName, next, {rewriteCode});
   }
 
   const handleAddScript = () => {
@@ -325,16 +401,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               : []),
           ];
 
-  // Добавлять свойства можно только сохранённому элементу (у него есть id на
-  // сервере — свойства создаются серверным роутом по component_id) и при
-  // загруженной базе каналов (дерево устройств нужно, чтобы выбрать тег).
-  const isElementSaved = element.id != null;
-  const canAddProperty = isElementSaved && isChannelBaseLoaded;
-  const addPropertyHint = !isElementSaved && !isChannelBaseLoaded
-    ? "Сначала сохраните схему и откройте раздел «База каналов»: свойства добавляются только сохранённым элементам, а для выбора тега нужно загруженное дерево устройств."
-    : !isElementSaved
-      ? "Сначала сохраните схему — свойство можно добавить только сохранённому элементу (он ещё не создан на сервере)."
-      : "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
+  // Требование «сначала сохраните схему» снято: свойства едут вместе со сценой, и
+  // заводить их можно элементу, которого на сервере ещё нет. Осталось единственное
+  // условие — загруженная база каналов, без неё не из чего выбрать тег.
+  const canAddProperty = isChannelBaseLoaded;
+  const addPropertyHint =
+    "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
 
   // Сфокусированная ячейка таблицы (панель свойств показывает cell-блок только пока
   // фокус принадлежит ИМЕННО этому элементу — переживает переключение вкладок).
@@ -348,7 +420,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     ? (element.bindings ?? []).find(b => b.direct && b.directTarget === cellTargetKey)
     : undefined;
   const cellBindingRef = cellBinding?.propertyRefs?.[0];
-  const canBindCell = hasSavedProperty(element.properties);
+  // Ячейку можно привязать, как только у элемента есть свойство: сохранённость больше
+  // не требуется — свойство уезжает вместе со сценой.
+  const canBindCell = (element.properties?.length ?? 0) > 0;
 
   const patchCell = (patch: Partial<TableCellData>) => {
     if (!cellFocus) return;
@@ -765,15 +839,28 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                         по умолчанию
                       </span>
                     )}
-                    {!state.isDefault && (
+                    {/* ml-auto на общей обёртке, а не на корзине: у состояния по
+                        умолчанию корзины нет, и карандаш прижался бы к имени. */}
+                    <div className="ml-auto flex items-center gap-0.5">
                       <button
-                        className="ml-auto p-1 text-gray-500 hover:text-red-500 transition-colors"
-                        title="Удалить состояние"
-                        onClick={() => removeComponentState(state.name)}
+                        className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
+                        title="Переименовать состояние"
+                        aria-label={`Переименовать «${state.name}»`}
+                        onClick={() => renameComponentState(state.name)}
                       >
-                        <Trash2 size={14}/>
+                        <Pencil size={14}/>
                       </button>
-                    )}
+                      {!state.isDefault && (
+                        <button
+                          className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                          title="Удалить состояние"
+                          aria-label={`Удалить «${state.name}»`}
+                          onClick={() => removeComponentState(state.name)}
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -808,16 +895,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               </div>
             ) : (
               <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePropertyDragEnd}>
-                <SortableContext items={sortedProperties.map(p => p.id)} strategy={rectSortingStrategy}>
+                <SortableContext items={sortedProperties.map(propertyKey)} strategy={rectSortingStrategy}>
                   <div className="flex flex-wrap gap-2">
                     {sortedProperties.map(property => (
                       <SortablePropertyPill
-                        key={property.id}
+                        key={propertyKey(property)}
                         property={property}
-                        onClick={() => handleAddProperty(element?.id, property)}
+                        onClick={() => handleAddProperty(element?.key, property)}
                         onDelete={() => {
-                          if (element?.id == null) return;
-                          void confirmDeleteProperty(property, element.id);
+                          if (!element?.key) return;
+                          void confirmDeleteProperty(property, element.key);
                         }}
                       />
                     ))}
@@ -837,7 +924,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               className={canAddProperty
                 ? baseAddButtonClasses
                 : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"}
-              onClick={() => canAddProperty && handleAddProperty(element.id)}
+              onClick={() => canAddProperty && handleAddProperty(element.key)}
               disabled={!canAddProperty}
               title={canAddProperty ? undefined : addPropertyHint}
             >

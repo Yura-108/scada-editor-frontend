@@ -1,7 +1,6 @@
 "use client";
 
 import React, {useState} from "react";
-import {toast} from "sonner";
 import {Pencil, Trash2, Waypoints} from "lucide-react";
 import {DiagramElement, ComponentPropertyDto, TableCellData} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
@@ -15,33 +14,27 @@ interface RowBindingsTabProps {
   cellsMap: Record<string, TableCellData> | undefined;
 }
 
-const getErrorMessage = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
-
 /**
  * Вкладка «Строки» панели свойств таблицы: привязка каждой строки к тегу или
  * локальному параметру — записи внутри element.properties, номер строки в поле
  * position (см. src/lib/editor/rowBinding.ts), не связанные с обычными
- * свойствами или JS-биндингами (вкладка «Привязки»). Уходит на бэкенд тем же
- * REST-путём, что и обычные свойства (addTags/editProperty, см.
- * OpenChooseTagModal): сохранение сцены само по себе новые properties не
- * создаёт, бэкенд обрабатывает их только через /api/editor/tags(/:id).
+ * свойствами или JS-биндингами (вкладка «Привязки»). Правится локально и уезжает
+ * вместе со сценой, как и обычные свойства: отдельного REST-пути у properties больше
+ * нет, а значит нет и прежней двойной бухгалтерии, когда строка отправлялась и
+ * точечным запросом, и внутри дерева компонента.
  */
 export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, cellsMap}) => {
-  const addTags = useEditorStore(s => s.addTags);
+  const addProperty = useEditorStore(s => s.addProperty);
   const editProperty = useEditorStore(s => s.editProperty);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const properties = element.type === "table" ? (element.properties ?? []) : [];
   const bindingForRow = (row: number) => properties.find(p => p.position === row);
 
   const setBinding = async (row: number, binding: ComponentPropertyDto) => {
-    if (!element.id) {
-      toast.error("Сначала сохраните схему — компонент ещё не сохранён на сервере");
-      return;
-    }
-
     const existing = bindingForRow(row);
     const payload = {
       name: binding.name,
+      // null у несохранённого элемента — владельца бэкенд узнаёт по месту в дереве.
       component_id: element.id,
       property_type: binding.property_type,
       tag_id: binding.tag_id,
@@ -57,39 +50,26 @@ export const RowBindingsTab: React.FC<RowBindingsTabProps> = ({element, rows, ce
 
     setSavingRow(row);
     try {
-      if (existing?.id) {
-        await editProperty(existing.id, payload);
-      } else {
-        await addTags(payload);
-      }
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Не удалось сохранить привязку строки"));
+      if (existing) await editProperty(element.key, existing, payload);
+      else addProperty(element.key, payload);
     } finally {
       setSavingRow(null);
     }
   };
 
-  const updateElement = useEditorStore(s => s.updateElement);
   const removeBinding = async (row: number) => {
     const existing = bindingForRow(row);
     if (!existing) return;
 
-    // Сохранённая строка удаляется на сервере: локальная фильтрация была ложью —
-    // properties едут отдельным REST-путём, и при следующей загрузке схемы строка
-    // возвращалась. Ещё не уехавшую на сервер строку (без id) убираем локально.
-    if (typeof existing.id === "number" && element.id) {
-      setSavingRow(row);
-      try {
-        await confirmDeleteProperty(existing, element.id);
-      } finally {
-        setSavingRow(null);
-      }
-      return;
+    // Один путь на обе строки — заведённую и ещё не уехавшую: удаление стало обычной
+    // правкой сцены. Прежняя развилка существовала потому, что properties ходили своим
+    // REST-путём и локально удалённая строка возвращалась при следующей загрузке.
+    setSavingRow(row);
+    try {
+      await confirmDeleteProperty(existing, element.key);
+    } finally {
+      setSavingRow(null);
     }
-
-    updateElement(element.key, {
-      properties: properties.filter(p => p.position !== row),
-    });
   };
 
   return (

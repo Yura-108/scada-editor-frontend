@@ -7,7 +7,7 @@ import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { EditorRenderContext } from "../types";
-import { useElementRenderState } from "../useElementRenderState";
+import { useElementRenderState, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
 
 interface CanvasNodeProps {
@@ -78,6 +78,8 @@ interface GroupNodeProps {
 function GroupNode({ group, ctx, state }: GroupNodeProps) {
   const { updateElementVisual, onElementClick, resolveClickTarget, enterGroup, themeColors } = ctx;
   const { isSelected, isActiveGroup } = state;
+  // Состав в порядке отрисовки: composition + children, отсортированные по zIndex.
+  const memberKeys = useOrderedMemberKeys(group);
   // Состояние группы берём из подписки узла (state), а не из стора нереактивно:
   // у контейнера в overrides лежат x/y/w/h, и при переключении состояния рамка
   // должна ехать вместе с содержимым.
@@ -139,7 +141,7 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
           resetCanvasCursor(container);
         }}
       />
-      {[...(group.composition ?? []), ...group.children].map(childKey => (
+      {memberKeys.map(childKey => (
         <CanvasNode key={childKey} elementKey={childKey} ctx={ctx} />
       ))}
     </Group>

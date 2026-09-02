@@ -3,7 +3,7 @@
 import React, {useMemo} from "react";
 import {cn} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
-import {elementPropertyMap} from "@/constants/propertiesPanel";
+import {elementPropertyMap, Z_INDEX_FIELD} from "@/constants/propertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ColorField} from "@/components/ui/ColorField";
@@ -30,9 +30,14 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
     const types = [...new Set(elements.map(el => el.type))];
     if (!types.length) return [];
     const base = elementPropertyMap[types[0] as ElementType] ?? [];
-    return base.filter(prop =>
-      types.every(t => (elementPropertyMap[t as ElementType] ?? []).some(p => p.key === prop.key && p.type === prop.type)),
-    );
+    return [
+      // Слой есть у любого элемента (BaseCanvasElement.zIndex), в elementPropertyMap
+      // его нет — там схемы по типам. Задавать слой сразу нескольким полезно.
+      Z_INDEX_FIELD,
+      ...base.filter(prop =>
+        types.every(t => (elementPropertyMap[t as ElementType] ?? []).some(p => p.key === prop.key && p.type === prop.type)),
+      ),
+    ];
   }, [elements]);
 
   // Общее значение поля по всем выбранным (undefined — значения различаются).

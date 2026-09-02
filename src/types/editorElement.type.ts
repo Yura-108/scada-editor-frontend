@@ -112,9 +112,14 @@ export type ComponentCreateDto = {
     image: string;
     isDefault: boolean;
   }[];
-  /** Только для type==="table": привязки строк к тегам/локальным параметрам,
-   *  номер строки — в поле position (см. src/lib/editor/rowBinding.ts). */
-  properties?: ComponentPropertyDto[];
+  /**
+   * Свойства компонента целиком — у ЛЮБОГО типа элемента: отдельного REST-пути у них
+   * больше нет. Список задаёт весь набор: чего в нём нет, то бэкенд удаляет
+   * (сопоставление сначала по `id`, затем по `name`). Отсутствие поля — «не трогать».
+   *
+   * У строк таблицы номер строки лежит в `position` (см. src/lib/editor/rowBinding.ts).
+   */
+  properties?: PropertyCreateDto[];
 };
 // Базовый интерфейс для всех элементов на холсте (листья + группы)
 export interface BaseCanvasElement {
@@ -143,6 +148,12 @@ export interface BaseCanvasElement {
   label?: string;
   visible?: boolean;
   bg?: string;
+  /**
+   * Порядок отрисовки среди соседей (элементов с тем же parentKey), как CSS z-index.
+   * Больше — выше. Отсутствует == 0; сортировка стабильная, поэтому при равных
+   * значениях порядок остаётся прежним — порядком массива. См. lib/editor/zOrder.ts.
+   */
+  zIndex?: number;
 }
 
 export type ElementType =

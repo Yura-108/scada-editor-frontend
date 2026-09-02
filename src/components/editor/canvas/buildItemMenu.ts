@@ -47,7 +47,7 @@ export function buildItemMenu(el: DiagramElement, deps: BuildItemMenuDeps): Canv
   };
 
   const items: (CanvasMenuItem | null)[] = [
-    { label: "Добавить свойство", onClick: () => { handleAddProperty(el.id); closeMenu(); }, disabled: !el.id },
+    { label: "Добавить свойство", onClick: () => { handleAddProperty(el.key); closeMenu(); } },
     { label: "На передний план", onClick: () => { useEditorStore.getState().bringToFront(el.key); closeMenu(); } },
     { label: "На задний план", onClick: () => { useEditorStore.getState().sendToBack(el.key); closeMenu(); } },
     // Пункты задаём явно. Раньше они брались из editorElementMenuItems, а действие

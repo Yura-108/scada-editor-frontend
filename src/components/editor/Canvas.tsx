@@ -7,11 +7,15 @@ import { Stage, Layer, Rect, Line, Circle } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "@/store/useEditorStore";
-import { snap } from "@/lib/utils";
+import { snap, GRID } from "@/lib/utils";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
-import { createGridPattern } from "@/lib/editor/gridPattern";
+import {
+  createGridPattern, GRID_MAJOR, FINE_GRID_MIN_ZOOM, MAJOR_GRID_MIN_ZOOM,
+} from "@/lib/editor/gridPattern";
+import { resolveSheet } from "@/lib/editor/sheet";
 import { getChildElements, getElementIndex } from "@/lib/editor/elementIndex";
 import { selectVisibleRootKeys } from "@/lib/editor/viewportCulling";
+import { sortByZIndex } from "@/lib/editor/zOrder";
 import { NON_TRANSFORMABLE } from "./canvas/useElementRenderState";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
@@ -38,8 +42,11 @@ import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 
-const CANVAS_WIDTH = 5000;
-const CANVAS_HEIGHT = 5000;
+/**
+ * Насколько «стол» выходит за края листа. Константа, а не доля от листа: лист
+ * может быть маленьким, и `sheet.w * 3` оставил бы вокруг него голый Stage.
+ */
+const DESK_PAD = 20000;
 
 interface CanvasProps {
   /**
@@ -102,12 +109,36 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
   // параллельно бегала по массиву линейным поиском.
   const elementIndex = useMemo(() => getElementIndex(elements), [elements]);
   const elementsMap = elementIndex.byKey;
+  // Порядок отрисовки корней — по zIndex; сортировка стабильная, поэтому при
+  // равных слоях (в т.ч. у схем, где слои никто не трогал) остаётся порядок
+  // массива. Сортируем ДО отсечения по видимой области: selectVisibleRootKeys
+  // только фильтрует и порядок сохраняет.
   const rootElements = useMemo(
-    () => getChildElements(String(scene?.id ?? ""), elementIndex),
+    () => sortByZIndex(getChildElements(String(scene?.id ?? ""), elementIndex)),
     [elementIndex, scene],
   );
 
-  const gridPattern = useMemo(() => createGridPattern(themeColors.gridLine), [themeColors.gridLine]);
+  /** Лист сцены. Считается из elements (кэш по ссылке на массив), в сторе не хранится. */
+  const sheet = useMemo(() => resolveSheet(elements), [elements]);
+
+  // Шаг сетки по зуму: паттерн живёт в мировых координатах и ужимается вместе со
+  // сценой, поэтому на «весь лист» (A0 — это 0.056) мелкая клетка занимает около
+  // пикселя и сетка превращается в сплошную заливку. null — сетки нет вовсе.
+  const gridStep = useMemo(() => {
+    if (camera.zoom >= FINE_GRID_MIN_ZOOM) return GRID;
+    if (camera.zoom >= MAJOR_GRID_MIN_ZOOM) return GRID_MAJOR;
+    return null;
+  }, [camera.zoom]);
+
+  const gridPattern = useMemo(
+    () => gridStep === null
+      ? null
+      : createGridPattern(
+        gridStep === GRID ? themeColors.gridLine : themeColors.gridLineMajor,
+        gridStep,
+      ),
+    [gridStep, themeColors.gridLine, themeColors.gridLineMajor],
+  );
 
   const closeMenu = useCallback(() => setContextMenu(null), []);
 
@@ -195,7 +226,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     [rootElements, elementIndex, camera, canvasRect, selectedIds, activeGroupKey],
   );
 
-  const { zoomBy, zoomFit } = useZoomControls({ canvasRect, setCamera });
+  const { zoomBy, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
@@ -260,10 +291,11 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
       <div style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
         <Stage
           ref={stageRef}
-          // Stage — строго под размер видимой области (canvasRect), НЕ 5000×5000:
-          // Konva аллоцирует канвасы width×height×DPR на слой (+hit-канвас) — фикс. 5000×5000
-          // съедал сотни МБ и превышал лимит canvas в Safari. «Мир» 5000×5000 остаётся
-          // виртуальным — его даёт трансформ камеры (x/y/scale).
+          // Stage — строго под размер видимой области (canvasRect), а НЕ под размер
+          // листа: Konva аллоцирует канвасы width×height×DPR на слой (+хит-канвас),
+          // и Stage размером с лист A0 (21520×15240) съел бы сотни МБ и превысил
+          // лимит canvas в Safari. Лист остаётся виртуальным — его даёт трансформ
+          // камеры (x/y/scale) и прямоугольник в слое фона.
           width={canvasRect?.width ?? 800}
           height={canvasRect?.height ?? 600}
           scaleX={camera.zoom}
@@ -282,31 +314,52 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
           onMouseOver={readOnly ? undefined : handleStageMouseOver}
           onMouseLeave={clearHover}
         >
-          {/* Слой фона: перерисовывается только при смене темы. В общем слое
-              сетка размером 10000×10000 переписывалась заново на каждый кадр
+          {/* Слой фона: перерисовывается только при смене темы, размера листа и
+              шага сетки. В общем слое он переписывался бы заново на каждый кадр
               перетаскивания и на каждое движение рамки выделения.
-              listening=false — огромный прямоугольник уходит из hit-графа Konva;
-              клик по пустому месту приходит на сам Stage, и это уже учтено. */}
+              listening=false — большие прямоугольники уходят из hit-графа Konva;
+              клик по пустому месту приходит на сам Stage, и это уже учтено.
+
+              Лист — подсказка, а не запрет: за его край можно выйти, поэтому
+              «стол» рисуется с большим запасом вокруг. */}
           <Layer listening={false}>
             <Rect
-              key={`canvas-bg-${resolvedTheme}`}
-              name="canvas-bg"
-              x={-CANVAS_WIDTH / 2}
-              y={-CANVAS_HEIGHT / 2}
-              width={CANVAS_WIDTH * 2}
-              height={CANVAS_HEIGHT * 2}
-              fill={themeColors.canvasBg}
+              key={`desk-${resolvedTheme}`}
+              name="desk-bg"
+              x={-DESK_PAD}
+              y={-DESK_PAD}
+              width={sheet.w + DESK_PAD * 2}
+              height={sheet.h + DESK_PAD * 2}
+              fill={themeColors.deskBg}
             />
             <Rect
-              key={`grid-${resolvedTheme}`}
-              name="grid-bg"
-              x={-CANVAS_WIDTH / 2}
-              y={-CANVAS_HEIGHT / 2}
-              width={CANVAS_WIDTH * 2}
-              height={CANVAS_HEIGHT * 2}
-              fillPriority="pattern"
-              fillPatternImage={gridPattern as unknown as HTMLImageElement}
+              key={`sheet-${resolvedTheme}`}
+              name="sheet-bg"
+              x={0}
+              y={0}
+              width={sheet.w}
+              height={sheet.h}
+              fill={themeColors.canvasBg}
+              stroke={themeColors.sheetBorder}
+              strokeWidth={1}
+              // Толщина кромки — в экранных пикселях, БЕЗ деления на зум: иначе
+              // проп менялся бы на каждый тик колеса и слой фона перерисовывался
+              // бы вместе с ним. Тени у листа нет по той же причине (и потому что
+              // тень на прямоугольнике в 21520 единиц дорога сама по себе).
+              strokeScaleEnabled={false}
             />
+            {gridPattern && (
+              <Rect
+                key={`grid-${resolvedTheme}-${gridStep}`}
+                name="grid-bg"
+                x={0}
+                y={0}
+                width={sheet.w}
+                height={sheet.h}
+                fillPriority="pattern"
+                fillPatternImage={gridPattern as unknown as HTMLImageElement}
+              />
+            )}
           </Layer>
 
           {/* Слой содержимого: сами фигуры.
@@ -386,10 +439,11 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
               );
             })()}
 
-            {/* Smart-guides: линии привязки к соседям во время перетаскивания */}
+            {/* Smart-guides: линии привязки к соседям во время перетаскивания.
+                Тянутся за пределы листа — выравнивать можно и то, что за его краем. */}
             {guides.v !== null && (
               <Line
-                points={[guides.v, -CANVAS_HEIGHT / 2, guides.v, CANVAS_HEIGHT * 1.5]}
+                points={[guides.v, -sheet.h, guides.v, sheet.h * 2]}
                 stroke={themeColors.guide}
                 strokeWidth={1 / camera.zoom}
                 dash={[4, 4]}
@@ -398,7 +452,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
             )}
             {guides.h !== null && (
               <Line
-                points={[-CANVAS_WIDTH / 2, guides.h, CANVAS_WIDTH * 1.5, guides.h]}
+                points={[-sheet.w, guides.h, sheet.w * 2, guides.h]}
                 stroke={themeColors.guide}
                 strokeWidth={1 / camera.zoom}
                 dash={[4, 4]}
@@ -448,6 +502,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
         zoom={camera.zoom}
         onZoomBy={zoomBy}
         onFit={zoomFit}
+        onFitSheet={zoomFitSheet}
         onReset={() => setCamera(0, 0, 1)}
       />
 

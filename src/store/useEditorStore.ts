@@ -12,6 +12,11 @@ import {
   resolveParentAbsoluteIndexed,
 } from "@/lib/groupLayout";
 import {ElementIndex, getElementIndex} from "@/lib/editor/elementIndex";
+import {zIndexOf} from "@/lib/editor/zOrder";
+import {
+  isMetaElement, isSameSheet, readSheetFromRaw, resolveSheet, SHEET_MAX, SHEET_MIN,
+} from "@/lib/editor/sheet";
+import {findStateNameRefs, renameStateNameInCode, type StateNameRef} from "@/lib/editor/stateNameRefs";
 import {rootComponentsOf} from "@/lib/editor/documentComponents";
 import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
 import {buildComponentTree} from "@/lib/buildComponentTree";
@@ -19,7 +24,7 @@ import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
-import {TagBinding} from "@/types/binding.types";
+import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
@@ -109,6 +114,8 @@ type EditorState = {
   clearRuntime: () => void;
   clipboard: DiagramElement[] | null;
   canvasRect: DOMRect | null;
+  /** Размер листа сцены. Читается из elements (`resolveSheet`), тут только запись. */
+  setSheet: (w: number, h: number) => void;
   connecting: {
     fromNode: string;
     fromPort: string;
@@ -158,11 +165,30 @@ type EditorState = {
   clearSelection: () => void;
   addComponentStateToSubtree: (elementKey: string, stateName: string) => string | null;
   removeComponentStateFromSubtree: (elementKey: string, stateName: string) => void;
+  /**
+   * Переименование состояния каскадом по поддереву. `rewriteCode` — заодно переписать
+   * литералы `setState("старое")` в биндингах и обработчиках событий поддерева.
+   */
+  renameComponentStateInSubtree: (
+    elementKey: string,
+    oldName: string,
+    newName: string,
+    opts?: {rewriteCode?: boolean},
+  ) => void;
+  /** Read-only: где в коде поддерева упомянуто имя состояния (для диалога переименования). */
+  findStateUsages: (elementKey: string, stateName: string) => StateNameRef[];
   addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
-  addTags: (payload: PropertyCreateRequestDto) => Promise<void>;
-  editProperty: (propertyId: number, payload: PropertyCreateRequestDto) => Promise<void>;
-  /** Удаление свойства на сервере + уборка всех ссылок на него по сцене. */
-  deleteProperty: (propertyId: number, componentId: number) => Promise<void>;
+  /** Заводит свойство локально; уедет со сценой. false — имя занято. */
+  addProperty: (elementKey: string, payload: PropertyCreateRequestDto) => boolean;
+  /** Правит свойство локально. Переименование заведённого дополнительно уходит точечным
+   *  PUT — только он переносит значения наборов на новое имя. false — отказ. */
+  editProperty: (
+    elementKey: string,
+    target: PropertyCreateDto,
+    payload: PropertyCreateRequestDto,
+  ) => Promise<boolean>;
+  /** Удаляет свойство локально + убирает ссылки на него по сцене. */
+  deleteProperty: (elementKey: string, target: PropertyCreateDto) => void;
   /** CRUD биндингов (JS-скрипты монитора) — design-time правки, попадают в undo. */
   addBinding: (elementKey: string, binding: TagBinding) => void;
   updateBinding: (elementKey: string, bindingId: string, patch: Partial<Omit<TagBinding, "v" | "id">>) => void;
@@ -302,6 +328,28 @@ const isPatchEffective = (
 ): boolean => Object.entries(patch).some(([k, v]) => !isSameValue(target[k], v));
 
 /**
+ * Ключи, которые всегда живут в БАЗЕ элемента, а не в overrides состояния.
+ *
+ * `zIndex` — порядок слоя, свойство самого элемента, а не его вида в конкретном
+ * состоянии: сортировка выполняется там, где активного состояния не видно (корни
+ * в Canvas, состав контейнера в GroupNode). Держать слой в overrides значило бы
+ * ещё и завязать порядок отрисовки на переключение состояний.
+ */
+const BASE_ONLY_KEYS = new Set(["zIndex"]);
+
+/** Делит патч на часть «в базу» и часть «в overrides состояния». */
+const splitBaseOnly = (
+  patch: Record<string, unknown>,
+): { base: Record<string, unknown>; state: Record<string, unknown> } => {
+  const base: Record<string, unknown> = {};
+  const state: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    (BASE_ONLY_KEYS.has(k) ? base : state)[k] = v;
+  }
+  return {base, state};
+};
+
+/**
  * Сдвигает все позиционные поля (x, y, x1, y1, x2, y2) объекта на dx/dy.
  * Позиция элемента может лежать как в базовых полях, так и в overrides состояния
  * (перемещённые листья), а у линий — в x1/y1/x2/y2. Поэтому сдвигаем везде, где есть.
@@ -377,9 +425,9 @@ const applyShifts = (
  * состояние переехало сюда»: оригинал своё потеряет, а слияние выдаст конфликт на
  * ровном месте. Локальные `id` (React-ключи) при этом сохраняются.
  *
- * Свойства (`properties`) снять нельзя: у `PropertyCreateDto` поле `id` обязательное
- * (number), они заводятся отдельным REST-путём `/api/editor/tags` и обнуление потребует
- * правки того контракта.
+ * Свойства (`properties`) снимает отдельный `detachPropertyIds` — они заводятся своим
+ * REST-путём (`/api/editor/tags`), а не вместе со сценой, поэтому у копии это черновики
+ * без серверного номера.
  */
 const detachServerStateIds = (states: DiagramElement["states"] | undefined): DiagramElement["states"] =>
   (states ?? []).map(state => {
@@ -407,6 +455,103 @@ const detachServerBindingIds = (
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ({serverId: _s, componentPropertyId: _pid, componentPropertyName: _pname, ...b}) => b,
   );
+
+/**
+ * Свойства копии: без серверных id.
+ *
+ * `id` адресует свойство на бэкенде, `component_id` — его владельца; у копии владелец
+ * другой. Экземпляр шаблона заводит свои свойства сам, в момент назначения тега
+ * (`addTags`), а до тех пор они черновики — см. `PropertyCreateDto.id`.
+ */
+const detachPropertyIds = (
+  properties: DiagramElement["properties"] | undefined,
+): DiagramElement["properties"] =>
+  (Array.isArray(properties) ? properties : []).map(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ({id: _id, component_id: _cid, ...rest}) => rest as DiagramElement["properties"][number],
+  );
+
+/**
+ * Перекладывает ссылки на свойства других элементов на новые ключи копии.
+ *
+ * `propertyRefs` живут внутри биндингов и обработчиков событий и адресуют элемент по
+ * `componentKey`. Без перекладки ссылки внутри поставленного шаблона продолжали бы
+ * указывать на ключи ИСХОДНОЙ сцены. Номер свойства (`propertyId`) при этом снимается:
+ * у копии свойство ещё не заведено, номер проставит `addTags` по паре
+ * «componentKey + propertyName».
+ */
+const remapPropertyRefs = <T extends {propertyRefs?: PropertyRef[]}>(
+  owner: T,
+  keyMap: Record<string, string>,
+): T => {
+  if (!owner.propertyRefs?.length) return owner;
+  return {
+    ...owner,
+    propertyRefs: owner.propertyRefs.map(ref => {
+      const componentKey = keyMap[ref.componentKey] ?? ref.componentKey;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const {propertyId: _pid, componentId: _cid, ...rest} = ref;
+      return {...rest, componentKey} as PropertyRef;
+    }),
+  };
+};
+
+/**
+ * Проставляет номера свойств тем ссылкам, что их ждали.
+ *
+ * Ссылка на свойство соседа адресует его парой «`componentKey` + `propertyName`», а
+ * маршрутизирует рантайм по `propertyId`. Номера у свойства нет, пока сцена не сохранена
+ * (свойства заводятся вместе с ней), и ссылка, созданная до первого сохранения, приходит
+ * без него. Здесь она его и получает — из дерева, вернувшегося в ответе сохранения.
+ *
+ * Ссылка без номера появляется и у экземпляра шаблона: `addTemplate` снимает чужие
+ * номера, оставляя ту же пару.
+ */
+const resolvePendingPropertyRefs = (elements: DiagramElement[]): DiagramElement[] => {
+  const {byKey} = getElementIndex(elements);
+
+  const idOf = (componentKey: string, propertyName: string): number | undefined =>
+    (byKey[componentKey]?.properties ?? [])
+      .find(p => p.name === propertyName && typeof p.id === "number")?.id;
+
+  const fill = <T extends {propertyRefs?: PropertyRef[]}>(owner: T): T => {
+    const refs = owner.propertyRefs;
+    if (!refs?.length) return owner;
+    let changed = false;
+    const next = refs.map(ref => {
+      if (ref.propertyId != null) return ref;
+      const id = idOf(ref.componentKey, ref.propertyName);
+      if (id == null) return ref;
+      changed = true;
+      return {...ref, propertyId: id};
+    });
+    return changed ? {...owner, propertyRefs: next} : owner;
+  };
+
+  let touched = false;
+  const next = elements.map(el => {
+    let changed = false;
+    const bindings = (el.bindings ?? []).map(b => {
+      const filled = fill(b);
+      if (filled !== b) changed = true;
+      return filled;
+    });
+    const events = (el.events ?? []).map(e => {
+      if (!e.handler) return e;
+      const filled = fill(e.handler);
+      if (filled === e.handler) return e;
+      changed = true;
+      return {...e, handler: filled};
+    });
+    if (!changed) return el;
+    touched = true;
+    return {...el, bindings, ...(el.events ? {events} : {})} as DiagramElement;
+  });
+
+  // Ссылку на массив сохраняем, если ничего не изменилось: по ней завязаны equality
+  // истории undo и флаг несохранённых правок.
+  return touched ? next : elements;
+};
 
 /** События копии: без серверного id (сопоставление всё равно по `event_type`). */
 const detachServerEventIds = (
@@ -800,27 +945,6 @@ let saveInFlight: Promise<boolean> | null = null;
  */
 let documentGeneration = 0;
 
-/**
- * Очередь точечных правок свойств (`/api/editor/tags`, §8 контракта версий).
- *
- * С 17.08.2026 каждая такая правка проверяется гардом версии и оставляет снимок в
- * истории сцены, то есть ДВИГАЕТ номер версии. Номера в ответе этих эндпоинтов нет
- * (задача `scada-6e1`), поэтому новую базу приходится перечитывать из истории.
- *
- * Отсюда обязательная сериализация: перетаскивание строки в панели свойств шлёт
- * `editProperty` на каждую сдвинутую строку разом. Параллельно они ушли бы с одним и
- * тем же `based_on_version`, первая сдвинула бы версию, а все остальные получили бы
- * `409` — половина перестановки молча не сохранилась бы.
- */
-let propertyWriteChain: Promise<unknown> = Promise.resolve();
-
-const queuePropertyWrite = <T,>(task: () => Promise<T>): Promise<T> => {
-  // then(task, task) — предыдущая неудача не должна отменять следующую правку.
-  const run = propertyWriteChain.then(task, task);
-  propertyWriteChain = run.catch(() => undefined);
-  return run;
-};
-
 /** Метка нашего формата файла схемы — по ней импорт отличает свой файл от чужой выгрузки. */
 export const SCENE_EXPORT_FORMAT = "SCADA_EDITOR_SCENE";
 
@@ -1024,70 +1148,62 @@ export const hasUnsavedWork = (): boolean => {
   return versionPreview ? (versionPreviewStash?.isDirty ?? false) : isDirty;
 };
 
-/**
- * Поле `based_on_version` для точечных правок свойств (§8 контракта версий).
- *
- * Версий у сцены ещё нет — поле не отправляем вовсе. Правило то же, что у сохранения
- * сцены: номер обязателен только там, где история уже существует, а присланный номер
- * при её отсутствии — 400.
- */
-const propertyVersionField = (): {based_on_version?: number} => {
-  const version = useEditorStore.getState().sceneVersion;
-  return version != null ? {based_on_version: version} : {};
-};
-
-/**
- * То же правило, что у `propertyVersionField`, но строкой запроса: у `DELETE` номер
- * версии по §8 контракта передаётся query-параметром, а не полем тела.
- */
-const propertyVersionQuery = (): string => {
-  const version = useEditorStore.getState().sceneVersion;
-  return version != null ? `?based_on_version=${version}` : "";
-};
-
-/**
- * Разбирает неуспешный ответ точечной правки свойства.
- *
- * 409 здесь означает не то же, что при сохранении сцены: слияния у эндпоинтов свойств
- * нет — расхождение версии для них безусловный отказ. Поэтому диалог сравнения не
- * открываем (сравнивать нечего, сервер списка расхождений не присылает), а показываем
- * плашку устаревшей базы — тем же полем, что и автосохранение, — и подтягиваем
- * актуальный номер версии, чтобы повтор действия прошёл без ручной перезагрузки схемы.
- */
-const propertyWriteError = async (res: Response, fallback: string): Promise<Error> => {
-  const text = await res.text().catch(() => "");
-
-  if (res.status === 409) {
-    let current: number | null = null;
-    try {
-      const body = JSON.parse(text);
-      if (isSaveConflictBody(body)) current = body.current_version ?? null;
-    } catch {
-      // не JSON — номер не узнаем, плашку покажем без него
-    }
-    useEditorStore.setState({staleBaseVersion: current});
-    void useEditorStore.getState().refreshSceneVersion();
-
-    return new Error("Схему успел изменить кто-то другой — правка свойства отклонена. Обновите схему и повторите.");
-  }
-
-  return new Error(`${fallback}: ${text || `ошибка ${res.status}`}`);
-};
-
-/**
- * Подхватывает версию сцены, созданную точечной правкой свойства (§8).
- *
- * Номера версии в ответе этих эндпоинтов нет, а «прошлый + 1» неверен: при совпадении
- * содержимого сервер новую версию не заводит. Поэтому спрашиваем историю. Без этого
- * `sceneVersion` остаётся на версии до правки, и следующее сохранение сцены уходит с
- * устаревшей базой — то есть штатно получает 409 на ровном месте.
- */
-const syncSceneVersionAfterPropertyWrite = async () => {
-  await useEditorStore.getState().refreshSceneVersion();
-  if (useEditorStore.getState().versions.length) void useEditorStore.getState().loadVersions();
-};
-
 /** Фиксирует текущее состояние как сохранённое: снимает флаг «грязно». */
+/**
+ * Переименование свойства на сервере — единственный оставшийся точечный запрос.
+ *
+ * Значения наборов (`recipe_value`) привязаны к ИМЕНИ строки, и переносит их на новое имя
+ * только `PUT /api/editor/properties/{id}` (через наш прокси `/api/editor/tags/{id}`,
+ * который добавляет `X-Username` — по нему бэкенд и находит, чьи уставки двигать).
+ * Массовое сохранение сцены имя поменяет, а уставки осиротеют — они попадут в
+ * `unmatched_rows` при следующем открытии набора.
+ *
+ * Возвращает false, если сервер отказал: тогда локальное переименование не применяем,
+ * иначе имя разъедется с тем, что знает бэкенд.
+ */
+const renamePropertyOnServer = async (
+  propertyId: number,
+  payload: PropertyCreateRequestDto,
+): Promise<boolean> => {
+  try {
+    const res = await fetch(`/api/editor/tags/${propertyId}`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `ошибка ${res.status}`);
+    }
+    return true;
+  } catch (err) {
+    console.error(err);
+    toast.error(getErrorMessage(err, "Не удалось переименовать свойство"));
+    return false;
+  }
+};
+
+/**
+ * Свойства, которые бэкенд не примет: у него `name` и `value_type` обязательны.
+ *
+ * Проверка появилась вместе с переездом свойств в тело сцены: раньше отказ приходил на
+ * собственный запрос свойства и дальше него не шёл, а теперь одно незаполненное свойство
+ * не даёт сохранить всю схему. Сообщение бэкенда называет только имя свойства, поэтому
+ * возвращаем пару «элемент → свойство».
+ */
+const invalidProperties = (elements: DiagramElement[]): string[] => {
+  const problems: string[] = [];
+  for (const el of elements) {
+    for (const p of el.properties ?? []) {
+      const name = p.name?.trim();
+      const where = el.label?.trim() || el.type;
+      if (!name) problems.push(`«${where}»: свойство без названия`);
+      else if (!p.value_type?.trim()) problems.push(`«${where}» → «${name}»: не указан тип значения`);
+    }
+  }
+  return problems;
+};
+
 const markSceneSaved = (persisted: boolean) => {
   savedElementsSnapshot = useEditorStore.getState().elements;
   useEditorStore.setState({
@@ -1272,34 +1388,91 @@ export const useEditorStore = create<EditorState>()(temporal(
         const keys = elements.filter(el => String(el.parentKey) === scopeKey).map(el => el.key);
         if (keys.length) set({selectedIds: keys, selectedTableCell: null});
       },
+      // Порядок отрисовки задаёт `zIndex` (в пределах контейнера — среди соседей
+      // с общим parentKey), поэтому «на передний/задний план» — это просто выход
+      // за текущий диапазон слоёв соседей. Перекладывать массивы больше не нужно:
+      // порядок массива остался лишь тай-брейком при равных слоях.
       bringToFront: (key) => {
         const {elements} = get();
         const el = elements.find(e => e.key === key);
         if (!el) return;
-        // Порядок отрисовки: верхний уровень — порядок плоского массива;
-        // внутри контейнера — порядок composition/children родителя. Двигаем в обоих местах.
-        const moveToEnd = (arr: string[]) => arr.includes(key) ? [...arr.filter(k => k !== key), key] : arr;
-        const next = [...elements.filter(e => e.key !== key), el].map(e =>
-          e.key === el.parentKey
-            ? {...e, children: moveToEnd(e.children), composition: moveToEnd(e.composition ?? [])} as DiagramElement
-            : e,
+        const top = elements.reduce(
+          (acc, e) => (e.key !== key && String(e.parentKey) === String(el.parentKey)
+            ? Math.max(acc, zIndexOf(e))
+            : acc),
+          0,
         );
-        set({elements: next});
+        get().updateElementVisual(key, {zIndex: top + 1});
       },
       sendToBack: (key) => {
         const {elements} = get();
         const el = elements.find(e => e.key === key);
         if (!el) return;
-        const moveToStart = (arr: string[]) => arr.includes(key) ? [key, ...arr.filter(k => k !== key)] : arr;
-        const next = [el, ...elements.filter(e => e.key !== key)].map(e =>
-          e.key === el.parentKey
-            ? {...e, children: moveToStart(e.children), composition: moveToStart(e.composition ?? [])} as DiagramElement
-            : e,
+        const bottom = elements.reduce(
+          (acc, e) => (e.key !== key && String(e.parentKey) === String(el.parentKey)
+            ? Math.min(acc, zIndexOf(e))
+            : acc),
+          0,
         );
-        set({elements: next});
+        get().updateElementVisual(key, {zIndex: bottom - 1});
       },
 
       setCanvasRect: (rect) => set({canvasRect: rect}),
+      /**
+       * Размер листа сцены.
+       *
+       * Пишем в блок `canvas` служебного элемента, а не в поля сцены: эндпоинта
+       * обновления сцены не существует (у неё только GET, POST-создание и DELETE),
+       * а служебный элемент сохраняется вместе со всеми остальными и переживает
+       * round-trip. Приём не наш — так уже устроен `contur_meta` у CONTUR.
+       */
+      setSheet: (w, h) => {
+        const {scene, currentProject} = get();
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) return;
+
+        const clamp = (v: number) => Math.min(SHEET_MAX, Math.max(SHEET_MIN, snap(v)));
+        const next = {w: clamp(w), h: clamp(h)};
+        if (isSameSheet(resolveSheet(get().elements), next)) return;
+
+        set(state => {
+          const meta = state.elements.find(isMetaElement);
+
+          if (meta) {
+            return {
+              elements: state.elements.map(el => el.key === meta.key
+                ? {
+                  ...el,
+                  canvas: {
+                    // Остальные поля блока (units/grid/scale/origin) — данные CONTUR,
+                    // сохраняем как есть.
+                    ...((el as unknown as Record<string, unknown>).canvas as object ?? {}),
+                    width: next.w,
+                    height: next.h,
+                  },
+                } as unknown as DiagramElement
+                : el),
+            };
+          }
+
+          const created = {
+            id: null,
+            key: createUuid(),
+            type: "meta",
+            visible: false,
+            canvas: {width: next.w, height: next.h, units: "px", grid: GRID},
+            x: 0, y: 0, w: 0, h: 0,
+            composition: [],
+            parentId: scene?.id ?? null,
+            parentKey: String(scene?.id ?? ""),
+            children: [],
+            label: "Лист",
+            scripts: [], bindings: [], properties: [],
+            states: [{id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true}],
+          } as unknown as DiagramElement;
+
+          return {elements: [...state.elements, created]};
+        });
+      },
       addComponentStateToSubtree: (elementKey, stateName) => {
         let rootStateId: string | null = null;
 
@@ -1379,6 +1552,98 @@ export const useEditorStore = create<EditorState>()(temporal(
             elements: nextElements,
             ...(currentChanged ? {currentComponentStateByElementKey: nextCurrent} : {}),
           };
+        });
+      },
+      /**
+       * Места в пользовательском коде поддерева, где упомянуто имя состояния.
+       *
+       * Read-only: список нужен UI ДО мутации, чтобы спросить, переписывать ли код.
+       * Живёт в сторе, потому что поддерево считает модульный `getDescendantKeys`.
+       */
+      findStateUsages: (elementKey, stateName) => {
+        const {elements} = get();
+        const subtreeKeys = new Set([elementKey, ...getDescendantKeys(elementKey, elements)]);
+        return findStateNameRefs(elements, subtreeKeys, stateName);
+      },
+      /**
+       * Переименование состояния каскадом по имени — симметрично добавлению и удалению.
+       *
+       * Имя состояния связывает поддерево: `cascadeStateByName` и `buildShapeDescriptor`
+       * сопоставляют состояния родителя и потомков именно по нему. Переименовать только у
+       * корня — значит увести потомков в состояние по умолчанию и запечь при сохранении
+       * визуал не того состояния.
+       *
+       * `serverId`, `id`, `isDefault` и `overrides` сохраняются спредом: `serverId` —
+       * единственное, по чему бэкенд отличает переименование от «удалили и создали заново»
+       * (§2 контракта версий). `currentComponentStateByElementKey` не трогаем — карта по
+       * `id`, а `id` не меняется.
+       */
+      renameComponentStateInSubtree: (elementKey, oldName, newName, opts) => {
+        if (oldName === newName) return;
+
+        set(state => {
+          const root = state.elements.find(el => el.key === elementKey);
+          if (!root || !root.states.some(s => s.name === oldName)) return {};
+
+          const keysToUpdate = new Set([elementKey, ...getDescendantKeys(elementKey, state.elements)]);
+          let changed = false;
+
+          const nextElements = state.elements.map(el => {
+            if (!keysToUpdate.has(el.key)) return el;
+
+            const hasState = el.states.some(s => s.name === oldName);
+
+            // Правка кода идёт тем же set() — один шаг undo на переименование целиком.
+            // Клонируем ТОЛЬКО реально изменившиеся строки и возвращаем исходный массив,
+            // если не изменилось ничего: иначе элемент с посторонними биндингами считался
+            // бы изменённым и пачкал бы сцену на ровном месте.
+            let bindings = el.bindings;
+            let events = el.events;
+
+            if (opts?.rewriteCode) {
+              if (el.bindings?.length) {
+                let touched = false;
+                const next = el.bindings.map(b => {
+                  if (!b.code) return b;
+                  const code = renameStateNameInCode(b.code, oldName, newName);
+                  if (code === b.code) return b;
+                  touched = true;
+                  return {...b, code};
+                });
+                if (touched) bindings = next;
+              }
+              if (el.events?.length) {
+                let touched = false;
+                const next = el.events.map(e => {
+                  const code = e.handler?.code;
+                  if (!code) return e;
+                  const nextCode = renameStateNameInCode(code, oldName, newName);
+                  if (nextCode === code) return e;
+                  touched = true;
+                  return {...e, handler: {...e.handler, code: nextCode}};
+                });
+                if (touched) events = next;
+              }
+            }
+
+            const codeChanged = bindings !== el.bindings || events !== el.events;
+
+            if (!hasState && !codeChanged) return el;
+            changed = true;
+
+            return {
+              ...el,
+              ...(hasState
+                ? {states: el.states.map(s => s.name === oldName ? {...s, name: newName} : s)}
+                : {}),
+              ...(bindings !== el.bindings ? {bindings} : {}),
+              ...(events !== el.events ? {events} : {}),
+            } as DiagramElement;
+          });
+
+          // Холостая правка не должна плодить новый массив: на его ссылке завязаны
+          // equality истории undo и флаг несохранённых изменений.
+          return changed ? {elements: nextElements} : {};
         });
       },
       // Каскад по имени состояния — для любого контейнера (группа или complex-компонент);
@@ -1503,19 +1768,27 @@ export const useEditorStore = create<EditorState>()(temporal(
              if (!isPatchEffective(effective, validatedUpdates)) return el;
              anyChanged = true;
 
+             // Часть ключей (BASE_ONLY_KEYS, например слой zIndex) пишем в базу даже
+             // у листа: они не зависят от состояния. Если состояний-специфичных
+             // ключей в патче нет — states не пересобираем.
+             const {base: baseUpdates, state: stateUpdates} = splitBaseOnly(validatedUpdates);
+
              return {
                ...el,
-               states: el.states.map(s =>
-                 s.id === currentComponentStateId
-                   ? {
-                     ...s,
-                     overrides: {
-                       ...s.overrides,
-                       ...validatedUpdates,
-                     },
-                   }
-                   : s
-               ),
+               ...baseUpdates,
+               states: Object.keys(stateUpdates).length
+                 ? el.states.map(s =>
+                   s.id === currentComponentStateId
+                     ? {
+                       ...s,
+                       overrides: {
+                         ...s.overrides,
+                         ...stateUpdates,
+                       },
+                     }
+                     : s
+                 )
+                 : el.states,
              } as DiagramElement;
            });
 
@@ -1599,11 +1872,21 @@ export const useEditorStore = create<EditorState>()(temporal(
             // Экземпляр шаблона — новая сущность сцены; серверные id вложенных
             // сущностей принадлежат самому шаблону и уехать вместе с копией не должны.
             scripts: detachServerScriptIds((el as DiagramElement).scripts),
-            bindings: detachServerBindingIds((el as DiagramElement).bindings),
+            // Ссылки на свойства соседей перекладываем на новые ключи копии — иначе они
+            // продолжали бы адресовать элементы ИСХОДНОЙ сцены.
+            bindings: detachServerBindingIds((el as DiagramElement).bindings)
+              .map(b => remapPropertyRefs(b, keyMap)),
             ...((el as DiagramElement).events
-              ? {events: detachServerEventIds((el as DiagramElement).events)}
+              ? {events: (detachServerEventIds((el as DiagramElement).events) ?? [])
+                  .map(e => e.handler
+                    ? {...e, handler: remapPropertyRefs(e.handler, keyMap)}
+                    : e)}
               : {}),
             states: detachServerStateIds((el as DiagramElement).states),
+            // Свойства шаблона — черновики: серверные номера принадлежат самому шаблону,
+            // а тега у них нет вовсе (см. buildPaletteComponentTree). Экземпляр заводит
+            // свои свойства при назначении тега.
+            properties: detachPropertyIds((el as DiagramElement).properties),
             // Дочерние элементы шаблона ещё не сохранены на сервере,
             // поэтому parentId у них null — бэкенд проставит id при сохранении сцены.
             parentId: null,
@@ -1679,8 +1962,16 @@ export const useEditorStore = create<EditorState>()(temporal(
           : null;
         if (contur) rawElements = contur.elements;
 
-        const CANVAS_W = 5000;
-        const CANVAS_H = 5000;
+        // База процентных координат — размер ЛИСТА, на котором чертёж нарисован:
+        // процент осмыслен только относительно него, а не относительно константы.
+        // Лист берём из служебного элемента файла (`meta.canvas`).
+        //
+        // Фолбэк намеренно 5000, а не размер листа по умолчанию: проценты шлёт
+        // только прошлое поколение выгрузок CONTUR, а у него служебного элемента
+        // нет вовсе. Подставить туда лист — молча растянуть все такие файлы.
+        const rawSheet = readSheetFromRaw(rawElements as Record<string, unknown>[]);
+        const CANVAS_W = rawSheet?.w ?? 5000;
+        const CANVAS_H = rawSheet?.h ?? 5000;
 
         const isNullish = (v: unknown) =>
           v == null || v === "null" || v === "undefined";
@@ -2044,119 +2335,94 @@ export const useEditorStore = create<EditorState>()(temporal(
           elements: [...state.elements, newElement]
         }))
       },
-      addTags: async (payload: PropertyCreateRequestDto) => {
-        try {
-          // В очередь: правка свойства двигает версию сцены, и параллельные правки
-          // разошлись бы по базе (см. queuePropertyWrite).
-          await queuePropertyWrite(async () => {
-            const res = await fetch(`/api/editor/tags`, {
-              method: "POST",
-              headers: {"Content-Type": "application/json"},
-              // `based_on_version` — §8 контракта: с 17.08.2026 точечные правки свойств
-              // проверяются гардом версии, и без номера сохранённая сцена отвечает 400.
-              body: JSON.stringify({...payload, ...propertyVersionField()})
-            });
+      /**
+       * Свойства — обычная часть сцены, а не отдельный ресурс.
+       *
+       * Раньше каждая правка уходила своим запросом (`/api/editor/tags`), и из-за этого
+       * свойство нельзя было завести элементу, которого ещё нет на сервере: серверный
+       * `component_id` появлялся только после сохранения. Теперь свойство правится
+       * локально и уезжает вместе со сценой одним PUT — бэкенд принимает весь список в
+       * `ComponentCreateDto.properties`, сам заводит новые и привязывает к ним биндинги
+       * по `component_property_name`.
+       *
+       * Адресуем КЛЮЧОМ элемента, а не серверным `component_id`: у несохранённого
+       * элемента тот равен null и совпал бы с любым другим несохранённым.
+       *
+       * Следствия: правки попадают в undo (им там и место — они локальные) и помечают
+       * сцену изменённой. Сеть остаётся ровно в одном месте — переименовании.
+       */
+      addProperty: (elementKey, payload) => {
+        const owner = get().elements.find(el => el.key === elementKey);
+        if (!owner) return false;
 
-            if (!res.ok) throw await propertyWriteError(res, "Не удалось добавить свойство");
-
-            const created: PropertyCreateDto = await res.json();
-            // Некоторые бэкенды пока не round-trip'ят position на одиночном
-            // REST-эндпоинте свойства (в отличие от bulk-сохранения компонента) —
-            // подстраховываемся значением, которое сами отправили.
-            const newProperty: PropertyCreateDto = {
-              ...created,
-              position: created.position ?? payload.position ?? null,
-            };
-
-            // Свойство уже создано на сервере — не пишем эту мутацию в историю undo,
-            // иначе Ctrl+Z уберёт его только на клиенте (рассинхрон с бэкендом).
-            const temporal = useEditorStore.temporal.getState();
-            temporal.pause();
-            set(state => ({
-              elements: state.elements.map(el =>
-                el.id === payload.component_id
-                  ? { ...el, properties: [...(el.properties || []), newProperty]} as DiagramElement
-                  : el
-              )
-            }));
-            temporal.resume();
-
-            await syncSceneVersionAfterPropertyWrite();
-          });
-        } catch (err: unknown) {
-          console.error(err);
-          toast.error(getErrorMessage(err, "Ошибка при добавлении свойства"));
+        const name = payload.name.trim();
+        // Имя — ключ сопоставления на бэкенде (сначала по id, потом по имени), поэтому
+        // дубль в пределах компонента сделал бы сопоставление неоднозначным.
+        if ((owner.properties ?? []).some(p => p.name.trim() === name)) {
+          toast.error(`Свойство «${name}» у этого элемента уже есть`);
+          return false;
         }
+
+        set(state => ({
+          elements: state.elements.map(el => el.key === elementKey
+            ? {...el, properties: [...(el.properties ?? []), {...payload, name}]} as DiagramElement
+            : el),
+        }));
+        return true;
       },
-      editProperty: async (propertyId: number, payload: PropertyCreateRequestDto) => {
-        // Очередь обязательна: перетаскивание строки в панели свойств вызывает
-        // editProperty сразу на несколько строк, и параллельно они ушли бы с одной и
-        // той же (уже устаревшей после первой) базой — см. queuePropertyWrite.
-        await queuePropertyWrite(async () => {
-          const res = await fetch(`/api/editor/tags/${propertyId}`, {
-            method: "PUT",
-            headers: {"Content-Type": "application/json"},
-            // `based_on_version` — §8 контракта (см. addTags). `component_id` шлём
-            // прежний: перенос свойства на другой компонент бэкенд отвергает.
-            body: JSON.stringify({...payload, ...propertyVersionField()})
-          });
+      editProperty: async (elementKey, target, payload) => {
+        const owner = get().elements.find(el => el.key === elementKey);
+        if (!owner) return false;
 
-          if (!res.ok) throw await propertyWriteError(res, "Не удалось обновить свойство");
+        const name = payload.name.trim();
+        const isSame = (p: PropertyCreateDto) => target.id != null
+          ? p.id === target.id
+          : p.id == null && p.name === target.name;
 
-          const updated: PropertyCreateDto = await res.json();
-          // См. addTags — тот же fallback на случай, если бэкенд не round-trip'ит
-          // position на одиночном REST-эндпоинте свойства.
-          const updatedProperty: PropertyCreateDto = {
-            ...updated,
-            position: updated.position ?? payload.position ?? null,
-          };
+        if ((owner.properties ?? []).some(p => !isSame(p) && p.name.trim() === name)) {
+          toast.error(`Свойство «${name}» у этого элемента уже есть`);
+          return false;
+        }
 
-          // Серверная мутация — вне истории undo (см. addTags).
-          const temporal = useEditorStore.temporal.getState();
-          temporal.pause();
-          set(state => ({
-            elements: state.elements.map(el =>
-              el.id === payload.component_id
-                ? {
-                    ...el,
-                    properties: (el.properties || []).map(p =>
-                      p.id === propertyId ? updatedProperty : p
-                    )
-                  } as DiagramElement
-                : el
-            )
-          }));
-          temporal.resume();
+        // ЕДИНСТВЕННЫЙ оставшийся сетевой вызов. Значения наборов (recipe_value) привязаны
+        // к ИМЕНИ строки и переезжают на новое имя только точечным PUT — массовое
+        // сохранение имя поменяет, а уставки осиротеют (ResolvedRecipeDto.unmatched_rows).
+        if (target.id != null && target.name.trim() !== name) {
+          const migrated = await renamePropertyOnServer(target.id, {...payload, name});
+          if (!migrated) return false;
+        }
 
-          await syncSceneVersionAfterPropertyWrite();
-        });
+        set(state => ({
+          elements: state.elements.map(el => el.key === elementKey
+            ? {
+              ...el,
+              properties: (el.properties ?? []).map(p =>
+                isSame(p) ? {...p, ...payload, name} : p),
+            } as DiagramElement
+            : el),
+        }));
+        return true;
       },
-      deleteProperty: async (propertyId: number, componentId: number) => {
-        // Просмотр версии — режим только для чтения: удаление ушло бы на сервер по-настоящему,
-        // а с холста пропало бы вместе со стешем при выходе из просмотра.
+      deleteProperty: (elementKey, target) => {
+        // Просмотр версии — режим только для чтения.
         if (get().versionPreview) return;
 
-        // В очередь — как addTags/editProperty: удаление тоже двигает версию сцены.
-        await queuePropertyWrite(async () => {
-          const res = await fetch(`/api/editor/tags/${propertyId}${propertyVersionQuery()}`, {
-            method: "DELETE",
-          });
+        const owner = get().elements.find(el => el.key === elementKey);
+        if (!owner) return;
 
-          if (!res.ok) throw await propertyWriteError(res, "Не удалось удалить свойство");
-
-          // Серверная мутация — вне истории undo (см. addTags): Ctrl+Z вернул бы свойство
-          // только на клиенте, и следующее сохранение ушло бы с фантомной строкой.
-          const temporal = useEditorStore.temporal.getState();
-          temporal.pause();
-          set(state => ({
-            // Не только `properties` хозяина: висячий `component_property_id` роняет
-            // сохранение ВСЕЙ сцены 400-м, а висячий propertyRef тихо ломает логику
-            // (см. lib/editor/propertyDependents.ts).
-            elements: purgePropertyRefs(state.elements, propertyId, componentId),
-          }));
-          temporal.resume();
-
-          await syncSceneVersionAfterPropertyWrite();
+        set(state => {
+          // У заведённого свойства могут быть ссылки по номеру: висячий
+          // `component_property_id` роняет сохранение ВСЕЙ сцены 400-м, а висячий
+          // propertyRef тихо ломает логику (см. lib/editor/propertyDependents.ts).
+          // У черновика номера нет — ссылаться на него по номеру нечему.
+          if (target.id != null && owner.id != null) {
+            return {elements: purgePropertyRefs(state.elements, target.id, owner.id)};
+          }
+          return {
+            elements: state.elements.map(el => el.key === elementKey
+              ? {...el, properties: (el.properties ?? []).filter(p => p !== target && p.name !== target.name)} as DiagramElement
+              : el),
+          };
         });
       },
       // Биндинги — клиентские данные (уезжают на сервер только с сохранением сцены),
@@ -2371,6 +2637,22 @@ export const useEditorStore = create<EditorState>()(temporal(
               return false;
             }
 
+            // Свойства теперь уезжают вместе со сценой, поэтому одно незаполненное
+            // роняет сохранение ЦЕЛИКОМ («Property value_type is required for '…'»).
+            // Бэкенд называет только имя свойства — говорим сами, у какого элемента
+            // искать, и не тратим круг до сервера.
+            const invalid = invalidProperties(elements);
+            if (invalid.length) {
+              if (!opts?.silent) {
+                toast.error("Свойство заполнено не полностью", {
+                  description: invalid.slice(0, 5).join("; ")
+                    + (invalid.length > 5 ? ` и ещё ${invalid.length - 5}` : ""),
+                  duration: 8_000,
+                });
+              }
+              return false;
+            }
+
             // В режиме просмотра на холсте лежит СТАРАЯ версия. Сохранить её значит
             // затереть текущую сцену чужим прошлым — молча и необратимо. Автосейв сюда
             // приходит без участия человека, поэтому проверка именно здесь, а не в UI.
@@ -2523,6 +2805,17 @@ export const useEditorStore = create<EditorState>()(temporal(
               // Снимки, снятые до сохранения, содержат id:null у новых элементов, и
               // следующее сохранение вставило бы их повторно (дубли на сервере).
               // Переносим присвоенные сервером id в стек по ключам.
+              // Свойства только что получили серверные номера — раздаём их ссылкам,
+              // которые адресовали свойство парой «ключ элемента + имя». До сохранения
+              // номера не существовало, и рантайму ссылка была не видна.
+              const withRefs = resolvePendingPropertyRefs(get().elements);
+              if (withRefs !== get().elements) {
+                const t = useEditorStore.temporal.getState();
+                t.pause();
+                set({elements: withRefs});
+                t.resume();
+              }
+
               rebaseHistoryIds(get().elements);
 
               if (opts?.keepView) {

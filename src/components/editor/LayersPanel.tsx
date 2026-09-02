@@ -5,6 +5,7 @@ import {ChevronDown, ChevronRight, Boxes, Folder, Square, Circle as CircleIcon, 
 import {useEditorStore} from "@/store/useEditorStore";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils";
+import {sortByZIndex, zIndexOf} from "@/lib/editor/zOrder";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   rectangle: <Square size={13} />,
@@ -42,8 +43,15 @@ export function LayersPanel() {
     return m;
   }, [elements]);
 
+  // Порядок строк обязан совпадать с порядком отрисовки холста — тот же zIndex
+  // со стабильной сортировкой (при равных слоях остаётся порядок массива).
+  // `visible: false` — служебный элемент (данные листа), фигурой не является:
+  // в дереве слоёв это была бы пустая строка. Так же он отфильтрован в маркизе
+  // и во «вписать схему».
   const roots = useMemo(
-    () => elements.filter(el => el.parentKey === String(scene?.id)),
+    () => sortByZIndex(elements.filter(
+      el => el.parentKey === String(scene?.id) && el.visible !== false,
+    )),
     [elements, scene],
   );
 
@@ -74,8 +82,10 @@ export function LayersPanel() {
     const walk = (el: DiagramElement, depth: number, isComposition: boolean) => {
       rows.push({el, depth, isComposition});
       if (el.type !== "group" || collapsed.has(el.key)) return;
-      // Порядок отрисовки на холсте: composition (низ) → children (верх).
-      const memberKeys = [...(el.composition ?? []), ...el.children];
+      // Порядок отрисовки на холсте: по zIndex среди соседей; при равных слоях —
+      // порядок конкатенации composition (низ) → children (верх).
+      const memberKeys = [...(el.composition ?? []), ...el.children]
+        .sort((a, b) => zIndexOf(byKey.get(a)) - zIndexOf(byKey.get(b)));
       memberKeys.forEach(k => {
         const member = byKey.get(k);
         if (member) walk(member, depth + 1, (el.composition ?? []).includes(k));

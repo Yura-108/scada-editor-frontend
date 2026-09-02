@@ -66,7 +66,36 @@ The backend stores each component's visual state as an **opaque JSON string** in
 
 When changing one side, keep the round-trip symmetric. There is a headless way to check it: transpile these two modules + `createUuid` with `npx tsc … --module commonjs` and exercise `buildComponentTree`→`transformElements` in a Node script (they have almost no runtime deps).
 
-**Server ids of nested entities must round-trip.** Every nested entity that the backend numbers carries a `serverId` next to its local `id`: `ComponentState.serverId`, `ElementScript.serverId`, `TagBinding.serverId`, `ElementEventEntry.serverId`. The local `id` is a uuid used as a React key and must never be sent. `transformElements` / `parseBindings` / `parseEvents` set `serverId` only when the backend actually sent one, and `buildComponentTree` emits `id` only when `serverId` exists. A missing id on an *existing* entity reads as "deleted and recreated" — history is lost and merging reports a phantom conflict; renaming without an id is the case that actually breaks. Bindings additionally echo the pair the server assigned (`componentPropertyId` + `componentPropertyName` → `component_property_id` + `component_property_name`): the name is what lets version restore survive a property being deleted and recreated, so never strip it. Anything that **clones** elements (`cloneElementsWithOffset` for paste/duplicate, `addTemplate` for placing a palette template) must strip all of them via the `detachServer*Ids` helpers — the copy is a new entity, and carrying the original's ids tells the server the entity moved. Two deliberate exclusions: `properties` keep their ids (`PropertyCreateDto.id` is a required number and they live on the separate `/api/editor/tags` path), and **nothing server-assigned goes inside an opaque blob** — neither the binding JSON in `script` nor the baked `composition` descriptors in `states[].image`, because those blobs are rebuilt on every save and compared whole during merge.
+**Server ids of nested entities must round-trip.** Every nested entity that the backend numbers carries a `serverId` next to its local `id`: `ComponentState.serverId`, `ElementScript.serverId`, `TagBinding.serverId`, `ElementEventEntry.serverId`. The local `id` is a uuid used as a React key and must never be sent. `transformElements` / `parseBindings` / `parseEvents` set `serverId` only when the backend actually sent one, and `buildComponentTree` emits `id` only when `serverId` exists. A missing id on an *existing* entity reads as "deleted and recreated" — history is lost and merging reports a phantom conflict; renaming without an id is the case that actually breaks. Bindings additionally echo the pair the server assigned (`componentPropertyId` + `componentPropertyName` → `component_property_id` + `component_property_name`): the name is what lets version restore survive a property being deleted and recreated, so never strip it. Anything that **clones** elements (`cloneElementsWithOffset` for paste/duplicate, `addTemplate` for placing a palette template) must strip all of them via the `detachServer*Ids` helpers — the copy is a new entity, and carrying the original's ids tells the server the entity moved. One deliberate exclusion: **nothing server-assigned goes inside an opaque blob** — neither the binding JSON in `script` nor the baked `composition` descriptors in `states[].image`, because those blobs are rebuilt on every save and compared whole during merge.
+
+### Properties travel with the scene
+
+`element.properties` are **ordinary scene data**, not a separate resource. `buildComponentNode`
+sends the **complete** list for every element type; the backend treats the list as the whole set
+for that component (missing = deleted, matched first by `id`, then by `name`) and creates the
+new ones itself. A binding can attach to a property created in the same request via
+`component_property_name`, which is why that field is now always sent.
+
+Consequences worth knowing:
+
+- **A property can be created on an element that does not exist on the server yet.** That is the
+  point of the design — it is what makes palette templates work. Owners are therefore addressed
+  by **element key**, never by `component_id` (which is `null` until the first save and would
+  match every other unsaved element).
+- `addProperty` / `editProperty` / `deleteProperty` are **local `set()` mutations**: they enter
+  undo and mark the scene dirty. The old machinery is gone — no write queue, no
+  `based_on_version` per property, no version re-fetch after each edit, no two-phase
+  "save then provision".
+- **Exactly one network call survives**: renaming an already-saved property still goes through
+  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Recipe values (`recipe_value`) are keyed
+  by the row **name**, and only that endpoint migrates them — the bulk path would rename the row
+  and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does *not*
+  migrate them; if that ever matters, the exception has to grow to cover delete.
+- `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
+  the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
+- `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric
+  `propertyId` the runtime routes by is filled in from the save response
+  (`resolvePendingPropertyRefs`).
 
 ### Document versions (undo → versioning)
 

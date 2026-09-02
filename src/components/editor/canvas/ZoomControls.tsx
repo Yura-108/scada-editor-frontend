@@ -1,23 +1,24 @@
 "use client";
 
 import React from "react";
-import { Minus, Plus, Maximize, RotateCcw } from "lucide-react";
+import { Minus, Plus, Maximize, RotateCcw, FileText } from "lucide-react";
 
 interface ZoomControlsProps {
   zoom: number;
   onZoomBy: (factor: number) => void;
   onFit: () => void;
+  onFitSheet: () => void;
   onReset: () => void;
 }
 
 /**
- * Панель зума в углу холста: −/+, текущий %, «вписать сцену», «100%».
+ * Панель зума в углу холста: −/+, текущий %, «вписать схему», «вписать лист», «100%».
  *
  * Смещение справа берётся из CSS-переменной `--ws-right-m` (ширина открытой
  * правой панели редактора), чтобы панель зума не пряталась под ней. В мониторе
  * переменной нет — работает запасное значение 0px.
  */
-export function ZoomControls({ zoom, onZoomBy, onFit, onReset }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomBy, onFit, onFitSheet, onReset }: ZoomControlsProps) {
   const btn = "p-1.5 rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors";
 
   return (
@@ -37,6 +38,9 @@ export function ZoomControls({ zoom, onZoomBy, onFit, onReset }: ZoomControlsPro
       <div className="mx-0.5 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
       <button className={btn} onClick={onFit} title="Вписать схему">
         <Maximize size={16} />
+      </button>
+      <button className={btn} onClick={onFitSheet} title="Вписать лист">
+        <FileText size={16} />
       </button>
       <button className={btn} onClick={onReset} title="Сбросить масштаб (100%)">
         <RotateCcw size={16} />

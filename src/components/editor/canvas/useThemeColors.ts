@@ -19,7 +19,13 @@ export function useThemeColors(): { resolvedTheme: string | undefined; isDark: b
       labelDefault:  isDark ? "#ffffff" : "#000000",
       strokeDefault: isDark ? "#9ca3af" : "#6b7280",
       canvasBg:      isDark ? "#0a0a0a" : "#ffffff",
+      // «Стол» вокруг листа — темнее самого листа, чтобы край листа читался
+      // без жирной рамки.
+      deskBg:        isDark ? "#000000" : "#e8e8ec",
+      sheetBorder:   isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
       gridLine:      isDark ? "rgba(100,100,120,0.4)" : "rgba(0,0,0,0.07)",
+      // Крупный шаг сетки заметнее мелкого — иначе на среднем зуме они сливаются.
+      gridLineMajor: isDark ? "rgba(120,120,145,0.6)" : "rgba(0,0,0,0.14)",
       anchorFill:    isDark ? "#ffffff" : "#1a1a1a",
       anchorStroke:  selection,
       selection,

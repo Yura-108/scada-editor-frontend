@@ -12,8 +12,6 @@ import {DiagramElement} from "@/types/editorElement.type";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {
   collectTagScope,
-  hasSavedProperty,
-  hasSavedTagProperty,
   modernizeScopeCode,
   uniqueVarName,
   withPropertyRefs,
@@ -53,13 +51,13 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
     () => withPropertyRefs(collectTagScope(element.properties), propertyRefs),
     [element.properties, propertyRefs],
   );
-  // Бэкенд требует ссылку на СВОЁ сохранённое свойство при сохранении сцены (иначе
-  // POST всей сцены падает 400). Для биндинга-тега — свойство-тег; для биндинга на
-  // чужие свойства годится любое сохранённое свойство хоста (см. hasSavedProperty).
+  // Биндингу нужно свойство-хозяин: для биндинга-тега — свойство типа «Тег», для
+  // биндинга на чужие свойства годится любое. Сохранённость больше не при чём —
+  // свойство уезжает той же сценой, и бэкенд привязывает биндинг по имени.
   const canSave = useMemo(
     () =>
-      hasSavedTagProperty(element.properties) ||
-      (propertyRefs.length > 0 && hasSavedProperty(element.properties)),
+      (element.properties ?? []).some(p => p.property_type === "Тег") ||
+      (propertyRefs.length > 0 && (element.properties?.length ?? 0) > 0),
     [element.properties, propertyRefs.length],
   );
 

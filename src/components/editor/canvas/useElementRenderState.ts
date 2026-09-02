@@ -1,7 +1,8 @@
 import { useShallow } from "zustand/react/shallow";
 import { useEditorStore } from "@/store/useEditorStore";
 import { getElementIndex } from "@/lib/editor/elementIndex";
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement, GroupElement } from "@/types/editorElement.type";
+import { sortKeysByZIndex } from "@/lib/editor/zOrder";
 
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 // Дуга — со своими ручками (начало/раствор/радиус), рамка Transformer'а ей не нужна:
@@ -69,4 +70,25 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
       runtime: s.runtimeOverridesByElementKey[elementKey],
     };
   }));
+}
+
+/**
+ * Ключи состава контейнера в порядке отрисовки: composition + children, отсортированные
+ * по `zIndex`.
+ *
+ * Отдельная подписка, а не данные из `EditorRenderContext`: в контексте состава схемы
+ * намеренно нет (см. types.ts), иначе ломается мемоизация узлов. `useShallow` сравнивает
+ * массив по содержимому — группа перерисовывается только когда порядок реально изменился.
+ *
+ * composition и children сортируются ОДНИМ пулом: внутри контейнера это соседи, и z-index
+ * должен работать между ними. Прежнее правило «примитивы под детьми» остаётся поведением
+ * по умолчанию — при равных `zIndex` стабильная сортировка сохраняет порядок конкатенации.
+ */
+export function useOrderedMemberKeys(group: GroupElement): string[] {
+  return useEditorStore(useShallow(s =>
+    sortKeysByZIndex(
+      [...(group.composition ?? []), ...group.children],
+      getElementIndex(s.elements).byKey,
+    ),
+  ));
 }

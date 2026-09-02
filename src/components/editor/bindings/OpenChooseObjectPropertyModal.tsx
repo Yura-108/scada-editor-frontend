@@ -118,8 +118,11 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
                           </div>
                         ) : (
                           props.map(p => {
-                            const saved = typeof p.id === "number";
-                            const already = saved && pickedIds?.has(p.id);
+                            // Отдельная константа, а не флаг: у черновика (свойство из
+                            // шаблона, ещё не заведённое на сервере) id нет вовсе.
+                            const savedId = typeof p.id === "number" ? p.id : null;
+                            const saved = savedId !== null;
+                            const already = savedId !== null && pickedIds?.has(savedId);
                             return (
                               <button
                                 key={`${p.id}-${p.name}`}
@@ -128,11 +131,12 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
                                 title={saved ? undefined : "Свойство ещё не сохранено — сначала сохраните схему"}
                                 onClick={() =>
                                   saved &&
+                                  savedId !== null &&
                                   onPick({
                                     componentKey: c.key,
                                     componentId: c.id,
                                     componentLabel: componentLabel(c),
-                                    propertyId: p.id,
+                                    propertyId: savedId,
                                     propertyName: p.name,
                                     valueType: p.value_type,
                                   })

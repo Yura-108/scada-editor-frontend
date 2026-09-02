@@ -1,1 +1,0 @@
-export {handleAddProperty} from "./handleAddProperty";

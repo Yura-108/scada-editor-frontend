@@ -17,7 +17,12 @@ import { Button, ModalFooter } from "@/components/ui/Button";
 import { confirmDeleteProperty } from "@/lib/editor/confirmDeleteProperty";
 
 interface Props {
-  component_id: number;
+  /**
+   * Ключ элемента-владельца. Адресуем именно ключом, а не серверным `component_id`:
+   * свойство теперь можно завести элементу, которого на сервере ещё нет (id === null),
+   * и по id такой элемент не находится.
+   */
+  elementKey: string;
   property?: PropertyCreateDto;
 }
 
@@ -40,10 +45,10 @@ const valueTypeOptions: Array<{ value: string; label: string }> = [
 const ACCESS_LEVEL_MIN = 0;
 const ACCESS_LEVEL_MAX = 10;
 
-export function AddPropertyContent({ component_id, property }: Props) {
+export function AddPropertyContent({ elementKey, property }: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
-  const addTags = useEditorStore((s) => s.addTags);
+  const addProperty = useEditorStore((s) => s.addProperty);
   const editProperty = useEditorStore((s) => s.editProperty);
 
   const [name, setName] = useState(property?.name || "");
@@ -72,9 +77,28 @@ export function AddPropertyContent({ component_id, property }: Props) {
   }, [property]);
 
   const isTagType = propertyType === "Тег";
-  const canConfirm = useMemo(
-    () => !isLoading && (!isTagType || Boolean(selectedDevice) || Boolean(property?.tag_id)),
-    [isLoading, isTagType, selectedDevice, property?.tag_id]
+  /**
+   * Чего не хватает, чтобы свойство можно было сохранить (null — всё на месте).
+   *
+   * Имя и тип значения бэкенд требует обязательно («Property value_type is required
+   * for '…'»), и с тех пор как свойства уезжают вместе со сценой, одно незаполненное
+   * свойство роняет сохранение ВСЕЙ сцены — раньше отказ приходил на свой же запрос и
+   * дальше свойства не пускал. Поэтому проверяем здесь, до создания.
+   */
+  const missing = useMemo(() => {
+    if (!name.trim()) return "Введите название свойства";
+    if (!valueType.trim()) return "Выберите тип значения";
+    if (isTagType && !selectedDevice && !property?.tag_id) return "Выберите тег в дереве устройств";
+    return null;
+  }, [name, valueType, isTagType, selectedDevice, property?.tag_id]);
+
+  const canConfirm = !isLoading && missing === null;
+
+  // Серверный id владельца — только чтобы положить его в payload как раньше; адресация
+  // идёт по ключу. У несохранённого элемента здесь null, и это нормально: бэкенд узнаёт
+  // владельца по месту свойства в дереве сцены.
+  const ownerId = useEditorStore(
+    s => s.elements.find(el => el.key === elementKey)?.id ?? null,
   );
 
   const handleConfirm = async () => {
@@ -84,7 +108,7 @@ export function AddPropertyContent({ component_id, property }: Props) {
     try {
       const payload = {
         name: name.trim(),
-        component_id,
+        component_id: ownerId,
         property_type: propertyType,
         tag_id: isTagType ? (selectedDevice ?? property?.tag_id ?? "") : "",
         description: description.trim(),
@@ -96,13 +120,13 @@ export function AddPropertyContent({ component_id, property }: Props) {
         OnCanChange: onCanChange.trim(),
       };
 
-      if (property?.id) {
-        await editProperty(property.id, payload);
-      } else {
-        await addTags(payload);
-      }
+      // Правка существующего — по id, если он есть; у ещё не сохранённого свойства
+      // ключом служит имя, под которым его завели.
+      const ok = property
+        ? await editProperty(elementKey, property, payload)
+        : await addProperty(elementKey, payload);
 
-      closeModal();
+      if (ok) closeModal();
     } catch (error) {
       console.error("Failed to add property:", error);
     } finally {
@@ -117,7 +141,7 @@ export function AddPropertyContent({ component_id, property }: Props) {
     try {
       // Форму закрываем только при реальном удалении: при отказе в подтверждении или
       // конфликте версий пользователь остаётся в ней и видит те же данные.
-      if (await confirmDeleteProperty(property, component_id)) closeModal();
+      if (await confirmDeleteProperty(property, elementKey)) closeModal();
     } finally {
       setIsLoading(false);
     }
@@ -368,8 +392,16 @@ export function AddPropertyContent({ component_id, property }: Props) {
             Удалить свойство
           </Button>
         ) : null}
+        {missing && (
+          <span className="mr-auto text-xs text-amber-600 dark:text-amber-400">{missing}</span>
+        )}
         <Button onClick={closeModal}>Отмена</Button>
-        <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm}>
+        <Button
+          variant="primary"
+          onClick={handleConfirm}
+          disabled={!canConfirm}
+          title={missing ?? undefined}
+        >
           {isLoading ? "Сохранение..." : property ? "Сохранить" : "Добавить свойство"}
         </Button>
       </ModalFooter>

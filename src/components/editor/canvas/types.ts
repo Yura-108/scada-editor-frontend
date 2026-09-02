@@ -8,7 +8,13 @@ export interface ThemeColors {
   labelDefault: string;
   strokeDefault: string;
   canvasBg: string;
+  /** «Стол» вокруг листа сцены. */
+  deskBg: string;
+  /** Кромка листа. */
+  sheetBorder: string;
   gridLine: string;
+  /** Линия крупного шага сетки (10 клеток). */
+  gridLineMajor: string;
   anchorFill: string;
   anchorStroke: string;
   /** Единый цвет выделения: обводка фигуры, рамка Transformer, подсветка наведения. */

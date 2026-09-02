@@ -6,11 +6,9 @@ import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
 import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
+import { ZOOM_MIN, ZOOM_MAX } from "@/lib/editor/zoomLimits";
 import type { SelectionRect } from "../types";
 
-/** Тот же клэмп зума, что и в ZoomControls. */
-const ZOOM_MIN = 0.2;
-const ZOOM_MAX = 3;
 
 /**
  * Приводит колесо к пикселям. `deltaMode` бывает LINE (Firefox) и PAGE, и без

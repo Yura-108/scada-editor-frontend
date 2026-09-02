@@ -140,18 +140,6 @@ export interface TagScope {
  * 16.07.2026: "Binding requires component_property_id" / "does not belong to component X").
  * UI обязан блокировать сохранение биндинга, пока это не так.
  */
-export const hasSavedTagProperty = (properties: PropertyCreateDto[] | undefined): boolean =>
-  (properties ?? []).some(p => p.property_type === "Тег" && typeof p.id === "number");
-
-/**
- * У элемента есть хотя бы одно СОХРАНЁННОЕ на сервере свойство ЛЮБОГО типа (числовой id).
- * Нужно для гейта сохранения биндинга, ссылающегося только на свойства других
- * компонентов: `component_property_id` в DTO обязан ссылаться на существующее
- * свойство самого элемента (см. hasSavedTagProperty), но для этого годится и
- * не-тег свойство (проверить на бэкенде — см. план, Risks).
- */
-export const hasSavedProperty = (properties: PropertyCreateDto[] | undefined): boolean =>
-  (properties ?? []).some(p => typeof p.id === "number");
 
 /**
  * Скоуп биндинга: свойства-теги элемента (`property_type === "Тег"`, tag_id непустой).

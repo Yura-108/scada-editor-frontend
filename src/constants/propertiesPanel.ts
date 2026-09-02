@@ -82,12 +82,30 @@ export const ROTATABLE_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([
   "toggle",
 ]);
 
+/**
+ * Слой отрисовки — есть у КАЖДОГО элемента (поле `zIndex` объявлено на
+ * `BaseCanvasElement`). Сортировка идёт среди соседей одного контейнера, как в CSS.
+ *
+ * Экспортируется отдельно, потому что мультивыделение собирает схему только из
+ * `elementPropertyMap` и `basePropertySchema` не подмешивает.
+ */
+export const Z_INDEX_FIELD: PropertySchema = {
+  key: "zIndex",
+  label: "Слой (z-index)",
+  type: "number",
+  min: -999,
+  max: 999,
+  step: 1,
+  defaultValue: 0,
+};
+
 export const basePropertySchema: PropertySchema[] = [
   {
     key: "label",
     label: "Название",
     type: "text",
   },
+  Z_INDEX_FIELD,
 ];
 
 /**

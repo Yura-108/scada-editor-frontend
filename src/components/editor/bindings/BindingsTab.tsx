@@ -5,7 +5,7 @@ import {Boxes, Pencil, Plus, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
-import {collectTagScope, hasSavedProperty} from "@/lib/runtime/bindingScope";
+import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
@@ -35,7 +35,11 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const bindings = element.bindings ?? [];
-  const canSave = hasSavedProperty(element.properties);
+  // Раньше требовалось СОХРАНЁННО� свойство: биндинг ссылался на него номером, а номер
+  // появлялся только после отдельного запроса. Теперь свойство уезжает той же сценой, и
+  // бэкенд привязывает биндинг по `component_property_name` — достаточно, чтобы свойство
+  // просто было.
+  const canSave = (element.properties?.length ?? 0) > 0;
 
   // Прямая привязка: значение элемента = значение выбранного свойства.
   const createDirectBinding = (picked: PickedProperty) => {
@@ -55,9 +59,8 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
 
       {!canSave && (
         <div className="text-xs text-amber-600 dark:text-amber-400">
-          У элемента нет ни одного сохранённого свойства — новую привязку сохранить не получится
-          (бэкенд требует её на конкретное свойство этого элемента). Сначала добавьте элементу
-          свойство на вкладке «Свойства».
+          У элемента нет ни одного свойства — привязку не к чему привязать. Сначала добавьте
+          элементу свойство на вкладке «Свойства».
         </div>
       )}
 

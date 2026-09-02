@@ -1,6 +1,7 @@
 import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
 import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
+import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import React, {useMemo, useRef, useState, useEffect} from "react";
@@ -464,12 +465,9 @@ export default function WorkSpace() {
           ) : selectedElements.length > 1 ? (
             <MultiPropertiesPanel elements={selectedElements} />
           ) : (
-            // items-center без justify-center прижимал сообщение к верхнему краю.
-            <div className="h-full flex flex-col items-center justify-center text-center p-6">
-              <div className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">
-                Выберите элемент на схеме, чтобы изменить его свойства
-              </div>
-            </div>
+            // Ничего не выделено — показываем свойства самой сцены (размер листа).
+            // Подсказка «выберите элемент» переехала в низ этой же панели.
+            <ScenePropertiesPanel />
           )}
         </div>
 

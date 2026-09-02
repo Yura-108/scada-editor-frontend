@@ -103,7 +103,13 @@ export interface TagBinding {
  */
 export type BindingDto = {
   id?: number | string;
-  component_property_id: number;
+  /**
+   * Необязательное: у элемента может не быть НИ ОДНОГО сохранённого свойства — так
+   * приезжает только что поставленный шаблон, где свойства ещё черновики. Раньше в
+   * этом случае слался `0`, но нулевого свойства не существует; «поля нет» — это
+   * задокументированное «биндинг новый».
+   */
+  component_property_id?: number;
   component_property_name?: string;
   name: string;
   script: string;

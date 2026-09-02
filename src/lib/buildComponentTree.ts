@@ -1,20 +1,47 @@
 import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
 import {BindingDto} from "@/types/binding.types";
-import {isRowBindingProperty} from "@/lib/editor/rowBinding";
 
 /**
  * id свойства элемента для DTO-поля `component_property_id` (контракт требует
- * число, ссылающееся на существующее свойство ИМЕННО этого компонента; 0 = «нет»).
+ * число, ссылающееся на существующее свойство ИМЕННО этого компонента).
  * Предпочитаем свойство-тег (исторически), но для биндингов на свойства других
- * компонентов у хоста тег-свойства может не быть — тогда годится любое сохранённое
- * свойство (проверить на бэкенде, что не-тег id принимается — см. план, Risks).
+ * компонентов у хоста тег-свойства может не быть — тогда годится любое сохранённое.
+ *
+ * `undefined` — сохранённых свойств у элемента нет вовсе. Раньше здесь возвращался `0`,
+ * но нулевого свойства не существует, и бэкенд такой биндинг отвергает. Поле честнее
+ * опустить: «не задано» — это задокументированное «биндинг новый» (см.
+ * TagBinding.componentPropertyId), а привязку бэкенд сделает по
+ * `component_property_name`. Так бывает у свойства, заводимого в этом же запросе.
  */
-const firstSavedPropertyId = (el: DiagramElement): number => {
+const firstSavedPropertyId = (el: DiagramElement): number | undefined => {
   const props = el.properties ?? [];
   const tagProp = props.find(p => p.property_type === "Тег" && typeof p.id === "number");
   if (tagProp) return tagProp.id;
-  const anyProp = props.find(p => typeof p.id === "number");
-  return anyProp?.id ?? 0;
+  return props.find(p => typeof p.id === "number")?.id;
+};
+
+/**
+ * Имя свойства, к которому привязан биндинг, — для шаблона.
+ *
+ * У DTO шаблона нет `id` ни на одном уровне, сущности связываются по именам
+ * (§2 контракта версий), поэтому номер свойства в шаблон не годится, а имя годится.
+ */
+const firstSavedPropertyName = (el: DiagramElement): string | undefined => {
+  const props = el.properties ?? [];
+  return (props.find(p => p.property_type === "Тег" && p.name) ?? props.find(p => p.name))?.name;
+};
+
+/**
+ * Ссылки биндинга на свойства других компонентов, очищенные для шаблона.
+ *
+ * `propertyId`/`componentId` — номера ИСХОДНОЙ сцены; в шаблоне они адресуют чужие
+ * сущности. Ссылка восстанавливается на месте по `componentKey` + `propertyName`
+ * (ключи перекладывает `addTemplate`, номер проставляет `addTags` при назначении тега).
+ */
+const stripRefIds = (refs: unknown): unknown => {
+  if (!Array.isArray(refs)) return refs;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  return refs.map(({propertyId: _pid, componentId: _cid, ...rest}) => rest);
 };
 
 /**
@@ -42,19 +69,36 @@ const encodeBindings = (
         // уже не знать (свойство удалили и завели заново — номер сменился).
         const {serverId, componentPropertyId, componentPropertyName, ...payload} = b;
 
+        // В шаблоне номера свойств бессмысленны — ссылки живут по именам и ключам.
+        const script = withServerIds
+          ? payload
+          : {...payload, ...(payload.propertyRefs ? {propertyRefs: stripRefIds(payload.propertyRefs)} : {})};
+
+        // В шаблоне номера свойств не отдаём ВООБЩЕ: у его DTO нет id ни на одном
+        // уровне, сущности связываются по именам (§2 контракта версий). Прежний код
+        // подставлял сюда `firstSavedPropertyId` — то есть номер свойства ИСХОДНОЙ
+        // сцены, который в другой сцене адресует чужую сущность или ничего.
+        const propertyId = withServerIds
+          ? (componentPropertyId ?? firstSavedPropertyId(el))
+          : undefined;
+        // Имя отправляем ВСЕГДА. У свойства, созданного в этом же запросе, номера ещё нет,
+        // и привязать биндинг бэкенд может только по `component_property_name`. В сцене
+        // имя вдобавок переживает снимок версии, чего не делает номер (свойство, удалённое
+        // и заведённое заново, получает новый id).
+        const propertyName = (withServerIds ? componentPropertyName : undefined)
+          ?? firstSavedPropertyName(el);
+
         return {
           // Пришёл с id — возвращаем тот же (§2 контракта): без него переименование
           // биндинга читается как «удалили один, создали другой».
           ...(withServerIds && serverId != null ? {id: serverId} : {}),
           // Пару «свойство» возвращаем как получили. Своё значение вычисляем только для
           // новых биндингов: имя нужно снимку версии, а номер снимок не переживает.
-          component_property_id:
-            (withServerIds ? componentPropertyId : undefined) ?? firstSavedPropertyId(el),
-          ...(withServerIds && componentPropertyName != null
-            ? {component_property_name: componentPropertyName}
-            : {}),
+          // Сохранённых свойств нет — поле ОПУСКАЕМ: нулевого свойства не существует.
+          ...(propertyId != null ? {component_property_id: propertyId} : {}),
+          ...(propertyName != null ? {component_property_name: propertyName} : {}),
           name: b.name ?? "",
-          script: JSON.stringify(payload),
+          script: JSON.stringify(script),
         };
       })
     : [];
@@ -217,12 +261,16 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     bindings: encodeBindings(element),
     events: encodeEvents(element),
     states,
-    // Привязки строк таблицы к тегам/локальным параметрам — записи element.properties
-    // с номером строки в position (isRowBindingProperty), отдельные от обычных
-    // свойств и от их REST-пути /api/editor/tags.
-    ...(element.type === "table" ? {
-      properties: (element.properties ?? []).filter(isRowBindingProperty),
-    } : {}),
+    // Свойства едут ЦЕЛИКОМ и у любого типа элемента: отдельного REST-пути у них
+    // больше нет, они обычная часть сцены.
+    //
+    // Список задаёт ВЕСЬ набор свойств компонента — чего в нём нет, то бэкенд удалит
+    // (сопоставление сначала по id, потом по имени). Отсюда два следствия:
+    //   - фильтровать список нельзя. Раньше у таблицы отправлялись только строки
+    //     (isRowBindingProperty), и любое обычное свойство таблицы стиралось на сервере
+    //     при каждом сохранении;
+    //   - собирать его надо ровно из element.properties, без промежуточных условий.
+    properties: element.properties ?? [],
   };
 };
 
@@ -245,34 +293,60 @@ export const buildPaletteComponentTree = (
 
   if (!rootElement) return null;
 
+  const byKey = new Map(elements.map(e => [e.key, e] as const));
+
   const buildNestedNode = (element: DiagramElement): Record<string, any> => {
     const baseImage = buildBaseImage(element);
-    const orderedChildren = getOrderedChildren(element, elements);
+
+    // Композиция запекается в image, как и в сцене (buildComponentNode). Без этого
+    // компонент возвращался из палитры с isComponent: true и пустым composition —
+    // то есть переставал быть компонентом, а его примитивы становились обычными детьми.
+    const compositionPrimitives = element.isComponent
+      ? (element.composition ?? [])
+          .map(k => byKey.get(k))
+          .filter((e): e is DiagramElement => Boolean(e))
+      : [];
+    const childNodes = element.isComponent
+      ? (element.children ?? [])
+          .map(k => byKey.get(k))
+          .filter((e): e is DiagramElement => Boolean(e))
+      : getOrderedChildren(element, elements);
+
     // Серверные id вложенных сущностей в шаблон НЕ уезжают: у DTO шаблона их нет ни на
     // одном уровне (§2 контракта — потому для шаблонов и нет слияния), а id, попавший
     // сюда из сцены, адресовал бы чужую сущность.
     const states = (element.states.length ? element.states : [{id: "default", name: "Нормальное", overrides: {}, isDefault: true}])
-      .map((state, index) => ({
-        name: state.name,
-        image: JSON.stringify({...baseImage, ...(state.overrides ?? {})}),
-        isDefault: state.isDefault ?? index === 0,
-      }));
+      .map((state, index) => {
+        const stateImage: Record<string, unknown> = {...baseImage, ...(state.overrides ?? {})};
+        if (element.isComponent && compositionPrimitives.length) {
+          stateImage.composition = compositionPrimitives.map(p => buildShapeDescriptor(p, state.name));
+        }
+        return {
+          name: state.name,
+          image: JSON.stringify(stateImage),
+          isDefault: state.isDefault ?? index === 0,
+        };
+      });
 
-    // Include non-tag properties in the template.
-    // Tag-based properties (tag_id non-empty) are excluded because they reference
-    // specific tags that won't be valid in other scenes where this template is used.
-    // Server-assigned id and component_id are stripped — the server will reassign them.
+    // Свойства едут в шаблон ЦЕЛИКОМ, включая теговые, но БЕЗ конкретного тега:
+    // тип свойства («Тег») — это и есть «здесь нужен тег», а сам тег у каждого
+    // экземпляра свой. Раньше теговые свойства выбрасывались целиком, и шаблон терял
+    // то, ради чего его в основном и сохраняют.
+    // Серверные id снимаются: экземпляр заводит свои свойства сам (addTags при
+    // назначении тега).
     const templateProperties = Array.isArray(element.properties)
-      ? element.properties
-          .filter((p: any) => !p.tag_id)
-          .map(({ id: _id, component_id: _cid, ...rest }: any) => rest)
+      ? element.properties.map(({id: _id, component_id: _cid, ...rest}: any) => ({
+          ...rest,
+          tag_id: null,
+        }))
       : [];
 
     return {
-      id: element.id,
+      // Шаблон не несёт серверных id ни на одном уровне — в том числе узловой.
+      id: null,
       key: element.key,
       name: element.label ?? "",
-      children: orderedChildren.map(child => buildNestedNode(child)),
+      children: childNodes.map(child => buildNestedNode(child)),
       version: 0,
       type: element.type,
       parent_key: element.parentKey,

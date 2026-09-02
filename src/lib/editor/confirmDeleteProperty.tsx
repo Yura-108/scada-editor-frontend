@@ -8,18 +8,36 @@ import {collectPropertyDependents} from "@/lib/editor/propertyDependents";
 import type {PropertyCreateDto} from "@/types/tags.types";
 
 /**
- * Единая точка удаления свойства: подтверждение с перечнем зависимостей → серверный
+ * Единая точка удаления свойства: подтверждение с перечнем зависимостей → локальный
  * `deleteProperty`. Вход три (корзина на бирке, кнопка в форме, вкладка «Строки»), и
  * расходиться в том, о чём они предупреждают, им нельзя.
  *
- * Удаление уходит на сервер немедленно и НЕ откатывается Ctrl+Z (мутация вне истории
- * undo, см. deleteProperty) — об этом говорим прямо, потому что весь остальной
- * редактор ведёт себя ровно наоборот.
+ * Удаление теперь обычная правка сцены: откатывается Ctrl+Z и уезжает на сервер вместе
+ * со следующим сохранением. Предупреждаем поэтому не про необратимость, а про то, что
+ * ломается по ссылкам.
  */
 export const confirmDeleteProperty = async (
-  property: Pick<PropertyCreateDto, "id" | "name">,
-  componentId: number,
+  property: PropertyCreateDto,
+  elementKey: string,
 ): Promise<boolean> => {
+  const elements = useEditorStore.getState().elements;
+  const owner = elements.find(el => el.key === elementKey);
+
+  // Черновик (свойство ещё не уезжало на сервер): ссылок по номеру на него быть не может,
+  // разбирать зависимости не о чем.
+  if (property.id == null || owner?.id == null) {
+    const okDraft = await confirmModal({
+      title: `Удалить свойство «${property.name?.trim() || "без имени"}»?`,
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!okDraft) return false;
+    useEditorStore.getState().deleteProperty(elementKey, property);
+    return true;
+  }
+
+  const componentId = owner.id;
+
   const {bindings, directBindings, events, leavesBindingsWithoutProperty} =
     collectPropertyDependents(useEditorStore.getState().elements, property.id, componentId);
 
@@ -32,9 +50,6 @@ export const confirmDeleteProperty = async (
     confirmLabel: "Удалить",
     description: (
       <span className="space-y-2 block">
-        <span className="block">
-          Свойство будет удалено на сервере сразу — отменить это через Ctrl+Z нельзя.
-        </span>
         {directBindings.length > 0 && (
           <span className="block">
             Прямые привязки {list(directBindings)} будут удалены целиком: без ссылки на свойство
@@ -69,7 +84,7 @@ export const confirmDeleteProperty = async (
   // кто-то другой» должен доехать до пользователя тостом, а вызывающий UI — узнать,
   // что удаление не состоялось, и не закрывать форму.
   try {
-    await useEditorStore.getState().deleteProperty(property.id, componentId);
+    useEditorStore.getState().deleteProperty(elementKey, property);
     return true;
   } catch (err: unknown) {
     console.error(err);

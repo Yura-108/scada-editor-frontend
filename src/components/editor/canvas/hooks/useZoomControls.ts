@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";
 import { useEditorStore } from "@/store/useEditorStore";
-
-const clampZoom = (z: number) => Math.min(Math.max(z, 0.2), 3);
+import { clampZoom } from "@/lib/editor/zoomLimits";
+import { resolveSheet } from "@/lib/editor/sheet";
 
 interface ZoomControlsDeps {
   canvasRect: { width: number; height: number } | null;
@@ -48,5 +48,28 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     );
   }, [canvasRect, setCamera]);
 
-  return { zoomBy, zoomFit };
+  /**
+   * Вписать ЛИСТ (а не содержимое).
+   *
+   * Отдельная кнопка нужна потому, что читаемым целиком не открывается ни один
+   * формат: подпись устройства читается примерно с зума 0.19, а A3 вписывается
+   * в 0.10. Переход «весь лист - рабочий зум» из-за этого частый.
+   */
+  const zoomFitSheet = useCallback(() => {
+    if (!canvasRect) return;
+    const sheet = resolveSheet(useEditorStore.getState().elements);
+
+    const pad = 40;
+    const nz = clampZoom(Math.min(
+      canvasRect.width / (sheet.w + pad * 2),
+      canvasRect.height / (sheet.h + pad * 2),
+    ));
+    setCamera(
+      (canvasRect.width - sheet.w * nz) / 2,
+      (canvasRect.height - sheet.h * nz) / 2,
+      nz,
+    );
+  }, [canvasRect, setCamera]);
+
+  return { zoomBy, zoomFit, zoomFitSheet };
 }
