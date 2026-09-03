@@ -3,6 +3,20 @@ import {DiagramElement, LeafElement} from "@/types/editorElement.type";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ElementIndex, getChildElements, getElementIndex} from "@/lib/editor/elementIndex";
 
+/**
+ * Габарит элемента И его начало координат — это РАЗНЫЕ вещи, и путать их нельзя.
+ *
+ * - `minX/minY/maxX/maxY` — видимый габаритный прямоугольник в мировых координатах.
+ * - `absX/absY` — НАЧАЛО КООРДИНАТ элемента, то есть его `x/y`, поднятые до мировых.
+ *   Именно это значение нужно всему, что переводит элемент в другую систему координат
+ *   (`elementToGroupLocal` пишет его обратно в `el.x`).
+ *
+ * Совпадают они далеко не всегда: у повёрнутого бокса габарит шире фигуры, а у ГРУППЫ
+ * габарит — объединение детей, тогда как origin лежит на `GROUP_PADDING` левее и выше
+ * (рамка группы рисуется с отступом вокруг содержимого). Подмена origin габаритом у
+ * групп и приводила к тому, что вложенная группа при перегруппировке уезжала вправо-вниз
+ * ровно на этот отступ, накапливая сдвиг с каждым уровнем вложенности.
+ */
 export interface ElementBounds {
   minX: number;
   minY: number;
@@ -49,10 +63,17 @@ const rotatedBoxBounds = (x: number, y: number, w: number, h: number, rotate: nu
   return {minX, minY, maxX, maxY, absX: x, absY: y};
 };
 
-/** Границы группы = объединение границ её прямых детей (рекурсивно). */
+/**
+ * Границы группы = объединение границ её прямых детей (рекурсивно).
+ *
+ * `absX/absY` — это origin САМОЙ группы (`abs`), а не минимум детей: рамка группы
+ * рисуется с отступом вокруг содержимого, поэтому origin лежит левее и выше габарита.
+ * См. контракт у `ElementBounds`.
+ */
 const groupChildrenBounds = (
   el: DiagramElement,
   index: ElementIndex,
+  abs: {x: number; y: number},
   boundsOf: (child: DiagramElement) => ElementBounds,
 ): ElementBounds | null => {
   const children = getChildElements(el.key, index);
@@ -67,7 +88,7 @@ const groupChildrenBounds = (
     if (b.maxY > maxY) maxY = b.maxY;
   }
 
-  return {minX, minY, maxX, maxY, absX: minX, absY: minY};
+  return {minX, minY, maxX, maxY, absX: abs.x, absY: abs.y};
 };
 
 /** Разбирает `points` полигона: массив чисел либо JSON-строка. */
@@ -97,7 +118,7 @@ export function elementBounds(el: DiagramElement, index: ElementIndex): ElementB
   const abs = absolutePosition(el, index, false);
 
   if (el.type === "group") {
-    const groupBounds = groupChildrenBounds(el, index, child => elementBounds(child, index));
+    const groupBounds = groupChildrenBounds(el, index, abs, child => elementBounds(child, index));
     if (groupBounds) return groupBounds;
   }
 
@@ -144,7 +165,7 @@ export function elementBoundsRendered(el: DiagramElement, index: ElementIndex): 
   const rendered = getRenderedElement(el) as LeafElement;
 
   if (el.type === "group") {
-    const groupBounds = groupChildrenBounds(el, index, child => elementBoundsRendered(child, index));
+    const groupBounds = groupChildrenBounds(el, index, abs, child => elementBoundsRendered(child, index));
     if (groupBounds) return groupBounds;
   }
 

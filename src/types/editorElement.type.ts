@@ -259,6 +259,15 @@ export interface LeafElement extends BaseCanvasElement {
   headerColor?: string;
   /** Статические данные ячеек по ключу "${row}_${col}". */
   cells?: Record<string, TableCellData>;
+  /**
+   * Ширины столбцов и высоты строк — ВЕСА, а не координаты: на чтении нормируются
+   * к текущим w и (h − headerH), см. src/lib/editor/tableLayout.ts. Отсутствие поля
+   * означает равномерную сетку, поэтому старые таблицы выглядят как раньше.
+   */
+  colWidths?: number[];
+  rowHeights?: number[];
+  /** Явная высота шапки; без неё выводится из fontSize, как раньше. */
+  headerH?: number;
   // ... добавляй по мере необходимости
 }
 

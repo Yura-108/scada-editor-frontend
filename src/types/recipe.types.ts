@@ -1,5 +1,6 @@
 export interface RecipeValueDto {
-  row_name: string;
+  /** Имя свойства компонента. Раньше поле называлось `row_name` (строка таблицы). */
+  property_name: string;
   value: string;
 }
 
@@ -10,7 +11,8 @@ export interface RecipeCreateDto {
   name: string;
   /** Не прислан — бэкенд подставит "recipe". */
   type?: RecipeSetType;
-  component_id: number;
+  /** Строка, а не число: бэкенд отдаёт и принимает идентификатор компонента строкой. */
+  component_id: string;
   values: RecipeValueDto[];
 }
 
@@ -20,7 +22,7 @@ export interface RecipeDto extends RecipeCreateDto {
 
 /** Элемент значения в ответе /resolved — дополнен value_type/tag_id рантаймом. */
 export interface ResolvedRecipeValueDto {
-  row_name: string;
+  property_name: string;
   value: string;
   value_type: string;
   /** null — локальная строка (значение уходит в сессию, а не в ПЛК). */
@@ -30,7 +32,7 @@ export interface ResolvedRecipeValueDto {
 /** GET /api/editor/recipes/{id}/resolved — объект, не массив. */
 export interface ResolvedRecipeDto {
   recipe_id: number;
-  component_id: number;
+  component_id: string;
   values: ResolvedRecipeValueDto[];
   /** Имена строк, которых в таблице больше нет (удалили/переименовали в обход PUT /properties/{id}). */
   unmatched_rows: string[];

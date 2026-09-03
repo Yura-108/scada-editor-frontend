@@ -3,6 +3,7 @@ import {absolutePosition} from "@/lib/getAbsolutePosition";
 import {getElementBounds, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
+import {shiftElementPositions} from "@/lib/editor/shiftPositions";
 
 export const GROUP_PADDING = 20;
 
@@ -57,76 +58,35 @@ export function unionBounds(boundsList: ElementBounds[], padding = GROUP_PADDING
   };
 }
 
-/** Позиционные поля, которые могут храниться в overrides и конфликтовать с группировкой. */
-const POSITION_OVERRIDE_KEYS = new Set([
-  "x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points",
-]);
-
-/** Переводит элемент в локальные координаты группы, сохраняя визуальную позицию на холсте. */
+/**
+ * Переводит элемент в локальные координаты группы, сохраняя визуальную позицию на холсте.
+ *
+ * Перенос между двумя системами координат — это СДВИГ на постоянную величину, поэтому
+ * достаточно подвинуть позиционные поля и в базе, и в overrides каждого состояния
+ * (`shiftElementPositions`). Раньше функция собирала новую позицию из `bounds` и при этом
+ * ВЫЧИЩАЛА позиционные overrides у всех состояний — «схлопывала» их в то состояние, что
+ * было на экране. Из-за этого добавление одной подписи в компонент с четырьмя состояниями
+ * молча уничтожало всю пер-состоянийную геометрию: индикатор, который в «Аварии» стоял
+ * иначе, чем в «Норме», переезжал в общую позицию без возможности вернуть.
+ *
+ * Отдельная ветка для линии не нужна: равномерный сдвиг `x/y/x1/y1/x2/y2` сохраняет мировое
+ * положение концов. Мировая точка конца — `abs.x − rendered.x + rendered.x1`
+ * (см. `elementBoundsRendered`), а сдвиг меняет `abs.x` и `rendered.x` на одну величину.
+ */
 export function elementToGroupLocal(
   el: DiagramElement,
-  bounds: ElementBounds & { absX1?: number; absY1?: number; absX2?: number; absY2?: number },
+  bounds: ElementBounds,
   groupAbsX: number,
   groupAbsY: number,
 ): DiagramElement {
   const rendered = getRenderedElement(el);
 
-  // Переносим ВСЕ позиционные значения из rendered в base, чтобы ничего не потерялось.
-  // rendered = {...el, ...overrides}, поэтому rendered[key] — всегда актуальное значение.
-  // Это гарантирует сохранение radius, points, w, h и т.д. при очистке overrides.
-  const renderedPositionBase: Partial<Record<string, unknown>> = {};
-  for (const key of POSITION_OVERRIDE_KEYS) {
-    const value = (rendered as unknown as Record<string, unknown>)[key];
-    if (value !== undefined) renderedPositionBase[key] = value;
-  }
+  // Абсолютный origin СТАРОГО родителя = абсолютный origin элемента − его локальная позиция.
+  // `bounds.absX` — именно origin, а не габарит (контракт см. у ElementBounds).
+  const parentAbsX = (bounds.absX ?? bounds.minX) - (rendered.x ?? 0);
+  const parentAbsY = (bounds.absY ?? bounds.minY) - (rendered.y ?? 0);
 
-  // Убираем позиционные overrides из states: они уже записаны в base выше.
-  // Стилевые overrides (fill, stroke, opacity, …) сохраняем.
-  const cleanedStates = (el.states ?? []).map((s) => ({
-    ...s,
-    overrides: Object.fromEntries(
-      Object.entries(s.overrides ?? {}).filter(([k]) => !POSITION_OVERRIDE_KEYS.has(k)),
-    ),
-  }));
-
-  // Линия: позиция кодируется через x1/y1/x2/y2 в локальном пространстве родителя.
-  // bounds содержит absX1/absY1/absX2/absY2 — абсолютные мировые координаты точек.
-  // Переводим их в group-local, обнуляем x/y (они у линии — «центр», не origin).
-  if (el.type === "line" || rendered.type === "line") {
-    const ax1 = bounds.absX1 ?? bounds.minX;
-    const ay1 = bounds.absY1 ?? bounds.minY;
-    const ax2 = bounds.absX2 ?? bounds.maxX;
-    const ay2 = bounds.absY2 ?? bounds.maxY;
-
-    const lx1 = ax1 - groupAbsX;
-    const ly1 = ay1 - groupAbsY;
-    const lx2 = ax2 - groupAbsX;
-    const ly2 = ay2 - groupAbsY;
-
-    return {
-      ...el,
-      ...renderedPositionBase,
-      x1: lx1, y1: ly1,
-      x2: lx2, y2: ly2,
-      x: (lx1 + lx2) / 2,
-      y: (ly1 + ly2) / 2,
-      states: cleanedStates,
-    };
-  }
-
-  // Все остальные типы: позиция — через x/y (origin верхнего левого угла).
-  // renderedPositionBase уже содержит актуальные w, h, radius, points и т.д.
-  // Поверх него ставим вычисленные group-local x/y.
-  const newX = (bounds.absX ?? bounds.minX) - groupAbsX;
-  const newY = (bounds.absY ?? bounds.minY) - groupAbsY;
-
-  return {
-    ...el,
-    ...renderedPositionBase,
-    x: newX,
-    y: newY,
-    states: cleanedStates,
-  };
+  return shiftElementPositions(el, parentAbsX - groupAbsX, parentAbsY - groupAbsY);
 }
 
 /**

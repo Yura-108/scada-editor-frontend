@@ -1,11 +1,12 @@
 "use client";
 
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {ChevronDown, ChevronRight, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, Radius, PenTool, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
+import {ChevronDown, ChevronRight, ChevronsDownUp, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, Radius, PenTool, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/lib/utils";
-import {sortByZIndex, zIndexOf} from "@/lib/editor/zOrder";
+import {sortByZIndex, sortKeysByZIndex} from "@/lib/editor/zOrder";
+import {getElementIndex} from "@/lib/editor/elementIndex";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   rectangle: <Square size={13} />,
@@ -35,14 +36,13 @@ export function LayersPanel() {
   const selectMultiple = useEditorStore(s => s.selectMultiple);
   const enterGroup = useEditorStore(s => s.enterGroup);
   const revealElement = useEditorStore(s => s.revealElement);
+  const ensureElementVisible = useEditorStore(s => s.ensureElementVisible);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const byKey = useMemo(() => {
-    const m = new Map<string, DiagramElement>();
-    elements.forEach(el => m.set(el.key, el));
-    return m;
-  }, [elements]);
+  // Общий индекс схемы (кэширован по ссылке на массив) — та же карта, что у холста.
+  // Нужен и для состава строк, и для подъёма по parentKey к предкам выделенного.
+  const byKey = useMemo(() => getElementIndex(elements).byKey, [elements]);
 
   // Порядок строк обязан совпадать с порядком отрисовки холста — тот же zIndex
   // со стабильной сортировкой (при равных слоях остаётся порядок массива).
@@ -65,15 +65,35 @@ export function LayersPanel() {
     });
   };
 
+  /**
+   * Ключи всех контейнеров схемы — по `elements`, а НЕ по видимым строкам.
+   *
+   * Группа внутри уже свёрнутой в `visibleRows` отсутствует, и «свернуть всё» оставило
+   * бы её раскрытой — она развернулась бы сама, стоит открыть родителя.
+   */
+  const containerKeys = useMemo(
+    () => elements
+      .filter(el => el.type === "group" && [...(el.composition ?? []), ...el.children].length > 0)
+      .map(el => el.key),
+    [elements],
+  );
+
+  const allCollapsed = containerKeys.length > 0 && containerKeys.every(k => collapsed.has(k));
+
+  const toggleAll = () => setCollapsed(allCollapsed ? new Set() : new Set(containerKeys));
+
   const handleSelect = (key: string, additive: boolean) => {
     if (additive) {
       selectMultiple([...selectedIds.filter(id => id !== key), key]);
-      return;
+    } else {
+      // Одиночный выбор ОТКРЫВАЕТ уровень элемента: содержимое неоткрытой группы на холсте
+      // недоступно, и элемент оказался бы выделенным, но неподвижным. Одним действием, а не
+      // «войти, затем выделить»: enterGroup чистит выделение.
+      revealElement(key);
     }
-    // Одиночный выбор ОТКРЫВАЕТ уровень элемента: содержимое неоткрытой группы на холсте
-    // недоступно, и элемент оказался бы выделенным, но неподвижным. Одним действием, а не
-    // «войти, затем выделить»: enterGroup чистит выделение.
-    revealElement(key);
+    // Камеру двигаем ТОЛЬКО отсюда, а не из revealElement: при выделении на холсте или
+    // Ctrl+A ехать некуда — человек и так смотрит на элемент.
+    ensureElementVisible(key);
   };
 
   /**
@@ -92,10 +112,9 @@ export function LayersPanel() {
       if (el.type !== "group" || collapsed.has(el.key)) return;
       // Порядок отрисовки на холсте: по zIndex среди соседей; при равных слоях —
       // порядок конкатенации composition (низ) → children (верх).
-      const memberKeys = [...(el.composition ?? []), ...el.children]
-        .sort((a, b) => zIndexOf(byKey.get(a)) - zIndexOf(byKey.get(b)));
+      const memberKeys = sortKeysByZIndex([...(el.composition ?? []), ...el.children], byKey);
       memberKeys.forEach(k => {
-        const member = byKey.get(k);
+        const member = byKey[k];
         if (member) walk(member, depth + 1, (el.composition ?? []).includes(k));
       });
     };
@@ -124,6 +143,61 @@ export function LayersPanel() {
       ?.querySelector<HTMLElement>(`[data-layer-key="${CSS.escape(currentKey)}"]`)
       ?.focus();
   }, [currentKey]);
+
+  // Элемент, за которым следует дерево: последний выделенный. `selectMultiple`
+  // дописывает свежий ключ в конец, а выделение с холста кладёт единственный.
+  const selectedKey = selectedIds.length ? selectedIds[selectedIds.length - 1] : null;
+
+  /**
+   * Раскрываем свёрнутых предков выделенного — иначе его строки в дереве просто нет,
+   * и прокручивать было бы не к чему.
+   *
+   * Именно подписка на стор, а не эффект по `selectedIds`: выделение приходит ИЗВНЕ
+   * панели (холст, хоткеи, вход в группу), и это ровно тот «внешний источник», ради
+   * которого подписки и существуют — `setState` в теле эффекта дал бы каскадный
+   * ре-рендер на каждую смену выделения.
+   *
+   * Раскрытие остаётся в `collapsed` (а не выводится при рендере) намеренно: иначе
+   * ветку с выделенным элементом нельзя было бы свернуть стрелкой — вывод тут же
+   * раскрывал бы её обратно.
+   */
+  useEffect(() => useEditorStore.subscribe((state, prev) => {
+    const key = state.selectedIds[state.selectedIds.length - 1];
+    if (!key || key === prev.selectedIds[prev.selectedIds.length - 1]) return;
+
+    const byKeyNow = getElementIndex(state.elements).byKey;
+    const ancestors: string[] = [];
+    for (let k = byKeyNow[key]?.parentKey; k && byKeyNow[k]; k = byKeyNow[k].parentKey) {
+      ancestors.push(k);
+    }
+    if (!ancestors.length) return;
+
+    setCollapsed(prevSet => {
+      // Прежний Set по ссылке, если раскрывать нечего: новый объект здесь означал бы
+      // ре-рендер дерева на каждое изменение стора.
+      if (!ancestors.some(k => prevSet.has(k))) return prevSet;
+      const next = new Set(prevSet);
+      ancestors.forEach(k => next.delete(k));
+      return next;
+    });
+  }), []);
+
+  const selectedRowVisible = useMemo(
+    () => !!selectedKey && visibleRows.some(r => r.el.key === selectedKey),
+    [selectedKey, visibleRows],
+  );
+
+  // Прокрутка к строке выделенного. Зависимость — флаг «строка есть в дереве», а не сам
+  // `visibleRows`: тот пересоздаётся на каждую правку схемы, и список дёргался бы на
+  // каждом кадре перетаскивания фигуры по холсту.
+  // `block: "nearest"` обязателен: слева два вложенных скролл-контейнера (обёртка <aside>
+  // в WorkSpace тоже прокручиваемая), и "center" двигал бы заодно и внешний.
+  useEffect(() => {
+    if (!selectedKey || !selectedRowVisible) return;
+    treeRef.current
+      ?.querySelector<HTMLElement>(`[data-layer-key="${CSS.escape(selectedKey)}"]`)
+      ?.scrollIntoView({block: "nearest"});
+  }, [selectedKey, selectedRowVisible]);
 
   const moveFocus = (delta: number) => {
     const idx = visibleRows.findIndex(r => r.el.key === currentKey);
@@ -178,13 +252,24 @@ export function LayersPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
+      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0 flex items-center justify-between gap-2">
         <h3
           id="layers-panel-heading"
           className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
         >
           Слои
         </h3>
+        {containerKeys.length > 0 && (
+          <button
+            type="button"
+            onClick={toggleAll}
+            title={allCollapsed ? "Развернуть всё" : "Свернуть всё"}
+            aria-label={allCollapsed ? "Развернуть всё" : "Свернуть всё"}
+            className="p-1 rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+          >
+            {allCollapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />}
+          </button>
+        )}
       </div>
       <div
         ref={treeRef}

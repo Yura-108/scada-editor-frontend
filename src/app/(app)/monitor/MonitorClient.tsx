@@ -8,6 +8,7 @@ import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
 import openApplyRecipeModal from "@/components/monitor/ApplyRecipeModal";
+import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 
 const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   connecting: {label: "Подключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
@@ -35,6 +36,9 @@ export default function MonitorClient() {
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
   const loadSceneList = useEditorStore(s => s.loadSceneList);
   const loadScene = useEditorStore(s => s.loadScene);
+
+  // Своя память вида: пан оператора не должен сбивать камеру в редакторе.
+  useSceneCameraMemory("monitor");
 
   // Монитор не редактирует, но стор общий с редактором: страхуемся от случайных
   // записей в историю undo на время жизни страницы.

@@ -3,6 +3,7 @@ import { getElementBoundsRendered } from "@/lib/getElementBounds";
 import { useEditorStore } from "@/store/useEditorStore";
 import { clampZoom } from "@/lib/editor/zoomLimits";
 import { resolveSheet } from "@/lib/editor/sheet";
+import { cameraForSheet } from "@/lib/editor/fitCamera";
 
 interface ZoomControlsDeps {
   canvasRect: { width: number; height: number } | null;
@@ -58,18 +59,10 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
    */
   const zoomFitSheet = useCallback(() => {
     if (!canvasRect) return;
-    const sheet = resolveSheet(useEditorStore.getState().elements);
-
-    const pad = 40;
-    const nz = clampZoom(Math.min(
-      canvasRect.width / (sheet.w + pad * 2),
-      canvasRect.height / (sheet.h + pad * 2),
-    ));
-    setCamera(
-      (canvasRect.width - sheet.w * nz) / 2,
-      (canvasRect.height - sheet.h * nz) / 2,
-      nz,
-    );
+    // Формула — в общем хелпере: той же камерой открывается сцена, у которой ещё нет
+    // запомненного положения (см. useSceneCameraMemory).
+    const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), canvasRect);
+    setCamera(cam.x, cam.y, cam.zoom);
   }, [canvasRect, setCamera]);
 
   return { zoomBy, zoomFit, zoomFitSheet };

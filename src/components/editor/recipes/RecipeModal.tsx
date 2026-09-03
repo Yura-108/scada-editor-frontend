@@ -31,9 +31,9 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
   // всегда актуальны — сбрасывать их эффектом не нужно.
   const [name, setName] = useState(recipe?.name ?? "");
   const [type, setType] = useState(recipe?.type ?? "recipe");
-  const [valueByRowName, setValueByRowName] = useState<Record<string, string>>(() => {
+  const [valueByPropertyName, setValueByPropertyName] = useState<Record<string, string>>(() => {
     const seeded: Record<string, string> = {};
-    for (const v of recipe?.values ?? []) seeded[v.row_name] = v.value;
+    for (const v of recipe?.values ?? []) seeded[v.property_name] = v.value;
     return seeded;
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +57,9 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
       const payload = {
         name: name.trim(),
         type,
-        component_id: componentId,
-        values: rowBindings.map((rb) => ({row_name: rb.name, value: valueByRowName[rb.name] ?? ""})),
+        // Идентификатор компонента в контракте рецептов — строка, а в схеме он число.
+        component_id: String(componentId),
+        values: rowBindings.map((rb) => ({property_name: rb.name, value: valueByPropertyName[rb.name] ?? ""})),
       };
       const ok = recipe ? await updateRecipe(recipe.id, payload) : await createRecipe(payload);
       if (ok) closeModal();
@@ -125,17 +126,17 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
                   <label className="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={valueByRowName[rb.name] === "true"}
-                      onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.checked ? "true" : "false"})}
+                      checked={valueByPropertyName[rb.name] === "true"}
+                      onChange={(e) => setValueByPropertyName({...valueByPropertyName, [rb.name]: e.target.checked ? "true" : "false"})}
                       className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
                     />
-                    {valueByRowName[rb.name] === "true" ? "true" : "false"}
+                    {valueByPropertyName[rb.name] === "true" ? "true" : "false"}
                   </label>
                 ) : (
                   <input
                     type="text"
-                    value={valueByRowName[rb.name] ?? ""}
-                    onChange={(e) => setValueByRowName({...valueByRowName, [rb.name]: e.target.value})}
+                    value={valueByPropertyName[rb.name] ?? ""}
+                    onChange={(e) => setValueByPropertyName({...valueByPropertyName, [rb.name]: e.target.value})}
                     className={inputClass}
                   />
                 )}

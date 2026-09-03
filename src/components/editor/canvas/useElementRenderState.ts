@@ -7,7 +7,10 @@ import { sortKeysByZIndex } from "@/lib/editor/zOrder";
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 // Дуга — со своими ручками (начало/раствор/радиус), рамка Transformer'а ей не нужна:
 // её масштабирование записало бы w/h в обход `radius`, который читает рендер.
-export const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "arc", "curve", "line", "polygon"]);
+// Таблица — со своими ручками габарита и границ полос (TableResizeHandles): Transformer
+// масштабирует узел императивно, растягивая кегль, линии сетки и текст ячеек до самого
+// отпускания, и коммитит `rotate`, который рендер таблицы не применяет.
+export const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "arc", "curve", "line", "polygon", "table"]);
 
 export interface ElementRenderState {
   /** Сам элемент (undefined — удалён из схемы). */

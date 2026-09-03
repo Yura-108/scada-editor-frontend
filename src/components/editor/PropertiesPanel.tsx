@@ -4,11 +4,11 @@ import React, {useState, useMemo, useEffect} from "react";
 import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
 import {SortableContext, arrayMove, rectSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
-import {cn} from "@/lib/utils";
+import {cn, GRID} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {PropertyCreateDto} from "@/types/tags.types";
 import {elementPropertyMap, basePropertySchema, elementTypeLabel, ROTATABLE_TYPES} from "@/constants/propertiesPanel";
-import {Plus, AlertTriangle, Trash2, Boxes, GripVertical, Pencil} from "lucide-react";
+import {Plus, AlertTriangle, Trash2, Boxes, GripVertical, Pencil, Layers, Check} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
 import {StateSelect} from "@/components/ui/StateSelect";
@@ -30,6 +30,7 @@ import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 import {CELL_SOURCE_FIELDS, cellBindingAt} from "@/lib/editor/tableBindings";
+import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
 import type {CellSourceField} from "@/types/binding.types";
 
 interface PropertiesPanelProps {
@@ -129,6 +130,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
   const currentComponentStateByElementKey = useEditorStore(s => s.currentComponentStateByElementKey);
   const selectedTableCell = useEditorStore(s => s.selectedTableCell);
+  const editAllStates = useEditorStore(s => s.editAllStates);
+  const setEditAllStates = useEditorStore(s => s.setEditAllStates);
   const clearTableCellSelection = useEditorStore(s => s.clearTableCellSelection);
   const addBinding = useEditorStore(s => s.addBinding);
   const removeBinding = useEditorStore(s => s.removeBinding);
@@ -449,6 +452,32 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     });
   };
 
+  // ---- Размеры полос таблицы ----
+  // Считаются тем же кодом, что и рендер: в элементе лежат ВЕСА, а показывать и
+  // редактировать надо фактические единицы сцены (см. src/lib/editor/tableLayout.ts).
+  const tableTracks = element.type !== "table" ? null : (() => {
+    const w = getNumberValue(renderedElementValues.w, 300);
+    const h = getNumberValue(renderedElementValues.h, 160);
+    const rows = Math.max(1, Math.round(getNumberValue(renderedElementValues.rows, 4)));
+    const cols = Math.max(1, Math.round(getNumberValue(renderedElementValues.cols, 3)));
+    const showHeader = renderedElementValues.showHeader !== false;
+    const fontSize = getNumberValue(renderedElementValues.fontSize, 12);
+    const headerH = headerHeight(showHeader, fontSize, renderedElementValues.headerH);
+    return {
+      rows, cols, h, headerH, showHeader,
+      colWs: resolveTracks(renderedElementValues.colWidths, cols, w),
+      rowHs: resolveTracks(renderedElementValues.rowHeights, rows, h - headerH),
+    };
+  })();
+
+  /** Задать ширину столбца / высоту строки: разница снимается с соседней полосы. */
+  const setTableTrack = (axis: "col" | "row", index: number, size: number) => {
+    if (!tableTracks) return;
+    updateElementVisual(element.key, axis === "col"
+      ? {colWidths: setTrackSize(tableTracks.colWs, index, size)}
+      : {rowHeights: setTrackSize(tableTracks.rowHs, index, size)});
+  };
+
   const handleSelectChange = (key: string, value: string) => {
     // Смена ориентации прогресс-бара меняет местами w/h, чтобы вертикальный бар был
     // реально узким и высоким, а не оставался в приплюснутой коробке (ключ orientation
@@ -609,6 +638,25 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         </p>
       </div>
 
+      {/* Режим правки всех состояний виден на ЛЮБОЙ вкладке: иначе про него забывают,
+          и правка «только для Аварии» молча растекается по всем состояниям — ровно та
+          ошибка, от которой режим и должен спасать. */}
+      {editAllStates && (
+        <div className="shrink-0 mx-4 mt-3 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2">
+          <Layers size={14} className="shrink-0 text-amber-600 dark:text-amber-400"/>
+          <span className="text-xs text-amber-700 dark:text-amber-300">
+            Правка идёт во все состояния
+          </span>
+          <button
+            type="button"
+            onClick={() => setEditAllStates(false)}
+            className="ml-auto text-xs text-amber-700 hover:underline dark:text-amber-300"
+          >
+            Выключить
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="shrink-0 px-4 pt-3 pb-2 border-b border-gray-200 dark:border-neutral-800">
         <div className="grid grid-rows-2 grid-cols-2 gap-2">
@@ -671,8 +719,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               </label>
               <StateSelect elementKey={element.key} states={element.states}/>
               {element.states.length > 1 && (
-                <p className="text-[11px] text-gray-500 dark:text-neutral-500">
-                  Значения ниже относятся к этому состоянию.
+                <p className={cn(
+                  "text-[11px]",
+                  editAllStates
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-gray-500 dark:text-neutral-500",
+                )}>
+                  {editAllStates
+                    ? "Значения ниже пишутся во ВСЕ состояния элемента."
+                    : "Значения ниже относятся к этому состоянию."}
                 </p>
               )}
             </div>
@@ -813,6 +868,43 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   </select>
                 </div>
 
+                {/* Размер полос, которым принадлежит ячейка. Правится и мышью —
+                    границы столбцов/строк на холсте (TableResizeHandles). */}
+                {tableTracks && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="cell-col-width"
+                        className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight"
+                      >
+                        Ширина столбца
+                      </label>
+                      <NumberInput
+                        id="cell-col-width"
+                        className={baseInputClasses}
+                        value={Math.round(tableTracks.colWs[cellFocus.col] ?? 0)}
+                        step={GRID}
+                        onCommit={(v) => setTableTrack("col", cellFocus.col, v)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="cell-row-height"
+                        className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight"
+                      >
+                        Высота строки
+                      </label>
+                      <NumberInput
+                        id="cell-row-height"
+                        className={baseInputClasses}
+                        value={Math.round(tableTracks.rowHs[cellFocus.row] ?? 0)}
+                        step={GRID}
+                        onCommit={(v) => setTableTrack("row", cellFocus.row, v)}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {!cellBinding && (
                   <button
                     className={canBindCell
@@ -837,6 +929,50 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     addBinding(element.key, buildDirectBinding(cellTargetKey, picked, taken));
                   }}
                 />
+              </div>
+            )}
+
+            {/* Размеры таблицы, не привязанные к конкретной ячейке. «Выровнять»
+                стирает веса — раскладка возвращается к равномерной сетке. */}
+            {tableTracks && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 mb-2 uppercase tracking-wider">
+                  Размеры таблицы
+                </h4>
+                <div className="grid grid-cols-2 gap-4 items-end">
+                  {tableTracks.showHeader && (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="table-header-h"
+                        className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
+                      >
+                        Высота заголовка
+                      </label>
+                      <NumberInput
+                        id="table-header-h"
+                        className={baseInputClasses}
+                        value={Math.round(tableTracks.headerH)}
+                        step={GRID}
+                        onCommit={(v) => updateElementVisual(element.key, {
+                          // Телу таблицы обязана остаться хотя бы клетка на строку.
+                          headerH: Math.min(
+                            Math.max(MIN_TRACK, v),
+                            Math.max(MIN_TRACK, tableTracks.h - tableTracks.rows * MIN_TRACK),
+                          ),
+                        })}
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className={cn(baseInputClasses, "cursor-pointer text-center hover:bg-gray-100 dark:hover:bg-neutral-800")}
+                    title="Сделать все столбцы и строки одинаковыми"
+                    onClick={() => updateElementVisual(element.key, {colWidths: undefined, rowHeights: undefined})}
+                  >
+                    Выровнять
+                  </button>
+                </div>
+                <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700 mt-5" />
               </div>
             )}
 
@@ -903,6 +1039,36 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                 Состояние:
               </h4>
               <StateSelect elementKey={element.key} states={element.states}/>
+            </div>
+
+            {/* Оформление, одинаковое во всех состояниях (подпись, рамка), иначе
+                пришлось бы повторять его в каждом состоянии руками. */}
+            <div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={editAllStates}
+                onClick={() => setEditAllStates(!editAllStates)}
+                className={cn(
+                  "w-full flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+                  editAllStates
+                    ? "border-amber-400/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-neutral-800/60",
+                )}
+              >
+                <span className={cn(
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                  editAllStates
+                    ? "border-amber-500 bg-amber-500 text-white"
+                    : "border-gray-400 dark:border-neutral-600",
+                )}>
+                  {editAllStates && <Check size={12}/>}
+                </span>
+                Править все состояния
+              </button>
+              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-neutral-500">
+                Пока включено, правки визуала пишутся во все состояния элемента сразу.
+              </p>
             </div>
 
             <div>

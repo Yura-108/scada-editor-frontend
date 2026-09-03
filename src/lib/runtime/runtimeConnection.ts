@@ -21,7 +21,7 @@ import {devLog} from "@/lib/devLog";
 /** quality отсутствует или "GOOD" — значение достоверно; любое другое — нет
  *  (не сравнивать на равенство "BAD" — контракт расширяемый, см. docs/contract/TAG_CONTRACT_CHANGES.md). */
 export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number; quality?: string};
-/** propertyName — имя свойства (== row_name строки таблицы); propertyId нестабилен
+/** propertyName — имя свойства (== property_name в рецептах); propertyId нестабилен
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
 /** rejected — окончательный отказ хендшейка (код закрытия 1003: сессия уже занята

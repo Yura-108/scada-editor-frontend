@@ -348,6 +348,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
         {...leafProps}
         focusedCell={focusedCell}
         onCellClick={ctx.onTableCellClick}
+        themeColors={themeColors}
       />
     );
   }

@@ -3,10 +3,11 @@
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
 import * as Dialog from "@radix-ui/react-dialog";
-import {X} from "lucide-react";
+import {Pin, PinOff, X} from "lucide-react";
 import {useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {usePaletteStore} from "@/store/usePaletteStore";
+import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
+import {openSceneGuarded} from "@/lib/editor/openScene";
 import {toast} from "sonner";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import { Button, ModalFooter } from "@/components/ui/Button";
@@ -27,6 +28,10 @@ export function ChooseSceneContent({
   projectName,
 }: Props) {
   const {closeModal} = useModalStore.getState();
+  // Подписка, а не getState(): иконка скрепки обязана переключаться сразу по клику.
+  const pins = usePinnedScenesStore(s => s.pins);
+  const togglePin = usePinnedScenesStore(s => s.togglePin);
+  const unpin = usePinnedScenesStore(s => s.unpin);
   const [localList, setLocalList] = useState(sceneList);
   const [selectedId, setSelectedId] = useState<number | null>(sceneList[0]?.id ?? null);
   const [newName, setNewName] = useState("");
@@ -48,6 +53,8 @@ export function ChooseSceneContent({
     });
     if (!ok) return;
     await onDeleteAction(id);
+    // Удалённая схема не должна остаться вкладкой быстрого доступа.
+    unpin(id);
     const next = localList.filter(s => s.id !== id);
     setLocalList(next);
     if (selectedId === id) setSelectedId(next[0]?.id ?? null);
@@ -112,10 +119,31 @@ export function ChooseSceneContent({
               >
                 {scene.name}
               </button>
+              {/* Закрепление — панель быстрого доступа в полосе вкладок редактора. */}
+              <button
+                type="button"
+                aria-pressed={pins.some(p => p.id === scene.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePin({id: scene.id, name: scene.name});
+                }}
+                className={cn(
+                  "ml-2 shrink-0 p-0.5 rounded transition-colors",
+                  pins.some(p => p.id === scene.id)
+                    ? "text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                    : "text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
+                )}
+                title={pins.some(p => p.id === scene.id) ? "Открепить схему" : "Закрепить схему"}
+                aria-label={pins.some(p => p.id === scene.id)
+                  ? `Открепить схему «${scene.name}»`
+                  : `Закрепить схему «${scene.name}»`}
+              >
+                {pins.some(p => p.id === scene.id) ? <PinOff size={14} /> : <Pin size={14} />}
+              </button>
               <button
                 type="button"
                 onClick={(e) => handleDelete(e, scene.id)}
-                className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
+                className="ml-1 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
                 title="Удалить схему"
                 aria-label={`Удалить схему «${scene.name}»`}
               >
@@ -166,13 +194,11 @@ export function ChooseSceneContent({
 
 export function openChooseSceneModal() {
   const {openModal} = useModalStore.getState();
-  const {loadScene, sceneList, currentProject, deleteScene, createScene} = useEditorStore.getState();
-  const {loadPaletteItems} = usePaletteStore.getState();
+  const {sceneList, currentProject, deleteScene, createScene} = useEditorStore.getState();
 
-  const handleLoadScene = async (id: number) => {
-    await loadScene(id);
-    await loadPaletteItems();
-  };
+  // Через общий хелпер: он же спрашивает про несохранённые правки и используется
+  // вкладками быстрого доступа — поведение двух входов не должно разъезжаться.
+  const handleLoadScene = (id: number) => { void openSceneGuarded(id); };
 
   // Возвращаем null, если сцена не создана — тогда модалка не закрывается
   // и пользователь может поправить имя.

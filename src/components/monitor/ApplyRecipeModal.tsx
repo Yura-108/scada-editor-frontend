@@ -79,7 +79,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   };
 
   const currentValueByTag = new Map((snapshot ?? []).map((s) => [s.tagId, s.value]));
-  const recipeValueByRowName = new Map((selectedRecipe?.values ?? []).map((v) => [v.row_name, v.value]));
+  const recipeValueByPropertyName = new Map((selectedRecipe?.values ?? []).map((v) => [v.property_name, v.value]));
 
   const handleApply = async () => {
     if (recipeId == null) return;
@@ -213,7 +213,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
                         <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
                           {rb.tag_id ? (currentValueByTag.get(rb.tag_id) ?? "нет данных") : (rb.default_value ?? "—")}
                         </td>
-                        <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{recipeValueByRowName.get(rb.name) ?? "—"}</td>
+                        <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{recipeValueByPropertyName.get(rb.name) ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

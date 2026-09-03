@@ -1,5 +1,6 @@
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 
 /**
  * Вкладка «Редактор» — обёртка холста.
@@ -14,6 +15,8 @@ import {useEditorStore} from "@/store/useEditorStore";
  */
 export function EditorPanel() {
   const isVersionPreview = useEditorStore(s => s.versionPreview !== null);
+  // Каждая сцена помнит своё положение камеры (у монитора память своя).
+  useSceneCameraMemory("editor");
 
   return (
     <div className="h-full w-full">

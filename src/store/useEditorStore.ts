@@ -1,6 +1,6 @@
 import {snap, GRID} from "@/lib/utils";
 import {create} from "zustand/react";
-import {GroupElement, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
+import {GroupElement, ComponentState, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import {
   elementToGroupLocal,
@@ -12,6 +12,8 @@ import {
   resolveParentAbsoluteIndexed,
 } from "@/lib/groupLayout";
 import {ElementIndex, getElementIndex} from "@/lib/editor/elementIndex";
+import {shiftElementPositions} from "@/lib/editor/shiftPositions";
+import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {zIndexOf} from "@/lib/editor/zOrder";
 import {
   isMetaElement, isSameSheet, readSheetFromRaw, resolveSheet, SHEET_MAX, SHEET_MIN,
@@ -29,6 +31,7 @@ import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
+import {cameraToReveal} from "@/lib/editor/revealCamera";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
@@ -78,6 +81,15 @@ type EditorState = {
    * Ячейка таблицы, сфокусированная в панели свойств (для показа cell-специфичных
    * полей). Транзиентно, как selectedIds/activeGroupKey — не в elements, вне undo.
    */
+  /**
+   * Режим «Править все состояния»: правка визуала выделенного элемента пишется в
+   * overrides ВСЕХ его состояний, а не только текущего. Нужен для оформления, которое
+   * одинаково во всех состояниях компонента (подпись, рамка): иначе его пришлось бы
+   * повторять в каждом состоянии руками. Транзиентный, как selectedTableCell — не в
+   * elements, значит вне undo (сами правки в undo попадают как обычно).
+   */
+  editAllStates: boolean;
+  setEditAllStates: (value: boolean) => void;
   selectedTableCell: {elementKey: string; row: number; col: number} | null;
   selectTableCell: (elementKey: string, row: number, col: number) => void;
   clearTableCellSelection: () => void;
@@ -134,6 +146,12 @@ type EditorState = {
   setCameraPan: (dx: number, dy: number) => void;
   setCameraZoom: (newZoom: number) => void;
   setCamera: (x: number, y: number, zoom: number) => void;
+  /**
+   * Подвести камеру к элементу, если он вне видимой области (иначе ничего не делает).
+   * Для панели «Слои»: выделение само по себе холст не двигает, и выбранный элемент
+   * мог оказаться далеко за краем экрана.
+   */
+  ensureElementVisible: (key: string) => void;
 
   /**
    * «Вооружённый» инструмент палитры: клик по элементу палитры сохраняет сюда его
@@ -354,32 +372,6 @@ const splitBaseOnly = (
     (BASE_ONLY_KEYS.has(k) ? base : state)[k] = v;
   }
   return {base, state};
-};
-
-/**
- * Сдвигает все позиционные поля (x, y, x1, y1, x2, y2) объекта на dx/dy.
- * Позиция элемента может лежать как в базовых полях, так и в overrides состояния
- * (перемещённые листья), а у линий — в x1/y1/x2/y2. Поэтому сдвигаем везде, где есть.
- */
-const shiftPositionKeys = (obj: Record<string, unknown>, dx: number, dy: number): Record<string, unknown> => {
-  const o = {...obj};
-  for (const k of ['x', 'x1', 'x2'] as const) {
-    if (typeof o[k] === 'number') o[k] = (o[k] as number) + dx;
-  }
-  for (const k of ['y', 'y1', 'y2'] as const) {
-    if (typeof o[k] === 'number') o[k] = (o[k] as number) + dy;
-  }
-  return o;
-};
-
-/** Сдвигает элемент на dx/dy: базовые поля + позиционные ключи в overrides всех состояний. */
-const shiftElementPositions = (el: DiagramElement, dx: number, dy: number): DiagramElement => {
-  const shifted = shiftPositionKeys(el as unknown as Record<string, unknown>, dx, dy) as unknown as DiagramElement;
-  shifted.states = (el.states ?? []).map(s => ({
-    ...s,
-    overrides: shiftPositionKeys(s.overrides ?? {}, dx, dy),
-  }));
-  return shifted;
 };
 
 /**
@@ -905,6 +897,52 @@ const ensureStateByName = (element: DiagramElement, stateName: string, forcedId?
   } as DiagramElement;
 };
 
+/**
+ * Выдаёт членам контейнера все его состояния (сопоставление по ИМЕНИ).
+ *
+ * Набор состояний задаёт контейнер: имя — это то, по чему `cascadeStateByName`,
+ * `buildShapeDescriptor` и бэкенд связывают родителя с потомками. Примитив, попавший в
+ * компонент с четырьмя состояниями, имел ровно одно («Нормальное»): на холсте он падал
+ * на своё состояние по умолчанию и выглядел правильно, но панель «Состояния» показывала
+ * одно против четырёх — и это читается как «в других состояниях элемента нет».
+ *
+ * Обратного не делаем: контейнер состояния члена НЕ перенимает. `ensureStateByName`
+ * идемпотентен, так что вызов на смешанном составе только заполняет пробелы.
+ */
+const syncMemberStates = (
+  elements: DiagramElement[],
+  containerKey: string,
+  memberKeys: Iterable<string>,
+): DiagramElement[] => {
+  const {byKey} = getElementIndex(elements);
+  const container = byKey[containerKey];
+  if (!container) return elements;
+
+  const names = container.states.map(s => s.name);
+  if (!names.length) return elements;
+
+  // Состояния нужны и вложенным потомкам: состав компонента может быть многоуровневым.
+  const keys = new Set<string>();
+  for (const key of memberKeys) {
+    keys.add(key);
+    for (const descendant of getDescendantKeys(key, elements)) keys.add(descendant);
+  }
+  if (!keys.size) return elements;
+
+  let changed = false;
+  const next = elements.map(el => {
+    if (!keys.has(el.key)) return el;
+    let updated = el;
+    for (const name of names) updated = ensureStateByName(updated, name);
+    if (updated !== el) changed = true;
+    return updated;
+  });
+
+  // Холостая правка не должна плодить новый массив: на его ссылке завязаны equality
+  // истории undo и флаг несохранённых изменений.
+  return changed ? next : elements;
+};
+
 const getErrorMessage = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
@@ -1038,6 +1076,7 @@ const applyServerComponents = (
     selectedIds: [],
     activeGroupKey: null,
     selectedTableCell: null,
+    editAllStates: false,
     currentComponentStateByElementKey: {},
   });
 
@@ -1264,6 +1303,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       selectedIds: [],
       activeGroupKey: null,
       selectedTableCell: null,
+      editAllStates: false,
       editingTextKey: null,
       currentComponentStateByElementKey: {},
       runtimeOverridesByElementKey: {},
@@ -1296,6 +1336,17 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
+
+      ensureElementVisible: (key) => {
+        const {elements, canvasRect, camera} = get();
+        if (!canvasRect) return;
+        const el = getElementIndex(elements).byKey[key];
+        if (!el) return;
+        const next = cameraToReveal(getElementBoundsRendered(el, elements), camera, canvasRect);
+        // null — элемент уже виден. Пишем только реальное движение: лишний set()
+        // перерисовал бы холст на ровном месте.
+        if (next) set({camera: next});
+      },
 
       pendingPlacement: null,
       setPendingPlacement: (p) => set({pendingPlacement: p}),
@@ -1721,7 +1772,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       // Мульти-версия: один set() (= один шаг undo) для всех ключей.
       updateElementsVisual: (keys, updates) => {
          if (!keys.length) return;
-         const { currentComponentStateByElementKey } = get();
+         const { currentComponentStateByElementKey, editAllStates } = get();
          const keySet = new Set(keys);
 
          set(state => {
@@ -1767,12 +1818,18 @@ export const useEditorStore = create<EditorState>()(temporal(
              // Сравниваем с ФАКТИЧЕСКИМ значением (база + overrides состояния), а не
              // только с overrides: у нетронутого элемента позиция лежит в базе, и
              // сравнение с пустыми overrides считало бы любую запись изменением.
-             const currentState = el.states.find(s => s.id === currentComponentStateId);
-             const effective = {
+             //
+             // В режиме «править все состояния» проверять одно текущее нельзя: патч,
+             // совпавший с ним, но отличный от остальных, обязан примениться — иначе
+             // выравнивание состояний молча не срабатывало бы.
+             const effectiveOf = (st: ComponentState | undefined) => ({
                ...(el as unknown as Record<string, unknown>),
-               ...(currentState?.overrides ?? {}),
-             };
-             if (!isPatchEffective(effective, validatedUpdates)) return el;
+               ...(st?.overrides ?? {}),
+             });
+             const patchLands = editAllStates
+               ? el.states.some(st => isPatchEffective(effectiveOf(st), validatedUpdates))
+               : isPatchEffective(effectiveOf(el.states.find(s => s.id === currentComponentStateId)), validatedUpdates);
+             if (!patchLands) return el;
              anyChanged = true;
 
              // Часть ключей (BASE_ONLY_KEYS, например слой zIndex) пишем в базу даже
@@ -1783,9 +1840,11 @@ export const useEditorStore = create<EditorState>()(temporal(
              return {
                ...el,
                ...baseUpdates,
+               // editAllStates — правка ложится во ВСЕ состояния элемента: оформление,
+               // одинаковое во всех состояниях, иначе пришлось бы повторять руками в каждом.
                states: Object.keys(stateUpdates).length
                  ? el.states.map(s =>
-                   s.id === currentComponentStateId
+                   (editAllStates || s.id === currentComponentStateId)
                      ? {
                        ...s,
                        overrides: {
@@ -1849,6 +1908,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           editingTextKey: null,
         };
       }),
+      setEditAllStates: (value) => set({editAllStates: value}),
+
       selectTableCell: (elementKey, row, col) => set({selectedTableCell: {elementKey, row, col}}),
       setEditingTextKey: (key) => set({editingTextKey: key}),
       clearTableCellSelection: () => set({selectedTableCell: null}),
@@ -2130,6 +2191,56 @@ export const useEditorStore = create<EditorState>()(temporal(
         const x = snap(screenX);
         const y = snap(screenY);
 
+        /**
+         * Кладёт готовый элемент в схему — в открытый контейнер, если пользователь в него
+         * вошёл, иначе в корень сцены.
+         *
+         * Раньше все ветки писали `parentKey: scene.id` намертво, и добавить примитив в
+         * компонент было нельзя вообще: приходилось класть его рядом и потом «Переместить
+         * в группу». Элемент строится в МИРОВЫХ координатах, поэтому внутрь контейнера он
+         * переезжает сдвигом на его абсолютную позицию (`shiftElementPositions` двигает и
+         * `x/y`, и концы линии, и overrides всех состояний).
+         */
+        const commitNewElement = (element: DiagramElement) => {
+          const {activeGroupKey, elements} = get();
+          const {byKey} = getElementIndex(elements);
+          const host = activeGroupKey ? byKey[activeGroupKey] : undefined;
+
+          if (!host || !isGroup(host)) {
+            set(state => ({elements: [...state.elements, element]}));
+            return;
+          }
+
+          const hostAbs = getAbsoluteRenderedPos(host, byKey);
+          const local = shiftElementPositions(element, -hostAbs.x, -hostAbs.y);
+          const member: DiagramElement = {
+            ...local,
+            parentKey: host.key,
+            parentId: host.id ?? null,
+          };
+
+          // Роль в контейнере — та же, что у resplitContainer: примитивы компонента
+          // живут в composition, компоненты — в children.
+          const toComposition = isLeafPrimitive(member) && isComponentEl(host);
+
+          set(state => {
+            let next = [
+              ...state.elements.map(el => el.key !== host.key ? el : ({
+                ...el,
+                children: toComposition ? el.children : [...el.children, member.key],
+                composition: toComposition
+                  ? [...(el.composition ?? []), member.key]
+                  : (el.composition ?? []),
+              } as DiagramElement)),
+              member,
+            ];
+            // Новый член сразу получает весь набор состояний контейнера.
+            next = syncMemberStates(next, host.key, [member.key]);
+            // Рамка контейнера обязана вырасти под новый элемент.
+            return {elements: recomputeAncestorBounds(next, [member.key], scene?.id)};
+          });
+        };
+
         if (type === 'line') {
           const newElement: DiagramElement = {
             id: null,
@@ -2160,9 +2271,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             }],
           };
 
-          set(state => ({
-            elements: [...state.elements, newElement]
-          }))
+          commitNewElement(newElement);
 
           return;
         }
@@ -2183,7 +2292,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2202,7 +2311,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2217,7 +2326,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2232,7 +2341,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2246,7 +2355,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2260,7 +2369,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2274,7 +2383,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2288,7 +2397,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2302,7 +2411,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2322,7 +2431,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             label: "Картинка",
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2339,7 +2448,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             children: [], scripts: [], bindings: [], properties: [],
             states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
           };
-          set(state => ({ elements: [...state.elements, newElement] }));
+          commitNewElement(newElement);
           return;
         }
 
@@ -2372,9 +2481,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           }],
         };
 
-        set(state => ({
-          elements: [...state.elements, newElement]
-        }))
+        commitNewElement(newElement);
       },
       /**
        * Свойства — обычная часть сцены, а не отдельный ресурс.
@@ -3518,6 +3625,10 @@ export const useEditorStore = create<EditorState>()(temporal(
             updatedElements = resplitContainer(updatedElements, targetGroup.key, allMemberKeys);
           }
 
+          // Новые члены получают весь набор состояний контейнера — иначе панель
+          // «Состояния» показывает у них одно состояние против четырёх у компонента.
+          updatedElements = syncMemberStates(updatedElements, targetGroup.key, allMemberKeys);
+
           set({
             elements: updatedElements,
             selectedIds: [targetGroup.key],
@@ -3666,6 +3777,7 @@ export const useEditorStore = create<EditorState>()(temporal(
               ];
               if (isComponentEl(grandParent)) {
                 updatedElements = resplitContainer(updatedElements, grandParentKey, mergedMemberKeys);
+                updatedElements = syncMemberStates(updatedElements, grandParentKey, memberKeys);
               } else {
                 // «Глупая» группа держит всё в children.
                 updatedElements = updatedElements.map((el) =>
@@ -3761,7 +3873,11 @@ export const useEditorStore = create<EditorState>()(temporal(
               return el;
             });
 
-          return {elements: updated, selectedIds: [groupKey]};
+          // Примитивы, ставшие составом компонента, получают его состояния.
+          return {
+            elements: syncMemberStates(updated, groupKey, [...primitiveKeys, ...componentKeys]),
+            selectedIds: [groupKey],
+          };
         });
       },
       disassembleComponent: (componentKey) => {
@@ -3826,6 +3942,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 
         // layoutGroupFromBounds сложил все ключи в children — переразбиваем по роли.
         updatedElements = resplitContainer(updatedElements, targetGroupKey, targetMemberKeys);
+        updatedElements = syncMemberStates(updatedElements, targetGroupKey, targetMemberKeys);
 
         if (oldParentKey && oldParentKey !== targetGroupKey) {
           const oldGroup = updatedElements.find(
@@ -3847,6 +3964,7 @@ export const useEditorStore = create<EditorState>()(temporal(
               scene?.id,
             );
             updatedElements = resplitContainer(updatedElements, oldParentKey, oldMembers);
+            updatedElements = syncMemberStates(updatedElements, oldParentKey, oldMembers);
           }
         }
 

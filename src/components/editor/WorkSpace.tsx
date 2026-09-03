@@ -1,9 +1,11 @@
-import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
+import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, PinOff} from "lucide-react";
 import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
 import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "@/store/useEditorStore";
+import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
+import {openSceneGuarded} from "@/lib/editor/openScene";
 import React, {useMemo, useRef, useState, useEffect} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
@@ -64,6 +66,12 @@ export default function WorkSpace() {
   const selectedElement = useEditorStore(s => s.elements.find(el => el.key === s.selectedIds[0]));
   const elements = useEditorStore(s => s.elements);
   const isVersionPreview = useEditorStore(s => s.versionPreview !== null);
+  const scene = useEditorStore(s => s.scene);
+  const sceneList = useEditorStore(s => s.sceneList);
+  const currentProjectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const pins = usePinnedScenesStore(s => s.pins);
+  const hydratePins = usePinnedScenesStore(s => s.hydrate);
+  const unpinScene = usePinnedScenesStore(s => s.unpin);
 
   const selectedElements = useMemo(
     () => selectedIds.map(id => elements.find(el => el.key === id)).filter((el): el is NonNullable<typeof el> => Boolean(el)),
@@ -242,9 +250,72 @@ export default function WorkSpace() {
 
     e.preventDefault();
     setTab(tabs[next]);
-    e.currentTarget.parentElement
+    // Именно closest('[role="tablist"]'), а не parentElement: у вкладки схемы есть
+    // обёртка с кнопкой открепления, и родитель кнопки — уже не полоса вкладок.
+    e.currentTarget.closest('[role="tablist"]')
       ?.querySelectorAll<HTMLElement>('[role="tab"]')[next]
       ?.focus();
+  };
+
+  // Закреплённые схемы принадлежат проекту: при его смене список другой.
+  useEffect(() => { hydratePins(); }, [currentProjectId, hydratePins]);
+
+  /**
+   * Панель быстрого доступа: закреплённые схемы → текущая (если не закреплена) → Рецепты.
+   *
+   * Вкладка схемы — это тот же холст с другой загруженной схемой, поэтому `activeTab`
+   * остаётся `"editor" | "recipes"`: от него по-прежнему зависят и `showEditorPanels`,
+   * и восстановление раскладки из localStorage. Какая именно вкладка схемы подсвечена,
+   * выводится из `scene.id`.
+   */
+  const workspaceTabs = useMemo(() => {
+    const nameOf = (id: number, fallback: string) =>
+      sceneList.find(s => s.id === id)?.name ?? fallback;
+
+    const tabs: {key: string; label: string; sceneId: number | null; pinned: boolean}[] =
+      pins.map(pin => ({
+        key: `scene:${pin.id}`,
+        // Имя из списка схем свежее, чем запомненное при закреплении.
+        label: nameOf(pin.id, pin.name),
+        sceneId: pin.id,
+        pinned: true,
+      }));
+
+    if (scene && !pins.some(p => p.id === scene.id)) {
+      tabs.push({
+        key: `scene:${scene.id}`,
+        label: nameOf(scene.id, scene.name),
+        sceneId: scene.id,
+        pinned: false,
+      });
+    }
+
+    // Ни одной схемы — всё равно нужна вкладка холста: `ToolsPanel` (и кнопка «Загрузить
+    // схему» в нём) виден только на ней, иначе с «Рецептов» было бы не выбраться.
+    if (!tabs.length) {
+      tabs.push({key: "editor", label: "Редактор", sceneId: null, pinned: false});
+    }
+
+    tabs.push({key: "recipes", label: "Рецепты", sceneId: null, pinned: false});
+    return tabs;
+  }, [pins, scene, sceneList]);
+
+  const activeTabKey = activeTab === "recipes"
+    ? "recipes"
+    : (scene ? `scene:${scene.id}` : "editor");
+
+  /** Активирует вкладку по ключу — общий вход для клика и стрелок. */
+  const activateTab = (key: string) => {
+    if (key === "recipes") { setActiveTab("recipes"); return; }
+    if (key === "editor") { setActiveTab("editor"); return; }
+
+    const id = Number(key.slice("scene:".length));
+    if (!Number.isFinite(id)) return;
+    // Своя схема уже открыта — просто показываем холст.
+    if (scene?.id === id) { setActiveTab("editor"); return; }
+    // Чужая: вкладку переключаем только если переход состоялся (могли отказаться
+    // из-за несохранённых правок).
+    void openSceneGuarded(id).then(ok => { if (ok) setActiveTab("editor"); });
   };
 
   // Палитра, свойства, инструменты и Canvas показываются только во вкладке «Редактор».
@@ -277,26 +348,51 @@ export default function WorkSpace() {
     </button>
   );
 
-  const tabButton = (tab: TabType, title: string) => (
-    <button
-      id={`workspace-tab-${tab}`}
-      role="tab"
-      type="button"
-      aria-selected={activeTab === tab}
-      aria-controls="workspace-tab-content"
-      tabIndex={activeTab === tab ? 0 : -1}
-      onClick={() => setActiveTab(tab)}
-      onKeyDown={(e) => handleTabListKey(e, MAIN_TABS, activeTab, setActiveTab)}
-      className={cn(
-        "px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
-        activeTab === tab
-          ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
-          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 border-b-2 border-transparent",
-      )}
-    >
-      {title}
-    </button>
-  );
+  const tabKeys = workspaceTabs.map(t => t.key);
+
+  const workspaceTabButton = (tab: (typeof workspaceTabs)[number]) => {
+    const isActive = activeTabKey === tab.key;
+    const button = (
+      <button
+        id={`workspace-tab-${tab.key}`}
+        role="tab"
+        type="button"
+        aria-selected={isActive}
+        aria-controls="workspace-tab-content"
+        tabIndex={isActive ? 0 : -1}
+        onClick={() => activateTab(tab.key)}
+        onKeyDown={(e) => handleTabListKey(e, tabKeys, activeTabKey, activateTab)}
+        title={tab.sceneId !== null ? tab.label : undefined}
+        className={cn(
+          "shrink-0 max-w-48 truncate px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
+          isActive
+            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+            : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 border-b-2 border-transparent",
+        )}
+      >
+        {tab.label}
+      </button>
+    );
+
+    if (!tab.pinned || tab.sceneId === null) return <React.Fragment key={tab.key}>{button}</React.Fragment>;
+
+    // Кнопка открепления — СОСЕДНЯЯ, а не вложенная: кнопка внутри кнопки невалидна,
+    // и вложенный элемент сбил бы соответствие DOM-порядка `[role="tab"]` массиву вкладок.
+    return (
+      <div key={tab.key} className="group/tab shrink-0 flex items-center">
+        {button}
+        <button
+          type="button"
+          onClick={() => unpinScene(tab.sceneId!)}
+          title={`Открепить «${tab.label}»`}
+          aria-label={`Открепить схему «${tab.label}»`}
+          className="ml-0.5 shrink-0 rounded p-0.5 text-neutral-400 opacity-0 transition-opacity hover:text-indigo-500 focus:opacity-100 group-hover/tab:opacity-100"
+        >
+          <PinOff size={12} />
+        </button>
+      </div>
+    );
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -338,10 +434,9 @@ export default function WorkSpace() {
           style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
           role="tablist"
           aria-label="Разделы редактора"
-          className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2 transition-[margin] duration-300 ease-in-out"
+          className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar transition-[margin] duration-300 ease-in-out"
         >
-          {tabButton("editor", "Редактор")}
-          {tabButton("recipes", "Рецепты")}
+          {workspaceTabs.map(workspaceTabButton)}
         </div>
 
         {/* Содержимое вкладки: занимает всё оставшееся место.
