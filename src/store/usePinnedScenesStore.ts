@@ -29,6 +29,9 @@ interface PinnedScenesState {
    * Новый порядок после перетаскивания — списком КЛЮЧЕЙ вкладок
    * (`scene:{id}` и `recipes`). Один список вместо пары «массив + индекс»: ровно то,
    * что отдаёт dnd-kit, и рассинхронизировать эти две вещи между собой уже нечем.
+   *
+   * Ключа `recipes` может и не быть: в мониторе такой вкладки нет, и её место там
+   * никто не задаёт — тогда прежний `recipesIndex` сохраняется как есть.
    */
   reorder: (orderedKeys: string[]) => void;
 }
@@ -94,11 +97,16 @@ export const usePinnedScenesStore = create<PinnedScenesState>((set, get) => ({
       nextPins.push(pin);
     }
 
-    // Состав обязан совпасть: перетаскивание меняет ПОРЯДОК, а не набор.
-    if (nextPins.length !== pins.length || nextRecipesIndex < 0) return;
-    // Холостая перестановка не должна писать в хранилище и дёргать подписчиков.
-    if (nextRecipesIndex === recipesIndex && nextPins.every((p, i) => p.id === pins[i].id)) return;
+    // Экран без вкладки «Рецепты» (монитор) её место не задаёт — сохраняем прежнее.
+    // Клампить не нужно: перетаскивание меняет ПОРЯДОК, а не набор, поэтому длина
+    // списка та же и старый индекс остаётся в границах.
+    const keepRecipesIndex = nextRecipesIndex < 0 ? recipesIndex : nextRecipesIndex;
 
-    commit(set, {pins: nextPins, recipesIndex: nextRecipesIndex});
+    // Состав обязан совпасть: перетаскивание меняет ПОРЯДОК, а не набор.
+    if (nextPins.length !== pins.length) return;
+    // Холостая перестановка не должна писать в хранилище и дёргать подписчиков.
+    if (keepRecipesIndex === recipesIndex && nextPins.every((p, i) => p.id === pins[i].id)) return;
+
+    commit(set, {pins: nextPins, recipesIndex: keepRecipesIndex});
   },
 }));

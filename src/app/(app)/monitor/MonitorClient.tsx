@@ -1,14 +1,16 @@
 "use client";
 
 import React, {useEffect, useMemo} from "react";
-import {AlertTriangle, ClipboardList, Clock, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
+import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
 import openApplyRecipeModal from "@/components/monitor/ApplyRecipeModal";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
+import {SceneTabs} from "@/components/editor/SceneTabs";
 
 const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   connecting: {label: "Подключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
@@ -19,6 +21,41 @@ const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   // страницы/повторный выбор сцены нужны, чтобы попробовать снова.
   rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
 };
+
+/**
+ * Скрепка «закрепить текущую схему» — вход в ту же настройку, что и в модалке выбора
+ * схемы редактора (см. OpenChooseSceneModal), поэтому подписи и вид те же.
+ *
+ * Отдельным компонентом ради его собственной подписки на `pins`: держи её в
+ * `MonitorClient`, и каждое закрепление перерисовывало бы весь монитор вместе с холстом.
+ */
+function ScenePinButton({scene}: {scene: {id: number; name: string} | null}) {
+  const pins = usePinnedScenesStore(s => s.pins);
+  const togglePin = usePinnedScenesStore(s => s.togglePin);
+
+  const isPinned = !!scene && pins.some(p => p.id === scene.id);
+  const label = isPinned ? "Открепить схему" : "Закрепить схему";
+
+  return (
+    <button
+      type="button"
+      disabled={!scene}
+      aria-pressed={isPinned}
+      // `togglePin` сам откажет без проекта и сам скажет про предел закреплённых.
+      onClick={() => scene && togglePin({id: scene.id, name: scene.name})}
+      title={scene ? `${label} «${scene.name}»` : "Сначала откройте схему"}
+      aria-label={scene ? `${label} «${scene.name}»` : label}
+      className={cn(
+        "shrink-0 rounded-lg p-1.5 transition-colors",
+        !scene && "text-neutral-300 dark:text-neutral-700 cursor-not-allowed",
+        scene && isPinned && "text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
+        scene && !isPinned && "text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
+      )}
+    >
+      {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
+    </button>
+  );
+}
 
 /**
  * Режим монитора: read-only просмотр сцены с живыми данными.
@@ -112,6 +149,8 @@ export default function MonitorClient() {
           ))}
         </select>
 
+        <ScenePinButton scene={scene ? {id: scene.id, name: scene.name} : null} />
+
         <div className="flex-1" />
 
         {status === "live" && sessionId && (
@@ -156,8 +195,24 @@ export default function MonitorClient() {
         </span>
       </div>
 
+      {/* Панель быстрого доступа — тот же компонент, что и в редакторе. Вкладки ведут
+          только на закреплённые схемы, поэтому список «Схема…» выше остаётся: он
+          единственный способ открыть любую другую. Ни схемы, ни закреплённых — полоса
+          не рисуется вовсе (SceneTabs вернёт null). */}
+      <SceneTabs
+        activeKey={scene ? `scene:${scene.id}` : ""}
+        onActivate={(key) => {
+          const id = Number(key.slice("scene:".length));
+          // Без openSceneGuarded: монитор не редактирует, спрашивать про
+          // несохранённые правки не о чем, палитра ему не нужна.
+          if (Number.isSafeInteger(id) && id !== scene?.id) void loadScene(id);
+        }}
+        contentId="monitor-canvas"
+        ariaLabel="Закреплённые схемы"
+      />
+
       {/* Холст: read-only, пан/зум доступны */}
-      <div className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
+      <div id="monitor-canvas" className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
         {scene ? (
           <Canvas readOnly />
         ) : (

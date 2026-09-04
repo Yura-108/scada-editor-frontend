@@ -1,14 +1,12 @@
-import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, PinOff} from "lucide-react";
+import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
 import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
 import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "@/store/useEditorStore";
-import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
-import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
-import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
 import {openSceneGuarded} from "@/lib/editor/openScene";
+import {SceneTabs} from "@/components/editor/SceneTabs";
+import {handleTabListKey} from "@/lib/editor/tabListKeys";
 import React, {useMemo, useRef, useState, useEffect} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
@@ -25,6 +23,11 @@ type LeftTabType = "palette" | "layers";
 
 // Порядок вкладок для навигации стрелками.
 const MAIN_TABS = ["editor", "recipes"] as const satisfies readonly TabType[];
+
+// Вкладки-не-схемы для SceneTabs. На уровне модуля, а не литералом в JSX: новый объект
+// на каждый рендер сбрасывал бы мемоизацию ряда вкладок внутри компонента.
+const RECIPES_TAB = {key: "recipes", label: "Рецепты"} as const;
+const EDITOR_TAB = {key: "editor", label: "Редактор"} as const;
 const LEFT_TABS = ["palette", "layers"] as const satisfies readonly LeftTabType[];
 
 // Ширины боковых панелей: дефолт/максимум/порог, ниже которого перетаскивание края схлопывает панель.
@@ -62,39 +65,6 @@ const readLayout = (): Partial<PersistedLayout> => {
   }
 };
 
-/**
- * Оболочка закреплённой вкладки: перетаскивание порядка.
- *
- * Объявлена НА УРОВНЕ МОДУЛЯ, а не внутри `WorkSpace`: компонент, созданный в теле
- * другого компонента, получает новый тип на каждый рендер, React размонтирует поддерево,
- * и жест перетаскивания рвётся на первом же обновлении стора.
- *
- * `listeners` уходят наружу render-пропом и вешаются на саму кнопку вкладки. `attributes`
- * от dnd-kit намеренно НЕ применяются: они ставят `role="button"` и свой `tabIndex`, а это
- * сломало бы и семантику `role="tab"`, и поиск соседей в `handleTabListKey` — тот ищет
- * `[role="tab"]` по DOM-порядку.
- */
-function SortableTabShell({id, children}: {
-  id: string;
-  children: (dragListeners: Record<string, unknown>) => React.ReactNode;
-}) {
-  const {setNodeRef, listeners, transform, transition, isDragging} = useSortable({id});
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-      }}
-      className="group/tab shrink-0 flex items-center"
-    >
-      {children((listeners ?? {}) as Record<string, unknown>)}
-    </div>
-  );
-}
-
 export default function WorkSpace() {
   // Точечные селекторы вместо подписки на весь стор: иначе каждый тик пана/зума
   // ре-рендерил WorkSpace и каскадом весь Canvas со всеми фигурами.
@@ -103,13 +73,6 @@ export default function WorkSpace() {
   const elements = useEditorStore(s => s.elements);
   const isVersionPreview = useEditorStore(s => s.versionPreview !== null);
   const scene = useEditorStore(s => s.scene);
-  const sceneList = useEditorStore(s => s.sceneList);
-  const currentProjectId = useEditorStore(s => s.currentProject?.id ?? null);
-  const pins = usePinnedScenesStore(s => s.pins);
-  const recipesIndex = usePinnedScenesStore(s => s.recipesIndex);
-  const hydratePins = usePinnedScenesStore(s => s.hydrate);
-  const unpinScene = usePinnedScenesStore(s => s.unpin);
-  const reorderPins = usePinnedScenesStore(s => s.reorder);
 
   const selectedElements = useMemo(
     () => selectedIds.map(id => elements.find(el => el.key === id)).filter((el): el is NonNullable<typeof el> => Boolean(el)),
@@ -271,92 +234,6 @@ export default function WorkSpace() {
     }
   };
 
-  /** Стрелки/Home/End внутри полосы вкладок (role="tablist"). */
-  const handleTabListKey = <T extends string>(
-    e: React.KeyboardEvent<HTMLButtonElement>,
-    tabs: readonly T[],
-    current: T,
-    setTab: (t: T) => void,
-  ) => {
-    const idx = tabs.indexOf(current);
-    let next = -1;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (idx + 1) % tabs.length;
-    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (idx - 1 + tabs.length) % tabs.length;
-    else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = tabs.length - 1;
-    if (next < 0) return;
-
-    e.preventDefault();
-    setTab(tabs[next]);
-    // Именно closest('[role="tablist"]'), а не parentElement: у вкладки схемы есть
-    // обёртка с кнопкой открепления, и родитель кнопки — уже не полоса вкладок.
-    e.currentTarget.closest('[role="tablist"]')
-      ?.querySelectorAll<HTMLElement>('[role="tab"]')[next]
-      ?.focus();
-  };
-
-  // Закреплённые схемы принадлежат проекту: при его смене список другой.
-  useEffect(() => { hydratePins(); }, [currentProjectId, hydratePins]);
-
-  /**
-   * Панель быстрого доступа: закреплённые схемы → текущая (если не закреплена) → Рецепты.
-   *
-   * Вкладка схемы — это тот же холст с другой загруженной схемой, поэтому `activeTab`
-   * остаётся `"editor" | "recipes"`: от него по-прежнему зависят и `showEditorPanels`,
-   * и восстановление раскладки из localStorage. Какая именно вкладка схемы подсвечена,
-   * выводится из `scene.id`.
-   */
-  /**
-   * Ряд вкладок: перетаскиваемые (закреплённые схемы + «Рецепты») в порядке из
-   * localStorage, затем текущая незакреплённая схема.
-   *
-   * Незакреплённая идёт последней и не перетаскивается намеренно: она временная —
-   * закрепите, и она встанет в ряд на выбранное вами место. Раньше «Рецепты» были
-   * прибиты к концу, теперь их место задаёт пользователь.
-   */
-  const workspaceTabs = useMemo(() => {
-    const nameOf = (id: number, fallback: string) =>
-      sceneList.find(s => s.id === id)?.name ?? fallback;
-
-    type Tab = {key: string; label: string; sceneId: number | null; draggable: boolean};
-
-    const tabs: Tab[] = pins.map(pin => ({
-      key: `scene:${pin.id}`,
-      // Имя из списка схем свежее, чем запомненное при закреплении.
-      label: nameOf(pin.id, pin.name),
-      sceneId: pin.id,
-      draggable: true,
-    }));
-
-    // «Рецепты» — такая же перетаскиваемая вкладка, её место хранится индексом вставки.
-    tabs.splice(Math.min(recipesIndex, tabs.length), 0, {
-      key: "recipes", label: "Рецепты", sceneId: null, draggable: true,
-    });
-
-    if (scene && !pins.some(p => p.id === scene.id)) {
-      tabs.push({
-        key: `scene:${scene.id}`,
-        label: nameOf(scene.id, scene.name),
-        sceneId: scene.id,
-        draggable: false,
-      });
-    }
-
-    // Ни схемы, ни закреплённых — нужна вкладка холста: `ToolsPanel` (и кнопка «Загрузить
-    // схему» в нём) виден только на ней, иначе с «Рецептов» было бы не выбраться.
-    if (!scene && !pins.length) {
-      tabs.push({key: "editor", label: "Редактор", sceneId: null, draggable: false});
-    }
-
-    return tabs;
-  }, [pins, recipesIndex, scene, sceneList]);
-
-  /** Ключи перетаскиваемых вкладок в текущем порядке — их и сортирует dnd-kit. */
-  const sortableTabKeys = useMemo(
-    () => workspaceTabs.filter(t => t.draggable).map(t => t.key),
-    [workspaceTabs],
-  );
-
   const activeTabKey = activeTab === "recipes"
     ? "recipes"
     : (scene ? `scene:${scene.id}` : "editor");
@@ -405,88 +282,6 @@ export default function WorkSpace() {
     </button>
   );
 
-  const tabKeys = workspaceTabs.map(t => t.key);
-
-  /** Сама кнопка вкладки. Вынесена, чтобы закреплённая и обычная рисовались одинаково. */
-  const tabButtonNode = (
-    tab: (typeof workspaceTabs)[number],
-    dragListeners?: Record<string, unknown>,
-  ) => {
-    const isActive = activeTabKey === tab.key;
-    return (
-      <button
-        id={`workspace-tab-${tab.key}`}
-        role="tab"
-        type="button"
-        aria-selected={isActive}
-        aria-controls="workspace-tab-content"
-        tabIndex={isActive ? 0 : -1}
-        onClick={() => activateTab(tab.key)}
-        onKeyDown={(e) => handleTabListKey(e, tabKeys, activeTabKey, activateTab)}
-        title={tab.sceneId !== null ? tab.label : undefined}
-        className={cn(
-          "shrink-0 max-w-48 truncate px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
-          dragListeners && "cursor-grab active:cursor-grabbing",
-          isActive
-            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
-            : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 border-b-2 border-transparent",
-        )}
-        {...dragListeners}
-      >
-        {tab.label}
-      </button>
-    );
-  };
-
-  const renderTab = (tab: (typeof workspaceTabs)[number]) => {
-    if (!tab.draggable) {
-      return <React.Fragment key={tab.key}>{tabButtonNode(tab)}</React.Fragment>;
-    }
-    return (
-      <SortableTabShell key={tab.key} id={tab.key}>
-        {(dragListeners) => (
-          <>
-            {tabButtonNode(tab, dragListeners)}
-            {/* Открепить можно только схему: «Рецепты» — постоянная вкладка, её
-                перетаскивают, но не убирают.
-
-                Кнопка СОСЕДНЯЯ, а не вложенная: кнопка внутри кнопки невалидна, и
-                вложенный элемент сбил бы соответствие DOM-порядка `[role="tab"]` массиву
-                вкладок. Слушателей перетаскивания на ней нет — иначе её было бы не нажать. */}
-            {tab.sceneId !== null && (
-              <button
-                type="button"
-                onClick={() => unpinScene(tab.sceneId!)}
-                title={`Открепить «${tab.label}»`}
-                aria-label={`Открепить схему «${tab.label}»`}
-                className="ml-0.5 shrink-0 rounded p-0.5 text-neutral-400 opacity-0 transition-opacity hover:text-indigo-500 focus:opacity-100 group-hover/tab:opacity-100"
-              >
-                <PinOff size={12} />
-              </button>
-            )}
-          </>
-        )}
-      </SortableTabShell>
-    );
-  };
-
-  // Только Pointer: клавиатурный сенсор dnd-kit перехватил бы стрелки, которыми
-  // `handleTabListKey` ходит по вкладкам. Порог 4px оставляет обычный клик кликом.
-  const tabDndSensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 4}}));
-
-  const handleTabDragEnd = (event: DragEndEvent) => {
-    const {active, over} = event;
-    if (!over || active.id === over.id) return;
-
-    const from = sortableTabKeys.indexOf(String(active.id));
-    const to = sortableTabKeys.indexOf(String(over.id));
-    if (from === -1 || to === -1) return;
-
-    // В стор уходит весь новый порядок ключей — из него он и достаёт список
-    // закреплённых и место «Рецептов».
-    reorderPins(arrayMove(sortableTabKeys, from, to));
-  };
-
   const renderTabContent = () => {
     switch (activeTab) {
       case "editor":
@@ -519,31 +314,26 @@ export default function WorkSpace() {
       <main className="absolute inset-0  flex flex-col z-canvas">
         {showEditorPanels && <ToolsPanel />}
 
-        {/* Минимальная полоса вкладок: пока реально готовы только «Редактор» и «Рецепты» —
-            остальные 8 вкладок выше остаются заглушками и закомментированы намеренно.
+        {/* Полоса вкладок — общий компонент с монитором (SceneTabs).
             Отступы обязательны: боковые панели — absolute z-panel поверх main (z-canvas), без
             marginLeft/Right полоса вкладок оказывается под левой панелью и не видна. */}
-        <div
+        <SceneTabs
+          activeKey={activeTabKey}
+          onActivate={activateTab}
+          extraTab={RECIPES_TAB}
+          fallbackTab={EDITOR_TAB}
+          contentId="workspace-tab-content"
+          ariaLabel="Разделы редактора"
+          className="transition-[margin] duration-300 ease-in-out"
           style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
-          role="tablist"
-          aria-label="Разделы редактора"
-          className="h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar transition-[margin] duration-300 ease-in-out"
-        >
-          {/* Перетаскиваются закреплённые схемы и «Рецепты». Текущая незакреплённая схема —
-              вкладка временная, стоит последней и в сортировку не входит. */}
-          <DndContext sensors={tabDndSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
-            <SortableContext items={sortableTabKeys} strategy={horizontalListSortingStrategy}>
-              {workspaceTabs.map(renderTab)}
-            </SortableContext>
-          </DndContext>
-        </div>
+        />
 
         {/* Содержимое вкладки: занимает всё оставшееся место.
             Для «Редактора» — Canvas между панелями; для остальных — чистый элемент вкладки. */}
         <div
           id="workspace-tab-content"
           role="tabpanel"
-          aria-labelledby={`workspace-tab-${activeTab}`}
+          aria-labelledby={`scene-tab-${activeTabKey}`}
           className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
         >
           {renderTabContent()}
