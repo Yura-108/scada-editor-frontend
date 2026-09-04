@@ -24,8 +24,19 @@ export interface PinnedScene {
   name: string;
 }
 
-interface ProjectPins {
+/** Ключ вкладки «Рецепты» в перетаскиваемом ряду — она не схема, но место в ряду занимает. */
+export const RECIPES_TAB_KEY = "recipes";
+
+export interface PinnedTabs {
   pins: PinnedScene[];
+  /**
+   * Место «Рецептов» среди перетаскиваемых вкладок: индекс вставки в список
+   * закреплённых схем. `pins.length` — в конце ряда (значение по умолчанию).
+   */
+  recipesIndex: number;
+}
+
+interface ProjectPins extends PinnedTabs {
   /** Метка времени: по ней вытесняются давно не открывавшиеся проекты. */
   t: number;
 }
@@ -62,21 +73,36 @@ const readStore = (): PinStore => {
   }
 };
 
-/** Закреплённые схемы проекта, в порядке закрепления. */
-export function readPinnedScenes(projectId: number | string | null | undefined): PinnedScene[] {
-  if (projectId == null) return [];
-  return sanitize(readStore()[keyOf(projectId)]?.pins);
+/** Индекс в допустимых границах: набор закреплённых мог измениться с прошлой записи. */
+const clampRecipesIndex = (raw: unknown, pinsLength: number): number => {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return pinsLength;
+  return Math.min(Math.max(0, Math.round(n)), pinsLength);
+};
+
+/** Закреплённые схемы проекта и место «Рецептов» — в порядке, заданном перетаскиванием. */
+export function readPinnedTabs(projectId: number | string | null | undefined): PinnedTabs {
+  if (projectId == null) return {pins: [], recipesIndex: 0};
+
+  const entry = readStore()[keyOf(projectId)];
+  const pins = sanitize(entry?.pins);
+  return {pins, recipesIndex: clampRecipesIndex(entry?.recipesIndex, pins.length)};
 }
 
-/** Сохраняет список закреплённых схем проекта. */
-export function writePinnedScenes(
+/** Сохраняет порядок вкладок проекта. */
+export function writePinnedTabs(
   projectId: number | string | null | undefined,
-  pins: PinnedScene[],
+  {pins, recipesIndex}: PinnedTabs,
 ): void {
   if (projectId == null) return;
 
   const store = readStore();
-  store[keyOf(projectId)] = {pins: sanitize(pins), t: Date.now()};
+  const safePins = sanitize(pins);
+  store[keyOf(projectId)] = {
+    pins: safePins,
+    recipesIndex: clampRecipesIndex(recipesIndex, safePins.length),
+    t: Date.now(),
+  };
 
   const keys = Object.keys(store);
   if (keys.length > MAX_PROJECTS) {

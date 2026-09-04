@@ -8,6 +8,7 @@ import {ComponentPropertyDto} from "@/types/editorElement.type";
 import {RecipeDto} from "@/types/recipe.types";
 import {cn} from "@/lib/utils";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
+import {shortTagPath} from "@/lib/editor/tagPath";
 
 const RECIPE_TYPE_OPTIONS: Array<{value: string; label: string}> = [
   {value: "recipe", label: "Рецепты"},
@@ -118,8 +119,8 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
               <div key={rb.name} className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
                   {rb.name}{" "}
-                  <span className="normal-case text-gray-400 dark:text-gray-600">
-                    ({rb.tag_id ? `тег: ${rb.tag_id}` : "локальный параметр"})
+                  <span className="normal-case text-gray-400 dark:text-gray-600" title={rb.tag_id ?? undefined}>
+                    ({rb.tag_id ? `тег: ${shortTagPath(rb.tag_id)}` : "локальный параметр"})
                   </span>
                 </label>
                 {isBooleanValueType(rb.value_type) ? (

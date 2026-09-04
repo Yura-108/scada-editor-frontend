@@ -31,6 +31,7 @@ import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 import {CELL_SOURCE_FIELDS, cellBindingAt} from "@/lib/editor/tableBindings";
 import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
+import {shortTagPath} from "@/lib/editor/tagPath";
 import type {CellSourceField} from "@/types/binding.types";
 
 interface PropertiesPanelProps {
@@ -67,7 +68,7 @@ function SortablePropertyPill({property, onClick, onDelete}: {property: Property
 
   const wantsTag = needsTag(property);
   const label = `${property.name || property.property_type || "Свойство"}${
-    property.tag_id ? ` • #${property.tag_id}` : wantsTag ? " • нужен тег" : ""
+    property.tag_id ? ` • ${shortTagPath(property.tag_id)}` : wantsTag ? " • нужен тег" : ""
   }`;
 
   // Ручка и подпись — две отдельные кнопки внутри оболочки-таблетки.
@@ -99,7 +100,12 @@ function SortablePropertyPill({property, onClick, onDelete}: {property: Property
       >
         <GripVertical size={12} />
       </button>
-      <button type="button" onClick={onClick} className="cursor-pointer text-left">
+      <button
+        type="button"
+        onClick={onClick}
+        className="cursor-pointer text-left"
+        title={property.tag_id ?? undefined}
+      >
         {label}
       </button>
       <button

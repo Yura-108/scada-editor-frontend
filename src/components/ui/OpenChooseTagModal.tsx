@@ -8,6 +8,7 @@ import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import SelectItem from "@/components/ui/SelectItem";
 import { selectContentClassName, selectIconClassName, selectTriggerClassName } from "@/components/ui/selectStyles";
 import { cn } from "@/lib/utils";
+import {shortTagPath} from "@/lib/editor/tagPath";
 import { useModalStore } from "@/store/modalStore";
 import { useDeviceStore } from "@/store/useDeviceStore";
 import { useEditorStore } from "@/store/useEditorStore";
@@ -367,9 +368,11 @@ export function AddPropertyContent({ elementKey, property }: Props) {
               <DeviceTreePanel />
             </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-500">
+            {/* Полный путь оставляем в `title`: подпись короткая, но проверить,
+                тот ли это узел дерева, по-прежнему можно наведением. */}
+            <p className="text-xs text-gray-500 dark:text-gray-500" title={selectedDevice ?? undefined}>
               {selectedDevice
-                ? `Выбран тег: ${selectedDevice}`
+                ? `Выбран тег: ${shortTagPath(selectedDevice)}`
                 : "Пока тег не выбран — кнопка сохранения будет недоступна."}
             </p>
           </div>
