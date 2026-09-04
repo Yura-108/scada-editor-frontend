@@ -32,6 +32,7 @@ import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCel
 import {CELL_SOURCE_FIELDS, cellBindingAt} from "@/lib/editor/tableBindings";
 import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
 import {shortTagPath} from "@/lib/editor/tagPath";
+import {MIN_SIZE} from "@/components/editor/canvas/types";
 import type {CellSourceField} from "@/types/binding.types";
 
 interface PropertiesPanelProps {
@@ -357,6 +358,22 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
         // Форму кривой задают четыре точки — их правят ручками на холсте, числами это
         // было бы восемь полей. В панели остаётся положение; w/h пересчитываются сами.
         ? [{key: "x", label: "X"}, {key: "y", label: "Y"}]
+      : element.type === "text"
+        // У текста габарит вычисляемый: `h` не пишется вообще ничем и остаётся
+        // ископаемым значением из `addElementAt`, а `w` действует только в режиме
+        // фиксированной ширины (`autoWidth === false`). Показывать оба поля значило бы
+        // предлагать править числа, которых рендерер не читает. В авторежиме ширину
+        // задаёт ручка на холсте, вернуть его — двойной клик по ней.
+        ? [
+            {key: "x", label: "X"}, {key: "y", label: "Y"},
+            ...(renderedElementValues.autoWidth === false
+              ? [{
+                  key: "w",
+                  label: "Ширина",
+                  commit: (v: number) => ({w: Math.max(MIN_SIZE, v), autoWidth: false}),
+                }]
+              : []),
+          ]
       : element.type === "circle" || element.type === "arc"
         ? (() => {
             // Круг и дуга описываются ЦЕНТРОМ и радиусом — так их двигает холст (центр

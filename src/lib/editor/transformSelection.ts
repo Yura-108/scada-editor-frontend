@@ -1,9 +1,10 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement, LeafElement} from "@/types/editorElement.type";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {getElementIndex} from "@/lib/editor/elementIndex";
 import {getElementBoundsRendered} from "@/lib/getElementBounds";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {parseCurvePoints} from "@/lib/editor/curvePoints";
+import {measureText} from "@/lib/editor/measureText";
 
 /**
  * Поворот на 90° и отражения выделения — **пересчётом геометрии**, а не полем `rotate`.
@@ -21,7 +22,9 @@ import {parseCurvePoints} from "@/lib/editor/curvePoints";
  *
  * Чего этот подход не делает: **текст не поворачивается**, он только переезжает. Повернуть
  * глифы можно лишь рендером (`rotation`), а это ровно та зависимость, которой мы избегаем.
- * На схемах подписи обычно и держат горизонтальными.
+ * На схемах подписи обычно и держат горизонтальными. Переезжает он при этом по СВОЕМУ
+ * измеренному габариту (`measureText`), а размер и режим переноса не трогаются вовсе —
+ * см. ветку `text` в `geometryPatch`.
  */
 export type TransformOp = "cw" | "ccw" | "flipH" | "flipV";
 
@@ -100,6 +103,8 @@ const geometryPatch = (
   delta: {x: number; y: number},
   outShift: {x: number; y: number},
   op: TransformOp,
+  /** Габарит текста — ОДИН на элемент, не по слоям. Зачем так, см. ветку `text`. */
+  textSize: Size | undefined,
 ): Geometry => {
   const num = (v: unknown, fallback = 0) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 
@@ -150,6 +155,27 @@ const geometryPatch = (
     return patch;
   }
 
+  // Текст: глифы не поворачиваются, элемент только переезжает — значит `w/h/autoWidth`
+  // трогать нельзя. Раньше общая ветка меняла стороны местами, и `w` состояния с
+  // фиксированной шириной переписывалась на `h` — а `h` у текста всегда ископаемые 80 из
+  // `addElementAt`. Текст начинал переноситься по словам в 80px, причём только в тех
+  // состояниях, где `w` лежит в overrides: остальные оставались auto-width.
+  //
+  // Считаем по НАСТОЯЩЕМУ габариту (`w/h` из модели описывают не то, что нарисовано),
+  // и — важно — по ОДНОМУ на весь элемент, а не по габариту каждого слоя. `ccw` и
+  // `flipH` зависят от ширины, а ширина у слоёв разная: состояние, где ручкой задали
+  // `w: 200`, и состояние в авторежиме до операции рисуют одну и ту же подпись в одной
+  // и той же точке (текст прижат влево), но отразились бы относительно разных коробок и
+  // разъехались бы на сотню единиц. Совпадавшие состояния обязаны совпадать и после.
+  if (type === "text") {
+    const size = textSize ?? {w, h};
+    const real = transformBox({x: box.x, y: box.y, w: size.w, h: size.h}, container, op);
+    return {
+      x: real.x - delta.x + outShift.x,
+      y: real.y - delta.y + outShift.y,
+    };
+  }
+
   // Дуга: габарит квадратный (2r × 2r), меняются только углы.
   if (type === "arc") {
     patch.rotate = transformArcStart(num(eff.rotate), num(eff.angle, 90), op);
@@ -186,13 +212,19 @@ const patchElement = (
   const rendered = getRenderedElement(el) as unknown as Geometry;
   const type = String(el.type ?? "");
 
+  // Габарит текста меряем по тому слою, который сейчас на экране, и применяем ко всем:
+  // так операция сдвигает все состояния одинаково (см. ветку `text` в geometryPatch).
+  const textSize = type === "text"
+    ? measureText(rendered as unknown as Partial<LeafElement>)
+    : undefined;
+
   const next = {...el} as unknown as Geometry;
-  Object.assign(next, geometryPatch(type, base, container, delta, outShift, op));
+  Object.assign(next, geometryPatch(type, base, container, delta, outShift, op, textSize));
 
   const states = (el.states ?? []).map(state => {
     if (!hasGeometry(state.overrides as Geometry | undefined)) return state;
     const eff = {...base, ...(state.overrides as Geometry)};
-    const full = geometryPatch(type, eff, container, delta, outShift, op);
+    const full = geometryPatch(type, eff, container, delta, outShift, op, textSize);
     // В overrides возвращаем только те ключи, что там были: остальное живёт в базе.
     const overrides = {...(state.overrides as Geometry)};
     for (const key of GEOMETRY_KEYS) {

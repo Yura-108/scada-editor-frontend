@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React from "react";
 import { Group, Rect, Text } from "react-konva";
-import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
@@ -12,10 +11,10 @@ import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";
 import { SelectionOutline } from "./SelectionOutline";
 import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
+import { measureText } from "@/lib/editor/measureText";
 
 export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, stateId, runtime }: ShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
-  const textRef = useRef<Konva.Text>(null);
   // Через общий источник цветов холста, а не своим `resolvedTheme === "dark"`:
   // раньше здесь дублировалась палитра, а синий выделения был захардкожен.
   const { themeColors } = useThemeColors();
@@ -36,23 +35,11 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
   const isFixedWidth = rendered.autoWidth === false && !!rendered.w;
   const width = isFixedWidth ? rendered.w : undefined;
 
-  // Измеряем реальный размер текста. Инициализируем через временный узел,
-  // затем обновляем по реальному узлу после каждого рендера Konva.
-  const [selDims, setSelDims] = useState<{ w: number; h: number }>(() => {
-    const tmp = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width });
-    const dims = { w: tmp.getTextWidth(), h: tmp.height() };
-    tmp.destroy();
-    return dims;
-  });
-
-  useEffect(() => {
-    if (textRef.current) {
-      setSelDims({
-        w: textRef.current.getTextWidth(),
-        h: textRef.current.height(),
-      });
-    }
-  }, [text, fontSize, fontFamily, fontStyle, width]);
+  // Реальный размер текста — из общего измерителя, а не своим пробником в состоянии
+  // компонента. Тем же `measureText` теперь считают границы (`getElementBounds`), рамки
+  // групп и поворот, так что пунктирная рамка гарантированно совпадает с тем габаритом,
+  // по которому текст двигают. Функция мемоизирована, состояние и эффект здесь не нужны.
+  const selDims = measureText(rendered);
 
   // Габариты рамки: при фикс. ширине берём её, иначе — измеренную ширину текста.
   const boxW = Math.max(width ?? selDims.w, 1);
@@ -91,7 +78,6 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
         <SelectionOutline x={-pad} y={-pad} width={boxW + pad * 2} height={boxH + pad * 2} />
       )}
       <Text
-        ref={textRef}
         x={0}
         y={0}
         text={text}

@@ -2,6 +2,7 @@ import {absolutePosition} from "@/lib/getAbsolutePosition";
 import {DiagramElement, LeafElement} from "@/types/editorElement.type";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ElementIndex, getChildElements, getElementIndex} from "@/lib/editor/elementIndex";
+import {measureText} from "@/lib/editor/measureText";
 
 /**
  * Габарит элемента И его начало координат — это РАЗНЫЕ вещи, и путать их нельзя.
@@ -36,9 +37,13 @@ export interface ElementBounds {
  * У дуги `rotate` — это начало дуги, а не поворот фигуры: её габарит — описанный
  * квадрат `2r × 2r`, от угла он не зависит. Крутить его как бокс значило бы раздувать
  * рамку выделения (и рамку группы-предка) на ровном месте при каждом повороте дуги.
+ *
+ * У текста `rotation` не прокидывается в Konva вовсе (см. TextShapeElement), поэтому
+ * `rotate`, приехавший импортом или вставкой, раздувал бы AABB вокруг фигуры, которая
+ * на холсте стоит ровно.
  */
 const rotationOf = (rendered: LeafElement): number =>
-  rendered.type === "arc" ? 0 : (rendered.rotate || 0);
+  rendered.type === "arc" || rendered.type === "text" ? 0 : (rendered.rotate || 0);
 
 /** Габаритный прямоугольник повёрнутого бокса w×h с левым верхним углом в (x, y). */
 const rotatedBoxBounds = (x: number, y: number, w: number, h: number, rotate: number): ElementBounds => {
@@ -61,6 +66,19 @@ const rotatedBoxBounds = (x: number, y: number, w: number, h: number, rotate: nu
   }
 
   return {minX, minY, maxX, maxY, absX: x, absY: y};
+};
+
+/**
+ * Габарит текста — по измеренным глифам, а не по `w/h` из модели.
+ *
+ * У текста `w/h` описывают что угодно, только не нарисованное: `80×80` от рождения,
+ * `h` не пишется никогда, `w` действует лишь в режиме фиксированной ширины. Считая по
+ * ним, рамка группы обжимала пустоту, направляющие липли не к тем краям, а поворот
+ * (`transformSelection`) отражал текст относительно фантомного квадрата.
+ */
+const textBounds = (rendered: LeafElement, abs: {x: number; y: number}): ElementBounds => {
+  const {w, h} = measureText(rendered);
+  return {minX: abs.x, minY: abs.y, maxX: abs.x + w, maxY: abs.y + h, absX: abs.x, absY: abs.y};
 };
 
 /**
@@ -143,6 +161,9 @@ export function elementBounds(el: DiagramElement, index: ElementIndex): ElementB
   }
 
   const rendered = getRenderedElement(el) as LeafElement;
+
+  if (rendered.type === "text") return textBounds(rendered, abs);
+
   const w = rendered.w || 0;
   const h = rendered.h || 0;
   const rotate = rotationOf(rendered);
@@ -209,6 +230,8 @@ export function elementBoundsRendered(el: DiagramElement, index: ElementIndex): 
       return {minX, minY, maxX, maxY, absX: abs.x, absY: abs.y};
     }
   }
+
+  if (el.type === "text" || rendered.type === "text") return textBounds(rendered, abs);
 
   const w = rendered.w || 0;
   const h = rendered.h || 0;
