@@ -44,30 +44,3 @@ export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
 
   return NextResponse.json(data);
 });
-
-export const DELETE = protectedRoute(async (req: NextRequest, {token, params}) => {
-  const {id} = params;
-
-  const projectId = parseProjectId(req.nextUrl.searchParams);
-  if (projectId === null) {
-    return NextResponse.json(
-      {error: "Параметр project_id обязателен и должен быть целым числом (int64)"},
-      {status: 400}
-    );
-  }
-
-  const response = await fetch(
-    `${BACKEND_URL}/api/editor/components/scene/${id}?project_id=${projectId}`,
-    {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) return backendErrorResponse(response);
-
-  return NextResponse.json({success: true});
-});

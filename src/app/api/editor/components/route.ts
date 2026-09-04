@@ -84,3 +84,51 @@ export const PUT = protectedRoute(async (req: NextRequest, {token}) => {
   // 200, а не 201: сохранение существующей сцены — обновление, а не создание.
   return NextResponse.json(normalizeSaveResponse(editorElements));
 });
+
+/**
+ * Удаление документов и компонентов — массовое, конвертом (§1 контракта версий).
+ *
+ * ```json
+ * { "ids": [1, 2, 3], "based_on_version": 47 }
+ * ```
+ *
+ * Раньше фронт удалял поштучно по адресам `DELETE /api/editor/components/{id}` (проект) и
+ * `DELETE /api/editor/components/scene/{id}` (схема) — их на бэкенде больше нет, оба
+ * отвечали 500.
+ *
+ * `based_on_version` необязателен ровно на тех же условиях, что у `PUT`: у сцены без
+ * единой версии его слать нельзя (400), поэтому поле уходит только когда клиент реально
+ * знает номер. `DELETE` версию лишь СВЕРЯЕТ, не сливает: расхождение — безусловный
+ * `409 version_mismatch`, и он проходит насквозь к клиенту вместе с телом.
+ */
+export const DELETE = protectedRoute(async (req: NextRequest, {token}) => {
+  const body = await req.json().catch(() => null);
+
+  const rawIds = (body as {ids?: unknown} | null)?.ids;
+  const ids = Array.isArray(rawIds) ? rawIds.map(Number) : [];
+  if (!ids.length || !ids.every(Number.isSafeInteger)) {
+    return NextResponse.json(
+      {message: "Некорректное тело запроса: ожидается { ids: [1, 2, 3] } с целыми идентификаторами."},
+      {status: 400}
+    );
+  }
+
+  const basedOn = (body as {based_on_version?: unknown} | null)?.based_on_version;
+  const payload: {ids: number[]; based_on_version?: number} = {ids};
+  if (typeof basedOn === "number" && Number.isSafeInteger(basedOn)) {
+    payload.based_on_version = basedOn;
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/editor/components`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) return backendErrorResponse(response);
+
+  return NextResponse.json({success: true});
+});

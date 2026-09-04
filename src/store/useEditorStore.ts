@@ -962,6 +962,33 @@ const parseBackendErrorMessage = (status: number, text: string): string => {
 };
 
 /**
+ * Массовое удаление документов и компонентов — единственный оставшийся адрес удаления.
+ *
+ * Поштучных `DELETE /api/editor/components/{id}` и `.../components/scene/{id}` на бэкенде
+ * больше нет (они отвечали 500). Теперь это конверт `{ids, based_on_version}` на
+ * `DELETE /api/editor/components` (§1 контракта версий).
+ *
+ * `based_on_version` уходит ТОЛЬКО когда номер реально известен: у сцены без единой
+ * версии это поле — 400 (то же правило, что у сохранения). `DELETE` версию сверяет, но не
+ * сливает: расхождение — безусловный 409.
+ */
+const deleteComponentsRequest = async (ids: number[], basedOnVersion?: number | null) => {
+  const res = await fetch('/api/editor/components', {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      ids,
+      ...(typeof basedOnVersion === 'number' ? {based_on_version: basedOnVersion} : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(parseBackendErrorMessage(res.status, text));
+  }
+};
+
+/**
  * Единый «замок» на ВСЕ сохранения сцены (ручное + авто + повторные клики).
  *
  * Бэкенд апсертит по `id` (вариант А), а новые элементы уходят с `id = null`.
@@ -3348,11 +3375,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         try {
           // Проект и сцена — один вид компонента, поэтому адрес общий.
           // Схемы проекта удаляет каскадом бэкенд.
-          const res = await fetch(`/api/editor/components/${id}`, {method: 'DELETE'});
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Ошибка ${res.status}: ${text}`);
-          }
+          //
+          // `based_on_version` не шлём: он проверяется по каждой затронутой СЦЕНЕ, а
+          // проект каскадом уносит их все — одним номером их версии не описать.
+          await deleteComponentsRequest([id]);
 
           set(state => ({projectList: state.projectList.filter(p => p.id !== id)}));
 
@@ -3537,15 +3563,16 @@ export const useEditorStore = create<EditorState>()(temporal(
             return;
           }
 
-          const res = await fetch(
-            `/api/editor/scene/${id}?project_id=${currentProject.id}`,
-            {method: 'DELETE'},
-          );
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Ошибка ${res.status}: ${text}`);
-          }
           const wasCurrent = get().scene?.id === id;
+
+          // Версию берём у той сцены, которую удаляем: открытая знает свою из стора,
+          // за чужой (её удаляют из списка схем, не открывая) идём в историю. Нет
+          // версий вовсе — поле не отправляем, иначе бэкенд ответит 400.
+          const basedOnVersion = wasCurrent
+            ? get().sceneVersion
+            : await fetchCurrentVersion("scenes", id).catch(() => null);
+
+          await deleteComponentsRequest([id], basedOnVersion);
 
           set(state => ({
             sceneList: state.sceneList.filter(s => s.id !== id),
