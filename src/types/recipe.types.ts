@@ -17,7 +17,8 @@ export interface RecipeCreateDto {
 }
 
 export interface RecipeDto extends RecipeCreateDto {
-  id: number;
+  /** Строка, как и `component_id`: бэкенд отдаёт слаг вида `8891-тестовый-рецепт`, Number(...) даст NaN. */
+  id: string;
 }
 
 /** Элемент значения в ответе /resolved — дополнен value_type/tag_id рантаймом. */
@@ -31,7 +32,7 @@ export interface ResolvedRecipeValueDto {
 
 /** GET /api/editor/recipes/{id}/resolved — объект, не массив. */
 export interface ResolvedRecipeDto {
-  recipe_id: number;
+  recipe_id: string;
   component_id: string;
   values: ResolvedRecipeValueDto[];
   /** Имена строк, которых в таблице больше нет (удалили/переименовали в обход PUT /properties/{id}). */
@@ -47,7 +48,7 @@ export interface SnapshotTagValueDto {
 
 /** POST /api/runtime/recipes/apply — результат записи набора значений. */
 export interface RecipeApplyResultDto {
-  recipeId: number;
+  recipeId: string;
   total: number;
   /** Сколько ушло в ПЛК. */
   sent: number;

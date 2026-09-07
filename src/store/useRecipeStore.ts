@@ -6,9 +6,9 @@ type RecipeState = {
   recipes: RecipeDto[];
   loadRecipes: (componentId: number) => Promise<void>;
   createRecipe: (recipe: RecipeCreateDto) => Promise<boolean>;
-  updateRecipe: (id: number, recipe: RecipeCreateDto) => Promise<boolean>;
-  deleteRecipe: (id: number) => Promise<void>;
-  resolveRecipe: (id: number) => Promise<ResolvedRecipeDto | null>;
+  updateRecipe: (id: string, recipe: RecipeCreateDto) => Promise<boolean>;
+  deleteRecipe: (id: string) => Promise<void>;
+  resolveRecipe: (id: string) => Promise<ResolvedRecipeDto | null>;
 };
 
 export const useRecipeStore = create<RecipeState>((set, get) => ({

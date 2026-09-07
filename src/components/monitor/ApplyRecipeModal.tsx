@@ -31,7 +31,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
   const tableComponents = elements.filter((el) => el.type === "table" && el.id != null);
 
   const [componentId, setComponentId] = useState<number | null>(null);
-  const [recipeId, setRecipeId] = useState<number | null>(null);
+  const [recipeId, setRecipeId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<SnapshotTagValueDto[] | null>(null);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false);
@@ -58,7 +58,9 @@ function ApplyRecipeModalContent({sessionId}: Props) {
     }
   };
 
-  const selectRecipe = (id: number | null) => {
+  // id рецепта — строка (слаг вида `8891-тестовый-рецепт`): Number(...) дал бы NaN,
+  // рецепт не нашёлся бы в списке, а в тело запроса ушёл бы null.
+  const selectRecipe = (id: string | null) => {
     setRecipeId(id);
     setSnapshot(null);
     setApplyResult(null);
@@ -176,7 +178,7 @@ function ApplyRecipeModalContent({sessionId}: Props) {
               className={selectClasses}
               value={recipeId ?? ""}
               disabled={isLoadingRecipes}
-              onChange={(e) => selectRecipe(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => selectRecipe(e.target.value || null)}
             >
               <option value="" disabled>{isLoadingRecipes ? "Загрузка…" : "Рецепт…"}</option>
               {recipes.map((r) => (

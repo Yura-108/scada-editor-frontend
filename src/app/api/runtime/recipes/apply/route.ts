@@ -6,12 +6,12 @@ const BACKEND_URL = process.env.BACKEND_URL_RUNTIME || process.env.BACKEND_URL |
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const body = await req.json().catch(() => null);
-  const recipeId = Number(body?.recipeId);
+  const recipeId = typeof body?.recipeId === "string" ? body.recipeId.trim() : "";
 
-  if (!Number.isSafeInteger(recipeId)) {
+  if (!recipeId) {
     return NextResponse.json(
-      {error: "Параметр recipeId обязателен и должен быть целым числом"},
-      {status: 400},
+        {error: "Параметр recipeId обязателен и должен быть непустой строкой"},
+        {status: 400},
     );
   }
 
