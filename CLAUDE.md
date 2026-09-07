@@ -86,11 +86,16 @@ Consequences worth knowing:
   undo and mark the scene dirty. The old machinery is gone — no write queue, no
   `based_on_version` per property, no version re-fetch after each edit, no two-phase
   "save then provision".
-- **Exactly one network call survives**: renaming an already-saved property still goes through
-  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Recipe values (`recipe_value`) are keyed
-  by the row **name**, and only that endpoint migrates them — the bulk path would rename the row
-  and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does *not*
-  migrate them; if that ever matters, the exception has to grow to cover delete.
+- **Only targeted network call**: `PUT /api/editor/tags/{id}` (`updatePropertyOnServer`), used by
+  two callers. (a) Renaming an already-saved property in the editor: recipe values (`recipe_value`)
+  are keyed by the row **name**, and only that endpoint migrates them — the bulk path would rename
+  the row and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does
+  *not* migrate them; if that ever matters, the exception has to grow to cover delete.
+  (b) `savePropertyOnServer` — the **monitor's** property edit (reassigning a tag from the «Опции»
+  menu): the operator has no save button and must not `PUT` the whole scene, which would clobber
+  concurrent editor work. It writes the server first, then the store (inside `temporal.pause()`,
+  and it only clears `isDirty` when the scene was clean to begin with), then asks the runtime to
+  reconnect (`requestRuntimeRestart`) because the session is compiled from the scene at connect.
 - `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
   the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
 - `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric

@@ -23,3 +23,51 @@ export const emitRuntimeEvent = (elementKey: string, event: ElementEventName): v
 
 /** Есть ли активный обработчик (мы в мониторе) — для курсора/подсветки интерактива. */
 export const hasRuntimeEventHandler = (): boolean => handler !== null;
+
+/**
+ * Прямой запуск серверного Java-скрипта компонента по имени — пункт меню монитора
+ * («действия», помеченные `ElementScript.displayed`). Тот же путь, что и
+ * runScript("Имя") внутри обработчика события: движок ищет скрипт у элемента и шлёт
+ * ACTION по WS. Отдельная шина, а не ElementEventName: у действия нет события-повода.
+ */
+type ScriptHandler = (elementKey: string, scriptName: string) => void;
+
+let scriptHandler: ScriptHandler | null = null;
+
+export const setRuntimeScriptHandler = (h: ScriptHandler | null): void => {
+  scriptHandler = h;
+};
+
+export const emitRuntimeScript = (elementKey: string, scriptName: string): void => {
+  scriptHandler?.(elementKey, scriptName);
+};
+
+/**
+ * Живо ли соединение с рантаймом. Нужно интерфейсу вне движка (пункты меню монитора
+ * дизейблятся, пока ACTION уходить некуда), а статус движка не лежит ни в сторе, ни в
+ * пропсах холста.
+ */
+let live = false;
+
+export const setRuntimeLive = (value: boolean): void => {
+  live = value;
+};
+
+export const isRuntimeLive = (): boolean => live;
+
+/**
+ * Просьба пересоздать сессию рантайма: сцена на сервере изменилась (переназначили
+ * тег свойству) и сессию нужно скомпилировать заново — старая продолжает работать
+ * по прежнему тегу. Подписчик один — useRuntimeEngine.
+ */
+type RestartHandler = () => void;
+
+let restartHandler: RestartHandler | null = null;
+
+export const setRuntimeRestartHandler = (h: RestartHandler | null): void => {
+  restartHandler = h;
+};
+
+export const requestRuntimeRestart = (): void => {
+  restartHandler?.();
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Konva from "konva";
 import { Stage, Layer, Rect, Line, Circle } from "react-konva";
 
@@ -40,7 +40,11 @@ import { useZoomControls } from "./canvas/hooks/useZoomControls";
 import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
+import { buildMonitorMenu } from "./canvas/buildMonitorMenu";
+import { isMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
+import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
+import type { DiagramElement } from "@/types/editorElement.type";
 
 /**
  * Насколько «стол» выходит за края листа. Константа, а не доля от листа: лист
@@ -142,6 +146,20 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
 
   const closeMenu = useCallback(() => setContextMenu(null), []);
 
+  // Монитор: Escape поднимает на уровень вверх. Общий useEditorHotkeys здесь включать
+  // нельзя — он тянет удаление, копирование и группировку, которых в мониторе быть не
+  // должно. Меню закрывает Escape раньше нас (свой слушатель в capture-фазе).
+  useEffect(() => {
+    if (!readOnly) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const s = useEditorStore.getState();
+      if (s.activeGroupKey) s.exitGroup();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [readOnly]);
+
   // Колбэки холста намеренно БЕЗ зависимостей от изменчивого состояния: они
   // попадают в ctx, а ctx обязан быть стабильным по ссылке (иначе не работает
   // мемоизация узлов). Актуальные elements/selectedIds/activeGroupKey читаем
@@ -228,9 +246,50 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
 
   const { zoomBy, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
 
+  /**
+   * Что под курсором в мониторе. Свой хит-тест, а не Konva: в readOnly основной слой
+   * идёт с listening=false, фигуры вне хит-графа и e.target всегда сам Stage.
+   * getRelativePointerPosition учитывает трансформ камеры — это уже мировые координаты.
+   */
+  const pickMonitorAtPointer = useCallback((): DiagramElement | null => {
+    const pos = stageRef.current?.getRelativePointerPosition();
+    if (!pos) return null;
+    const s = useEditorStore.getState();
+    return pickMonitorTarget(pos, {
+      elementIndex: getElementIndex(s.elements),
+      activeGroupKey: s.activeGroupKey,
+      sceneId: String(s.scene?.id ?? ""),
+    });
+  }, []);
+
+  // Монитор: меню компонента по правому клику. Пустой список пунктов — меню не
+  // открывается вовсе (у компонента нечего настраивать и нечего запускать).
+  const handleMonitorContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    const el = pickMonitorAtPointer();
+    if (!el) return;
+
+    const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive() });
+    if (!items.length) return;
+
+    setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, items });
+  };
+
+  // Монитор: двойной клик входит внутрь составного компонента — та же механика уровня
+  // (activeGroupKey), что и в редакторе, чтобы меню можно было вызвать у вложенного.
+  const handleMonitorDblClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    // Клик поглотила хит-область слоя интеракции — значит он адресован элементу с
+    // обработчиком события (на любой глубине), и тот уже отработал. Перехватывать
+    // такой двойной клик входом в группу нельзя: это сломало бы готовые схемы.
+    // Проверяем именно цель Konva: в readOnly только эти области и слушают.
+    if (e.target !== e.target.getStage()) return;
+
+    const el = pickMonitorAtPointer();
+    if (el && isMonitorContainer(el)) enterGroup(el.key);
+  };
+
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
-    if (readOnly) return;
+    if (readOnly) { handleMonitorContextMenu(e); return; }
     const tg = e.target;
 
     if (tg === e.target.getStage() || tg.name() === "grid-bg") {
@@ -313,6 +372,8 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
           onClick={readOnly ? undefined : handleStagePlacementClick}
+          onDblClick={readOnly ? handleMonitorDblClick : undefined}
+          onDblTap={readOnly ? handleMonitorDblClick : undefined}
           onContextMenu={handleStageContextMenu}
           onDragStart={handleStageDragStart}
           onDragMove={handleStageDragMove}

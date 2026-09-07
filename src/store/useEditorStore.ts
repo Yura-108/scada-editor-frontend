@@ -37,6 +37,7 @@ import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints"
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
 import {getCanvasPointerWorld, clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {requestRuntimeRestart} from "@/lib/runtime/runtimeEventBus";
 import {
   fetchCurrentVersion,
   fetchVersionAt,
@@ -208,6 +209,16 @@ type EditorState = {
   /** Правит свойство локально. Переименование заведённого дополнительно уходит точечным
    *  PUT — только он переносит значения наборов на новое имя. false — отказ. */
   editProperty: (
+    elementKey: string,
+    target: PropertyCreateDto,
+    payload: PropertyCreateRequestDto,
+  ) => Promise<boolean>;
+  /**
+   * Сохраняет правку свойства ТОЧЕЧНЫМ запросом на бэкенд (без сохранения всей сцены).
+   * Путь монитора: там правит оператор, схему целиком он писать не должен. false — отказ
+   * сервера, локально в этом случае ничего не меняем.
+   */
+  savePropertyOnServer: (
     elementKey: string,
     target: PropertyCreateDto,
     payload: PropertyCreateRequestDto,
@@ -1223,7 +1234,10 @@ export const hasUnsavedWork = (): boolean => {
 
 /** Фиксирует текущее состояние как сохранённое: снимает флаг «грязно». */
 /**
- * Переименование свойства на сервере — единственный оставшийся точечный запрос.
+ * Точечная запись свойства на сервер — единственный путь правки свойства мимо
+ * сохранения всей сцены. Используется двумя сценариями: переименованием в редакторе
+ * (см. ниже) и правкой из монитора (`savePropertyOnServer`), где оператор не должен
+ * переписывать чужую схему целиком.
  *
  * Значения наборов (`recipe_value`) привязаны к ИМЕНИ строки, и переносит их на новое имя
  * только `PUT /api/editor/properties/{id}` (через наш прокси `/api/editor/tags/{id}`,
@@ -1231,12 +1245,13 @@ export const hasUnsavedWork = (): boolean => {
  * Массовое сохранение сцены имя поменяет, а уставки осиротеют — они попадут в
  * `unmatched_rows` при следующем открытии набора.
  *
- * Возвращает false, если сервер отказал: тогда локальное переименование не применяем,
+ * Возвращает false, если сервер отказал: тогда локальную правку не применяем,
  * иначе имя разъедется с тем, что знает бэкенд.
  */
-const renamePropertyOnServer = async (
+const updatePropertyOnServer = async (
   propertyId: number,
   payload: PropertyCreateRequestDto,
+  errorFallback = "Не удалось переименовать свойство",
 ): Promise<boolean> => {
   try {
     const res = await fetch(`/api/editor/tags/${propertyId}`, {
@@ -1251,7 +1266,7 @@ const renamePropertyOnServer = async (
     return true;
   } catch (err) {
     console.error(err);
-    toast.error(getErrorMessage(err, "Не удалось переименовать свойство"));
+    toast.error(getErrorMessage(err, errorFallback));
     return false;
   }
 };
@@ -2563,7 +2578,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         // к ИМЕНИ строки и переезжают на новое имя только точечным PUT — массовое
         // сохранение имя поменяет, а уставки осиротеют (ResolvedRecipeDto.unmatched_rows).
         if (target.id != null && target.name.trim() !== name) {
-          const migrated = await renamePropertyOnServer(target.id, {...payload, name});
+          const migrated = await updatePropertyOnServer(target.id, {...payload, name});
           if (!migrated) return false;
         }
 
@@ -2576,6 +2591,73 @@ export const useEditorStore = create<EditorState>()(temporal(
             } as DiagramElement
             : el),
         }));
+        return true;
+      },
+      /**
+       * Правка свойства из монитора: сначала на сервер, потом в стор.
+       *
+       * Почему не `editProperty` + `exportScene`: PUT сцены означает «вот вся сцена
+       * целиком», и монитор, отправив её, затёр бы параллельную работу в редакторе.
+       * Точечный `PUT /api/editor/properties/{id}` меняет ровно одно свойство — а
+       * заодно (это тот же путь, что и переименование) переносит значения наборов,
+       * если оператор поменял и имя.
+       */
+      savePropertyOnServer: async (elementKey, target, payload) => {
+        // Просмотр версии — режим только для чтения.
+        if (get().versionPreview) return false;
+
+        const owner = get().elements.find(el => el.key === elementKey);
+        if (!owner) return false;
+
+        // Адресовать свойство на сервере нечем: оно ещё ни разу не уезжало со сценой.
+        if (target.id == null) {
+          toast.error("Свойство ещё не сохранено — сохраните схему в редакторе");
+          return false;
+        }
+
+        const name = payload.name.trim();
+        const isSame = (p: PropertyCreateDto) => p.id === target.id;
+
+        if ((owner.properties ?? []).some(p => !isSame(p) && p.name.trim() === name)) {
+          toast.error(`Свойство «${name}» у этого элемента уже есть`);
+          return false;
+        }
+
+        // Была ли сцена грязной ДО правки: если да, её несохранённые изменения никуда
+        // не делись, и снимать флаг нельзя — иначе пропадёт предупреждение при уходе
+        // со страницы (в монитор можно прийти из редактора, стор общий).
+        const wasDirty = get().isDirty;
+
+        const saved = await updatePropertyOnServer(
+          target.id,
+          {...payload, name},
+          "Не удалось сохранить свойство",
+        );
+        if (!saved) return false;
+
+        // Правка уже на сервере — в клиентский undo ей нельзя (тот же приём, что у
+        // addTags): Ctrl+Z вернул бы старый тег только на экране.
+        useEditorStore.temporal.getState().pause();
+        set(state => ({
+          elements: state.elements.map(el => el.key === elementKey
+            ? {
+              ...el,
+              properties: (el.properties ?? []).map(p =>
+                isSame(p) ? {...p, ...payload, name} : p),
+            } as DiagramElement
+            : el),
+        }));
+        useEditorStore.temporal.getState().resume();
+
+        // Изменение уже сохранено, поэтому сцена не «грязная»: иначе монитор начал бы
+        // предупреждать о несохранённой работе, которой нет.
+        if (!wasDirty) markSceneSaved(true);
+
+        // Сессия рантайма компилируется из сцены в момент подключения и о правке иначе
+        // не узнает — просим движок переподключиться (в редакторе обработчика нет,
+        // вызов становится no-op).
+        requestRuntimeRestart();
+        toast.success("Свойство сохранено, сессия монитора перезапущена");
         return true;
       },
       deleteProperty: (elementKey, target) => {

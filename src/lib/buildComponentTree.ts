@@ -256,6 +256,10 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
           ...(s.serverId != null ? {id: s.serverId} : {}),
           name: s.name,
           script: s.content,
+          // Всегда, даже когда false: список скриптов бэкенд считает полным, и
+          // снятая галочка «действие в мониторе» обязана дойти так же, как
+          // поставленная — иначе флаг снимается только локально.
+          displayed: Boolean(s.displayed),
         }))
       : [],
     bindings: encodeBindings(element),
@@ -352,7 +356,7 @@ export const buildPaletteComponentTree = (
       parent_key: element.parentKey,
       parent_id: element.parentId,
       scripts: Array.isArray(element.scripts)
-        ? element.scripts.map((s: any) => ({ name: s.name, script: s.content }))
+        ? element.scripts.map((s: any) => ({ name: s.name, script: s.content, displayed: Boolean(s.displayed) }))
         : [],
       bindings: encodeBindings(element, {withServerIds: false}),
       events: encodeEvents(element, {withServerIds: false}),

@@ -326,8 +326,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       // с другим: «Напишите Java-код для обработки событий» здесь и
       // «Отредактируйте JS-код скрипта» на соседней кнопке.
       description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
-      onConfirm: (name, content) => {
-        const newScript = { id: createUuid(), name, content };
+      onConfirm: (name, content, displayed) => {
+        const newScript = { id: createUuid(), name, content, displayed };
         updateElement(element.key, {
           scripts: [...(element.scripts || []), newScript]
         });
@@ -1238,7 +1238,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <button
                     key={script.id}
                     type="button"
-                    title={`Редактировать скрипт «${script.name}»`}
+                    title={script.displayed
+                      ? `Редактировать скрипт «${script.name}» (показывается в меню монитора)`
+                      : `Редактировать скрипт «${script.name}»`}
                     className={`
                       inline-flex items-center px-2.5 py-1.5
                       text-xs font-medium rounded-full
@@ -1252,15 +1254,21 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                           description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
                           defaultName: script.name,
                           defaultContent: script.content,
-                          onConfirm: (name, content) => {
+                          defaultDisplayed: script.displayed,
+                          onConfirm: (name, content, displayed) => {
                             const updatedScripts = elementScripts.map(s =>
-                              s.id === script.id ? { ...s, name, content } : s
+                              s.id === script.id ? { ...s, name, content, displayed } : s
                             );
                             updateElement(element.key, { scripts: updatedScripts });
                           }
                         });
                     }}
                   >
+                    {/* Точка = скрипт выведен пунктом в меню монитора: иначе
+                        отличить его от обычного можно только открыв модалку. */}
+                    {script.displayed && (
+                      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    )}
                     {script.name}
                   </button>
                 ))}

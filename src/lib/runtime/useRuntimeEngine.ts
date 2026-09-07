@@ -8,11 +8,17 @@ import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import {executeBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
-import {setRuntimeEventHandler} from "@/lib/runtime/runtimeEventBus";
+import {
+  setRuntimeEventHandler,
+  setRuntimeLive,
+  setRuntimeRestartHandler,
+  setRuntimeScriptHandler,
+} from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
 import {cellBindings, isLiveField, propertyByName} from "@/lib/editor/tableBindings";
 import type {ElementEventName} from "@/types/binding.types";
+import type {DiagramElement} from "@/types/editorElement.type";
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
 const FLUSH_INTERVAL_MS = 200;
@@ -77,6 +83,12 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
+  /**
+   * Счётчик принудительных пересозданий сессии. Сессия компилируется на сервере из
+   * сцены в момент POST /sessions, поэтому изменение сцены на бэкенде (переназначили
+   * тег свойству) до неё не доходит — соединение нужно поднять заново.
+   */
+  const [restartEpoch, setRestartEpoch] = useState(0);
   // Момент последнего непустого UPDATE-кадра — обрыв Kafka-консьюмера на бэкенде
   // не рвёт WS, поэтому статус может оставаться "live" при замерших значениях;
   // единственный признак — переставший расти ts/момент приёма кадра.
@@ -302,6 +314,34 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     }
   }, [active, index]);
 
+  // Мост к серверному Java-скрипту: находим скрипт компонента по имени и шлём ACTION
+  // по WS. sendAction ждёт ЧИСЛОВОЙ серверный id — ElementScript.id это String(серверный
+  // id) после loadScene (см. transformElements); если id не число (напр. uuid у ещё не
+  // сохранённого скрипта), команду не шлём.
+  //
+  // Вынесено из runEvent: тем же путём идут и пункты меню монитора (скрипты с
+  // displayed), у которых события-повода нет.
+  const runScriptOn = useCallback((el: DiagramElement, name: string) => {
+    const script = el.scripts?.find(s => s.name === name);
+    if (!script) {
+      console.warn(`[monitor:event] runScript: скрипт «${name}» не найден у «${el.label ?? el.key}»`);
+      return;
+    }
+    const scriptId = Number(script.id);
+    if (!Number.isFinite(scriptId)) {
+      console.warn(`[monitor:event] runScript: у скрипта «${name}» нет числового серверного id (${script.id})`);
+      return;
+    }
+    connRef.current?.sendAction(scriptId);
+  }, []);
+
+  // Пункт меню монитора: запуск скрипта по ключу элемента и имени скрипта.
+  const runScriptByKey = useCallback((elementKey: string, scriptName: string) => {
+    const el = useEditorStore.getState().elements.find(e => e.key === elementKey);
+    if (!el) return;
+    runScriptOn(el, scriptName);
+  }, [runScriptOn]);
+
   // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas):
   // компилирует и исполняет element.events[event], пишет свойства в общий буфер
   // и применяет self-интенты. Использует стабильные ref-ы — deps пустые.
@@ -317,23 +357,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       console.warn(`[monitor:event] ${event} «${el.label ?? el.key}» не скомпилирован: ${compiled.error}`);
       return;
     }
-    // Мост к серверному Java-скрипту: onClick вызывает runScript("Имя") → находим
-    // скрипт компонента по имени и шлём ACTION по WS. sendAction ждёт ЧИСЛОВОЙ
-    // серверный id — ElementScript.id это String(серверный id) после loadScene
-    // (см. transformElements); если id не число (напр. uuid), команду не шлём.
-    const runScript = (name: string) => {
-      const script = el.scripts?.find(s => s.name === name);
-      if (!script) {
-        console.warn(`[monitor:event] runScript: скрипт «${name}» не найден у «${el.label ?? el.key}»`);
-        return;
-      }
-      const scriptId = Number(script.id);
-      if (!Number.isFinite(scriptId)) {
-        console.warn(`[monitor:event] runScript: у скрипта «${name}» нет числового серверного id (${script.id})`);
-        return;
-      }
-      connRef.current?.sendAction(scriptId);
-    };
+    // onClick вызывает runScript("Имя") — тот же мост, что и у пунктов меню монитора.
+    const runScript = (name: string) => runScriptOn(el, name);
 
     const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el), runScript);
     if ("error" in res) {
@@ -363,14 +388,27 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     log(`событие ${event} по «${el.label ?? el.key}»: записей ${res.writes.length}, интентов ${res.intents.length}`);
     if (res.writes.length) flushRef.current();
-  }, []);
+  }, [runScriptOn]);
 
-  // Регистрируем обработчик событий в шине, пока движок активен.
+  // Регистрируем обработчики в шине, пока движок активен: события (клик по фигуре),
+  // прямой запуск скрипта (пункт меню монитора) и просьбу пересоздать сессию.
   useEffect(() => {
     if (!active) return;
     setRuntimeEventHandler(runEvent);
-    return () => setRuntimeEventHandler(null);
-  }, [active, runEvent]);
+    setRuntimeScriptHandler(runScriptByKey);
+    setRuntimeRestartHandler(() => setRestartEpoch(n => n + 1));
+    return () => {
+      setRuntimeEventHandler(null);
+      setRuntimeScriptHandler(null);
+      setRuntimeRestartHandler(null);
+    };
+  }, [active, runEvent, runScriptByKey]);
+
+  // Признак «связь есть» для интерфейса вне движка (пункты меню монитора).
+  useEffect(() => {
+    setRuntimeLive(status === "live");
+    return () => setRuntimeLive(false);
+  }, [status]);
 
   // Соединение живёт на пару (active, projectId) — смена сцены внутри проекта
   // его не пересоздаёт (индекс подменяется через ref).
@@ -450,7 +488,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       setRejectionReason(null);
       setIsStale(false);
     };
-  }, [active, projectId]);
+    // restartEpoch — принудительное пересоздание сессии по requestRuntimeRestart().
+  }, [active, projectId, restartEpoch]);
 
   return {
     status,

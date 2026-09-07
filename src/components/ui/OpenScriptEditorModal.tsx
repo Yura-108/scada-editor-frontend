@@ -13,8 +13,10 @@ interface ScriptModalProps {
   description: string;
   defaultName?: string;
   defaultContent?: string;
+  /** Показывать ли скрипт пунктом меню в мониторе (ElementScript.displayed). */
+  defaultDisplayed?: boolean;
   confirmLabel?: string;
-  onConfirm: (name: string, content: string) => void | Promise<void>;
+  onConfirm: (name: string, content: string, displayed: boolean) => void | Promise<void>;
 }
 
 export function ScriptEditorModalContent({
@@ -22,26 +24,30 @@ export function ScriptEditorModalContent({
   description,
   defaultName = "",
   defaultContent = "",
+  defaultDisplayed = false,
   confirmLabel = "Сохранить",
   onConfirm,
 }: ScriptModalProps) {
   const closeModal = useModalStore((s) => s.closeModal);
   const [name, setName] = useState(defaultName);
   const [content, setContent] = useState(defaultContent);
+  const [displayed, setDisplayed] = useState(defaultDisplayed);
   const [isLoading, setIsLoading] = useState(false);
   const inputId = useId();
+  const displayedId = useId();
 
   useEffect(() => {
     setName(defaultName);
     setContent(defaultContent);
-  }, [defaultName, defaultContent]);
+    setDisplayed(defaultDisplayed);
+  }, [defaultName, defaultContent, defaultDisplayed]);
 
   const handleConfirmAction = async () => {
     if (!name?.trim() || !content?.trim()) return;
 
     setIsLoading(true);
     try {
-      await onConfirm(name, content);
+      await onConfirm(name, content, displayed);
       closeModal();
     } catch (error) {
       console.error("Confirm error:", error);
@@ -72,6 +78,29 @@ export function ScriptEditorModalContent({
             "transition-all shadow-sm"
           )}
         />
+      </div>
+
+      {/* Помеченный скрипт становится пунктом меню компонента в мониторе
+          (ПКМ по компоненту) — оператор запускает его вручную, не дожидаясь
+          события. Непомеченный по-прежнему вызывается только из обработчика
+          события через runScript("Имя"). */}
+      <div className="shrink-0">
+        <label
+          htmlFor={displayedId}
+          className="flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200"
+        >
+          <input
+            id={displayedId}
+            type="checkbox"
+            checked={displayed}
+            onChange={(e) => setDisplayed(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+          />
+          Добавить действие в монитор?
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            (пункт в меню компонента по правому клику)
+          </span>
+        </label>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">

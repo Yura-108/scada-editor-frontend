@@ -58,6 +58,14 @@ export interface ElementScript {
   serverId?: number | string;
   name: string;
   content: string;
+  /**
+   * Показывать ли скрипт пунктом в меню монитора (ПКМ по компоненту). Ставится
+   * галочкой «Добавить действие в монитор?» в модалке скрипта и едет на сервер
+   * одноимённым полем DTO — внутри скрипта места под флаг нет (`script` — это
+   * Java-исходник), а `transformElements` пересобирает скрипты по белому списку,
+   * так что «прокатить» признак мимо контракта не получится.
+   */
+  displayed?: boolean;
 }
 
 /**
@@ -100,8 +108,12 @@ export type ComponentCreateDto = {
   type: string;
   parent_key: string | null;
   parent_id: number | null;
-  /** `id` — только у скриптов, пришедших с сервера (см. ElementScript.serverId). */
-  scripts: { id?: number | string; name: string; script: string }[];
+  /**
+   * `id` — только у скриптов, пришедших с сервера (см. ElementScript.serverId).
+   * `displayed` шлём всегда: бэкенд считает список скриптов полным, и снятая
+   * галочка обязана дойти так же, как поставленная.
+   */
+  scripts: { id?: number | string; name: string; script: string; displayed?: boolean }[];
   bindings: BindingDto[];
   /** `id` — только у событий, пришедших с сервера. */
   events: { id?: number | string; event_type: string; script: string }[];

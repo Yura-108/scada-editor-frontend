@@ -83,8 +83,12 @@ export default function MonitorClient() {
     const temporal = useEditorStore.temporal.getState();
     temporal.pause();
     useEditorStore.getState().clearSelection();
+    // Уровень (activeGroupKey) общий с редактором: в монитор нужно входить с корня
+    // сцены, а выходя — не оставлять редактору чужой открытый компонент.
+    useEditorStore.setState({activeGroupKey: null});
     return () => {
       // Рантайм-карты чистит cleanup движка (clearRuntime).
+      useEditorStore.setState({activeGroupKey: null});
       useEditorStore.temporal.getState().resume();
     };
   }, []);

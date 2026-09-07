@@ -7,6 +7,8 @@ import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/lib/isIntersecting";
 import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/editor/zoomLimits";
+import { getElementIndex } from "@/lib/editor/elementIndex";
+import { pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import type { SelectionRect } from "../types";
 
 
@@ -187,8 +189,23 @@ export function useStageInteractions({
     if (useEditorStore.getState().pendingPlacement) return;
 
     // Монитор: клики по холсту ничего не выделяют и не рисуют маркиз
-    // (средняя кнопка — панорамирование — обработана выше).
-    if (readOnly) return;
+    // (средняя кнопка — панорамирование — обработана выше). Единственное исключение —
+    // выход на уровень вверх кликом по пустому месту: внутрь составного компонента там
+    // заходят двойным кликом, и обратная дорога должна быть той же, что в редакторе.
+    if (readOnly) {
+      if (!activeGroupKey) return;
+      // Именно свой хит-тест, а не `clickedOnEmpty`: в мониторе основной слой не
+      // слушает, и клик по фигуре тоже приходит на Stage — по e.target выход из группы
+      // случался бы при клике по её же содержимому.
+      const pos = stageRef.current?.getRelativePointerPosition();
+      const hit = pos && pickMonitorTarget(pos, {
+        elementIndex: getElementIndex(elements),
+        activeGroupKey,
+        sceneId: String(useEditorStore.getState().scene?.id ?? ""),
+      });
+      if (!hit) exitGroup();
+      return;
+    }
 
     // Нажатие по фигуре — выделяем её (см. selectOnPress) и на этом всё:
     // маркиз стартует только с пустого места.

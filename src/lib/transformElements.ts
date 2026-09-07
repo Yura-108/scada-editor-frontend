@@ -224,6 +224,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
           id: s.id != null ? String(s.id) : createUuid(),
           name: String(s.name ?? ""),
           content: String(s.content ?? s.script ?? ""),
+          displayed: Boolean(s.displayed),
         })),
         // Composition-дескриптор хранит TagBinding[] сырыми объектами; parseBindings
         // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
@@ -261,6 +262,9 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         ...(typeof s.id === "number" || typeof s.id === "string" ? {serverId: s.id} : {}),
         name: String(s.name ?? ""),
         content: String(s.content ?? s.script ?? ""),
+        // Пункт меню монитора. Список полей здесь — белый: чего нет в нём, то
+        // теряется при загрузке, поэтому новое поле контракта добавляется тут.
+        displayed: Boolean(s.displayed),
       })),
       // Top-level биндинги едут через DTO-обёртку {name, script: JSON} — распаковываем.
       bindings: parseBindings(el.bindings),
