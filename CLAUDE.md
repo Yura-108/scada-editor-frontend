@@ -86,21 +86,46 @@ Consequences worth knowing:
   undo and mark the scene dirty. The old machinery is gone — no write queue, no
   `based_on_version` per property, no version re-fetch after each edit, no two-phase
   "save then provision".
-- **Only targeted network call**: `PUT /api/editor/tags/{id}` (`updatePropertyOnServer`), used by
-  two callers. (a) Renaming an already-saved property in the editor: recipe values (`recipe_value`)
-  are keyed by the row **name**, and only that endpoint migrates them — the bulk path would rename
-  the row and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does
-  *not* migrate them; if that ever matters, the exception has to grow to cover delete.
-  (b) `savePropertyOnServer` — the **monitor's** property edit (reassigning a tag from the «Опции»
-  menu): the operator has no save button and must not `PUT` the whole scene, which would clobber
-  concurrent editor work. It writes the server first, then the store (inside `temporal.pause()`,
-  and it only clears `isDirty` when the scene was clean to begin with), then asks the runtime to
-  reconnect (`requestRuntimeRestart`) because the session is compiled from the scene at connect.
+- **Exactly one network call survives**: renaming an already-saved property still goes through
+  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Recipe values (`recipe_value`) are keyed
+  by the row **name**, and only that endpoint migrates them — the bulk path would rename the row
+  and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does *not*
+  migrate them; if that ever matters, the exception has to grow to cover delete.
 - `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
   the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
 - `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric
   `propertyId` the runtime routes by is filled in from the save response
   (`resolvePendingPropertyRefs`).
+
+### Monitor: component menu, actions, manual tag values
+
+The monitor is `<Canvas readOnly />`: the content layer is `listening={false}`, so shapes are out
+of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only mechanisms:
+
+- **Hit-testing is ours, not Konva's** — `src/lib/editor/pickMonitorTarget.ts` walks the members of
+  the current level (`activeGroupKey` ?? scene root) top-down by `zIndex` and returns the element
+  whose absolute bbox contains the point. Same semantics as the editor's `resolveClickTarget`, only
+  downward. Right-click builds the menu from it (`canvas/buildMonitorMenu.ts`), double-click enters
+  the container (`enterGroup`) — unless a `MonitorInteractionLayer` rect consumed the event, which
+  is how existing `onClick`/`onDoubleClick` schemes keep working at any depth.
+- **Menu items**: «Опции» when the element has `property_type === "Тег"` properties, plus one item
+  per script with `displayed` (the editor checkbox «Добавить действие в монитор?»). A script runs
+  through `emitRuntimeScript` → `sendAction(Number(script.id))` → WS `ACTION`, so it needs a numeric
+  **server** id — an unsaved script cannot run. `ElementScript.displayed` rides in the script DTO
+  (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
+  treats the script list as complete.
+
+**Manual tag values** (`manualTagValues: Record<tagId, string>` in the store, set from «Опции»
+after a successful `POST /api/runtime/tags/write`): the operator's value **replaces** incoming
+telemetry for that tag until explicitly cleared. Three rules hold it together, all in
+`useRuntimeEngine`: `flush` substitutes the manual value inside the loop (substitute, don't skip —
+bindings must still fire), `computeNoDataElementKeys` treats an overridden tag as having data, and
+a `useEffect` on the map pushes the value into `pendingRef` + calls `flush` synchronously so it
+applies without waiting for the next frame (never pre-write `valuesRef` — the no-op guard would
+swallow it). `liveValuesRef` shadows the real value so clearing can restore it, and
+`manualInjectedRef` marks our own injections so they never poison that shadow. `clearRuntime()`
+wipes the map: an override must not survive a reconnect silently. The toolbar badge «Ручные
+значения: N» exists for the same reason — a forgotten override looks exactly like live data.
 
 ### Document versions (undo → versioning)
 

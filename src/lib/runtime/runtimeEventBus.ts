@@ -56,18 +56,47 @@ export const setRuntimeLive = (value: boolean): void => {
 export const isRuntimeLive = (): boolean => live;
 
 /**
- * Просьба пересоздать сессию рантайма: сцена на сервере изменилась (переназначили
- * тег свойству) и сессию нужно скомпилировать заново — старая продолжает работать
- * по прежнему тегу. Подписчик один — useRuntimeEngine.
+ * Текущее значение тега, каким его видит схема. Значения живут в рефах движка
+ * (`valuesRef`), а не в сторе, поэтому окну «Опции» нужен геттер, а не селектор:
+ * там показывается ровно то же, что нарисовано на холсте, без лишних запросов.
  */
-type RestartHandler = () => void;
+type ValueGetter = (tagId: string) => string | null | undefined;
 
-let restartHandler: RestartHandler | null = null;
+let valueGetter: ValueGetter | null = null;
 
-export const setRuntimeRestartHandler = (h: RestartHandler | null): void => {
-  restartHandler = h;
+export const setRuntimeValueGetter = (g: ValueGetter | null): void => {
+  valueGetter = g;
 };
 
-export const requestRuntimeRestart = (): void => {
-  restartHandler?.();
+export const getRuntimeTagValue = (tagId: string): string | null | undefined =>
+  valueGetter?.(tagId);
+
+/**
+ * Значение, которое реально приходит с контроллера, даже когда его перекрывает ручная
+ * подмена. Нужно, чтобы окно «Опции» показывало оба числа рядом: подмена, за которой не
+ * видно живых данных, — это ровно тот способ проглядеть аварию, ради которого в
+ * tag-контракте разведены значение и достоверность.
+ */
+let liveValueGetter: ValueGetter | null = null;
+
+export const setRuntimeLiveValueGetter = (g: ValueGetter | null): void => {
+  liveValueGetter = g;
 };
+
+export const getRuntimeLiveTagValue = (tagId: string): string | null | undefined =>
+  liveValueGetter?.(tagId);
+
+/**
+ * id текущей рантайм-сессии. Нужен окну «Опции», чтобы отправить запись значения:
+ * сессия живёт внутри движка и меняется при каждом переподключении, поэтому геттер,
+ * а не значение.
+ */
+type SessionGetter = () => string | null;
+
+let sessionGetter: SessionGetter | null = null;
+
+export const setRuntimeSessionGetter = (g: SessionGetter | null): void => {
+  sessionGetter = g;
+};
+
+export const getRuntimeSessionId = (): string | null => sessionGetter?.() ?? null;

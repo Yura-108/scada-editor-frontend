@@ -11,8 +11,10 @@ import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript"
 import {
   setRuntimeEventHandler,
   setRuntimeLive,
-  setRuntimeRestartHandler,
+  setRuntimeLiveValueGetter,
   setRuntimeScriptHandler,
+  setRuntimeSessionGetter,
+  setRuntimeValueGetter,
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
@@ -43,9 +45,13 @@ const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 const computeNoDataElementKeys = (
   idx: BindingIndex,
   tagMeta: ReadonlyMap<string, {quality: string; ts?: number}>,
+  manual: Readonly<Record<string, string>>,
 ): Set<string> => {
   const result = new Set<string>();
   for (const [tagId, keys] of idx.elementKeysByTagId) {
+    // У тега с ручным значением данные есть по определению — иначе оверлей «нет данных»
+    // лёг бы поверх того, что оператор сам и выставил.
+    if (tagId in manual) continue;
     const meta = tagMeta.get(tagId);
     const bad = !meta || !isTagQualityGood(meta.quality);
     if (bad) for (const k of keys) result.add(k);
@@ -83,12 +89,6 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
-  /**
-   * Счётчик принудительных пересозданий сессии. Сессия компилируется на сервере из
-   * сцены в момент POST /sessions, поэтому изменение сцены на бэкенде (переназначили
-   * тег свойству) до неё не доходит — соединение нужно поднять заново.
-   */
-  const [restartEpoch, setRestartEpoch] = useState(0);
   // Момент последнего непустого UPDATE-кадра — обрыв Kafka-консьюмера на бэкенде
   // не рвёт WS, поэтому статус может оставаться "live" при замерших значениях;
   // единственный признак — переставший расти ts/момент приёма кадра.
@@ -111,6 +111,12 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   // быть null — тег с quality != GOOD без последнего достоверного значения.
   const pendingRef = useRef(new Map<string, string | null>());
   const valuesRef = useRef(new Map<string, string | null>());
+  // Последнее ЖИВОЕ значение тега, даже когда его перекрывает ручная подмена: без него
+  // снять подмену было бы некуда — до следующего кадра на экране осталось бы ручное.
+  const liveValuesRef = useRef(new Map<string, string | null>());
+  // Теги, значение которых в pending положила сама подмена, а не телеметрия. По ним
+  // теневой буфер живого значения обновлять НЕЛЬЗЯ: иначе снятие подмены вернуло бы её же.
+  const manualInjectedRef = useRef(new Set<string>());
   // Последнее известное качество/момент снятия по тегу (docs/contract/TAG_CONTRACT_CHANGES.md B1/B3).
   const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
   // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
@@ -142,14 +148,21 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     pendingPropNameRef.current = new Map();
 
     // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
+    const manual = useEditorStore.getState().manualTagValues;
     const affected = new Set<CompiledBinding>();
     const changedTags: {tagId: string; value: string | null}[] = [];
-    for (const [tagId, value] of pending) {
+    for (const [tagId, raw] of pending) {
+      // Живое значение запоминаем и под подменой — оно понадобится, когда её снимут.
+      if (!manualInjectedRef.current.has(tagId)) liveValuesRef.current.set(tagId, raw);
+      // Ручное значение оператора ПОДМЕНЯЕТ телеметрию, а не отменяет обработку тега:
+      // привязки должны отработать на нём ровно так же, как на пришедшем с контроллера.
+      const value = tagId in manual ? manual[tagId] : raw;
       if (valuesRef.current.get(tagId) === value) continue;
       valuesRef.current.set(tagId, value);
       changedTags.push({tagId, value});
       for (const cb of idx.byTagId.get(tagId) ?? []) affected.add(cb);
     }
+    manualInjectedRef.current.clear();
 
     // «Нет данных» (B2/B4): пересчитываем только если у какого-то тега реально
     // сменилось quality (взводится в onUpdate) — независимо от того, изменилось
@@ -157,7 +170,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     let noDataKeys: Set<string> | undefined;
     if (qualityDirtyRef.current) {
       qualityDirtyRef.current = false;
-      const next = computeNoDataElementKeys(idx, tagMetaRef.current);
+      const next = computeNoDataElementKeys(idx, tagMetaRef.current, useEditorStore.getState().manualTagValues);
       if (!setsEqual(next, noDataKeysRef.current)) {
         noDataKeysRef.current = next;
         noDataKeys = next;
@@ -302,7 +315,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     // элементы, привязанные к нему, сразу уходят в noDataElementKeys, не дожидаясь
     // первого BAD-кадра. При смене сцены внутри той же сессии tagMetaRef уже может
     // знать часть тегов — пересчёт учитывает и это.
-    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current);
+    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current, useEditorStore.getState().manualTagValues);
     const noDataChanged = !setsEqual(initialNoData, noDataKeysRef.current);
     if (noDataChanged) noDataKeysRef.current = initialNoData;
 
@@ -391,18 +404,58 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   }, [runScriptOn]);
 
   // Регистрируем обработчики в шине, пока движок активен: события (клик по фигуре),
-  // прямой запуск скрипта (пункт меню монитора) и просьбу пересоздать сессию.
+  // прямой запуск скрипта (пункт меню монитора) и чтение текущих значений тегов.
   useEffect(() => {
     if (!active) return;
     setRuntimeEventHandler(runEvent);
     setRuntimeScriptHandler(runScriptByKey);
-    setRuntimeRestartHandler(() => setRestartEpoch(n => n + 1));
+    // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
+    setRuntimeValueGetter(tagId => valuesRef.current.get(tagId));
+    setRuntimeLiveValueGetter(tagId => liveValuesRef.current.get(tagId));
+    setRuntimeSessionGetter(() => connRef.current?.getSessionId() ?? null);
     return () => {
       setRuntimeEventHandler(null);
       setRuntimeScriptHandler(null);
-      setRuntimeRestartHandler(null);
+      setRuntimeValueGetter(null);
+      setRuntimeLiveValueGetter(null);
+      setRuntimeSessionGetter(null);
     };
   }, [active, runEvent, runScriptByKey]);
+
+  /**
+   * Ручные значения применяем НЕМЕДЛЕННО, не дожидаясь очередного кадра телеметрии:
+   * иначе выставленное оператором значение появилось бы на схеме только когда (и если)
+   * по этому тегу придёт следующее сообщение — у редко меняющихся тегов это минуты.
+   *
+   * Кладём в тот же буфер, что и телеметрия, и синхронно зовём flush — приём из runEvent.
+   * Предзаписывать valuesRef нельзя: no-op-страж во flush счёл бы изменение отсутствующим
+   * и ни одна привязка не сработала бы.
+   */
+  const manualTagValues = useEditorStore(s => s.manualTagValues);
+  const prevManualRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    const prev = prevManualRef.current;
+    prevManualRef.current = manualTagValues;
+    if (!active) return;
+
+    let touched = false;
+    for (const [tagId, value] of Object.entries(manualTagValues)) {
+      if (prev[tagId] === value) continue;
+      manualInjectedRef.current.add(tagId);
+      pendingRef.current.set(tagId, value);
+      touched = true;
+    }
+    for (const tagId of Object.keys(prev)) {
+      if (tagId in manualTagValues) continue;
+      // Подмену сняли — возвращаем последнее живое значение (null, если его не было).
+      pendingRef.current.set(tagId, liveValuesRef.current.get(tagId) ?? null);
+      touched = true;
+    }
+    if (!touched) return;
+    // Набор «нет данных» зависит и от карты подмен, а не только от quality.
+    qualityDirtyRef.current = true;
+    flushRef.current();
+  }, [active, manualTagValues]);
 
   // Признак «связь есть» для интерфейса вне движка (пункты меню монитора).
   useEffect(() => {
@@ -488,8 +541,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       setRejectionReason(null);
       setIsStale(false);
     };
-    // restartEpoch — принудительное пересоздание сессии по requestRuntimeRestart().
-  }, [active, projectId, restartEpoch]);
+  }, [active, projectId]);
 
   return {
     status,

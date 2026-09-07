@@ -25,13 +25,6 @@ interface Props {
    */
   elementKey: string;
   property?: PropertyCreateDto;
-  /**
-   * Сохранять правку сразу точечным запросом на бэкенд, а не откладывать до сохранения
-   * сцены. Путь монитора: там оператор правит привязку тега, а кнопки «Сохранить схему»
-   * у него нет — и писать всю сцену из монитора нельзя (затрёт работу в редакторе).
-   * По умолчанию false — поведение редактора не меняется.
-   */
-  persist?: boolean;
 }
 
 type PropertyType = "Тег" | "Глобальный" | "Локальный";
@@ -53,12 +46,11 @@ const valueTypeOptions: Array<{ value: string; label: string }> = [
 const ACCESS_LEVEL_MIN = 0;
 const ACCESS_LEVEL_MAX = 10;
 
-export function AddPropertyContent({ elementKey, property, persist = false }: Props) {
+export function AddPropertyContent({ elementKey, property }: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
   const addProperty = useEditorStore((s) => s.addProperty);
   const editProperty = useEditorStore((s) => s.editProperty);
-  const savePropertyOnServer = useEditorStore((s) => s.savePropertyOnServer);
 
   const [name, setName] = useState(property?.name || "");
   const [propertyType, setPropertyType] = useState<PropertyType>(
@@ -130,12 +122,9 @@ export function AddPropertyContent({ elementKey, property, persist = false }: Pr
       };
 
       // Правка существующего — по id, если он есть; у ещё не сохранённого свойства
-      // ключом служит имя, под которым его завели. В режиме persist (монитор) правка
-      // уходит точечным запросом на сервер, а не ждёт сохранения сцены.
+      // ключом служит имя, под которым его завели.
       const ok = property
-        ? (persist
-          ? await savePropertyOnServer(elementKey, property, payload)
-          : await editProperty(elementKey, property, payload))
+        ? await editProperty(elementKey, property, payload)
         : await addProperty(elementKey, payload);
 
       if (ok) closeModal();
@@ -400,9 +389,7 @@ export function AddPropertyContent({ elementKey, property, persist = false }: Pr
 
       {/* Footer buttons */}
       <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-        {/* Удаление свойства из монитора не предлагаем: оно уедет только с сохранением
-            сцены, а до тех пор привязки будут ссылаться в пустоту. */}
-        {property?.id && !persist ? (
+        {property?.id ? (
           <Button variant="danger" onClick={handleDelete} disabled={isLoading} className="mr-auto">
             <Trash2 size={16} />
             Удалить свойство

@@ -28,8 +28,10 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
   const items: CanvasMenuItem[] = [];
 
   if (tagProperties(el).length) {
+    // Без живой сессии в «Опциях» нечего показывать (значений нет) и некуда писать.
     items.push({
-      label: "Опции",
+      label: isLive ? "Опции" : "Опции — нет связи",
+      disabled: !isLive,
       onClick: () => {
         closeMenu();
         openElementOptionsModal({ elementKey: el.key });
