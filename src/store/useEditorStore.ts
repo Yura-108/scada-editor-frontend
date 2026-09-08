@@ -129,17 +129,6 @@ type EditorState = {
     propsByKey?: Record<string, Record<string, unknown>>;
     noDataKeys?: Set<string>;
   }) => void;
-  /**
-   * Значения тегов, заданные оператором вручную («Опции» в мониторе): tag_id → значение.
-   *
-   * Подмена «липкая»: пока тег здесь, входящая телеметрия по нему на схему не попадает
-   * (см. flush в useRuntimeEngine). Живёт только в памяти страницы и очищается вместе с
-   * остальными рантайм-картами, поэтому пережить перезагрузку или смену оператора не может.
-   */
-  manualTagValues: Record<string, string>;
-  setManualTagValue: (tagId: string, value: string) => void;
-  clearManualTagValue: (tagId: string) => void;
-  clearManualTagValues: () => void;
   /** Сброс всех рантайм-карт (выход из монитора). */
   clearRuntime: () => void;
   clipboard: DiagramElement[] | null;
@@ -1116,6 +1105,17 @@ const applyServerComponents = (
     selectedTableCell: null,
     editAllStates: false,
     currentComponentStateByElementKey: {},
+    // Рантайм-оверрайды принадлежат ПРЕДЫДУЩЕМУ документу и обнуляются по той же причине,
+    // что и состояния строкой выше. Ключи элементов переживают серверный круг (см.
+    // transformElements), поэтому `setProp` прошлого визита на схему иначе лёг бы поверх
+    // заново загруженной (в getRenderedElement рантайм применяется последним), а записи по
+    // ключам других схем копились бы в карте всю сессию.
+    //
+    // Не через `clearRuntime()`: тот сбрасывает ещё и ручные значения оператора, а они
+    // привязаны к сессии, а не к схеме, и от переключения слетать не должны. Актуальные
+    // значения движок пересчитает сразу после смены elements — он прогоняет биндинги по
+    // уже известным значениям (см. useRuntimeEngine, эффект на index).
+    runtimeOverridesByElementKey: {},
   });
 
   return elements;
@@ -1346,7 +1346,6 @@ export const useEditorStore = create<EditorState>()(temporal(
       currentComponentStateByElementKey: {},
       runtimeOverridesByElementKey: {},
       noDataElementKeys: new Set(),
-      manualTagValues: {},
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -1802,24 +1801,10 @@ export const useEditorStore = create<EditorState>()(temporal(
         // Ничего фактически не изменилось — не дёргаем ни стор, ни рендер.
         if (Object.keys(patch).length) set(patch);
       },
-      setManualTagValue: (tagId, value) => set(state => ({
-        manualTagValues: {...state.manualTagValues, [tagId]: value},
-      })),
-      clearManualTagValue: (tagId) => set(state => {
-        if (!(tagId in state.manualTagValues)) return {};
-        const next = {...state.manualTagValues};
-        delete next[tagId];
-        return {manualTagValues: next};
-      }),
-      clearManualTagValues: () => set(state =>
-        Object.keys(state.manualTagValues).length ? {manualTagValues: {}} : {}),
       clearRuntime: () => set({
         runtimeOverridesByElementKey: {},
         currentComponentStateByElementKey: {},
         noDataElementKeys: new Set(),
-        // Ручные значения не переживают сессию: иначе подмена, о которой оператор забыл,
-        // молча вернулась бы после переподключения и выглядела как живые данные.
-        manualTagValues: {},
       }),
       updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
       // Мульти-версия: один set() (= один шаг undo) для всех ключей.

@@ -72,19 +72,24 @@ export const getRuntimeTagValue = (tagId: string): string | null | undefined =>
   valueGetter?.(tagId);
 
 /**
- * Значение, которое реально приходит с контроллера, даже когда его перекрывает ручная
- * подмена. Нужно, чтобы окно «Опции» показывало оба числа рядом: подмена, за которой не
- * видно живых данных, — это ровно тот способ проглядеть аварию, ради которого в
- * tag-контракте разведены значение и достоверность.
+ * «Значения записаны в ПЛК» — окно «Опции» сообщает движку, что команда ушла.
+ *
+ * Записанное значение вливается в общий поток значений ОДИН раз, наравне с телеметрией:
+ * оператор сразу видит, что команда отправлена, а первый же кадр по этому тегу забирает
+ * показ обратно. Экранной «подмены», переживающей телеметрию, больше нет — тег после
+ * записи волен меняться скриптом, другим оператором или самим контроллером.
  */
-let liveValueGetter: ValueGetter | null = null;
+type TagWriteHandler = (writes: {tagId: string; value: string}[]) => void;
 
-export const setRuntimeLiveValueGetter = (g: ValueGetter | null): void => {
-  liveValueGetter = g;
+let tagWriteHandler: TagWriteHandler | null = null;
+
+export const setRuntimeTagWriteHandler = (h: TagWriteHandler | null): void => {
+  tagWriteHandler = h;
 };
 
-export const getRuntimeLiveTagValue = (tagId: string): string | null | undefined =>
-  liveValueGetter?.(tagId);
+export const notifyRuntimeTagsWritten = (writes: {tagId: string; value: string}[]): void => {
+  if (writes.length) tagWriteHandler?.(writes);
+};
 
 /**
  * id текущей рантайм-сессии. Нужен окну «Опции», чтобы отправить запись значения:

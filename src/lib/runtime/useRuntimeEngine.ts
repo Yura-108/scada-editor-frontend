@@ -5,15 +5,16 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
-import {executeBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
+import type {CompiledBinding} from "@/lib/runtime/executeBinding";
+import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
 import {
   setRuntimeEventHandler,
   setRuntimeLive,
-  setRuntimeLiveValueGetter,
   setRuntimeScriptHandler,
   setRuntimeSessionGetter,
+  setRuntimeTagWriteHandler,
   setRuntimeValueGetter,
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
@@ -24,8 +25,6 @@ import type {DiagramElement} from "@/types/editorElement.type";
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
 const FLUSH_INTERVAL_MS = 200;
-/** Столько ошибок исполнения ПОДРЯД отключают биндинг до перезагрузки сцены. */
-const MAX_CONSECUTIVE_ERRORS = 5;
 /** Соединение "live", но кадров нет дольше этого — считаем данные устаревшими
  *  (обрыв Kafka-консьюмера на бэкенде не рвёт WS, ts — единственный признак). */
 const STALE_THRESHOLD_MS = 10_000;
@@ -45,13 +44,9 @@ const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 const computeNoDataElementKeys = (
   idx: BindingIndex,
   tagMeta: ReadonlyMap<string, {quality: string; ts?: number}>,
-  manual: Readonly<Record<string, string>>,
 ): Set<string> => {
   const result = new Set<string>();
   for (const [tagId, keys] of idx.elementKeysByTagId) {
-    // У тега с ручным значением данные есть по определению — иначе оверлей «нет данных»
-    // лёг бы поверх того, что оператор сам и выставил.
-    if (tagId in manual) continue;
     const meta = tagMeta.get(tagId);
     const bad = !meta || !isTagQualityGood(meta.quality);
     if (bad) for (const k of keys) result.add(k);
@@ -86,6 +81,19 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
   const [status, setStatus] = useState<RuntimeStatus>("closed");
   const [runtimeErrors, setRuntimeErrors] = useState<Map<string, string>>(new Map());
+  // Зеркало runtimeErrors для прогонов вне рендера. Без него flush пришлось бы держать
+  // runtimeErrors в deps (пересоздание колбэка на каждую ошибку), а повторный прогон из
+  // эффекта читал бы устаревшую карту из замыкания.
+  const runtimeErrorsRef = useRef(runtimeErrors);
+  const publishRuntimeErrors = useCallback((next: ReadonlyMap<string, string>) => {
+    const prev = runtimeErrorsRef.current;
+    // Та же карта либо «пусто было, пусто и осталось» — лишний setState перерисовал бы
+    // шапку монитора на каждом тике и на каждом открытии схемы без единой ошибки.
+    if (next === prev || (next.size === 0 && prev.size === 0)) return;
+    const map = next instanceof Map ? next : new Map(next);
+    runtimeErrorsRef.current = map;
+    setRuntimeErrors(map);
+  }, []);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
@@ -111,12 +119,6 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   // быть null — тег с quality != GOOD без последнего достоверного значения.
   const pendingRef = useRef(new Map<string, string | null>());
   const valuesRef = useRef(new Map<string, string | null>());
-  // Последнее ЖИВОЕ значение тега, даже когда его перекрывает ручная подмена: без него
-  // снять подмену было бы некуда — до следующего кадра на экране осталось бы ручное.
-  const liveValuesRef = useRef(new Map<string, string | null>());
-  // Теги, значение которых в pending положила сама подмена, а не телеметрия. По ним
-  // теневой буфер живого значения обновлять НЕЛЬЗЯ: иначе снятие подмены вернуло бы её же.
-  const manualInjectedRef = useRef(new Set<string>());
   // Последнее известное качество/момент снятия по тегу (docs/contract/TAG_CONTRACT_CHANGES.md B1/B3).
   const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
   // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
@@ -148,21 +150,18 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     pendingPropNameRef.current = new Map();
 
     // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
-    const manual = useEditorStore.getState().manualTagValues;
+    //
+    // Записанное оператором значение приходит сюда тем же путём, что и телеметрия (см.
+    // мост записи ниже), и никакого приоритета не имеет: следующий кадр по этому тегу
+    // просто перезапишет его. Именно поэтому показ не «залипает» на записанном.
     const affected = new Set<CompiledBinding>();
     const changedTags: {tagId: string; value: string | null}[] = [];
-    for (const [tagId, raw] of pending) {
-      // Живое значение запоминаем и под подменой — оно понадобится, когда её снимут.
-      if (!manualInjectedRef.current.has(tagId)) liveValuesRef.current.set(tagId, raw);
-      // Ручное значение оператора ПОДМЕНЯЕТ телеметрию, а не отменяет обработку тега:
-      // привязки должны отработать на нём ровно так же, как на пришедшем с контроллера.
-      const value = tagId in manual ? manual[tagId] : raw;
+    for (const [tagId, value] of pending) {
       if (valuesRef.current.get(tagId) === value) continue;
       valuesRef.current.set(tagId, value);
       changedTags.push({tagId, value});
       for (const cb of idx.byTagId.get(tagId) ?? []) affected.add(cb);
     }
-    manualInjectedRef.current.clear();
 
     // «Нет данных» (B2/B4): пересчитываем только если у какого-то тега реально
     // сменилось quality (взводится в onUpdate) — независимо от того, изменилось
@@ -170,7 +169,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     let noDataKeys: Set<string> | undefined;
     if (qualityDirtyRef.current) {
       qualityDirtyRef.current = false;
-      const next = computeNoDataElementKeys(idx, tagMetaRef.current, useEditorStore.getState().manualTagValues);
+      const next = computeNoDataElementKeys(idx, tagMetaRef.current);
       if (!setsEqual(next, noDataKeysRef.current)) {
         noDataKeysRef.current = next;
         noDataKeys = next;
@@ -210,55 +209,21 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     const store = useEditorStore.getState();
     const byKey = new Map(store.elements.map(el => [el.key, el] as const));
 
-    const stateNameByKey: Record<string, string> = {};
-    const propsByKey: Record<string, Record<string, unknown>> = {...tableRowProps};
-    const fired: {binding: string; intents: string}[] = [];
-    let newErrors: Map<string, string> | null = null;
+    // Тот же прогон, что и при смене схемы (см. эффект ниже) — одна трактовка ошибок
+    // и автоотключения на оба пути.
+    const {stateNameByKey, propsByKey, errors, fired} = runBindings(affected, {
+      valuesByTagId: valuesRef.current,
+      valuesByPropertyId: valuesByPropRef.current,
+      selfOf: key => {
+        const el = byKey.get(key);
+        return el ? getRenderedElement(el) : null;
+      },
+      errorCounts: errorCountRef.current,
+      disabled: disabledRef.current,
+      knownErrors: runtimeErrorsRef.current,
+    }, tableRowProps);
 
-    for (const cb of affected) {
-      const bindingId = cb.binding.id;
-      if (disabledRef.current.has(bindingId)) continue;
-
-      const el = byKey.get(cb.elementKey);
-      const self = el ? getRenderedElement(el) : null;
-
-      const res = executeBinding(cb, valuesRef.current, valuesByPropRef.current, self);
-      if ("error" in res) {
-        const count = (errorCountRef.current.get(bindingId) ?? 0) + 1;
-        errorCountRef.current.set(bindingId, count);
-        newErrors = newErrors ?? new Map(runtimeErrors);
-        newErrors.set(bindingId, res.error);
-        console.warn(
-          `[monitor:engine] биндинг «${cb.binding.name}» ошибка исполнения (${count}/${MAX_CONSECUTIVE_ERRORS}): ${res.error}`,
-        );
-        if (count >= MAX_CONSECUTIVE_ERRORS) {
-          disabledRef.current.add(bindingId);
-          console.warn(
-            `[monitor:engine] биндинг «${cb.binding.name}» ОТКЛЮЧЁН после ${count} ошибок подряд`,
-          );
-        }
-        continue;
-      }
-
-      errorCountRef.current.set(bindingId, 0);
-      if (res.intents.length) {
-        fired.push({
-          binding: cb.binding.name,
-          intents: res.intents
-            .map(i => i.kind === "state" ? `setState("${i.stateName}")` : `setProp("${i.key}", ${JSON.stringify(i.value)})`)
-            .join(", "),
-        });
-      }
-      for (const intent of res.intents) {
-        if (intent.kind === "state") {
-          stateNameByKey[cb.elementKey] = intent.stateName;
-        } else {
-          (propsByKey[cb.elementKey] ??= {})[intent.key] = intent.value;
-        }
-      }
-    }
-
-    if (newErrors) setRuntimeErrors(newErrors);
+    publishRuntimeErrors(errors);
 
     console.groupCollapsed(
       `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
@@ -275,13 +240,23 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
       store.applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
     }
-  }, [runtimeErrors]);
+  }, [publishRuntimeErrors]);
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
 
-  // Сид значений свойств из default_value: клиентские события (setProperty) и
-  // биндинги читают valuesByPropRef; без сида первое чтение свойства = null.
+  /**
+   * Открытие схемы: сид значений + ПОВТОРНЫЙ ПРОГОН биндингов по уже известным значениям.
+   *
+   * Индекс пересобирается на смену identity `elements`, то есть ровно тогда, когда на
+   * холст лёг другой документ — это единственная надёжная точка «схема сменилась».
+   * Соединение при этом не пересоздаётся (оно живёт на пару active+projectId), поэтому
+   * значения тегов всей сессии остаются на руках, и открытая схема обязана нарисоваться
+   * по ним сразу, а не ждать, пока значение изменится.
+   *
+   * Порядок внутри строгий: сначала сид значений свойств, потом прогон — иначе биндинги
+   * прочитают свойства как null.
+   */
   useEffect(() => {
     if (!active) return;
     const idx = indexRef.current;
@@ -294,38 +269,87 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       }
     }
 
-    // Сид ячеек локальных свойств из default_value — до первого WS-апдейта ячейка не
-    // должна быть пустой (доку: «до первого изменения» показывается default_value).
-    // Теговые ячейки не сидируем: у них значение приходит из ПЛК, а до первого кадра
-    // элемент и так накрыт оверлеем «нет данных».
+    // Сид ячеек таблиц. Локальная строка до первого WS-апдейта показывает default_value
+    // (доку: «до первого изменения»), но ТОЛЬКО если живого значения ещё нет: индекс
+    // пересобирается на каждую смену схемы, и безусловная запись дефолта затирала бы
+    // значение, уже пришедшее по WS, — ячейка навсегда оставалась бы с дефолтом, если
+    // свойство больше не менялось.
+    //
+    // Теговые ячейки сидируем из уже известных значений сессии: при возврате на схему
+    // они иначе пустые, хотя значение лежит в valuesRef. Неизвестного тега не касаемся —
+    // до первого кадра элемент под оверлеем «нет данных».
     const propsByKey: Record<string, Record<string, unknown>> = {};
     for (const el of useEditorStore.getState().elements) {
       if (el.type !== "table") continue;
       for (const {cell} of cellBindings(el)) {
         if (!isLiveField(cell.field)) continue;
         const p = propertyByName(el, cell.propertyName);
-        if (!p || p.tag_id) continue;
-        const value = String(p.default_value ?? "");
+        if (!p) continue;
+
+        if (p.tag_id) {
+          const live = valuesRef.current.get(p.tag_id);
+          if (live == null) continue;
+          (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = live;
+          continue;
+        }
+
+        const value = valuesByPropNameRef.current.get(p.name) ?? String(p.default_value ?? "");
         valuesByPropNameRef.current.set(p.name, value);
         (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = value;
       }
     }
-    // Начальный расчёт «нет данных» (B4): тег, по которому ещё не было ни одного
-    // сообщения (tagMetaRef пуст на самый первый маунт), считается недостоверным —
-    // элементы, привязанные к нему, сразу уходят в noDataElementKeys, не дожидаясь
-    // первого BAD-кадра. При смене сцены внутри той же сессии tagMetaRef уже может
-    // знать часть тегов — пересчёт учитывает и это.
-    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current, useEditorStore.getState().manualTagValues);
-    const noDataChanged = !setsEqual(initialNoData, noDataKeysRef.current);
-    if (noDataChanged) noDataKeysRef.current = initialNoData;
 
-    if (Object.keys(propsByKey).length || noDataChanged) {
-      useEditorStore.getState().applyRuntimeBatch({
-        propsByKey: Object.keys(propsByKey).length ? propsByKey : undefined,
-        noDataKeys: noDataChanged ? initialNoData : undefined,
-      });
-    }
-  }, [active, index]);
+    // Счётчики ошибок и автоотключение живут ровно до пересборки индекса: биндинг,
+    // отключённый после серии ошибок на прошлой схеме, обязан снова заработать на новой
+    // (и на этой же после перезагрузки). Ошибки исполнения прошлой схемы убираем из
+    // плашки «Проблемы с привязками» — тех биндингов на холсте больше нет.
+    errorCountRef.current = new Map();
+    disabledRef.current = new Set();
+    const baseErrors: ReadonlyMap<string, string> = new Map();
+
+    // Повторный прогон биндингов по УЖЕ ИЗВЕСТНЫМ значениям.
+    //
+    // Без него схема, открытая после того как значения пришли, остаётся в состоянии по
+    // умолчанию навсегда: applyServerComponents обнуляет карту состояний, а flush
+    // исполняет только биндинги ИЗМЕНИВШИХСЯ тегов — очередной кадр приносит то же
+    // значение, страж no-op его отсекает, и биндинг не выполняется. Ровно этот путь
+    // проходит оператор, применивший рецепт на одной схеме и перешедший на другую.
+    const byKey = new Map(useEditorStore.getState().elements.map(el => [el.key, el] as const));
+    const toRun = idx.all.filter(cb => hasKnownTrigger(cb, valuesRef.current, valuesByPropRef.current));
+    const {stateNameByKey, propsByKey: nextProps, errors, fired} = runBindings(toRun, {
+      valuesByTagId: valuesRef.current,
+      valuesByPropertyId: valuesByPropRef.current,
+      selfOf: key => {
+        const el = byKey.get(key);
+        return el ? getRenderedElement(el) : null;
+      },
+      errorCounts: errorCountRef.current,
+      disabled: disabledRef.current,
+      knownErrors: baseErrors,
+    }, propsByKey);
+
+    publishRuntimeErrors(errors);
+    log(`повторный прогон при смене схемы: биндингов ${toRun.length} из ${idx.all.length}, сработало ${fired.length}`);
+
+    // «Нет данных» (B4): тег, по которому ещё не было ни одного сообщения (tagMetaRef
+    // пуст на самый первый маунт), считается недостоверным — элементы уходят в
+    // noDataElementKeys, не дожидаясь первого BAD-кадра. При смене схемы внутри той же
+    // сессии tagMetaRef уже знает часть тегов, и пересчёт это учитывает.
+    //
+    // Пишем БЕЗУСЛОВНО, без сравнения с прошлым набором: документ заменён целиком, и
+    // ключи прошлой схемы обязаны уйти из стора, даже если сам набор «равен» по составу.
+    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current);
+    noDataKeysRef.current = initialNoData;
+
+    // Один батч на всё открытие схемы — один ре-рендер холста.
+    useEditorStore.getState().applyRuntimeBatch({
+      stateNameByKey,
+      propsByKey: nextProps,
+      noDataKeys: initialNoData,
+    });
+    // publishRuntimeErrors стабилен (useCallback без зависимостей) — в списке он ради
+    // правила exhaustive-deps, пересчёт схемы им не запускается.
+  }, [active, index, publishRuntimeErrors]);
 
   // Мост к серверному Java-скрипту: находим скрипт компонента по имени и шлём ACTION
   // по WS. sendAction ждёт ЧИСЛОВОЙ серверный id — ElementScript.id это String(серверный
@@ -403,59 +427,52 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     if (res.writes.length) flushRef.current();
   }, [runScriptOn]);
 
+  /**
+   * Значения, записанные оператором в ПЛК («Опции»), вливаются в общий поток ОДИН раз.
+   *
+   * Немедленно, а не со следующим кадром: иначе записанное появилось бы на схеме, только
+   * когда (и если) по тегу придёт очередное сообщение — у редко меняющихся тегов это
+   * минуты. Кладём в тот же буфер, что и телеметрия, и синхронно зовём flush — приём из
+   * runEvent. Предзаписывать valuesRef НЕЛЬЗЯ: no-op-страж во flush счёл бы изменение
+   * отсутствующим и ни одна привязка не сработала бы.
+   *
+   * Приоритета у записанного значения нет — первый же кадр по этому тегу его вытеснит.
+   * Тег после записи волен меняться скриптом, другим оператором или самим контроллером.
+   */
+  const onTagsWritten = useCallback((writes: {tagId: string; value: string}[]) => {
+    for (const {tagId, value} of writes) {
+      pendingRef.current.set(tagId, value);
+      // Тег, по которому кадров ещё не было, после подтверждённой записи перестаёт
+      // считаться «нет данных» — иначе оверлей лёг бы поверх того, что оператор сам и
+      // записал. Уже известное качество не трогаем: замазывать чужой BAD своей записью
+      // нельзя, недостоверность тега от неё не исчезает.
+      if (!tagMetaRef.current.has(tagId)) {
+        tagMetaRef.current.set(tagId, {quality: "GOOD", ts: Date.now()});
+        qualityDirtyRef.current = true;
+      }
+    }
+    flushRef.current();
+  }, []);
+
   // Регистрируем обработчики в шине, пока движок активен: события (клик по фигуре),
-  // прямой запуск скрипта (пункт меню монитора) и чтение текущих значений тегов.
+  // прямой запуск скрипта (пункт меню монитора), чтение текущих значений тегов и
+  // уведомление о записи значений в ПЛК.
   useEffect(() => {
     if (!active) return;
     setRuntimeEventHandler(runEvent);
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
     setRuntimeValueGetter(tagId => valuesRef.current.get(tagId));
-    setRuntimeLiveValueGetter(tagId => liveValuesRef.current.get(tagId));
+    setRuntimeTagWriteHandler(onTagsWritten);
     setRuntimeSessionGetter(() => connRef.current?.getSessionId() ?? null);
     return () => {
       setRuntimeEventHandler(null);
       setRuntimeScriptHandler(null);
       setRuntimeValueGetter(null);
-      setRuntimeLiveValueGetter(null);
+      setRuntimeTagWriteHandler(null);
       setRuntimeSessionGetter(null);
     };
-  }, [active, runEvent, runScriptByKey]);
-
-  /**
-   * Ручные значения применяем НЕМЕДЛЕННО, не дожидаясь очередного кадра телеметрии:
-   * иначе выставленное оператором значение появилось бы на схеме только когда (и если)
-   * по этому тегу придёт следующее сообщение — у редко меняющихся тегов это минуты.
-   *
-   * Кладём в тот же буфер, что и телеметрия, и синхронно зовём flush — приём из runEvent.
-   * Предзаписывать valuesRef нельзя: no-op-страж во flush счёл бы изменение отсутствующим
-   * и ни одна привязка не сработала бы.
-   */
-  const manualTagValues = useEditorStore(s => s.manualTagValues);
-  const prevManualRef = useRef<Record<string, string>>({});
-  useEffect(() => {
-    const prev = prevManualRef.current;
-    prevManualRef.current = manualTagValues;
-    if (!active) return;
-
-    let touched = false;
-    for (const [tagId, value] of Object.entries(manualTagValues)) {
-      if (prev[tagId] === value) continue;
-      manualInjectedRef.current.add(tagId);
-      pendingRef.current.set(tagId, value);
-      touched = true;
-    }
-    for (const tagId of Object.keys(prev)) {
-      if (tagId in manualTagValues) continue;
-      // Подмену сняли — возвращаем последнее живое значение (null, если его не было).
-      pendingRef.current.set(tagId, liveValuesRef.current.get(tagId) ?? null);
-      touched = true;
-    }
-    if (!touched) return;
-    // Набор «нет данных» зависит и от карты подмен, а не только от quality.
-    qualityDirtyRef.current = true;
-    flushRef.current();
-  }, [active, manualTagValues]);
+  }, [active, runEvent, runScriptByKey, onTagsWritten]);
 
   // Признак «связь есть» для интерфейса вне движка (пункты меню монитора).
   useEffect(() => {
@@ -527,6 +544,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       connRef.current = null;
       pendingRef.current = new Map();
       valuesRef.current = new Map();
+      // Теневой буфер живых значений тоже принадлежит сессии: без сброса «снять подмену»
+      // после переподключения вернуло бы значение из прошлой сессии.
       pendingPropsRef.current = new Map();
       valuesByPropRef.current = new Map();
       pendingPropNameRef.current = new Map();

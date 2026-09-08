@@ -115,17 +115,31 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
 
-**Manual tag values** (`manualTagValues: Record<tagId, string>` in the store, set from «Опции»
-after a successful `POST /api/runtime/tags/write`): the operator's value **replaces** incoming
-telemetry for that tag until explicitly cleared. Three rules hold it together, all in
-`useRuntimeEngine`: `flush` substitutes the manual value inside the loop (substitute, don't skip —
-bindings must still fire), `computeNoDataElementKeys` treats an overridden tag as having data, and
-a `useEffect` on the map pushes the value into `pendingRef` + calls `flush` synchronously so it
-applies without waiting for the next frame (never pre-write `valuesRef` — the no-op guard would
-swallow it). `liveValuesRef` shadows the real value so clearing can restore it, and
-`manualInjectedRef` marks our own injections so they never poison that shadow. `clearRuntime()`
-wipes the map: an override must not survive a reconnect silently. The toolbar badge «Ручные
-значения: N» exists for the same reason — a forgotten override looks exactly like live data.
+**Switching scenes must re-run the bindings.** The WS session lives on `(active, projectId)`
+(`useRuntimeEngine`), so changing the scene inside a project keeps it — `valuesRef` holds the
+values of *every* project tag, including scenes that are not open. But `applyServerComponents`
+resets `currentComponentStateByElementKey` (and now `runtimeOverridesByElementKey`) when the
+document is replaced, and `flush` only executes bindings of tags whose value *changed*. So a
+scene opened after its values already arrived would stay in its default state forever — the
+telemetry keeps repeating the same value and the no-op guard drops it. The effect on `index`
+therefore seeds property/table values and then re-runs `index.all` (filtered by
+`hasKnownTrigger`) through the shared `runBindings`, applying everything in one
+`applyRuntimeBatch`. Anything that replaces `elements` must keep that path intact: a scene whose
+bindings never ran shows a confident but wrong mimic, which is the worst failure mode here.
+
+**Written tag values are shown once, not pinned.** After a successful
+`POST /api/runtime/tags/write` the modal calls `notifyRuntimeTagsWritten` (`runtimeEventBus`), and
+the engine's handler drops the values into `pendingRef` and calls `flush` synchronously — the
+operator sees the command land without waiting for a frame, which on a slow tag would be minutes.
+That is the *whole* mechanism: the value carries no priority, so the next frame for that tag
+overwrites it and the tag stays free to change from a script, another operator, or the PLC itself.
+Never pre-write `valuesRef` — the no-op guard in `flush` would swallow the change and no binding
+would fire. The handler also seeds `tagMetaRef` for a tag that has **no** entry yet, so a confirmed
+write lifts the «нет данных» overlay off the element it just set; a tag already reporting bad
+quality keeps its entry and its overlay, because our write says nothing about someone else's BAD.
+There is deliberately no sticky-override map any more (`manualTagValues` and its badge are gone):
+an override that outlives telemetry is a mimic that confidently shows what the hardware no longer
+holds.
 
 ### Document versions (undo → versioning)
 

@@ -2,14 +2,14 @@
 
 import React, {useEffect, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import {AlertTriangle, RotateCcw, Waypoints} from "lucide-react";
+import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
-import {getRuntimeLiveTagValue, getRuntimeSessionId, getRuntimeTagValue} from "@/lib/runtime/runtimeEventBus";
+import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {PropertyCreateDto} from "@/types/tags.types";
@@ -52,9 +52,6 @@ function ElementOptionsContent({elementKey}: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const element = useEditorStore((s) => s.elements.find(el => el.key === elementKey));
   const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
-  const manualTagValues = useEditorStore((s) => s.manualTagValues);
-  const setManualTagValue = useEditorStore((s) => s.setManualTagValue);
-  const clearManualTagValue = useEditorStore((s) => s.clearManualTagValue);
 
   const tagProps = (element?.properties ?? []).filter(p => p.property_type === "Тег");
 
@@ -74,10 +71,8 @@ function ElementOptionsContent({elementKey}: Props) {
   }, []);
 
   const asText = (v: string | null | undefined) => (v == null ? "нет данных" : String(v));
-  /** То, что видит схема (под подменой — само ручное значение). */
+  /** То же значение, что нарисовано на холсте: движок держит их в рефах, а не в сторе. */
   const shownValueOf = (tagId: string) => asText(getRuntimeTagValue(tagId));
-  /** То, что реально приходит с контроллера, даже когда сверху лежит подмена. */
-  const liveValueOf = (tagId: string) => asText(getRuntimeLiveTagValue(tagId));
 
   /**
    * Значение строки для записи.
@@ -212,18 +207,21 @@ function ElementOptionsContent({elementKey}: Props) {
           return;
         }
         if (!result.success) {
-          // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и
-          // НЕ подменяем значение на экране, записи ведь не произошло.
+          // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и НЕ
+          // выводим значение на схему, записи ведь не произошло.
           toast.error(
             `«${row.property.name}»: ${tagWriteStatusLabel(result)}${result.message ? ` — ${result.message}` : ""}`,
           );
           return;
         }
 
-        // Значение остаётся на экране до явной отмены оператором.
-        setManualTagValue(row.tagId, row.value);
         applied.push({row, result});
       });
+
+      // Записанное показываем сразу, не дожидаясь кадра телеметрии: у редко меняющихся
+      // тегов это минуты. Но именно ПОКАЗЫВАЕМ — приоритета над телеметрией у значения
+      // нет, первый же кадр по тегу его вытеснит (см. мост записи в useRuntimeEngine).
+      notifyRuntimeTagsWritten(applied.map(({row}) => ({tagId: row.tagId, value: row.value})));
 
       if (applied.length === rows.length) {
         toast.success(rows.length === 1
@@ -265,8 +263,8 @@ function ElementOptionsContent({elementKey}: Props) {
           Опции · {element?.label || element?.type || "компонент"}
         </Dialog.Title>
         <Dialog.Description className="text-gray-500 dark:text-gray-400 text-sm">
-          Значения привязанных тегов. Записанное значение остаётся на экране, пока его не
-          вернут к живому.
+          Значения привязанных тегов. Записанное показывается, пока контроллер не пришлёт
+          следующее.
         </Dialog.Description>
       </div>
 
@@ -279,8 +277,6 @@ function ElementOptionsContent({elementKey}: Props) {
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
             {tagProps.map((p) => {
               const tagId = p.tag_id ?? "";
-              const manual = tagId ? manualTagValues[tagId] : undefined;
-              const isManual = manual !== undefined;
               const isBool = isBooleanValueType(p.value_type);
               const draft = drafts[tagId] ?? "";
               const isWriting = writingTags.includes(tagId);
@@ -303,17 +299,10 @@ function ElementOptionsContent({elementKey}: Props) {
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {isManual ? manual : shownValueOf(tagId)}
+                        {shownValueOf(tagId)}
                       </span>
-                      {/* Под подменой показываем ещё и живое значение: подмена, за которой
-                          не видно данных контроллера, — это способ проглядеть аварию. */}
-                      <span className={cn(
-                        "block text-xs",
-                        isManual
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-gray-500 dark:text-gray-400",
-                      )}>
-                        {isManual ? `ручное · с контроллера: ${liveValueOf(tagId)}` : "живое значение"}
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        текущее значение
                       </span>
                     </span>
                   </div>
@@ -351,17 +340,6 @@ function ElementOptionsContent({elementKey}: Props) {
                       {isWriting ? "Запись..." : "Записать в ПЛК"}
                     </button>
 
-                    {isManual && (
-                      <button
-                        type="button"
-                        title="Вернуть живое значение"
-                        onClick={() => clearManualTagValue(tagId)}
-                        className="shrink-0 flex items-center gap-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <RotateCcw size={14} />
-                        Вернуть живое
-                      </button>
-                    )}
                   </div>
                 </div>
               );

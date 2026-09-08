@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo} from "react";
-import {AlertTriangle, ClipboardList, Clock, Hand, Pin, PinOff, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
@@ -103,11 +103,6 @@ export default function MonitorClient() {
 
   const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale} = useRuntimeEngine(Boolean(scene && currentProject));
 
-  // Сколько тегов сейчас показывают заданное оператором значение вместо телеметрии.
-  // Плашка обязательна: без неё забытая подмена неотличима на экране от живых данных.
-  const manualCount = useEditorStore(s => Object.keys(s.manualTagValues).length);
-  const clearManualTagValues = useEditorStore(s => s.clearManualTagValues);
-
   const problemCount = useMemo(
     () => compileErrors.size + runtimeErrors.size,
     [compileErrors, runtimeErrors],
@@ -169,17 +164,6 @@ export default function MonitorClient() {
           >
             <ClipboardList size={14} />
             Применить рецепт
-          </button>
-        )}
-
-        {manualCount > 0 && (
-          <button
-            onClick={() => clearManualTagValues()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 transition-colors"
-            title="Значения, заданные оператором вручную, подменяют телеметрию на схеме. Нажмите, чтобы вернуть все живые значения."
-          >
-            <Hand size={14} />
-            Ручные значения: {manualCount}
           </button>
         )}
 
