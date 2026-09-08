@@ -585,7 +585,11 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     { key: "arcEnd", label: "Конец дуги (°)", type: "number", min: 0, max: 270, defaultValue: 40 },
   ],
   table: [
-    { key: "rows", label: "Строк", type: "number", min: 1, max: 20, defaultValue: 4 },
+    // Потолок в 1000 строк — не про рендер, а про смысл: таблица на тысячу строк это
+    // список уставок целиком, и раньше он просто не помещался. Высота строки считается
+    // от высоты таблицы (веса нормируются в tableLayout), поэтому таблицу под такое
+    // число строк надо растянуть — иначе строки схлопнутся в неразличимую полосу.
+    { key: "rows", label: "Строк", type: "number", min: 1, max: 1000, defaultValue: 4 },
     { key: "cols", label: "Столбцов", type: "number", min: 1, max: 10, defaultValue: 3 },
     { key: "headerText", label: "Заголовок", type: "text", defaultValue: "Таблица" },
     { key: "backgroundColor", label: "Цвет фона", type: "color", defaultValue: "#1e293b" },

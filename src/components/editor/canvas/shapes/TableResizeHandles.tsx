@@ -61,6 +61,18 @@ export function TableResizeHandles({
   const colX = trackOffsets(colWs);
   const rowY = trackOffsets(rowHs);
 
+  /**
+   * Ручку границы показываем, только если обе соседние полосы шире зоны захвата.
+   *
+   * Ручка ýже захвата неотличима от соседних: тянешь одну — попадаешь в другую, и
+   * раскладка едет не там, где целился. Плюс цена: таблица на 1000 строк выдала бы
+   * тысячу перекрывающихся draggable-узлов на каждое выделение — выделять её стало бы
+   * нечем. `grip` уже в единицах сцены (8 экранных пикселей делить на зум), поэтому
+   * сравнение честное на любом масштабе: приблизил — ручки появились.
+   */
+  const gripFits = (sizes: number[], i: number) =>
+    Math.min(sizes[i - 1], sizes[i]) >= grip;
+
   // Восемь ручек габарита: dirX/dirY — какой край тянется (−1 левый/верхний,
   // +1 правый/нижний, 0 — не двигается).
   const box: Array<{ name: string; hx: number; hy: number; dirX: -1 | 0 | 1; dirY: -1 | 0 | 1; cursor: string }> = [
@@ -78,7 +90,7 @@ export function TableResizeHandles({
     <>
       {/* Границы столбцов: тянется только выбранная граница, соседние столбцы
           обмениваются шириной, суммарная ширина таблицы не меняется. */}
-      {colWs.map((_, c) => c === 0 ? null : (
+      {colWs.map((_, c) => c === 0 || !gripFits(colWs, c) ? null : (
         <DividerHandle
           key={`col-divider-${c}`}
           axis="x"
@@ -99,7 +111,7 @@ export function TableResizeHandles({
       {/* Границы строк: координата курсора приводится к телу таблицы (без шапки),
           но снапится ДО вычитания — линия должна лечь на сетку сцены, а не на
           сетку, сдвинутую на высоту шапки. */}
-      {rowHs.map((_, r) => r === 0 ? null : (
+      {rowHs.map((_, r) => r === 0 || !gripFits(rowHs, r) ? null : (
         <DividerHandle
           key={`row-divider-${r}`}
           axis="y"
