@@ -17,6 +17,21 @@ const findHandler = (events: ElementEvents | undefined, type: ElementEventName) 
 const isInteractive = (events?: ElementEvents): boolean =>
   hasScript(findHandler(events, "onClick")) || hasScript(findHandler(events, "onDoubleClick"));
 
+/**
+ * События компонента запускает ТОЛЬКО левая кнопка.
+ *
+ * Konva шлёт `click`/`dblclick` для любой кнопки мыши, поэтому без проверки правый клик по
+ * элементу и открывал меню монитора, и запускал `onClick`-скрипт разом, а средняя (ею
+ * панорамируют, см. useStageInteractions) запускала его на отпускании — оба раза оператор
+ * не просил ничего выполнять. `button === 0` — левая.
+ *
+ * Касания (`onTap`/`onDblTap`) идут мимо: у `TouchEvent` кнопки нет, а тап и так только один.
+ */
+const leftButtonOnly = (run: () => void) => (e: Konva.KonvaEventObject<MouseEvent>) => {
+  if (e.evt.button !== 0) return;
+  run();
+};
+
 interface Props {
   elements: DiagramElement[];
   elementsMap: Record<string, DiagramElement>;
@@ -59,9 +74,9 @@ export function MonitorInteractionLayer({elements, elementsMap}: Props) {
             fill="transparent"
             onMouseEnter={e => setCursor(e, "pointer")}
             onMouseLeave={e => setCursor(e, "default")}
-            onClick={clickable ? () => emitRuntimeEvent(el.key, "onClick") : undefined}
+            onClick={clickable ? leftButtonOnly(() => emitRuntimeEvent(el.key, "onClick")) : undefined}
             onTap={clickable ? () => emitRuntimeEvent(el.key, "onClick") : undefined}
-            onDblClick={dblClickable ? () => emitRuntimeEvent(el.key, "onDoubleClick") : undefined}
+            onDblClick={dblClickable ? leftButtonOnly(() => emitRuntimeEvent(el.key, "onDoubleClick")) : undefined}
             onDblTap={dblClickable ? () => emitRuntimeEvent(el.key, "onDoubleClick") : undefined}
           />
         );

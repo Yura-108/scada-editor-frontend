@@ -13,7 +13,12 @@ import {getRuntimeLiveTagValue, getRuntimeSessionId, getRuntimeTagValue} from "@
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {PropertyCreateDto} from "@/types/tags.types";
-import {TagWriteResultDto, tagWriteStatusLabel} from "@/types/runtimeWrite.types";
+import {
+  TagWriteRequestDto,
+  TagWriteResultDto,
+  normalizeTagWriteResults,
+  tagWriteStatusLabel,
+} from "@/types/runtimeWrite.types";
 
 interface Props {
   elementKey: string;
@@ -25,6 +30,22 @@ const VALUE_POLL_MS = 1000;
 const isNumericType = (valueType?: string) => {
   const t = (valueType ?? "").toLowerCase();
   return t === "integer" || t === "float" || t === "int" || t === "double";
+};
+
+/** Строка к записи: свойство, адрес тега и значение, которое уедет в ПЛК. */
+interface WriteRow {
+  property: PropertyCreateDto;
+  tagId: string;
+  value: string;
+}
+
+/** «1 значение» / «2 значения» / «5 значений» — для заголовка подтверждения. */
+const plural = (n: number, one: string, few: string, many: string) => {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 };
 
 function ElementOptionsContent({elementKey}: Props) {
@@ -39,7 +60,10 @@ function ElementOptionsContent({elementKey}: Props) {
 
   // Черновики ввода по tag_id: правка одной строки не должна трогать соседние.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [writingTag, setWritingTag] = useState<string | null>(null);
+  // Теги, по которым сейчас идёт запись. Массив, а не один ключ: «Применить для всех»
+  // занимает сразу несколько строк, и спиннер должен стоять у каждой.
+  const [writingTags, setWritingTags] = useState<string[]>([]);
+  const isBusy = writingTags.length > 0;
   // Тик перечитывания живых значений: они лежат в рефах движка, а не в сторе,
   // поэтому подписаться на них селектором нельзя — опрашиваем раз в секунду.
   const [, setTick] = useState(0);
@@ -55,71 +79,176 @@ function ElementOptionsContent({elementKey}: Props) {
   /** То, что реально приходит с контроллера, даже когда сверху лежит подмена. */
   const liveValueOf = (tagId: string) => asText(getRuntimeLiveTagValue(tagId));
 
-  const write = async (property: PropertyCreateDto) => {
+  /**
+   * Значение строки для записи.
+   *
+   * `requireTouched` — вся разница между кнопкой строки и «Применить для всех». У булева тега
+   * нетронутый чекбокс это `false`, а не пустая строка: нажав «Записать в ПЛК» напротив строки,
+   * оператор именно этого и просит. А вот «для всех» так трактовать нельзя — иначе одна кнопка
+   * разослала бы `false` во все булевы теги компонента, которых оператор не касался.
+   */
+  const rowOf = (property: PropertyCreateDto, requireTouched: boolean): WriteRow | null => {
     const tagId = property.tag_id;
-    if (!tagId) return;
+    if (!tagId) return null;
 
-    const sessionId = getRuntimeSessionId();
-    if (!sessionId) {
-      toast.error("Нет активной сессии монитора");
-      return;
+    const touched = drafts[tagId] !== undefined;
+    if (requireTouched && !touched) return null;
+
+    if (isBooleanValueType(property.value_type)) {
+      return {property, tagId, value: drafts[tagId] === "true" ? "true" : "false"};
     }
 
-    // У булева тега нетронутый чекбокс — это `false`, а не пустая строка: иначе
-    // «записать false» отправляло бы в контроллер пустое значение.
-    const raw = isBooleanValueType(property.value_type)
-      ? (drafts[tagId] === "true" ? "true" : "false")
-      : (drafts[tagId] ?? "");
-    if (isNumericType(property.value_type) && !Number.isFinite(Number(raw))) {
-      toast.error(`«${property.name}»: значение должно быть числом`);
+    const raw = drafts[tagId] ?? "";
+    if (!raw.trim()) return null;
+    return {property, tagId, value: raw};
+  };
+
+  /**
+   * Что уедет по «Применить для всех»: строки с назначенным тегом и заданным значением.
+   *
+   * Одинаковые теги схлопываются. Два свойства компонента могут смотреть на один тег, а
+   * черновики ключуются по `tag_id` — значит и значение у них общее, и вторая строка была бы
+   * дублем той же записи. Отправлять его нельзя: один адрес дважды в запросе — это гонка на
+   * стороне шлюза, и BFF такой запрос отвергает.
+   */
+  const filledRows = tagProps
+    .map(p => rowOf(p, true))
+    .filter((r): r is WriteRow => r !== null)
+    .filter((r, i, all) => all.findIndex(x => x.tagId === r.tagId) === i);
+
+  /**
+   * Отправка записи — единственный путь и для одной строки, и для «Применить для всех».
+   *
+   * Тело всегда массив (`writes`), даже на одну строку. Цикл одиночных запросов дал бы
+   * половину записанных значений при обрыве в середине, и оператор не увидел бы, где именно
+   * оборвалось; здесь исход один на весь запрос, а построчные отказы шлюза приходят отчётами.
+   */
+  const sendWrites = async (rows: WriteRow[]) => {
+    if (!rows.length) return;
+
+    // Сессия НЕ обязательна: по контракту записи она нужна бэкенду только для контекста и
+    // логов, тег адресуется напрямую по `tagId`. Отказывать из-за оборвавшейся сессии,
+    // когда оператор уже подтвердил запись, было бы отказом на пустом месте — в «Опции»
+    // без связи всё равно не войти, пункт меню там заблокирован.
+    const sessionId = getRuntimeSessionId() ?? undefined;
+
+    const invalid = rows.find(
+      r => isNumericType(r.property.value_type) && !Number.isFinite(Number(r.value)),
+    );
+    if (invalid) {
+      // Отправлять остальные строки без нечисловой не начинаем: оператор задавал набор
+      // значений целиком, и частичный набор в ПЛК — не то, о чём он просил.
+      toast.error(`«${invalid.property.name}»: значение должно быть числом`);
       return;
     }
 
     // Запись идёт на реальное оборудование и необратима — подтверждение обязательно
-    // (тот же порядок, что у применения рецепта).
+    // (тот же порядок, что у применения рецепта). Перечисляем ВСЕ строки поимённо:
+    // «применить для всех» вслепую — это способ записать в ПЛК то, о чём уже забыли.
     const confirmed = await confirmModal({
-      title: "Записать значение в ПЛК?",
-      description: `Параметру «${property.name}» будет записано значение «${raw}». Действие необратимо.`,
+      title: rows.length === 1
+        ? "Записать значение в ПЛК?"
+        : `Записать ${rows.length} ${plural(rows.length, "значение", "значения", "значений")} в ПЛК?`,
+      description: (
+        <>
+          <span>Будет записано, действие необратимо:</span>
+          <ul className="mt-2 space-y-1">
+            {rows.map(r => (
+              <li key={r.tagId}>
+                «{r.property.name}» = «{r.value}»
+              </li>
+            ))}
+          </ul>
+        </>
+      ),
       confirmLabel: "Записать",
       danger: true,
     });
     if (!confirmed) return;
 
-    setWritingTag(tagId);
+    setWritingTags(rows.map(r => r.tagId));
     try {
+      const payload: TagWriteRequestDto = {
+        // `valueType` — тип значения свойства: по нему бэкенд приводит строку к типу канала.
+        // Без него булево значение уехало бы в контроллер строкой и могло лечь неверной
+        // уставкой (контракт записи от 08.09.2026).
+        writes: rows.map(r => ({
+          tagId: r.tagId,
+          value: r.value,
+          valueType: r.property.value_type,
+        })),
+        sessionId,
+        projectId,
+      };
+
       const res = await fetch("/api/runtime/tags/write", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({tagId, value: raw, sessionId, projectId}),
+        body: JSON.stringify(payload),
         // Тот же запас, что и у применения рецепта: ответ ждёт подтверждения брокера.
         signal: AbortSignal.timeout(20_000),
       });
-      const result: TagWriteResultDto | null = await res.json().catch(() => null);
+      const data = await res.json().catch(() => null);
 
-      if (!res.ok || !result) {
-        const message = (result as unknown as {error?: string})?.error;
+      if (!res.ok) {
+        const message = (data as {error?: string} | null)?.error;
         throw new Error(message || `Ошибка записи (${res.status})`);
       }
 
-      if (!result.success) {
-        // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и
-        // НЕ подменяем значение на экране, записи ведь не произошло.
-        toast.error(`${tagWriteStatusLabel(result)}${result.message ? `: ${result.message}` : ""}`);
-        return;
-      }
+      const results = normalizeTagWriteResults(data);
+      if (!results.length) throw new Error("Бэкенд не вернул отчёт о записи");
 
-      // Значение остаётся на экране до явной отмены оператором.
-      setManualTagValue(tagId, raw);
-      toast.success(`«${property.name}»: команда отправлена (${tagWriteStatusLabel(result)})`);
+      const applied: {row: WriteRow; result: TagWriteResultDto}[] = [];
+      rows.forEach((row, i) => {
+        // Сопоставляем ПО ИНДЕКСУ: бэкенд отвечает массивом того же размера и порядка, а
+        // `tagId` в отчёте — для чтения, не для поиска (один тег может встретиться в
+        // запросе дважды, и обе строки нашли бы первый отчёт). Поиск по `tagId` оставлен
+        // запасным путём на случай, если размеры разъедутся.
+        const result = (results.length === rows.length ? results[i] : undefined)
+          ?? results.find(r => r.tagId === row.tagId);
+
+        if (!result) {
+          toast.error(`«${row.property.name}»: бэкенд не вернул отчёт о записи`);
+          return;
+        }
+        if (!result.success) {
+          // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и
+          // НЕ подменяем значение на экране, записи ведь не произошло.
+          toast.error(
+            `«${row.property.name}»: ${tagWriteStatusLabel(result)}${result.message ? ` — ${result.message}` : ""}`,
+          );
+          return;
+        }
+
+        // Значение остаётся на экране до явной отмены оператором.
+        setManualTagValue(row.tagId, row.value);
+        applied.push({row, result});
+      });
+
+      if (applied.length === rows.length) {
+        toast.success(rows.length === 1
+          ? `«${rows[0].property.name}»: команда отправлена (${tagWriteStatusLabel(applied[0].result)})`
+          : `Отправлено команд: ${rows.length}`);
+      } else if (applied.length) {
+        // Частичный успех обязан читаться как частичный: остальные теги остались с прежним
+        // значением на контроллере, и оператор должен знать, что дописывать.
+        toast.warning(`Записано ${applied.length} из ${rows.length} — по остальным см. сообщения об ошибках`);
+      }
     } catch (err) {
       console.error(err);
       const isTimeout = err instanceof Error && err.name === "TimeoutError";
       toast.error(isTimeout
-        ? "Не дождались ответа за 20 с — проверьте результат вручную, значение могло записаться"
+        ? "Не дождались ответа за 20 с — проверьте результат вручную, значения могли записаться"
         : (err instanceof Error ? err.message : "Ошибка записи значения"));
     } finally {
-      setWritingTag(null);
+      setWritingTags([]);
     }
+  };
+
+  /** Кнопка напротив строки: та же отправка, массивом из одного элемента. */
+  const write = (property: PropertyCreateDto) => {
+    const row = rowOf(property, false);
+    if (row) void sendWrites([row]);
   };
 
   const inputClass = cn(
@@ -154,7 +283,7 @@ function ElementOptionsContent({elementKey}: Props) {
               const isManual = manual !== undefined;
               const isBool = isBooleanValueType(p.value_type);
               const draft = drafts[tagId] ?? "";
-              const isWriting = writingTag === tagId;
+              const isWriting = writingTags.includes(tagId);
 
               return (
                 <div key={p.id ?? p.name} className="px-4 py-3 space-y-2">
@@ -212,8 +341,8 @@ function ElementOptionsContent({elementKey}: Props) {
 
                     <button
                       type="button"
-                      onClick={() => void write(p)}
-                      disabled={!tagId || isWriting || (!isBool && !draft.trim())}
+                      onClick={() => write(p)}
+                      disabled={!tagId || isBusy || (!isBool && !draft.trim())}
                       className={cn(
                         "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors",
                         "bg-red-600 hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed",
@@ -246,6 +375,22 @@ function ElementOptionsContent({elementKey}: Props) {
           <AlertTriangle size={14} />
           Запись в ПЛК необратима
         </span>
+        {/* Пакетная запись. Одна строка обходится кнопкой в самой строке, поэтому кнопка
+            появляется только там, где есть что объединять. */}
+        {tagProps.length > 1 && (
+          <Button
+            variant="danger"
+            onClick={() => void sendWrites(filledRows)}
+            disabled={isBusy || !filledRows.length}
+            title={filledRows.length
+              ? "Записать все заданные значения одним запросом"
+              : "Задайте значение хотя бы у одной строки"}
+          >
+            {isBusy
+              ? "Запись..."
+              : `Применить для всех${filledRows.length ? ` (${filledRows.length})` : ""}`}
+          </Button>
+        )}
         <Button onClick={closeModal}>Закрыть</Button>
       </ModalFooter>
     </div>
