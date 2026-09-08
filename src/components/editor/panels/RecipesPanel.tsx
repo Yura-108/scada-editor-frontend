@@ -7,11 +7,19 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {RecipeDto} from "@/types/recipe.types";
 import openRecipeModal from "@/components/editor/recipes/RecipeModal";
+import openCreateRecipeTableModal from "@/components/editor/recipes/CreateRecipeTableModal";
 import {sortByRow} from "@/lib/editor/rowBinding";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 
-export function RecipesPanel() {
+interface Props {
+  /** Уйти на холст к только что созданной таблице (вкладками владеет WorkSpace). */
+  onOpenEditor?: () => void;
+}
+
+export function RecipesPanel({onOpenEditor}: Props = {}) {
   const elements = useEditorStore((s) => s.elements);
+  const revealElement = useEditorStore((s) => s.revealElement);
+  const ensureElementVisible = useEditorStore((s) => s.ensureElementVisible);
   const {recipes, loadRecipes, deleteRecipe} = useRecipeStore();
 
   const tableComponents = useMemo(
@@ -72,15 +80,22 @@ export function RecipesPanel() {
             ))}
           </select>
 
+          {/* Компонент выбирать больше не нужно: рецепт начинается с выбора тегов,
+              таблица под него собирается сама. `<select>` рядом остался для просмотра
+              наборов уже существующих таблиц. */}
           <button
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-              componentId != null
-                ? "bg-blue-600 text-white hover:bg-blue-500"
-                : "bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed",
+              "bg-blue-600 text-white hover:bg-blue-500",
             )}
-            disabled={componentId == null}
-            onClick={() => componentId != null && openRecipeModal({componentId, rowBindings})}
+            onClick={() => openCreateRecipeTableModal({
+              onCreated: (elementKey, createdComponentId) => {
+                selectComponent(createdComponentId);
+                revealElement(elementKey);
+                ensureElementVisible(elementKey);
+                onOpenEditor?.();
+              },
+            })}
           >
             <Plus size={16} />
             Создать рецепт

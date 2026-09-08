@@ -2,7 +2,7 @@
 
 import React, {useCallback, useMemo, useState} from 'react';
 import Tree from 'rc-tree';
-import {DataNode, Key} from 'rc-tree/es/interface';
+import {Key} from 'rc-tree/es/interface';
 import {Router} from 'lucide-react';
 import {useDeviceStore} from '@/store/useDeviceStore';
 import TitleRenderer from '@/components/ui/TitleRenderer';
@@ -11,6 +11,7 @@ import SwitcherIcon from '@/components/ui/SwitcherIcon';
 import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
+import {buildDeviceTreeData} from "@/lib/editor/deviceTreeData";
 
 const DeviceTreePanel = () => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
@@ -59,68 +60,18 @@ const DeviceTreePanel = () => {
     [handleSelect, setContextMenu] // зависимости
   );
 
-  const treeData = useMemo(() => {
-    const map = new Map<string, DataNode>();
-    const roots: DataNode[] = [];
-
-    nodes.forEach((n) => {
-      const parts = n.key.split('.');
-      let currentKey = '';
-
-      parts.forEach((part, index) => {
-        const isLast = index === parts.length - 1;
-        const parentKey = currentKey;
-
-        currentKey = currentKey ? `${currentKey}.${part}` : part;
-
-        if (!map.has(currentKey)) {
-          const nodeData = isLast ? n : { key: currentKey, title: part };
-
-          // 1. Создаем объект узла без title, чтобы зафиксировать на него ссылку
-          const newNode = {
-            key: currentKey,
-            children: [],
-            isLeaf: true,
-          } as DataNode;
-
-          // 2. Добавляем title. При рендере эта функция прочитает финальный newNode.isLeaf
-          newNode.title = () => (
-            <TitleRenderer
-              node={{ ...nodeData, isLeaf: newNode.isLeaf }}
-              onClick={() => handleNodeClick(currentKey)}
-              onContextMenu={handleContextMenu}
-            />
-          );
-
-          map.set(currentKey, newNode);
-
-          if (parentKey) {
-            const parent = map.get(parentKey);
-            if (parent) {
-              parent.children!.push(newNode);
-              parent.isLeaf = false; // Раз добавили ребенка, родитель перестает быть листом
-            }
-          } else {
-            // Если родителя нет, значит это корень (например, site1)
-            roots.push(newNode);
-          }
-        } else if (isLast) {
-          // Если дошли до реального узла, который уже был создан как родительский
-          const existingNode = map.get(currentKey)!;
-          existingNode.title = () => (
-            <TitleRenderer
-              // Прокидываем данные n, но сохраняем актуальный isLeaf из existingNode
-              node={{ ...n, isLeaf: existingNode.isLeaf }}
-              onClick={() => handleNodeClick(currentKey)}
-              onContextMenu={handleContextMenu}
-            />
-          );
-        }
-      });
-    });
-
-    return roots;
-  }, [handleContextMenu, nodes]);
+  // Дерево строит общий билдер: то же знание «ключ = путь через точку» использует
+  // модалка выбора тегов для рецепта (src/lib/editor/deviceTreeData.ts).
+  const treeData = useMemo(
+    () => buildDeviceTreeData(nodes, (info) => (
+      <TitleRenderer
+        node={{key: info.key, title: info.title, isLeaf: info.isLeaf}}
+        onClick={() => handleNodeClick(info.key)}
+        onContextMenu={handleContextMenu}
+      />
+    )),
+    [handleContextMenu, nodes],
+  );
 
   // Ключи — это пути через точку (площадка.проект.устройство.канал), а тип узла
   // определяется его глубиной: L1 — площадка, L2 — проект, L3 — устройство,

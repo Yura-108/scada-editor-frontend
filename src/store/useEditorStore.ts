@@ -29,6 +29,8 @@ import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
+import type {RecipeTableRow} from "@/lib/editor/tagMeta";
+import {buildRecipeTableElement, bindingIdCount} from "@/lib/editor/recipeTable";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {cameraToReveal} from "@/lib/editor/revealCamera";
@@ -203,6 +205,12 @@ type EditorState = {
   /** Read-only: где в коде поддерева упомянуто имя состояния (для диалога переименования). */
   findStateUsages: (elementKey: string, stateName: string) => StateNameRef[];
   addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
+  /**
+   * Собирает таблицу-рецепт по выбранным в дереве тегам: строка-шапка + строка на тег,
+   * четыре колонки (№ / Описание / Имя свойства / Значение). Возвращает `key` созданного
+   * элемента или null, если создавать нельзя (чужая сцена, просмотр версии, пустой список).
+   */
+  createRecipeTable: (rows: RecipeTableRow[], title: string) => string | null;
   /** Заводит свойство локально; уедет со сценой. false — имя занято. */
   addProperty: (elementKey: string, payload: PropertyCreateRequestDto) => boolean;
   /** Правит свойство локально. Переименование заведённого дополнительно уходит точечным
@@ -2520,6 +2528,49 @@ export const useEditorStore = create<EditorState>()(temporal(
         };
 
         commitNewElement(newElement);
+      },
+      /**
+       * Таблица-рецепт из выбранных в дереве тегов.
+       *
+       * Раскладка ячеек в таблице задаётся ПРИВЯЗКАМИ, а не рендером (см. tableBindings.ts),
+       * поэтому колонки строятся здесь явно:
+       *  - колонка 0 (№) и колонка 3 (Значение) остаются БЕЗ привязки — `resolveCellText`
+       *    для непривязанной ячейки берёт свободный текст из `cells`, что и даёт нумерацию
+       *    и редактируемые пользователем нули;
+       *  - колонки 1 и 2 привязаны к статическим полям своего же свойства (`description`
+       *    и `name`), так что переименование свойства и правка описания сразу видны в таблице.
+       *
+       * Строка 0 — шапка колонок: у элемента `table` заголовок (`headerText`) один на всю
+       * ширину, отдельного понятия «шапка колонок» в модели нет.
+       */
+      createRecipeTable: (rows, title) => {
+        const {scene, currentProject, canvasRect, camera} = get();
+
+        // Просмотр версии — режим только для чтения (как в deleteProperty).
+        if (get().versionPreview) return null;
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+          toast.error("Нельзя создать таблицу: сцена не принадлежит выбранному проекту");
+          return null;
+        }
+        if (!rows.length) return null;
+
+        // Центр текущего вида в МИРОВЫХ координатах. Холста может не быть вовсе:
+        // действие зовётся из вкладки «Рецепты», где Canvas не смонтирован.
+        const centerX = canvasRect ? (canvasRect.width / 2 - camera.x) / camera.zoom : 0;
+        const centerY = canvasRect ? (canvasRect.height / 2 - camera.y) / camera.zoom : 0;
+
+        const element = buildRecipeTableElement({
+          rows, title,
+          key: createUuid(),
+          stateId: createUuid(),
+          bindingIds: Array.from({length: bindingIdCount(rows.length)}, () => createUuid()),
+          sceneId: scene?.id,
+          centerX, centerY,
+        });
+
+        // В корень сцены, а не в открытый контейнер: таблица-рецепт самостоятельна.
+        set(state => ({elements: [...state.elements, element]}));
+        return element.key;
       },
       /**
        * Свойства — обычная часть сцены, а не отдельный ресурс.

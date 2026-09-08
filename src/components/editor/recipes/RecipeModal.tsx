@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useModalStore} from "@/store/modalStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
-import {ComponentPropertyDto} from "@/types/editorElement.type";
+import {PropertyCreateDto} from "@/types/tags.types";
 import {RecipeDto} from "@/types/recipe.types";
 import {cn} from "@/lib/utils";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
@@ -18,7 +18,9 @@ const RECIPE_TYPE_OPTIONS: Array<{value: string; label: string}> = [
 
 interface Props {
   componentId: number;
-  rowBindings: ComponentPropertyDto[];
+  /** Свойства таблицы целиком: рецепту нужны и `position`/`description`, которых нет
+   *  в облегчённом ComponentPropertyDto. */
+  rowBindings: PropertyCreateDto[];
   recipe?: RecipeDto;
 }
 
@@ -60,7 +62,16 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
         type,
         // Идентификатор компонента в контракте рецептов — строка, а в схеме он число.
         component_id: String(componentId),
-        values: rowBindings.map((rb) => ({property_name: rb.name, value: valueByPropertyName[rb.name] ?? ""})),
+        // Снимок строки едет вместе со значением: бэкенд принимает список values как
+        // целое, и отправка одних только имени со значением затёрла бы описание и тег,
+        // записанные при создании рецепта.
+        values: rowBindings.map((rb, index) => ({
+          property_name: rb.name,
+          value: valueByPropertyName[rb.name] ?? "",
+          position: rb.position ?? index,
+          description: rb.description ?? "",
+          tag_id: rb.tag_id ?? null,
+        })),
       };
       const ok = recipe ? await updateRecipe(recipe.id, payload) : await createRecipe(payload);
       if (ok) closeModal();
@@ -111,7 +122,7 @@ function RecipeModalContent({componentId, rowBindings, recipe}: Props) {
 
         {rowBindings.length === 0 ? (
           <div className="text-sm text-gray-500 dark:text-gray-400 italic">
-            У компонента нет ни одной строки (вкладка «Строки») — рецепту не с чем работать.
+            У компонента нет ни одного свойства (вкладка «Свойства») — рецепту не с чем работать.
           </div>
         ) : (
           <div className="space-y-3">
