@@ -5,33 +5,29 @@ import * as Dialog from "@radix-ui/react-dialog";
 import Tree from "rc-tree";
 import type {Key} from "rc-tree/es/interface";
 import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "lucide-react";
-import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import SwitcherIcon from "@/components/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {useModalStore} from "@/store/modalStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
-import {useEditorStore} from "@/store/useEditorStore";
-import {useRecipeStore} from "@/store/useRecipeStore";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
-import {buildRecipeTableRows} from "@/lib/editor/tagMeta";
+import {buildManifestTags} from "@/lib/editor/tagMeta";
 import {shortTagPath} from "@/lib/editor/tagPath";
+import type {RecipeTag} from "@/types/recipe.types";
 
+/**
+ * Выбор тегов для манифеста рецепта (`tags[]`).
+ *
+ * Отдаёт готовые строки манифеста: короткое имя (уникализованное), путь, тип и описание
+ * из базы каналов. Дальше пользователь правит их в самой форме рецепта — здесь только выбор.
+ */
 interface Props {
-  /** Показать созданную таблицу на холсте (переключение вкладки живёт в WorkSpace). */
-  onCreated?: (elementKey: string, componentId: number) => void;
+  /** Имена, уже занятые в манифесте: добавляемые не должны с ними столкнуться. */
+  takenNames: string[];
+  onPick: (tags: RecipeTag[]) => void;
 }
 
-/** Этапы создания — их три, и каждый заметно небыстрый, поэтому подписываем. */
-type Stage = null | "building" | "saving" | "creating";
-
-const STAGE_LABEL: Record<NonNullable<Stage>, string> = {
-  building: "Собираем таблицу…",
-  saving: "Сохраняем сцену…",
-  creating: "Создаём рецепт…",
-};
-
-/** Иконка узла по глубине пути — та же логика, что в TitleRenderer базы каналов. */
+/** Иконка узла по глубине пути — та же логика, что в дереве базы каналов. */
 function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
   const className = "h-4 w-4 shrink-0";
   if (depth === 1) return <Building2 className={cn(className, "text-indigo-500")} />;
@@ -42,25 +38,13 @@ function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
     : <Box className={cn(className, "text-gray-400")} />;
 }
 
-/** Свободное имя вида «Рецепт N» — модалка имени не спрашивает. */
-function nextRecipeName(taken: ReadonlySet<string>): string {
-  for (let i = 1; ; i++) {
-    const name = `Рецепт ${i}`;
-    if (!taken.has(name)) return name;
-  }
-}
-
-function CreateRecipeTableModalContent({onCreated}: Props) {
+function ChooseManifestTagsContent({takenNames, onPick}: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
   const nodes = useDeviceStore((s) => s.nodes);
   const params = useDeviceStore((s) => s.params);
-  const createRecipeTable = useEditorStore((s) => s.createRecipeTable);
-  const exportScene = useEditorStore((s) => s.exportScene);
-  const createRecipe = useRecipeStore((s) => s.createRecipe);
 
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [stage, setStage] = useState<Stage>(null);
 
   // Дерево тысячное — без фильтра выбрать десяток тегов мучительно. Фильтруем плоский
   // список ДО сборки дерева: промежуточные узлы достроятся из путей выживших листьев.
@@ -89,89 +73,30 @@ function CreateRecipeTableModalContent({onCreated}: Props) {
   };
 
   // Тег — только конечный узел. Галочка на устройстве отмечает всё поддерево, и это
-  // самый быстрый способ набрать десяток тегов; в таблицу же попадают только листья.
+  // самый быстрый способ набрать десяток тегов; в манифест попадают только листья.
   const leafKeys = useMemo(() => leafKeysOf(nodes), [nodes]);
   const selectedTags = useMemo(
     () => checkedKeys.filter((key) => leafKeys.has(key)),
     [checkedKeys, leafKeys],
   );
 
-  const isBusy = stage !== null;
   const isTreeEmpty = nodes.length === 0;
-  const canConfirm = selectedTags.length > 0 && !isBusy;
 
-  const handleConfirm = async () => {
-    if (!canConfirm) return;
-
-    setStage("building");
-    try {
-      const rows = buildRecipeTableRows(selectedTags, params);
-
-      const {recipes} = useRecipeStore.getState();
-      const taken = new Set<string>([
-        ...recipes.map((r) => r.name),
-        ...useEditorStore.getState().elements.map((el) => el.label ?? ""),
-      ]);
-      const name = nextRecipeName(taken);
-
-      const elementKey = createRecipeTable(rows, name);
-      if (!elementKey) return;
-
-      // Рецепт привязывается к серверному id таблицы (`component_id` обязателен), а он
-      // появляется только после сохранения сцены. 409 exportScene разруливает сам —
-      // открывает диалог слияния; таблица при этом уже лежит на холсте.
-      setStage("saving");
-      const saved = await exportScene({kind: "MANUAL"});
-      if (!saved) {
-        toast.warning("Таблица создана, но сцена не сохранена — рецепт не заведён", {
-          description: "Сохраните сцену и создайте рецепт для этой таблицы кнопкой в панели.",
-          duration: 8_000,
-        });
-        closeModal();
-        return;
-      }
-
-      // Ключи элементов переживают серверный круг (см. applyServerComponents).
-      const componentId = useEditorStore.getState().elements
-        .find((el) => el.key === elementKey)?.id;
-      if (componentId == null) {
-        toast.error("Сервер не вернул номер таблицы — рецепт не создан");
-        closeModal();
-        return;
-      }
-
-      setStage("creating");
-      const ok = await createRecipe({
-        name,
-        type: "recipe",
-        // В контракте рецептов идентификатор компонента — строка, а в схеме он число.
-        component_id: String(componentId),
-        values: rows.map((row, index) => ({
-          property_name: row.name,
-          value: "0",
-          position: index,
-          description: row.description,
-          tag_id: row.tagId,
-        })),
-      });
-
-      if (ok) onCreated?.(elementKey, componentId);
-      closeModal();
-    } finally {
-      setStage(null);
-    }
+  const handleConfirm = () => {
+    if (!selectedTags.length) return;
+    onPick(buildManifestTags(selectedTags, params, takenNames));
+    closeModal();
   };
 
   return (
     <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
       <div className="shrink-0 mb-4">
         <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
-          Создание рецепта
+          Теги рецепта
         </Dialog.Title>
         <Dialog.Description className="text-gray-500 dark:text-gray-400 text-sm">
-          Отметьте теги — по ним соберётся таблица с колонками «№», «Описание»,
-          «Имя свойства» и «Значение». Значения заполнятся нулями, проставить свои
-          можно прямо в таблице.
+          Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия
+          шагов — по короткому имени, а не по пути.
         </Dialog.Description>
       </div>
 
@@ -237,24 +162,25 @@ function CreateRecipeTableModalContent({onCreated}: Props) {
       )}
 
       <div className="shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 mt-4 text-xs text-gray-600 dark:text-gray-400">
-        Рецепт заводится за таблицей, поэтому при создании сцена будет сохранена.
+        Тип значения подставляется из базы каналов, но <b>логический тег она отличить не
+        умеет</b> — там есть только признак «строковый». Дискретные теги пометьте вручную
+        в списке ниже, иначе запись <code>true</code> не пройдёт проверку.
       </div>
 
       <ModalFooter className="shrink-0 mt-4 pt-4 items-center border-t border-gray-200 dark:border-gray-800/80">
         <span className="mr-auto text-sm text-gray-600 dark:text-gray-400">
-          {stage ? STAGE_LABEL[stage] : `Выбрано тегов: ${selectedTags.length}`}
+          Выбрано тегов: {selectedTags.length}
         </span>
-        <Button onClick={closeModal} disabled={isBusy}>Отмена</Button>
-        <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm}>
-          {isBusy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
-          Создать
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirm} disabled={!selectedTags.length}>
+          Добавить
         </Button>
       </ModalFooter>
     </div>
   );
 }
 
-export default function openCreateRecipeTableModal(props: Props = {}) {
+export default function openChooseManifestTagsModal(props: Props) {
   const {openModal} = useModalStore.getState();
-  openModal(<CreateRecipeTableModalContent {...props} />);
+  openModal(<ChooseManifestTagsContent {...props} />);
 }

@@ -76,8 +76,12 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
 
   const handleAt = () => {
     if (!atTime) return;
-    // datetime-local отдаёт время без зоны — приводим к ISO явно.
-    void previewVersionAt(new Date(atTime).toISOString());
+    // Шлём строку из поля КАК ЕСТЬ. `datetime-local` отдаёт настенное время без зоны
+    // ("2026-09-08T14:00"), и бэкенд ждёт ровно такое: параметр связывается в
+    // LocalDateTime и сравнивается с таким же локальным created_at. Прежний
+    // `new Date(...).toISOString()` переводил его в UTC — запрос уходил на величину
+    // смещения раньше, и молча открывалась версия не того момента.
+    void previewVersionAt(atTime);
   };
 
   return (

@@ -1,22 +1,22 @@
 import type {NodeParamType} from "@/types/channelsTypes";
+import type {RecipeTag, RecipeValueType} from "@/types/recipe.types";
 import {isParamChecked} from "@/lib/paramWidget";
 
 /**
- * Данные тега из базы каналов, нужные для строки таблицы-рецепта.
+ * Данные тега из базы каналов — то, чем заполняется манифест рецепта (`tags[]`).
  *
- * У самого узла дерева нет ничего, кроме пути (`key`): описание и признак строкового
- * значения лежат отдельными строками `useDeviceStore.params` — по одной на параметр,
- * адресованных `parentKey` (= ключ узла) и `name` (= имя из справочника
- * `channel.description`, приезжает уже расшифрованным в `ParamDto.name`).
+ * У узла дерева нет ничего, кроме пути (`key`): описание и признак строкового значения
+ * лежат отдельными строками `useDeviceStore.params`, адресованными `parentKey` (= ключ узла)
+ * и `name` (имя из справочника `channel.description`, приезжает уже расшифрованным).
  *
- * Функции берут `params` аргументом, а не читают стор: их зовут и из модалки, и из
- * действия стора, а чистые они заодно проверяемы.
+ * Функции берут `params` аргументом, а не читают стор: их зовут и из модалки, и из сборки
+ * таблицы, а чистые они заодно проверяемы headless.
  */
 
 /** Имя параметра «описание» в справочнике базы каналов. */
 const DESCRIPTION_PARAM = "описание";
 
-/** Имя параметра «значение — строка», по нему угадывается value_type свойства. */
+/** Имя параметра «значение — строка», по нему угадывается тип. */
 const IS_STRING_PARAM = "isstring";
 
 const normalizeName = (name: string | null | undefined): string =>
@@ -35,17 +35,19 @@ export function tagDescription(params: NodeParamType[], tagKey: string): string 
 }
 
 /**
- * Тип значения свойства по параметру «Строковый (IsString)» (0/1).
+ * Тип значения тега в СЛОВАРЕ КОНТРАКТА (`number` / `bool` / `string`).
  *
- * Пустым результат быть не может: `invalidProperties` роняет сохранение ВСЕЙ сцены,
- * если у свойства не заполнен `value_type`. Параметра нет — считаем числом: подавляющее
- * большинство уставок числовые, а тип всегда можно поправить в карточке свойства.
+ * Словарь важен: `RecipeServiceImpl.requireTypeMatch` разбирает ровно эти три значения,
+ * а всё прочее попадает в `default -> true` и проверку молча ОТКЛЮЧАЕТ. Прислать сюда
+ * «float» из внутренней терминологии базы каналов — значит остаться без валидации.
+ *
+ * **`bool` по базе каналов не определяется вовсе**: там есть только «Строковый (IsString)»,
+ * отдельного признака дискретного тега нет. Поэтому логический тег пользователь помечает
+ * руками — иначе бэкенд отобьёт `true` при объявленном `number`.
  */
-export function tagValueType(params: NodeParamType[], tagKey: string): string {
-  // Имя в справочнике — «Строковый (IsString)»; сверяем по латинской части, она
-  // стабильнее русской подписи, которую в справочнике можно переименовать.
+export function tagValueType(params: NodeParamType[], tagKey: string): RecipeValueType {
   const param = paramOf(params, tagKey, name => name.includes(IS_STRING_PARAM));
-  return param && isParamChecked(param.value) ? "string" : "float";
+  return param && isParamChecked(param.value) ? "string" : "number";
 }
 
 /** Последний сегмент пути тега — короткое имя канала. */
@@ -54,42 +56,34 @@ export function shortTagName(tagKey: string): string {
   return parts[parts.length - 1] || tagKey;
 }
 
-/** Строка будущей таблицы-рецепта: одно свойство-тег со всем, что о нём известно. */
-export interface RecipeTableRow {
-  /** Полный путь тега — он же `tag_id` свойства. */
-  tagId: string;
-  /** Имя свойства: короткое имя тега, уникализованное в пределах таблицы. */
-  name: string;
-  description: string;
-  valueType: string;
-}
-
 /**
- * Собирает строки таблицы по выбранным в дереве тегам.
+ * Собирает манифест по выбранным в дереве тегам.
  *
- * Имя свойства обязано быть уникальным внутри компонента: по имени его сопоставляет
- * бэкенд (когда номера ещё нет), по имени к нему привязываются ячейки таблицы и значения
- * рецепта. Короткие имена каналов у разных устройств совпадают сплошь и рядом, поэтому
- * дубли разводим суффиксом `_2`, `_3`… — полный путь при этом остаётся в `tag_id`,
- * так что привязка к тегу не страдает.
+ * `name` — короткое имя, которым на тег ссылаются шаги (`action[].tag`), поэтому оно обязано
+ * быть уникальным внутри рецепта: одинаковые имена каналов у разных устройств встречаются
+ * сплошь и рядом, дубли разводим суффиксом `_2`, `_3`… Полный путь при этом остаётся в `tag`,
+ * так что адресация не страдает.
+ *
+ * `taken` позволяет дозаполнять уже существующий манифест, не сталкиваясь с его именами.
  */
-export function buildRecipeTableRows(
+export function buildManifestTags(
   tagKeys: string[],
   params: NodeParamType[],
-): RecipeTableRow[] {
-  const used = new Set<string>();
+  taken: Iterable<string> = [],
+): RecipeTag[] {
+  const used = new Set<string>(taken);
 
-  return tagKeys.map(tagId => {
-    const base = shortTagName(tagId);
+  return tagKeys.map(tag => {
+    const base = shortTagName(tag);
     let name = base;
     for (let i = 2; used.has(name); i++) name = `${base}_${i}`;
     used.add(name);
 
     return {
-      tagId,
       name,
-      description: tagDescription(params, tagId),
-      valueType: tagValueType(params, tagId),
+      tag,
+      value_type: tagValueType(params, tag),
+      description: tagDescription(params, tag),
     };
   });
 }

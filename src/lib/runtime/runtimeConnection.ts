@@ -1,3 +1,4 @@
+import type {ProcedureEvent} from "@/types/recipe.types";
 import {devLog} from "@/lib/devLog";
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -21,7 +22,7 @@ import {devLog} from "@/lib/devLog";
 /** quality отсутствует или "GOOD" — значение достоверно; любое другое — нет
  *  (не сравнивать на равенство "BAD" — контракт расширяемый, см. docs/contract/TAG_CONTRACT_CHANGES.md). */
 export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number; quality?: string};
-/** propertyName — имя свойства (== property_name в рецептах); propertyId нестабилен
+/** propertyName — имя свойства компонента; propertyId нестабилен
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
 /** rejected — окончательный отказ хендшейка (код закрытия 1003: сессия уже занята
@@ -29,7 +30,11 @@ export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; v
 export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected";
 
 export interface RuntimeConnectionHandlers {
-  onUpdate: (tags: RuntimeTagUpdate[], properties: RuntimePropertyUpdate[]) => void;
+  onUpdate: (
+    tags: RuntimeTagUpdate[],
+    properties: RuntimePropertyUpdate[],
+    procedures: ProcedureEvent[],
+  ) => void;
   /** detail — причина для "rejected" (e.reason из close-события). */
   onStatus?: (status: RuntimeStatus, detail?: string) => void;
 }
@@ -143,7 +148,13 @@ export function openRuntimeConnection(
     };
 
     socket.onmessage = (e) => {
-      let msg: {type?: string; tags?: RuntimeTagUpdate[] | null; properties?: RuntimePropertyUpdate[] | null};
+      let msg: {
+        type?: string;
+        tags?: RuntimeTagUpdate[] | null;
+        properties?: RuntimePropertyUpdate[] | null;
+        // Третий массив кадра — ход процедурного рецепта (контракт от 09.09.2026).
+        procedures?: ProcedureEvent[] | null;
+      };
       try {
         msg = JSON.parse(String(e.data));
       } catch {
@@ -157,15 +168,18 @@ export function openRuntimeConnection(
       // Ответ на ACTION приходит с tags === null (не []) — нормализация обязательна.
       const tags = msg.tags ?? [];
       const properties = msg.properties ?? [];
-      if (tags.length || properties.length) {
+      const procedures = msg.procedures ?? [];
+      if (tags.length || properties.length || procedures.length) {
         console.groupCollapsed(
-          `[monitor:ws] UPDATE — тегов: ${tags.length}, свойств: ${properties.length}`,
+          `[monitor:ws] UPDATE — тегов: ${tags.length}, свойств: ${properties.length},`
+          + ` событий процедуры: ${procedures.length}`,
         );
         if (tags.length) console.table(tags);
         if (properties.length) console.table(properties);
+        if (procedures.length) console.table(procedures);
         console.groupEnd();
       }
-      onUpdate(tags, properties);
+      onUpdate(tags, properties, procedures);
     };
 
     socket.onclose = (e) => {

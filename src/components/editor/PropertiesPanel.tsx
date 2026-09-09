@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useMemo, useEffect} from "react";
+import React, {useState, useMemo} from "react";
 import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
 import {SortableContext, arrayMove, rectSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
@@ -208,13 +208,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     ...(elementPropertyMap[element.type as ElementType] || []),
   ] : [], [element?.type, element]);
 
-  // У таблицы нет вкладки «Свойства» (её роль выполняет «Строки» — привязки по рядам).
-  // Если выбор переключился на таблицу, пока была открыта эта вкладка — уводим на «Визуал».
-  useEffect(() => {
-    if (element?.type === "table" && activeTab === "properties") {
-      setActiveTab("visual");
-    }
-  }, [element?.key, element?.type]);
+  // Прежде здесь стоял эффект, уводивший таблицу с вкладки «Свойства» на «Визуал»: у неё
+  // была отдельная вкладка «Строки». «Строки» давно убрали (см. комментарий у кнопок вкладок),
+  // а эффект остался и мешал — в том числе поправить «Тип значения» строки рецепта, который
+  // уезжает в json набора.
 
   // Пустое состояние живёт в WorkSpace: панель свойств рендерится только когда
   // выбран ровно один элемент, поэтому эта ветка была недостижима — два разных

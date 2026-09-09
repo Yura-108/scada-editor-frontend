@@ -17,6 +17,7 @@ import {
   TagWriteRequestDto,
   TagWriteResultDto,
   normalizeTagWriteResults,
+  tagWriteOutcome,
   tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
 
@@ -194,6 +195,9 @@ function ElementOptionsContent({elementKey}: Props) {
       if (!results.length) throw new Error("Бэкенд не вернул отчёт о записи");
 
       const applied: {row: WriteRow; result: TagWriteResultDto}[] = [];
+      // Исход неизвестен (`NO_CONFIRMATION`) — не успех и не отказ: команда могла
+      // примениться. Считаем отдельно, иначе сводка соврала бы в обе стороны.
+      const unknown: WriteRow[] = [];
       rows.forEach((row, i) => {
         // Сопоставляем ПО ИНДЕКСУ: бэкенд отвечает массивом того же размера и порядка, а
         // `tagId` в отчёте — для чтения, не для поиска (один тег может встретиться в
@@ -206,7 +210,19 @@ function ElementOptionsContent({elementKey}: Props) {
           toast.error(`«${row.property.name}»: бэкенд не вернул отчёт о записи`);
           return;
         }
-        if (!result.success) {
+        const outcome = tagWriteOutcome(result);
+
+        if (outcome === "unknown") {
+          // Не отказ: команда ушла в брокер, ответа шлюза нет. Значение на схему не
+          // выводим — телеметрия покажет, чем дело кончилось.
+          unknown.push(row);
+          toast.warning(
+            `«${row.property.name}»: результат неизвестен — сверьтесь с телеметрией`
+            + `${result.message ? ` (${result.message})` : ""}`,
+          );
+          return;
+        }
+        if (outcome === "failed") {
           // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и НЕ
           // выводим значение на схему, записи ведь не произошло.
           toast.error(
@@ -227,10 +243,14 @@ function ElementOptionsContent({elementKey}: Props) {
         toast.success(rows.length === 1
           ? `«${rows[0].property.name}»: команда отправлена (${tagWriteStatusLabel(applied[0].result)})`
           : `Отправлено команд: ${rows.length}`);
-      } else if (applied.length) {
-        // Частичный успех обязан читаться как частичный: остальные теги остались с прежним
-        // значением на контроллере, и оператор должен знать, что дописывать.
-        toast.warning(`Записано ${applied.length} из ${rows.length} — по остальным см. сообщения об ошибках`);
+      } else if (applied.length || unknown.length) {
+        // Частичный результат обязан читаться как частичный, причём тремя числами:
+        // «записано N из M» скрыло бы строки с неизвестным исходом среди отказов.
+        const parts = [`записано ${applied.length}`];
+        if (unknown.length) parts.push(`неизвестно ${unknown.length}`);
+        const failed = rows.length - applied.length - unknown.length;
+        if (failed) parts.push(`отказ ${failed}`);
+        toast.warning(`Из ${rows.length}: ${parts.join(", ")} — подробности в сообщениях выше`);
       }
     } catch (err) {
       console.error(err);

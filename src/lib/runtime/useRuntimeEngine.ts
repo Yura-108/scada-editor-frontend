@@ -3,6 +3,7 @@
 import {devLog} from "@/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
+import {pushProcedureEvents} from "@/store/useProcedureStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
@@ -489,8 +490,15 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     lastMessageAtRef.current = 0;
 
     const conn = openRuntimeConnection(projectId, {
-      onUpdate: (tags, properties) => {
+      onUpdate: (tags, properties, procedures) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
+
+        // События процедуры НЕ кладём в pendingRef: тот буфер коалесцирует значения
+        // (last-write-wins плюс guard «то же значение — пропустить»), и для событий это
+        // неверно вдвойне — STEP_STARTED и STEP_COMPLETED с одинаковой нагрузкой
+        // схлопнулись бы, WRITE_FAILED/STALLED потерялись бы вовсе, а задержка на такте
+        // флаша сместила бы секундомер шага. Отдаём сразу.
+        pushProcedureEvents(procedures);
         // Несколько апдейтов одного тега в батче: Map даёт last-write-wins.
         for (const t of tags) {
           pendingRef.current.set(t.tagId, t.value);

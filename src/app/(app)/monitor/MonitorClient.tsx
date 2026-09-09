@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useEffect, useMemo} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {AlertTriangle, ClipboardList, Clock, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
@@ -8,9 +8,12 @@ import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
-import openApplyRecipeModal from "@/components/monitor/ApplyRecipeModal";
+import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 import {SceneTabs} from "@/components/editor/SceneTabs";
+
+/** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
+const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
 
 const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   connecting: {label: "Подключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
@@ -103,6 +106,10 @@ export default function MonitorClient() {
 
   const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale} = useRuntimeEngine(Boolean(scene && currentProject));
 
+  // Вкладка «Процедуры» — ровно тот же приём, что у «Рецептов» в редакторе:
+  // SceneTabs умеет вкладку-не-схему через `extraTab`, менять его не пришлось.
+  const [showProcedures, setShowProcedures] = useState(false);
+
   const problemCount = useMemo(
     () => compileErrors.size + runtimeErrors.size,
     [compileErrors, runtimeErrors],
@@ -157,13 +164,13 @@ export default function MonitorClient() {
 
         <div className="flex-1" />
 
-        {status === "live" && sessionId && (
+        {status === "live" && sessionId && !showProcedures && (
           <button
-            onClick={() => openApplyRecipeModal({sessionId})}
+            onClick={() => setShowProcedures(true)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
           >
             <ClipboardList size={14} />
-            Применить рецепт
+            Процедуры
           </button>
         )}
 
@@ -204,20 +211,25 @@ export default function MonitorClient() {
           единственный способ открыть любую другую. Ни схемы, ни закреплённых — полоса
           не рисуется вовсе (SceneTabs вернёт null). */}
       <SceneTabs
-        activeKey={scene ? `scene:${scene.id}` : ""}
+        activeKey={showProcedures ? PROCEDURES_TAB.key : (scene ? `scene:${scene.id}` : "")}
         onActivate={(key) => {
+          if (key === PROCEDURES_TAB.key) { setShowProcedures(true); return; }
+          setShowProcedures(false);
           const id = Number(key.slice("scene:".length));
           // Без openSceneGuarded: монитор не редактирует, спрашивать про
           // несохранённые правки не о чем, палитра ему не нужна.
           if (Number.isSafeInteger(id) && id !== scene?.id) void loadScene(id);
         }}
+        extraTab={PROCEDURES_TAB}
         contentId="monitor-canvas"
         ariaLabel="Закреплённые схемы"
       />
 
       {/* Холст: read-only, пан/зум доступны */}
       <div id="monitor-canvas" className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
-        {scene ? (
+        {showProcedures ? (
+          <ProcedurePanel />
+        ) : scene ? (
           <Canvas readOnly />
         ) : (
           <div className="h-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">

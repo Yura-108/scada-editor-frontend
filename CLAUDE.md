@@ -87,15 +87,54 @@ Consequences worth knowing:
   `based_on_version` per property, no version re-fetch after each edit, no two-phase
   "save then provision".
 - **Exactly one network call survives**: renaming an already-saved property still goes through
-  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Recipe values (`recipe_value`) are keyed
-  by the row **name**, and only that endpoint migrates them — the bulk path would rename the row
-  and orphan the setpoints into `ResolvedRecipeDto.unmatched_rows`. Deleting a row does *not*
-  migrate them; if that ever matters, the exception has to grow to cover delete.
+  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Its original reason is gone — recipe
+  setpoints used to be keyed by the row **name**, and only that endpoint migrated them — but
+  recipes no longer reference properties at all (see below), so nothing on the frontend now
+  depends on this call. It is kept because what else that backend endpoint does is not visible
+  from here; removing it is a deliberate separate change.
 - `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
   the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
 - `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric
   `propertyId` the runtime routes by is filled in from the save response
   (`resolvePendingPropertyRefs`).
+
+### Recipes: procedural step chains
+
+Contract: `docs/contract/2026-09-09-recipe-steps-contract.md` (verified against the backend
+code, not just the doc). A recipe is a **procedure**, not a set of values: a manifest of tags
+(`tags[]`) plus ordered `steps[]`, where a step writes tags on entry and then waits for its
+condition to become true. It belongs to nothing — no component, no scene, no project; the list
+is flat. An earlier design keyed values to a table's `ComponentProperty` and applied them in one
+shot; `component_id`, `type`, `values`, `/resolved` and `POST /api/runtime/recipes/apply` are all
+gone from both sides.
+
+- **`action[].tag` is the short `tags[].name`, not the tag path.** The path lives in
+  `RecipeTag.tag`. Getting this wrong is a 400 listing the undeclared names, so the steps editor
+  offers a dropdown over the manifest rather than free text.
+- **`value_type` must be one of `number` / `bool` / `string`.** `RecipeServiceImpl.requireTypeMatch`
+  switches on exactly those and falls through to `default -> true`, so an out-of-vocabulary value
+  (e.g. `"float"`, the channel base's own term) does not error — it **silently disables**
+  validation. `tagValueType()` therefore returns the contract vocabulary directly. `bool` cannot
+  be inferred at all: the channel base only knows «Строковый (IsString)», so discrete tags are
+  marked by hand.
+- **Execution lives in the monitor**, on a «Процедуры» tab. `SceneTabs` already supported a
+  non-scene tab via `extraTab` (that's how the editor mounts «Рецепты»), so the monitor needed no
+  changes to it. Six endpoints drive it: `start` / `status` / `confirm` / `jump` / `abort` /
+  `resume-guess`, proxied under `src/app/api/runtime/recipes/[id]/…`.
+- **A 400 from `/status` is not an error** — it means the runtime restarted and lost the
+  procedure. That is the signal to fetch `resume-guess` and offer the suggested step; never jump
+  automatically, since the guess is wrong on steps whose condition rests on `elapsedMs` or
+  `confirmed`. `jump` deliberately works without a prior `start` for exactly this recovery.
+- **`procedures[]` is a third array in the WS `UPDATE` frame** and must NOT go through
+  `pendingRef`/`flush`: that path coalesces *values* last-write-wins with a "same value" guard,
+  which would swallow `STEP_STARTED`/`STEP_COMPLETED` pairs and drop `WRITE_FAILED`/`STALLED`
+  entirely. Events are dispatched straight into `useProcedureStore`. It is a store rather than
+  `runtimeEventBus` because that bus is a set of *single slots*, and these events need more than
+  one consumer.
+- **`WRITE_FAILED` is the only way an operator learns a step's write was rejected** — writes
+  inside a step are fire-and-forget. Surface it as an alert. `STALLED` does not stop anything.
+- The manifest can be drawn as a table on the «Рецепты» scene, but that table is a **read-only
+  visualization built from the recipe**; nothing flows back from it.
 
 ### Monitor: component menu, actions, manual tag values
 

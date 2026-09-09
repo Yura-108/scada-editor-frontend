@@ -29,8 +29,8 @@ import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
-import type {RecipeTableRow} from "@/lib/editor/tagMeta";
-import {buildRecipeTableElement, bindingIdCount} from "@/lib/editor/recipeTable";
+import type {Recipe} from "@/types/recipe.types";
+import {buildRecipeTableElement} from "@/lib/editor/recipeTable";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {cameraToReveal} from "@/lib/editor/revealCamera";
@@ -210,7 +210,7 @@ type EditorState = {
    * четыре колонки (№ / Описание / Имя свойства / Значение). Возвращает `key` созданного
    * элемента или null, если создавать нельзя (чужая сцена, просмотр версии, пустой список).
    */
-  createRecipeTable: (rows: RecipeTableRow[], title: string) => string | null;
+  createRecipeTable: (recipe: Recipe) => string | null;
   /** Заводит свойство локально; уедет со сценой. false — имя занято. */
   addProperty: (elementKey: string, payload: PropertyCreateRequestDto) => boolean;
   /** Правит свойство локально. Переименование заведённого дополнительно уходит точечным
@@ -1244,11 +1244,10 @@ export const hasUnsavedWork = (): boolean => {
 /**
  * Переименование свойства на сервере — единственный оставшийся точечный запрос.
  *
- * Значения наборов (`recipe_value`) привязаны к ИМЕНИ строки, и переносит их на новое имя
- * только `PUT /api/editor/properties/{id}` (через наш прокси `/api/editor/tags/{id}`,
- * который добавляет `X-Username` — по нему бэкенд и находит, чьи уставки двигать).
- * Массовое сохранение сцены имя поменяет, а уставки осиротеют — они попадут в
- * `unmatched_rows` при следующем открытии набора.
+ * Заведён ради рецептов: их значения ключевались ИМЕНЕМ строки, и перенести их на новое
+ * имя мог только `PUT /api/editor/properties/{id}` (через наш прокси `/api/editor/tags/{id}`).
+ * С 09.09.2026 рецепт — процедура над ТЕГАМИ, о свойствах компонента он не знает, и той
+ * причины не осталось. Запрос сохранён: чем ещё занят этот эндпоинт, с фронта не видно.
  *
  * Возвращает false, если сервер отказал: тогда локальное переименование не применяем,
  * иначе имя разъедется с тем, что знает бэкенд.
@@ -2530,20 +2529,11 @@ export const useEditorStore = create<EditorState>()(temporal(
         commitNewElement(newElement);
       },
       /**
-       * Таблица-рецепт из выбранных в дереве тегов.
+       * Таблица-визуализация манифеста рецепта на сцене.
        *
-       * Раскладка ячеек в таблице задаётся ПРИВЯЗКАМИ, а не рендером (см. tableBindings.ts),
-       * поэтому колонки строятся здесь явно:
-       *  - колонка 0 (№) и колонка 3 (Значение) остаются БЕЗ привязки — `resolveCellText`
-       *    для непривязанной ячейки берёт свободный текст из `cells`, что и даёт нумерацию
-       *    и редактируемые пользователем нули;
-       *  - колонки 1 и 2 привязаны к статическим полям своего же свойства (`description`
-       *    и `name`), так что переименование свойства и правка описания сразу видны в таблице.
-       *
-       * Строка 0 — шапка колонок: у элемента `table` заголовок (`headerText`) один на всю
-       * ширину, отдельного понятия «шапка колонок» в модели нет.
+       * Только показывает: источник истины — рецепт на бэкенде, обратной синхронизации нет.
        */
-      createRecipeTable: (rows, title) => {
+      createRecipeTable: (recipe) => {
         const {scene, currentProject, canvasRect, camera} = get();
 
         // Просмотр версии — режим только для чтения (как в deleteProperty).
@@ -2552,7 +2542,6 @@ export const useEditorStore = create<EditorState>()(temporal(
           toast.error("Нельзя создать таблицу: сцена не принадлежит выбранному проекту");
           return null;
         }
-        if (!rows.length) return null;
 
         // Центр текущего вида в МИРОВЫХ координатах. Холста может не быть вовсе:
         // действие зовётся из вкладки «Рецепты», где Canvas не смонтирован.
@@ -2560,15 +2549,14 @@ export const useEditorStore = create<EditorState>()(temporal(
         const centerY = canvasRect ? (canvasRect.height / 2 - camera.y) / camera.zoom : 0;
 
         const element = buildRecipeTableElement({
-          rows, title,
+          recipe,
           key: createUuid(),
           stateId: createUuid(),
-          bindingIds: Array.from({length: bindingIdCount(rows.length)}, () => createUuid()),
           sceneId: scene?.id,
           centerX, centerY,
         });
 
-        // В корень сцены, а не в открытый контейнер: таблица-рецепт самостоятельна.
+        // В корень сцены, а не в открытый контейнер: таблица-визуализация самостоятельна.
         set(state => ({elements: [...state.elements, element]}));
         return element.key;
       },
@@ -2621,9 +2609,13 @@ export const useEditorStore = create<EditorState>()(temporal(
           return false;
         }
 
-        // ЕДИНСТВЕННЫЙ оставшийся сетевой вызов. Значения наборов (recipe_value) привязаны
-        // к ИМЕНИ строки и переезжают на новое имя только точечным PUT — массовое
-        // сохранение имя поменяет, а уставки осиротеют (ResolvedRecipeDto.unmatched_rows).
+        // ЕДИНСТВЕННЫЙ оставшийся сетевой вызов.
+        //
+        // Раньше он был нужен ради рецептов: их значения ключевались ИМЕНЕМ свойства и
+        // переезжали на новое имя только этим точечным PUT. С 09.09.2026 рецепт — процедура
+        // над ТЕГАМИ, о свойствах компонента он не знает вовсе, и той причины не осталось.
+        // Вызов сохранён: что ещё делает `PUT /api/editor/properties/{id}` на бэкенде,
+        // отсюда не видно, и убирать его надо отдельно и осознанно.
         if (target.id != null && target.name.trim() !== name) {
           const migrated = await renamePropertyOnServer(target.id, {...payload, name});
           if (!migrated) return false;
