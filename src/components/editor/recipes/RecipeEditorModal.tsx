@@ -6,7 +6,7 @@ import {AlertTriangle, ChevronDown, ChevronUp, Plus, Tags, Trash2} from "lucide-
 import {cn} from "@/lib/utils";
 import {useModalStore} from "@/store/modalStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
-import openChooseManifestTagsModal from "@/components/editor/recipes/ChooseManifestTagsModal";
+import {ChooseManifestTagsModal} from "@/components/editor/recipes/ChooseManifestTagsModal";
 import {actionValueText, coerceActionValue, validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {Button, ModalFooter} from "@/components/ui/Button";
@@ -57,6 +57,9 @@ function RecipeEditorContent({recipe}: Props) {
   const [tags, setTags] = useState<RecipeTag[]>(recipe?.tags ?? []);
   const [steps, setSteps] = useState<RecipeStep[]>(recipe?.steps ?? [emptyStep()]);
   const [isSaving, setIsSaving] = useState(false);
+  // Выбор тегов — ВЛОЖЕННЫЙ диалог, который рисуем сами. Через useModalStore нельзя:
+  // он одноместный и подменил бы эту форму, потеряв всё набранное.
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const problems = validateRecipe({name, tags, steps});
 
@@ -141,10 +144,7 @@ function RecipeEditorContent({recipe}: Props) {
             <button
               type="button"
               className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              onClick={() => openChooseManifestTagsModal({
-                takenNames: tags.map(t => t.name),
-                onPick: (picked) => setTags(prev => [...prev, ...picked]),
-              })}
+              onClick={() => setTagPickerOpen(true)}
             >
               <Tags size={15} />
               Выбрать из базы каналов
@@ -368,6 +368,13 @@ function RecipeEditorContent({recipe}: Props) {
           </ul>
         </div>
       )}
+
+      <ChooseManifestTagsModal
+        open={tagPickerOpen}
+        onClose={() => setTagPickerOpen(false)}
+        takenNames={tags.map(t => t.name)}
+        onPick={(picked) => setTags(prev => [...prev, ...picked])}
+      />
 
       <ModalFooter className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-800/80">
         <Button onClick={closeModal} disabled={isSaving}>Отмена</Button>

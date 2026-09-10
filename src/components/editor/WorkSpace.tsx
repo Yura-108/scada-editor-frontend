@@ -287,7 +287,7 @@ export default function WorkSpace() {
       case "editor":
         return <EditorPanel />;
       case "recipes":
-        return <RecipesPanel onOpenEditor={() => setActiveTab("editor")} />;
+        return <RecipesPanel />;
       default:
         return null;
     }

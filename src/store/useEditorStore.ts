@@ -29,8 +29,6 @@ import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
 import {createUuid} from "@/lib/createUuid";
-import type {Recipe} from "@/types/recipe.types";
-import {buildRecipeTableElement} from "@/lib/editor/recipeTable";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {cameraToReveal} from "@/lib/editor/revealCamera";
@@ -205,12 +203,6 @@ type EditorState = {
   /** Read-only: где в коде поддерева упомянуто имя состояния (для диалога переименования). */
   findStateUsages: (elementKey: string, stateName: string) => StateNameRef[];
   addElementAt: (x: number, y: number, type: ElementType, extraProps?: Record<string, unknown>) => void;
-  /**
-   * Собирает таблицу-рецепт по выбранным в дереве тегам: строка-шапка + строка на тег,
-   * четыре колонки (№ / Описание / Имя свойства / Значение). Возвращает `key` созданного
-   * элемента или null, если создавать нельзя (чужая сцена, просмотр версии, пустой список).
-   */
-  createRecipeTable: (recipe: Recipe) => string | null;
   /** Заводит свойство локально; уедет со сценой. false — имя занято. */
   addProperty: (elementKey: string, payload: PropertyCreateRequestDto) => boolean;
   /** Правит свойство локально. Переименование заведённого дополнительно уходит точечным
@@ -2527,38 +2519,6 @@ export const useEditorStore = create<EditorState>()(temporal(
         };
 
         commitNewElement(newElement);
-      },
-      /**
-       * Таблица-визуализация манифеста рецепта на сцене.
-       *
-       * Только показывает: источник истины — рецепт на бэкенде, обратной синхронизации нет.
-       */
-      createRecipeTable: (recipe) => {
-        const {scene, currentProject, canvasRect, camera} = get();
-
-        // Просмотр версии — режим только для чтения (как в deleteProperty).
-        if (get().versionPreview) return null;
-        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-          toast.error("Нельзя создать таблицу: сцена не принадлежит выбранному проекту");
-          return null;
-        }
-
-        // Центр текущего вида в МИРОВЫХ координатах. Холста может не быть вовсе:
-        // действие зовётся из вкладки «Рецепты», где Canvas не смонтирован.
-        const centerX = canvasRect ? (canvasRect.width / 2 - camera.x) / camera.zoom : 0;
-        const centerY = canvasRect ? (canvasRect.height / 2 - camera.y) / camera.zoom : 0;
-
-        const element = buildRecipeTableElement({
-          recipe,
-          key: createUuid(),
-          stateId: createUuid(),
-          sceneId: scene?.id,
-          centerX, centerY,
-        });
-
-        // В корень сцены, а не в открытый контейнер: таблица-визуализация самостоятельна.
-        set(state => ({elements: [...state.elements, element]}));
-        return element.key;
       },
       /**
        * Свойства — обычная часть сцены, а не отдельный ресурс.

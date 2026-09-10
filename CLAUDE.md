@@ -133,8 +133,10 @@ gone from both sides.
   one consumer.
 - **`WRITE_FAILED` is the only way an operator learns a step's write was rejected** — writes
   inside a step are fire-and-forget. Surface it as an alert. `STALLED` does not stop anything.
-- The manifest can be drawn as a table on the «Рецепты» scene, but that table is a **read-only
-  visualization built from the recipe**; nothing flows back from it.
+- A recipe is **not scene content**: it creates no canvas elements and no scenes. Its manifest
+  and steps are shown inline in the «Рецепты» panel by expanding a row. An earlier attempt put
+  a generated table on a dedicated scene; that meant canvas elements which had to be kept in
+  sync with a recipe living on the backend, for no gain.
 
 ### Monitor: component menu, actions, manual tag values
 
