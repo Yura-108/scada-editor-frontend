@@ -9,6 +9,8 @@ import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
 import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
+import {ProcedureHud} from "@/components/monitor/ProcedureHud";
+import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 
@@ -109,6 +111,11 @@ export default function MonitorClient() {
   // Вкладка «Процедуры» — ровно тот же приём, что у «Рецептов» в редакторе:
   // SceneTabs умеет вкладку-не-схему через `extraTab`, менять его не пришлось.
   const [showProcedures, setShowProcedures] = useState(false);
+
+  // Опрос состояния процедуры, подсказка восстановления и тосты об отказах — РОВНО ЗДЕСЬ.
+  // Их два потребителя (панель и HUD), и повтори каждый эти эффекты у себя, вышло бы
+  // два опроса и по два тоста на событие.
+  useProcedureSync();
 
   const problemCount = useMemo(
     () => compileErrors.size + runtimeErrors.size,
@@ -226,7 +233,10 @@ export default function MonitorClient() {
       />
 
       {/* Холст: read-only, пан/зум доступны */}
-      <div id="monitor-canvas" className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
+      {/* `relative` — точка отсчёта для HUD процедуры: он absolute внутри этого блока.
+          Не `fixed`, как у баннеров редактора: там опорой служат --ws-*-m, которых
+          в мониторе нет, и пришлось бы вручную вычитать тулбар и полосу вкладок. */}
+      <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
         {showProcedures ? (
           <ProcedurePanel />
         ) : scene ? (
@@ -236,6 +246,9 @@ export default function MonitorClient() {
             Выберите проект и сцену для мониторинга
           </div>
         )}
+
+        {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
+        {!showProcedures && <ProcedureHud />}
       </div>
     </div>
   );

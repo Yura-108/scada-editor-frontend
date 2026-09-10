@@ -2,52 +2,33 @@
 
 import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Play, TimerReset} from "lucide-react";
-import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
-import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
-import {getRuntimeSessionId} from "@/lib/runtime/runtimeEventBus";
-import {
-  abortProcedure,
-  confirmStep,
-  fetchProcedureStatus,
-  fetchResumeGuess,
-  jumpToStep,
-  NoActiveProcedureError,
-  startProcedure,
-} from "@/lib/runtime/procedures";
+import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
+import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
 
 /**
- * Выполнение процедурного рецепта в мониторе.
+ * Выполнение процедурного рецепта — подробный вид во вкладке «Процедуры».
  *
- * Панель, а не модалка: процедура идёт минутами, и оператор всё это время должен видеть
- * мнемосхему — модалка её закрывает.
+ * Только представление: действия берутся из `useProcedureControls`, состояние — из
+ * `useProcedureStore`, а опрос статуса и уведомления живут в `useProcedureSync`,
+ * смонтированном один раз в `MonitorClient`. Повтори их здесь — при открытой вкладке
+ * рядом с HUD вышло бы два опроса и по два тоста на событие.
+ *
+ * Вести уже идущий процесс удобнее из HUD поверх схемы: он не закрывает мнемосхему.
  */
-
-/** Сверка со `/status`. Редкая: ход процедуры приходит событиями по WS, а секундомер
- *  тикает на клиенте — сеть нужна только чтобы поймать пропущенный кадр. */
-const STATUS_POLL_MS = 5000;
-
-/** Отдельный тик для секундомера — он рисуется, а не запрашивается. */
-const CLOCK_TICK_MS = 500;
-
-const formatElapsed = (ms: number): string => {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const mm = String(Math.floor(total / 60)).padStart(2, "0");
-  const ss = String(total % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
-};
-
 export function ProcedurePanel() {
   const {recipes, loaded, isLoading, loadRecipes} = useRecipeStore();
-  const {recipeId, status, stepStartedAt, lastAlert, watch, setStatus, clearAlert} = useProcedureStore();
+  const {recipeId, status, stepStartedAt, resumeHint, watch} = useProcedureStore();
+  const {busy, start, confirm, jump, abort} = useProcedureControls();
 
-  const [busy, setBusy] = useState(false);
-  const [resumeHint, setResumeHint] = useState<number | null>(null);
-  // Тик перерисовки: секундомер шага считается от stepStartedAt, а не хранится в стейте.
-  const [, setTick] = useState(0);
+  /**
+   * Секундомер шага. Держим готовое число, а не считаем `Date.now()` в теле рендера:
+   * рендер обязан быть чистым (`react-hooks/purity`), а тик и так нужен для перерисовки.
+   */
+  const [elapsed, setElapsed] = useState(0);
 
   const recipe = recipes.find(r => r.id === recipeId) ?? null;
   const steps = recipe?.steps ?? [];
@@ -57,95 +38,13 @@ export function ProcedurePanel() {
   }, [loaded, loadRecipes]);
 
   useEffect(() => {
-    const id = setInterval(() => setTick(n => n + 1), CLOCK_TICK_MS);
+    const tick = () => setElapsed(stepStartedAt != null ? Date.now() - stepStartedAt : 0);
+    tick();
+    const id = setInterval(tick, CLOCK_TICK_MS);
     return () => clearInterval(id);
-  }, []);
-
-  // Отказ записи внутри шага виден только этим каналом (запись идёт fire-and-forget),
-  // поэтому показываем его отдельно и заметно.
-  useEffect(() => {
-    if (!lastAlert) return;
-    const text = lastAlert.message ?? (lastAlert.kind === "STALLED" ? "Шаг долго не завершается" : "Отказ записи");
-    if (lastAlert.kind === "WRITE_FAILED") toast.error(`Запись не прошла: ${text}`);
-    else toast.warning(text);
-    clearAlert();
-  }, [lastAlert, clearAlert]);
-
-  /** Сверка состояния; 400 значит «процедуры нет в памяти» — предлагаем восстановление. */
-  useEffect(() => {
-    if (!recipeId) return;
-
-    let cancelled = false;
-    const sync = async () => {
-      const sessionId = getRuntimeSessionId();
-      if (!sessionId) return;
-      try {
-        const next = await fetchProcedureStatus(recipeId, sessionId);
-        if (!cancelled) {
-          setStatus(next);
-          setResumeHint(null);
-        }
-      } catch (err) {
-        if (cancelled || !(err instanceof NoActiveProcedureError)) return;
-        // Рантайм перезапустили — состояние в памяти потеряно. Просим подсказку,
-        // но не прыгаем сами: она ошибается на шагах с условием по времени/подтверждению.
-        try {
-          const guess = await fetchResumeGuess(recipeId, sessionId);
-          if (!cancelled) setResumeHint(guess.suggestedStepIndex);
-        } catch { /* подсказка необязательна */ }
-      }
-    };
-
-    void sync();
-    const id = setInterval(() => void sync(), STATUS_POLL_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [recipeId, setStatus]);
-
-  const withSession = async (what: string, fn: (sessionId: string) => Promise<void>) => {
-    const sessionId = getRuntimeSessionId();
-    if (!sessionId) {
-      toast.error("Нет активной сессии мониторинга");
-      return;
-    }
-    setBusy(true);
-    try {
-      await fn(sessionId);
-    } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : what);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleStart = () => recipeId && withSession("Не удалось запустить процедуру", async (sessionId) => {
-    setStatus(await startProcedure(recipeId, sessionId));
-    setResumeHint(null);
-  });
-
-  const handleConfirm = () => recipeId && withSession("Не удалось подтвердить шаг", async (sessionId) => {
-    setStatus(await confirmStep(recipeId, sessionId));
-  });
-
-  const handleJump = (stepIndex: number) => recipeId && withSession("Не удалось перейти на шаг", async (sessionId) => {
-    setStatus(await jumpToStep(recipeId, sessionId, stepIndex));
-    setResumeHint(null);
-  });
-
-  const handleAbort = () => recipeId && withSession("Не удалось прервать процедуру", async (sessionId) => {
-    const ok = await confirmModal({
-      title: "Прервать процедуру?",
-      description: "Текущий шаг останется незавершённым, записанные значения в ПЛК не откатываются.",
-      confirmLabel: "Прервать",
-      danger: true,
-    });
-    if (!ok) return;
-    await abortProcedure(recipeId, sessionId);
-    useProcedureStore.getState().watch(recipeId);
-  });
+  }, [stepStartedAt]);
 
   const isRunning = Boolean(status && !status.completed);
-  const elapsed = stepStartedAt != null ? Date.now() - stepStartedAt : 0;
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar p-6">
@@ -162,7 +61,7 @@ export function ProcedurePanel() {
                 "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
               )}
               value={recipeId ?? ""}
-              disabled={isLoading || isRunning}
+              disabled={isLoading}
               onChange={(e) => watch(e.target.value || null)}
             >
               <option value="" disabled>{isLoading ? "Загрузка…" : "Выберите рецепт…"}</option>
@@ -171,17 +70,17 @@ export function ProcedurePanel() {
           </div>
 
           {!isRunning ? (
-            <Button variant="primary" onClick={handleStart} disabled={!recipeId || busy}>
+            <Button variant="primary" onClick={() => recipeId && start(recipeId)} disabled={!recipeId || busy}>
               <Play size={16} />
               Запустить
             </Button>
           ) : (
             <>
-              <Button variant="primary" onClick={handleConfirm} disabled={busy}>
+              <Button variant="primary" onClick={() => recipeId && confirm(recipeId)} disabled={busy}>
                 <ChevronRight size={16} />
                 Подтвердить
               </Button>
-              <Button variant="danger" onClick={handleAbort} disabled={busy}>
+              <Button variant="danger" onClick={() => recipeId && abort(recipeId)} disabled={busy}>
                 <CircleStop size={16} />
                 Прервать
               </Button>
@@ -189,7 +88,7 @@ export function ProcedurePanel() {
           )}
         </div>
 
-        {resumeHint !== null && (
+        {resumeHint !== null && recipeId && (
           <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300 space-y-2">
             <div className="flex items-center gap-2 font-medium">
               <TimerReset size={15} />
@@ -202,7 +101,7 @@ export function ProcedurePanel() {
               ошибаться на шагах с условием по времени или подтверждению — выберите шаг сами,
               если она не подходит.
             </p>
-            <Button variant="primary" onClick={() => handleJump(resumeHint)} disabled={busy}>
+            <Button variant="primary" onClick={() => jump(recipeId, resumeHint)} disabled={busy}>
               Продолжить с шага {resumeHint + 1}
             </Button>
           </div>
@@ -261,7 +160,7 @@ export function ProcedurePanel() {
                         <button
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
                           disabled={busy || !recipeId}
-                          onClick={() => handleJump(index)}
+                          onClick={() => recipeId && jump(recipeId, index)}
                         >
                           перейти
                         </button>

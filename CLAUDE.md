@@ -117,10 +117,21 @@ gone from both sides.
   validation. `tagValueType()` therefore returns the contract vocabulary directly. `bool` cannot
   be inferred at all: the channel base only knows «Строковый (IsString)», so discrete tags are
   marked by hand.
-- **Execution lives in the monitor**, on a «Процедуры» tab. `SceneTabs` already supported a
-  non-scene tab via `extraTab` (that's how the editor mounts «Рецепты»), so the monitor needed no
-  changes to it. Six endpoints drive it: `start` / `status` / `confirm` / `jump` / `abort` /
-  `resume-guess`, proxied under `src/app/api/runtime/recipes/[id]/…`.
+- **Execution lives in the monitor**, in two places over one store: a floating `ProcedureHud`
+  above the mnemonic scheme (drag/collapse persisted in localStorage) and the detailed
+  «Процедуры» tab. `SceneTabs` already supported a non-scene tab via `extraTab` (that's how the
+  editor mounts «Рецепты»). Six endpoints drive it: `start` / `status` / `confirm` / `jump` /
+  `abort` / `resume-guess`, proxied under `src/app/api/runtime/recipes/[id]/…`.
+- **Behaviour is split so two views can coexist.** `useProcedureControls` is callbacks only
+  (safe to call from anywhere); every *effect* — the 5s `GET /status` poll, the `resume-guess`
+  fetch, the alert toasts — lives in `useProcedureSync`, **mounted exactly once** in
+  `MonitorClient`. Duplicate that hook in a component and you get two polls and two toasts per
+  event. A third consumer must follow the same rule.
+- **Switching the watched recipe mid-run is safe and needs no confirmation**: a procedure is
+  keyed `(sessionId, recipeId)` on the backend, so switching only changes what the UI watches —
+  the running one keeps going and `GET /status` restores its state on return. Events for other
+  recipes are filtered out by `applyEvents`, so their alerts are not shown while you look
+  elsewhere; that is deliberate, since an alert without its step context misleads.
 - **A 400 from `/status` is not an error** — it means the runtime restarted and lost the
   procedure. That is the signal to fetch `resume-guess` and offer the suggested step; never jump
   automatically, since the guess is wrong on steps whose condition rests on `elapsedMs` or

@@ -25,21 +25,32 @@ type ProcedureState = {
   events: ProcedureEvent[];
   /** Последнее событие, о котором надо предупредить (WRITE_FAILED / STALLED). */
   lastAlert: ProcedureEvent | null;
+  /**
+   * Подсказка `resume-guess` — шаг, на котором процедура вероятно остановилась.
+   * Живёт в сторе, а не в компоненте: её показывают и панель, и HUD над схемой, а спрашивает
+   * её один общий `useProcedureSync`.
+   */
+  resumeHint: number | null;
 
   watch: (recipeId: string | null) => void;
   setStatus: (status: ProcedureStatus) => void;
+  setResumeHint: (stepIndex: number | null) => void;
   applyEvents: (events: ProcedureEvent[]) => void;
   clearAlert: () => void;
   reset: () => void;
 };
 
 /** Чистое состояние — без него `watch`/`reset` расходились бы по полям. */
-const empty = (): Pick<ProcedureState, "recipeId" | "status" | "stepStartedAt" | "events" | "lastAlert"> => ({
+const empty = (): Pick<
+  ProcedureState,
+  "recipeId" | "status" | "stepStartedAt" | "events" | "lastAlert" | "resumeHint"
+> => ({
   recipeId: null,
   status: null,
   stepStartedAt: null,
   events: [],
   lastAlert: null,
+  resumeHint: null,
 });
 
 export const useProcedureStore = create<ProcedureState>((set, get) => ({
@@ -47,8 +58,12 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
 
   watch: (recipeId) => set({...empty(), recipeId}),
 
+  setResumeHint: (stepIndex) => set({resumeHint: stepIndex}),
+
   setStatus: (status) => set(state => ({
     status,
+    // Статус пришёл — значит процедура в памяти рантайма есть, и подсказка неактуальна.
+    resumeHint: null,
     // Секундомер перезапускаем только при смене шага: иначе редкая сверка со
     // `/status` дёргала бы отсчёт назад на величину задержки запроса.
     stepStartedAt: state.status?.stepIndex === status.stepIndex && state.stepStartedAt !== null
