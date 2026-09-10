@@ -11,6 +11,12 @@ export interface TableCellTarget {
   col: number;
 }
 
+/** Куда пишет прямая привязка к тегу: элемент и ключ его рендер-пропа (обычно `value`). */
+export interface DirectTagTarget {
+  elementKey: string;
+  target: string;
+}
+
 export interface BindingIndex {
   /** tag_id → биндинги, которые он триггерит (O(1)-маршрутизация входящего значения). */
   byTagId: Map<string, CompiledBinding[]>;
@@ -36,6 +42,14 @@ export interface BindingIndex {
    * биндинга (у таблиц тег пишется в ячейку напрямую, минуя биндинги).
    */
   elementKeysByTagId: Map<string, Set<string>>;
+  /**
+   * tag_id → прямые привязки «значение элемента ← тег» (`direct` + `tag`, без кода).
+   *
+   * Отдельно от `byTagId`: там JS-биндинги, которые надо исполнять, а здесь запись
+   * значения напрямую — тот же приём, что у живых ячеек таблиц. Благодаря ему элементу
+   * не нужно собственных свойств, чтобы следить за тегом.
+   */
+  directTagsByTagId: Map<string, DirectTagTarget[]>;
 }
 
 /**
@@ -53,6 +67,7 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   const tableCellsByTagId = new Map<string, TableCellTarget[]>();
   const tableCellsByPropertyName = new Map<string, TableCellTarget[]>();
   const elementKeysByTagId = new Map<string, Set<string>>();
+  const directTagsByTagId = new Map<string, DirectTagTarget[]>();
 
   for (const el of elements) {
     for (const p of el.properties ?? []) {
@@ -77,6 +92,18 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
       }
     }
 
+    // Прямые привязки к тегу: значение уедет в рендер-проп без исполнения кода.
+    for (const b of el.bindings ?? []) {
+      if (b.enabled === false || !b.direct || !b.tag) continue;
+      const target: DirectTagTarget = {elementKey: el.key, target: b.directTarget || "value"};
+      const list = directTagsByTagId.get(b.tag);
+      if (list) list.push(target); else directTagsByTagId.set(b.tag, [target]);
+      // «Привязан к тегу» для оверлея «нет данных»: у такой привязки своего свойства нет,
+      // и без этой строки элемент не считался бы связанным с тегом.
+      const set = elementKeysByTagId.get(b.tag);
+      if (set) set.add(el.key); else elementKeysByTagId.set(b.tag, new Set([el.key]));
+    }
+
     const bindings = el.bindings ?? [];
     if (!bindings.length) continue;
 
@@ -85,6 +112,10 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
 
     for (const binding of bindings) {
       if (!binding.enabled) continue;
+      // Прямая привязка к тегу — не JS: код у неё пуст, значение пишет рантайм по
+      // маршруту выше. Компилировать её значило бы держать в `all` пустой биндинг,
+      // который гоняется при каждой смене схемы и попадает в счётчик проблем.
+      if (binding.direct && binding.tag) continue;
 
       const scope = withPropertyRefs(tagScope, binding.propertyRefs);
       const compiled = compileBinding(el.key, binding, scope);
@@ -121,5 +152,6 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   return {
     byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds,
     tableCellsByTagId, tableCellsByPropertyName, elementKeysByTagId,
+    directTagsByTagId,
   };
 };

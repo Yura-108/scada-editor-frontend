@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {
-  AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Play, TimerReset,
+  AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play, TimerReset,
 } from "lucide-react";
 import {cn} from "@/lib/utils";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -155,7 +155,7 @@ export function ProcedureHud() {
       role="region"
       aria-label="Управление процедурой"
       className={cn(
-        "absolute z-toolbar w-max max-w-[min(680px,calc(100%-1rem))]",
+        "absolute z-toolbar w-max min-w-[min(720px,calc(100%-1rem))] max-w-[min(980px,calc(100%-1rem))]",
         "rounded-xl border border-neutral-200 dark:border-neutral-800",
         "bg-white/95 dark:bg-neutral-900/95 shadow-2xl backdrop-blur-xl",
         // До чтения настройки не показываем: иначе окно прыгнуло бы из угла в угол.
@@ -178,7 +178,7 @@ export function ProcedureHud() {
             запущенная продолжает идти, а по возвращении её состояние вернёт GET /status. */}
         <select
           className={cn(
-            "max-w-44 shrink-0 rounded-md border border-neutral-300 dark:border-neutral-700",
+            "w-56 shrink-0 rounded-md border border-neutral-300 dark:border-neutral-700",
             "bg-white dark:bg-neutral-900 px-2 py-1 text-xs text-neutral-900 dark:text-neutral-100",
             "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
           )}
@@ -227,6 +227,19 @@ export function ProcedureHud() {
             >
               <Check size={13} />
               <span className="text-xs font-medium">Подтвердить</span>
+            </button>
+            {/* Паузы на бэкенде НЕТ: у процедуры шесть ручек (start/status/confirm/jump/
+                abort/resume-guess), и слова `pause` в рантайме не существует. Кнопка стоит
+                неактивной намеренно — «пауза», нарисованная на клиенте, была бы обманом:
+                процедура продолжала бы идти и писать теги в ПЛК, пока оператор считает её
+                остановленной. Включается одной строкой, как появится ручка. */}
+            <button
+              className={cn(iconButton, "gap-1 px-2 bg-neutral-200 dark:bg-neutral-800 text-neutral-500")}
+              disabled
+              title="Пауза пока недоступна: на бэкенде нет ручки POST /api/runtime/recipes/{id}/pause"
+            >
+              <Pause size={13} />
+              <span className="text-xs font-medium">Пауза</span>
             </button>
             <button
               className={cn(iconButton, "bg-red-600 text-white hover:bg-red-500")}

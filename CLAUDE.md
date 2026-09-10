@@ -149,6 +149,25 @@ gone from both sides.
   a generated table on a dedicated scene; that meant canvas elements which had to be kept in
   sync with a recipe living on the backend, for no gain.
 
+### Direct tag bindings (element value ← tag)
+
+Besides JS bindings and `propertyRefs`, an element can follow a **tag** directly: a binding
+with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` routes it into
+`directTagsByTagId`, and `flush` writes the value straight into the element's render prop
+(`directTarget`, normally `value`) — the same bypass live table cells use, merged through
+`runBindings`' `seedPropsByKey`. Consequences worth knowing:
+
+- **The element needs no properties of its own.** The tag scope of a JS binding comes from the
+  element's own tag properties; a direct tag binding skips that entirely, which is what makes
+  "bind a tag to a progress bar" a two-click operation.
+- **It is deliberately excluded from JS compilation** (`bindingIndex`): an empty-code binding
+  in `all` would be re-run on every scheme change and counted in the bindings-problem chip.
+- **It must seed on scheme change** alongside the table cells, or a scheme opened after the
+  values already arrived would sit at its default forever — `flush` only reacts to *changed*
+  tags.
+- The tag value is taken **as percent 0-100** by the progress bar and merely clamped; there is
+  no min/max scaling. A physical quantity must be normalised on the PLC side.
+
 ### Monitor: component menu, actions, manual tag values
 
 The monitor is `<Canvas readOnly />`: the content layer is `listening={false}`, so shapes are out

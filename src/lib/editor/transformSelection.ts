@@ -83,8 +83,15 @@ const transformArcStart = (start: number, sweep: number, op: TransformOp): numbe
   }
 };
 
-/** Геометрические поля, которые операция трогает (для отбора в overrides состояний). */
-const GEOMETRY_KEYS = ["x", "y", "w", "h", "x1", "y1", "x2", "y2", "points", "rotate"] as const;
+/**
+ * Геометрические поля, которые операция трогает (для отбора в overrides состояний).
+ *
+ * `orientation` здесь не случайно: у прогресс-бара она задаёт ОСЬ ЗАПОЛНЕНИЯ, то есть
+ * такая же часть геометрии, как `w/h`. Поворот меняет стороны местами, и не переверни мы
+ * её заодно — вертикальный бар остался бы «горизонтальным»: коробка стала узкой и высокой,
+ * а заливка по-прежнему шла бы слева направо.
+ */
+const GEOMETRY_KEYS = ["x", "y", "w", "h", "x1", "y1", "x2", "y2", "points", "rotate", "orientation"] as const;
 
 type Geometry = Record<string, unknown>;
 
@@ -174,6 +181,13 @@ const geometryPatch = (
       x: real.x - delta.x + outShift.x,
       y: real.y - delta.y + outShift.y,
     };
+  }
+
+  // Прогресс-бар: поворот меняет и ось заполнения. Отражения её не трогают — при них
+  // стороны остаются на местах, меняется только направление, а его бар не различает.
+  if (type === "progress_bar" && swapsSides(op)) {
+    patch.orientation = eff.orientation === "vertical" ? "horizontal" : "vertical";
+    return patch;
   }
 
   // Дуга: габарит квадратный (2r × 2r), меняются только углы.

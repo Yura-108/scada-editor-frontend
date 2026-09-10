@@ -35,3 +35,28 @@ export function buildDirectBinding(
     ],
   };
 }
+
+/**
+ * Прямая привязка «target ← ТЕГ»: значение пишется рантаймом напрямую по `tag_id`.
+ *
+ * `code` пуст намеренно — это не JS-биндинг: значение маршрутизируется по тегу так же,
+ * как живые значения ячеек таблиц (см. bindingIndex.ts). Поэтому элементу не нужно ни
+ * собственных свойств, ни скоупа: одной такой привязки достаточно, чтобы прогресс-бар
+ * следовал за тегом.
+ */
+export function buildDirectTagBinding(target: string, tagId: string): TagBinding {
+  return {
+    v: 1,
+    id: createUuid(),
+    // Имя показывается в списке привязок; путь тега — самое понятное, что тут можно дать.
+    name: tagId,
+    enabled: true,
+    direct: true,
+    directTarget: target,
+    tag: tagId,
+    code: "",
+    // Триггер один и он же источник: без этого прогон при смене схемы не считал бы
+    // значение известным (см. hasKnownTrigger).
+    triggers: [tagId],
+  };
+}

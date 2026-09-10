@@ -1,14 +1,16 @@
 "use client";
 
 import React, {useState} from "react";
-import {Boxes, Pencil, Plus, Trash2} from "lucide-react";
+import {Boxes, Pencil, Plus, Tag as TagIcon, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
 import {collectTagScope} from "@/lib/runtime/bindingScope";
-import {buildDirectBinding} from "@/lib/runtime/directBinding";
+import {buildDirectBinding, buildDirectTagBinding} from "@/lib/runtime/directBinding";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
+import {ChooseTagModal} from "./ChooseTagModal";
+import {shortTagPath} from "@/lib/editor/tagPath";
 
 interface BindingsTabProps {
   element: DiagramElement;
@@ -23,8 +25,9 @@ const DIRECT_TARGET = "value";
  * (исполняются на клиенте в режиме монитора), тумблер включения,
  * редактирование/удаление, создание нового.
  *
- * Два способа: «Привязать свойство» — прямая привязка «значение ← свойство»
- * без кода и имени (просто выбрать свойство); «Скрипт-привязка» — редактор
+ * Три способа: «Привязать тег» — прямая привязка «значение ← тег», значение пишет
+ * рантайм по `tag_id`, и собственных свойств элементу не нужно; «Привязать свойство» —
+ * прямая привязка «значение ← свойство другого компонента»; «Скрипт-привязка» — редактор
  * JavaScript для сложной логики (setState по порогу и т.п.).
  */
 export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClasses}) => {
@@ -33,6 +36,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
   const addBinding = useEditorStore(s => s.addBinding);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const bindings = element.bindings ?? [];
   // Раньше требовалось СОХРАНЁННО� свойство: биндинг ссылался на него номером, а номер
@@ -52,15 +56,16 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
     <div className="space-y-3">
       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Привязки</h4>
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        В режиме монитора значение элемента может браться напрямую из свойства другого
-        компонента, либо управляться JavaScript-скриптом (переключение состояния, смена
-        визуальных свойств).
+        В режиме монитора значение элемента может следовать за тегом, браться из свойства
+        другого компонента, либо управляться JavaScript-скриптом (переключение состояния,
+        смена визуальных свойств).
       </p>
 
       {!canSave && (
         <div className="text-xs text-amber-600 dark:text-amber-400">
-          У элемента нет ни одного свойства — привязку не к чему привязать. Сначала добавьте
-          элементу свойство на вкладке «Свойства».
+          У элемента нет свойств — привязать можно только тег (кнопка ниже). Для привязки
+          к свойству другого компонента сначала добавьте элементу свойство на вкладке
+          «Свойства».
         </div>
       )}
 
@@ -88,7 +93,16 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
                   className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-blue-500"
                 />
 
-                {binding.direct && ref ? (
+                {binding.direct && binding.tag ? (
+                  <div
+                    className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 truncate flex items-center gap-1.5"
+                    title={`Значение ← тег ${binding.tag}`}
+                  >
+                    <TagIcon size={13} className="text-sky-500 shrink-0" />
+                    <span className="text-gray-500 dark:text-gray-400">значение ←</span>
+                    <span className="truncate">{shortTagPath(binding.tag)}</span>
+                  </div>
+                ) : binding.direct && ref ? (
                   <div
                     className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 truncate flex items-center gap-1.5"
                     title={`Значение ← ${ref.componentLabel} · ${ref.propertyName}`}
@@ -131,6 +145,11 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
         </div>
       )}
 
+      <button className={addButtonClasses} onClick={() => setTagPickerOpen(true)}>
+        <TagIcon size={18} />
+        Привязать тег
+      </button>
+
       <button className={addButtonClasses} onClick={() => setPickerOpen(true)}>
         <Boxes size={18} />
         Привязать свойство
@@ -148,6 +167,12 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onPick={createDirectBinding}
+      />
+
+      <ChooseTagModal
+        open={tagPickerOpen}
+        onClose={() => setTagPickerOpen(false)}
+        onPick={(tagId) => addBinding(element.key, buildDirectTagBinding(DIRECT_TARGET, tagId))}
       />
     </div>
   );

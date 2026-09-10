@@ -1,12 +1,76 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { Group, Rect, Text } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
+
+/** Длительность доводки заполнения до нового значения. */
+const FILL_ANIM_MS = 400;
+
+/**
+ * Скачок, ниже которого анимация не нужна.
+ *
+ * Телеметрия шумит: у аналогового тега значение дрожит на десятых долях процента каждый
+ * кадр. Анимировать такое — значит держать постоянную перерисовку холста ради невидимого
+ * глазу движения.
+ */
+const FILL_ANIM_EPSILON = 0.5;
+
+/**
+ * Плавная доводка значения.
+ *
+ * Считаем в React, а не Konva-твином: заполнение рисуется двумя разными прямоугольниками
+ * (вертикальный растёт снизу вверх, то есть у него меняется ещё и `y`), плюс от значения
+ * зависит скругление угла и подпись. Твин по одному узлу всё это не покрыл бы.
+ */
+function useAnimatedValue(target: number): number {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+  const startRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Микроскачки применяем мгновенно — см. FILL_ANIM_EPSILON.
+    if (Math.abs(target - shown) < FILL_ANIM_EPSILON) {
+      if (shown !== target) setShown(target);
+      return;
+    }
+
+    fromRef.current = shown;
+    startRef.current = performance.now();
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - startRef.current) / FILL_ANIM_MS);
+      // easeOutCubic: быстрый старт и мягкая остановка — движение читается как «дошло»,
+      // а не как «дёрнулось».
+      const eased = 1 - Math.pow(1 - t, 3);
+      setShown(fromRef.current + (target - fromRef.current) * eased);
+      rafRef.current = t < 1 ? requestAnimationFrame(step) : null;
+    };
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+    // `shown` намеренно не в зависимостях: он меняется каждым кадром и перезапускал бы
+    // анимацию сам на себя. Цель анимации — только `target`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+
+  return shown;
+}
+
+/** Число из значения тега: с провода оно приходит строкой. */
+const toPercent = (raw: unknown): number => {
+  const n = typeof raw === "number" ? raw : Number(String(raw ?? "").trim().replace(",", "."));
+  // Значение тега берётся как проценты 0–100 и просто ограничивается по краям.
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+};
 
 export function ProgressBarShapeElement({ el, isSelected, onElementClick, updateElementVisual, stateId, runtime }: ShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
@@ -16,7 +80,13 @@ export function ProgressBarShapeElement({ el, isSelected, onElementClick, update
   const pad = 4;
   const w = rendered.w || 200;
   const h = rendered.h || 20;
-  const value = Math.max(0, Math.min(100, Number(rendered.value) || 0));
+
+  /**
+   * Значение. В мониторе сюда приезжает живое значение тега: прямая привязка
+   * (`direct` + `tag`) кладёт его в рантайм-оверрайд `value` без исполнения кода —
+   * см. bindingIndex.ts. В редакторе это просто поле элемента.
+   */
+  const value = useAnimatedValue(toPercent(rendered.value));
   const isVertical = rendered.orientation === "vertical";
 
   const trackColor = rendered.backgroundColor || rendered.bg || (isDark ? "#3f3f46" : "#e5e7eb");
@@ -63,7 +133,7 @@ export function ProgressBarShapeElement({ el, isSelected, onElementClick, update
       {/* Трек (фон) */}
       <Rect x={0} y={0} width={w} height={h} fill={trackColor} cornerRadius={r} />
 
-      {/* Заполнение */}
+      {/* Заполнение. Вертикальный растёт снизу вверх — у него меняется и `y`. */}
       {fillLength > 0 && (
         isVertical ? (
           <Rect x={0} y={h - fillLength} width={w} height={fillLength} fill={fillColor} cornerRadius={fillRadius} />
@@ -91,9 +161,9 @@ export function ProgressBarShapeElement({ el, isSelected, onElementClick, update
         >
           <Text
             x={-length / 2}
-            y={-textBoxHeight / 2}           // ← изменено
+            y={-textBoxHeight / 2}
             width={length}
-            height={textBoxHeight}           // ← изменено (меньше толщины)
+            height={textBoxHeight}
             text={displayText}
             fontSize={fontSize}
             fill={textCol}

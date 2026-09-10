@@ -205,6 +205,14 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       }
     }
 
+    // Прямые привязки «значение элемента ← тег» (прогресс-бар и т.п.): тем же путём,
+    // что ячейки, — без исполнения кода, элементу не нужно собственных свойств.
+    for (const {tagId, value} of changedTags) {
+      for (const target of idx.directTagsByTagId.get(tagId) ?? []) {
+        (tableRowProps[target.elementKey] ??= {})[target.target] = value;
+      }
+    }
+
     if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
     const store = useEditorStore.getState();
@@ -297,6 +305,15 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         const value = valuesByPropNameRef.current.get(p.name) ?? String(p.default_value ?? "");
         valuesByPropNameRef.current.set(p.name, value);
         (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = value;
+      }
+
+      // Прямые привязки к тегу: без сида схема, открытая после прихода значений,
+      // осталась бы со значением по умолчанию — flush исполняет только ИЗМЕНИВШИЕСЯ теги.
+      for (const b of el.bindings ?? []) {
+        if (b.enabled === false || !b.direct || !b.tag) continue;
+        const live = valuesRef.current.get(b.tag);
+        if (live == null) continue;
+        (propsByKey[el.key] ??= {})[b.directTarget || "value"] = live;
       }
     }
 
