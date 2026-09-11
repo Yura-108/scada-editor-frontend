@@ -183,9 +183,14 @@ With no margin, a group made only of horizontal (or vertical) lines has `h` (or 
 its background `Rect` in `GroupNode` — the group's only hit area — has no fill to click. That
 `Rect` therefore gets an invisible `hitStrokeWidth` whenever a side is below `MIN_SIZE`.
 The selection / active-group frame is **not** drawn by that background `Rect` (it sits under
-the members, so an edge shape would hide a frame that now touches it): `GroupNode` draws it as
-two non-listening `Rect`s *after* the members — a solid `handleFill` halo under the dashed
-line, both with `strokeScaleEnabled={false}` so width and dash are in screen pixels.
+the members, so an edge shape would hide it): `GroupFrame` in `CanvasNode.tsx` draws it
+*after* the members as two non-listening `Rect`s — a `handleFill` halo under a solid
+`selection`-blue line (same look for a selected and an entered group), both with
+`strokeScaleEnabled={false}` so the width is in screen pixels. The line stands **2 screen
+pixels** outside the content (`FRAME_GAP_PX`) — a purely visual offset, the group's
+`x/y/w/h` stay on the content. Converting screen px to world units needs `zoom`, which
+`GroupFrame` reads through its own `camera.zoom` subscription (never through ctx); it is
+mounted only while the frame is visible.
 
 Members are filtered through `isBoundsContributor` (`src/lib/editor/boundsContributor.ts`)
 before the union: `visible: false` (CONTUR's `contur_meta` element used to stretch frames to

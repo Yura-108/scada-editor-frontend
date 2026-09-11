@@ -6,6 +6,7 @@ import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import { useEditorStore } from "@/store/useEditorStore";
 import { EditorRenderContext, MIN_SIZE } from "../types";
 import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
@@ -86,7 +87,7 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
   // у контейнера в overrides лежат x/y/w/h, и при переключении состояния рамка
   // должна ехать вместе с содержимым.
   const rendered = getRenderedElementWith(group, state.stateId, state.runtime);
-  const frameColor = isActiveGroup ? themeColors.activeGroup : isSelected ? themeColors.selection : null;
+  const showFrame = isActiveGroup || isSelected;
 
   return (
     <Group
@@ -156,37 +157,71 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
           <CanvasNode key={childKey} elementKey={childKey} ctx={ctx} />
         ))}
       </Group>
-      {/* Рамка выделения / открытой группы — ПОСЛЕ состава, то есть поверх него: рамка
-          идёт ровно по контуру, и прямоугольник с краю её накрывал бы. Под пунктиром
-          сплошная подложка цвета фона, чтобы рамку было видно на фигуре любого цвета,
-          в том числе того же синего. strokeScaleEnabled={false} — толщина и штрих в
-          экранных пикселях: рамка одинаково читается на любом зуме. */}
-      {frameColor && (
-        <>
-          <Rect
-            x={0}
-            y={0}
-            width={rendered.w}
-            height={rendered.h}
-            stroke={themeColors.handleFill}
-            strokeWidth={4}
-            opacity={0.85}
-            strokeScaleEnabled={false}
-            listening={false}
-          />
-          <Rect
-            x={0}
-            y={0}
-            width={rendered.w}
-            height={rendered.h}
-            stroke={frameColor}
-            strokeWidth={2}
-            dash={isActiveGroup ? [6, 3] : [4, 3]}
-            strokeScaleEnabled={false}
-            listening={false}
-          />
-        </>
+      {/* Рамка — ПОСЛЕ состава, то есть поверх него: так её не накрывает ни фигура с
+          краю, ни соседняя группа внутри. */}
+      {showFrame && (
+        <GroupFrame
+          w={rendered.w}
+          h={rendered.h}
+          color={themeColors.selection}
+          haloColor={themeColors.handleFill}
+        />
       )}
     </Group>
+  );
+}
+
+/** Зазор между содержимым группы и внутренним краем линии рамки, экранные px. */
+const FRAME_GAP_PX = 4;
+/** Толщина линии рамки, экранные px. */
+const FRAME_WIDTH_PX = 2;
+/** Толщина подложки под линией, экранные px. */
+const FRAME_HALO_PX = 4;
+
+interface GroupFrameProps {
+  w: number;
+  h: number;
+  color: string;
+  haloColor: string;
+}
+
+/**
+ * Рамка выделенной / открытой группы — сплошная линия чуть снаружи содержимого.
+ *
+ * Отступ — в ЭКРАННЫХ пикселях, а не клетками: у самой группы отступа нет
+ * (`GROUP_PADDING = 0`, её x/y/w/h лежат ровно по контуру членов), сдвигается только
+ * нарисованная линия. Экранный отступ в мировых единицах — это `px / zoom`, поэтому
+ * зум читается ЛОКАЛЬНОЙ подпиской, как у ручек ресайза: положить его в ctx значило бы
+ * перерисовывать всю сцену на каждый тик колеса. Компонент смонтирован, только пока
+ * рамка видна, так что подписка есть у одной-двух групп, а не у всех.
+ *
+ * Под линией — подложка цвета фона: рамку видно поверх фигуры любого цвета, в том
+ * числе того же синего. `strokeScaleEnabled={false}` держит толщину в экранных px.
+ */
+function GroupFrame({ w, h, color, haloColor }: GroupFrameProps) {
+  const zoom = useEditorStore(s => s.camera.zoom);
+  // Ось линии — на половину её толщины дальше зазора: тогда между содержимым и
+  // внутренним краем синей линии ровно FRAME_GAP_PX.
+  const inset = (FRAME_GAP_PX + FRAME_WIDTH_PX / 2) / zoom;
+  const box = { x: -inset, y: -inset, width: w + inset * 2, height: h + inset * 2 };
+
+  return (
+    <>
+      <Rect
+        {...box}
+        stroke={haloColor}
+        strokeWidth={FRAME_HALO_PX}
+        opacity={0.85}
+        strokeScaleEnabled={false}
+        listening={false}
+      />
+      <Rect
+        {...box}
+        stroke={color}
+        strokeWidth={FRAME_WIDTH_PX}
+        strokeScaleEnabled={false}
+        listening={false}
+      />
+    </>
   );
 }
