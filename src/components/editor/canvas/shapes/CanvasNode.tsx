@@ -86,6 +86,7 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
   // у контейнера в overrides лежат x/y/w/h, и при переключении состояния рамка
   // должна ехать вместе с содержимым.
   const rendered = getRenderedElementWith(group, state.stateId, state.runtime);
+  const frameColor = isActiveGroup ? themeColors.activeGroup : isSelected ? themeColors.selection : null;
 
   return (
     <Group
@@ -117,16 +118,14 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
         }
       }}
     >
-      {/* Background rect: hit area + selection/active border */}
+      {/* Фоновая хит-область группы. Рамку выделения она НЕ рисует: фон лежит под
+          составом, и рамка по контуру содержимого пряталась бы под крайними фигурами. */}
       <Rect
         x={0}
         y={0}
         width={rendered.w}
         height={rendered.h}
         fill="transparent"
-        stroke={isActiveGroup ? themeColors.activeGroup : isSelected ? themeColors.selection : "transparent"}
-        strokeWidth={isActiveGroup || isSelected ? 2 : 0}
-        dash={isActiveGroup ? [6, 3] : [4, 3]}
         // Рамка без отступа у группы из одних горизонтальных (вертикальных) линий имеет
         // нулевую высоту (ширину): у заливки не остаётся площади, и группу не выделить
         // кликом. Невидимая хит-обводка даёт такой рамке полосу, за которую можно взяться.
@@ -157,6 +156,37 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
           <CanvasNode key={childKey} elementKey={childKey} ctx={ctx} />
         ))}
       </Group>
+      {/* Рамка выделения / открытой группы — ПОСЛЕ состава, то есть поверх него: рамка
+          идёт ровно по контуру, и прямоугольник с краю её накрывал бы. Под пунктиром
+          сплошная подложка цвета фона, чтобы рамку было видно на фигуре любого цвета,
+          в том числе того же синего. strokeScaleEnabled={false} — толщина и штрих в
+          экранных пикселях: рамка одинаково читается на любом зуме. */}
+      {frameColor && (
+        <>
+          <Rect
+            x={0}
+            y={0}
+            width={rendered.w}
+            height={rendered.h}
+            stroke={themeColors.handleFill}
+            strokeWidth={4}
+            opacity={0.85}
+            strokeScaleEnabled={false}
+            listening={false}
+          />
+          <Rect
+            x={0}
+            y={0}
+            width={rendered.w}
+            height={rendered.h}
+            stroke={frameColor}
+            strokeWidth={2}
+            dash={isActiveGroup ? [6, 3] : [4, 3]}
+            strokeScaleEnabled={false}
+            listening={false}
+          />
+        </>
+      )}
     </Group>
   );
 }

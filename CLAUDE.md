@@ -182,6 +182,10 @@ the counter-shift loop that adjusts children in base *and* in every state's over
 With no margin, a group made only of horizontal (or vertical) lines has `h` (or `w`) of 0, so
 its background `Rect` in `GroupNode` — the group's only hit area — has no fill to click. That
 `Rect` therefore gets an invisible `hitStrokeWidth` whenever a side is below `MIN_SIZE`.
+The selection / active-group frame is **not** drawn by that background `Rect` (it sits under
+the members, so an edge shape would hide a frame that now touches it): `GroupNode` draws it as
+two non-listening `Rect`s *after* the members — a solid `handleFill` halo under the dashed
+line, both with `strokeScaleEnabled={false}` so width and dash are in screen pixels.
 
 Members are filtered through `isBoundsContributor` (`src/lib/editor/boundsContributor.ts`)
 before the union: `visible: false` (CONTUR's `contur_meta` element used to stretch frames to
