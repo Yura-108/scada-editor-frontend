@@ -6,7 +6,7 @@ import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { EditorRenderContext } from "../types";
+import { EditorRenderContext, MIN_SIZE } from "../types";
 import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
 
@@ -127,6 +127,10 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
         stroke={isActiveGroup ? themeColors.activeGroup : isSelected ? themeColors.selection : "transparent"}
         strokeWidth={isActiveGroup || isSelected ? 2 : 0}
         dash={isActiveGroup ? [6, 3] : [4, 3]}
+        // Рамка без отступа у группы из одних горизонтальных (вертикальных) линий имеет
+        // нулевую высоту (ширину): у заливки не остаётся площади, и группу не выделить
+        // кликом. Невидимая хит-обводка даёт такой рамке полосу, за которую можно взяться.
+        hitStrokeWidth={rendered.w < MIN_SIZE || rendered.h < MIN_SIZE ? MIN_SIZE / 2 : undefined}
         listening={true}
         onClick={(e) => {
           e.cancelBubble = true;

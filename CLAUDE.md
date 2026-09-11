@@ -171,10 +171,17 @@ with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` r
 ### Group frames hug their content
 
 `recomputeAncestorBounds` (`useEditorStore.ts`) pads with `GROUP_PADDING` — the **same**
-constant `unionBounds` uses when a group is created. There used to be a second
+constant `unionBounds` uses when a group is created. It is now **0**: the frame runs exactly
+along the members' outline (geometric edges — stroke width is not part of the bounds). It was
+20 before, so older saved schemes keep the 20px margin until their group is next edited. Any
+non-zero value must stay a multiple of `GRID`. There used to be a second
 `RECOMPUTE_EXTRA_PADDING` on top, so a group was born with a 20px margin and jumped to 40 the
 moment any member moved; the origin-shift it claimed to compensate for is actually handled by
 the counter-shift loop that adjusts children in base *and* in every state's overrides.
+
+With no margin, a group made only of horizontal (or vertical) lines has `h` (or `w`) of 0, so
+its background `Rect` in `GroupNode` — the group's only hit area — has no fill to click. That
+`Rect` therefore gets an invisible `hitStrokeWidth` whenever a side is below `MIN_SIZE`.
 
 Members are filtered through `isBoundsContributor` (`src/lib/editor/boundsContributor.ts`)
 before the union: `visible: false` (CONTUR's `contur_meta` element used to stretch frames to

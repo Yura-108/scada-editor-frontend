@@ -5,7 +5,15 @@ import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
 import {shiftElementPositions} from "@/lib/editor/shiftPositions";
 
-export const GROUP_PADDING = 20;
+/**
+ * Отступ рамки группы от её содержимого. Ноль — рамка идёт ровно по контуру членов.
+ *
+ * Значение обязано быть кратным сетке (`GRID`): origin группы = край содержимого − отступ,
+ * и некратный отступ снёс бы содержимое с сетки при первом же перетаскивании группы.
+ * Толщина обводки членов в габарит не входит (см. `getElementBounds`), поэтому рамка
+ * проходит по оси линий и по геометрическому краю фигур, а не по внешнему краю штриха.
+ */
+export const GROUP_PADDING = 0;
 
 export type ElementBounds = ReturnType<typeof getElementBounds>;
 
