@@ -23,6 +23,16 @@ export interface BuildMonitorMenuDeps {
  * Пустой массив — меню не открывается вовсе: у компонента нечего настраивать и
  * нечего запускать.
  */
+/**
+ * Есть ли у элемента хоть один пункт меню — теговые свойства или действия монитора.
+ *
+ * Нужно отдельно от сборки: клик разрешается в САМЫЙ ГЛУБОКИЙ элемент, а теги и скрипты
+ * в схемах обычно висят на компоненте, тогда как его внутренние примитивы пусты. Без
+ * подъёма до ближайшего предка с пунктами ПКМ по такому примитиву не открывал бы ничего.
+ */
+export const hasMonitorMenu = (el: DiagramElement): boolean =>
+  tagProperties(el).length > 0 || monitorActions(el).length > 0;
+
 export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps): CanvasMenuItem[] {
   const { closeMenu, isLive } = deps;
   const items: CanvasMenuItem[] = [];

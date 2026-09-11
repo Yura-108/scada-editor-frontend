@@ -168,6 +168,51 @@ with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` r
 - The tag value is taken **as percent 0-100** by the progress bar and merely clamped; there is
   no min/max scaling. A physical quantity must be normalised on the PLC side.
 
+### Group frames hug their content
+
+`recomputeAncestorBounds` (`useEditorStore.ts`) pads with `GROUP_PADDING` — the **same**
+constant `unionBounds` uses when a group is created. There used to be a second
+`RECOMPUTE_EXTRA_PADDING` on top, so a group was born with a 20px margin and jumped to 40 the
+moment any member moved; the origin-shift it claimed to compensate for is actually handled by
+the counter-shift loop that adjusts children in base *and* in every state's overrides.
+
+Members are filtered through `isBoundsContributor` (`src/lib/editor/boundsContributor.ts`)
+before the union: `visible: false` (CONTUR's `contur_meta` element used to stretch frames to
+the origin), zero-size elements (which pin a corner while drawing nothing), and empty groups
+(whose bounds fall back to their own already-padded `w/h`, compounding ~80px per nesting
+level). Point-based types (line/curve/polygon) pass through — their bounds come from points,
+so a horizontal line's `h: 0` is not "empty". The filter lives there rather than in
+`getElementBounds` on purpose: that module also feeds fit-to-screen, the selection frame and
+smart guides.
+
+`POSITIONAL_KEYS` in `updateElementVisual` gates the recompute, so it lists everything that
+moves the measured box — not just coordinates but `text`/`fontSize`/`fontFamily`/`bold`/
+`autoWidth` (text is measured by `measureText`, not `w/h`), `rotate` and `visible`.
+
+Frames are **not** migrated on load: an old scheme tightens when its group is next edited.
+
+### Monitor picking resolves to the deepest element
+
+`pickMonitorTarget` descends into `composition`+`children` and returns the innermost element
+under the cursor, falling back to a container when no child of it is hit (so a click in a
+group's padding still selects the group). `activeGroupKey` only chooses the level the descent
+starts from, so enter/exit behaviour is unchanged. This makes the right-click menu agree with
+`onClick` scripts, which already resolved deeply — `MonitorInteractionLayer` lays a rect over
+every element with a handler at any depth and Konva takes the topmost.
+
+Two consequences to keep in mind:
+
+- **Double-click needs `pickMonitorContainer`, not the deep pick** — the deep pick returns a
+  leaf, and entering a group by it would never fire.
+- **The context menu climbs back up.** Tags and `displayed` scripts usually live on the
+  *component*, while its inner primitives carry none, so `Canvas.handleMonitorContextMenu`
+  walks `parentKey` from the picked element to the nearest ancestor with menu items
+  (`hasMonitorMenu`). Without that, right-clicking a primitive inside a component would open
+  nothing where it used to open the component's menu.
+
+Rotation is still ignored by the pick (axis-aligned bbox) while the interaction rects honour
+it, so the two can disagree at the edges of a rotated element.
+
 ### Monitor: component menu, actions, manual tag values
 
 The monitor is `<Canvas readOnly />`: the content layer is `listening={false}`, so shapes are out

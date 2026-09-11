@@ -15,6 +15,7 @@ import {ElementIndex, getElementIndex} from "@/lib/editor/elementIndex";
 import {shiftElementPositions} from "@/lib/editor/shiftPositions";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {zIndexOf} from "@/lib/editor/zOrder";
+import {isBoundsContributor} from "@/lib/editor/boundsContributor";
 import {
   isMetaElement, isSameSheet, readSheetFromRaw, resolveSheet, SHEET_MAX, SHEET_MIN,
 } from "@/lib/editor/sheet";
@@ -668,8 +669,13 @@ const sceneBelongsToCurrentProject = (
  * снизу вверх, чтобы рамки групп всегда облегали своё содержимое.
  * Компенсирует сдвиг origin группы в локальных координатах детей, чтобы не
  * было визуального прыжка при расширении рамки в сторону верхнего-левого угла.
+ *
+ * Отступ здесь ОДИН и тот же, что при создании группы (`GROUP_PADDING`). Раньше
+ * пересчёт добавлял сверху ещё 20 (`RECOMPUTE_EXTRA_PADDING`): группа создавалась с
+ * полем 20, а после первого же сдвига ребёнка рамка навсегда прыгала на 20 наружу
+ * с каждой стороны. Компенсация сдвига origin, которую обещал тот отступ, на самом
+ * деле сделана отдельно и честно — циклом встречного сдвига детей ниже.
  */
-const RECOMPUTE_EXTRA_PADDING = 20; // extra on top of GROUP_PADDING
 
 /**
  * Пересчитывает рамки групп-предков после перемещения элементов.
@@ -687,7 +693,7 @@ const recomputeAncestorBounds = (
   sceneId: number | null | undefined,
 ): DiagramElement[] => {
   const sceneIdStr = String(sceneId ?? "");
-  const totalPadding = GROUP_PADDING + RECOMPUTE_EXTRA_PADDING;
+  const totalPadding = GROUP_PADDING;
 
   const index = getElementIndex(elements);
 
@@ -749,6 +755,11 @@ const recomputeAncestorBounds = (
     for (const childKey of childKeys) {
       const child = workIndex.byKey[childKey];
       if (!child) continue;
+      // Рамка облегает то, что ВИДНО. Скрытый элемент рендер пропускает
+      // (`CanvasNode`), но `getElementBounds` про `visible` не знает вовсе — так
+      // служебный элемент импорта CONTUR (`contur_meta`, visible: false, габарит 0)
+      // молча растягивал рамку до начала координат.
+      if (!isBoundsContributor(child, workIndex)) continue;
       const b = elementBoundsRendered(child, workIndex);
       if (b.minX < minX) minX = b.minX;
       if (b.minY < minY) minY = b.minY;
@@ -756,6 +767,7 @@ const recomputeAncestorBounds = (
       if (b.maxY > maxY) maxY = b.maxY;
     }
 
+    // Ни одного видимого члена — облегать нечего, рамку оставляем как есть.
     if (!isFinite(minX)) continue;
 
     const parentAbs = resolveParentAbsoluteIndexed(group.parentKey, workIndex, sceneId);
@@ -1897,8 +1909,16 @@ export const useEditorStore = create<EditorState>()(temporal(
 
            if (!anyChanged) return {};
 
-           // Если изменились позиционные поля — пересчитываем рамки групп-предков
-           const POSITIONAL_KEYS = new Set(["x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points"]);
+           // Если изменились поля, влияющие на габарит — пересчитываем рамки групп-предков.
+           //
+           // Кроме собственно позиционных сюда входят: параметры текста (его габарит меряет
+           // `measureText`, а не `w/h` — укоротил подпись, и рамка осталась под старую длину),
+           // `rotate` (меняется осевой bbox) и `visible` (скрытый элемент из рамки выпадает,
+           // см. isBoundsContributor).
+           const POSITIONAL_KEYS = new Set([
+             "x", "y", "w", "h", "x1", "y1", "x2", "y2", "radius", "points",
+             "text", "fontSize", "fontFamily", "bold", "autoWidth", "rotate", "visible",
+           ]);
            const hasPositionalChange = Object.keys(updates).some(k => POSITIONAL_KEYS.has(k));
            if (hasPositionalChange) {
              return { elements: recomputeAncestorBounds(updatedElements, keys, state.scene?.id) };

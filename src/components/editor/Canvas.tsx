@@ -40,8 +40,8 @@ import { useZoomControls } from "./canvas/hooks/useZoomControls";
 import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
-import { buildMonitorMenu } from "./canvas/buildMonitorMenu";
-import { isMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
+import { buildMonitorMenu, hasMonitorMenu } from "./canvas/buildMonitorMenu";
+import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 import type { DiagramElement } from "@/types/editorElement.type";
@@ -262,10 +262,27 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     });
   }, []);
 
-  // Монитор: меню компонента по правому клику. Пустой список пунктов — меню не
-  // открывается вовсе (у компонента нечего настраивать и нечего запускать).
+  /**
+   * Монитор: меню по правому клику — от того элемента, ПО КОТОРОМУ щёлкнули.
+   *
+   * Хит-тест отдаёт самый глубокий элемент под курсором, а теги и действия в схемах обычно
+   * висят на компоненте, тогда как его внутренние примитивы пусты. Поэтому от найденного
+   * поднимаемся по `parentKey` до ближайшего предка, у которого пункты есть: «точечно»
+   * сохраняется (сначала пробуем именно кликнутый), но клик не проваливается в пустоту.
+   *
+   * Ничего не нашли по всей цепочке — меню не открываем вовсе.
+   */
   const handleMonitorContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
-    const el = pickMonitorAtPointer();
+    const picked = pickMonitorAtPointer();
+    if (!picked) return;
+
+    const byKey = useEditorStore.getState().elements;
+    const map = new Map(byKey.map(el => [el.key, el] as const));
+
+    let el: DiagramElement | undefined = picked;
+    while (el && !hasMonitorMenu(el)) {
+      el = el.parentKey ? map.get(el.parentKey) : undefined;
+    }
     if (!el) return;
 
     const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive() });
@@ -283,7 +300,16 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     // Проверяем именно цель Konva: в readOnly только эти области и слушают.
     if (e.target !== e.target.getStage()) return;
 
-    const el = pickMonitorAtPointer();
+    // Для входа нужен КОНТЕЙНЕР, а не самый глубокий элемент: тот, как правило, лист,
+    // и заходить внутрь стало бы нечем.
+    const pos = stageRef.current?.getRelativePointerPosition();
+    if (!pos) return;
+    const s = useEditorStore.getState();
+    const el = pickMonitorContainer(pos, {
+      elementIndex: getElementIndex(s.elements),
+      activeGroupKey: s.activeGroupKey,
+      sceneId: String(s.scene?.id ?? ""),
+    });
     if (el && isMonitorContainer(el)) enterGroup(el.key);
   };
 
