@@ -15,7 +15,7 @@ export type SaveKind = "MANUAL" | "AUTOSAVE";
 export type VersionKind = SaveKind | "RESTORE";
 
 /** Вид документа в пути новых эндпоинтов. Наш BFF ходит по /api/editor/history/{docType}/… */
-export type VersionDocType = "scenes" | "templates";
+export type VersionDocType = "scenes" | "templates" | "automation";
 
 /** Строка списка версий. `restored_from` есть только у kind === "RESTORE". */
 export type VersionSummary = {
