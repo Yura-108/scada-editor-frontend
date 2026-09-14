@@ -9,11 +9,16 @@
  * рантайм и находит канал.
  */
 
+import {VARIABLE_TAG_PREFIX} from "@/types/automation.types";
+
 /** Сколько ведущих сегментов пути скрывается: проект и схема. */
 const HIDDEN_PREFIX_SEGMENTS = 2;
 
 export function shortTagPath(path: string | null | undefined): string {
   if (!path) return "";
+  // `@var.pump.speedSp` — не путь канала, а переменная проекта: префикса «проект.схема»
+  // у неё нет, и срезанная подпись `speedSp` потеряла бы, что это переменная.
+  if (path.startsWith(VARIABLE_TAG_PREFIX)) return path;
 
   const parts = path.split(".");
   // Отрезать нечего: пустая подпись хуже длинной, показываем как есть.
