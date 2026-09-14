@@ -3,7 +3,7 @@
 import React, {useState} from "react";
 import Link from "next/link";
 import {cn} from "@/lib/utils";
-import {Activity, HashIcon, Layout, Menu, Scroll, X} from "lucide-react";
+import {Activity, Cpu, HashIcon, Layout, Menu, Scroll, X} from "lucide-react";
 import {usePathname} from "next/navigation";
 
 const navItems = [
@@ -16,6 +16,11 @@ const navItems = [
     name: "Монитор",
     href: "/monitor",
     icon: Activity,
+  },
+  {
+    name: "Автоматизация",
+    href: "/automation",
+    icon: Cpu,
   },
   {
     name: "База каналов",

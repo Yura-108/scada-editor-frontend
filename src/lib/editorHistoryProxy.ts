@@ -3,14 +3,14 @@ import {NextResponse} from "next/server";
 /**
  * Общая часть прокси-роутов истории версий (`/api/editor/history/{docType}/{id}/…`).
  *
- * Путь на бэкенде — `/api/editor/{scenes|templates}/{id}/…`, то есть вид документа
+ * Путь на бэкенде — `/api/editor/{scenes|templates|automation}/{id}/…`, то есть вид документа
  * подставляется В URL. Поэтому `docType` проверяется белым списком, а не «как пришло»:
  * иначе любой сегмент из адресной строки уезжал бы в путь запроса к бэкенду.
  */
 
 export const EDITOR_BACKEND_URL = process.env.BACKEND_URL_EDITOR || "http://localhost:8080";
 
-const DOC_TYPES = ["scenes", "templates"] as const;
+const DOC_TYPES = ["scenes", "templates", "automation"] as const;
 export type VersionDocType = (typeof DOC_TYPES)[number];
 
 export const parseDocType = (raw: unknown): VersionDocType | null =>

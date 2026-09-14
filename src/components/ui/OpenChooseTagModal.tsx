@@ -16,6 +16,8 @@ import { PropertyCreateDto } from "@/types/tags.types";
 import { isBooleanValueType } from "@/lib/editor/valueTypes";
 import { Button, ModalFooter } from "@/components/ui/Button";
 import { confirmDeleteProperty } from "@/lib/editor/confirmDeleteProperty";
+import {fetchAutomation} from "@/lib/automation/automationApi";
+import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
 
 interface Props {
   /**
@@ -28,6 +30,16 @@ interface Props {
 }
 
 type PropertyType = "Тег" | "Глобальный" | "Локальный";
+
+/** Откуда берётся tag_id свойства типа «Тег»: канал из дерева или переменная проекта. */
+type TagSource = "channel" | "variable";
+
+/** Типы переменной automation → типы значения свойства (у свойств словарь свой). */
+const VARIABLE_VALUE_TYPE: Record<string, string> = {bool: "boolean", int: "integer", float: "float", string: "string"};
+
+/** Имя переменной проекта из tag_id вида `@var.<имя>`; null — это не переменная. */
+const variableNameOf = (tagId: string | undefined | null): string | null =>
+  tagId?.startsWith(VARIABLE_TAG_PREFIX) ? tagId.slice(VARIABLE_TAG_PREFIX.length) : null;
 
 const propertyTypeOptions: Array<{ value: PropertyType; label: string }> = [
   { value: "Тег", label: "Тег" },
@@ -65,6 +77,21 @@ export function AddPropertyContent({ elementKey, property }: Props) {
   const [onCanChange, setOnCanChange] = useState(property?.OnCanChange || "");
   const [isLoading, setIsLoading] = useState(false);
 
+  const initialVariable = variableNameOf(property?.tag_id);
+  const [tagSource, setTagSource] = useState<TagSource>(initialVariable ? "variable" : "channel");
+  const [variableName, setVariableName] = useState<string | null>(initialVariable);
+  const [variables, setVariables] = useState<AutomationVariable[] | null>(null);
+  const currentProjectId = useEditorStore((s) => s.currentProject?.id ?? null);
+
+  // Список переменных грузим, только когда пользователь выбрал этот источник.
+  useEffect(() => {
+    if (tagSource !== "variable" || variables !== null) return;
+    if (currentProjectId == null) { setVariables([]); return; }
+    fetchAutomation(currentProjectId)
+      .then(set => setVariables(set.variables ?? []))
+      .catch(() => setVariables([]));
+  }, [tagSource, variables, currentProjectId]);
+
   useEffect(() => {
     setName(property?.name || "");
     setPropertyType((property?.property_type as PropertyType) || "Тег");
@@ -75,9 +102,16 @@ export function AddPropertyContent({ elementKey, property }: Props) {
     setOnChange(property?.onChange || "");
     setAccessLevel(property?.access_level ?? ACCESS_LEVEL_MIN);
     setOnCanChange(property?.OnCanChange || "");
+    const variable = variableNameOf(property?.tag_id);
+    setTagSource(variable ? "variable" : "channel");
+    setVariableName(variable);
   }, [property]);
 
   const isTagType = propertyType === "Тег";
+  // Путь канала из прошлого выбора не подставляем вместо переменной и наоборот.
+  const chosenTagId = tagSource === "variable"
+    ? (variableName ? `${VARIABLE_TAG_PREFIX}${variableName}` : "")
+    : (selectedDevice ?? (initialVariable ? "" : property?.tag_id) ?? "");
   /**
    * Чего не хватает, чтобы свойство можно было сохранить (null — всё на месте).
    *
@@ -89,9 +123,11 @@ export function AddPropertyContent({ elementKey, property }: Props) {
   const missing = useMemo(() => {
     if (!name.trim()) return "Введите название свойства";
     if (!valueType.trim()) return "Выберите тип значения";
-    if (isTagType && !selectedDevice && !property?.tag_id) return "Выберите тег в дереве устройств";
+    if (isTagType && !chosenTagId) {
+      return tagSource === "variable" ? "Выберите переменную проекта" : "Выберите тег в дереве устройств";
+    }
     return null;
-  }, [name, valueType, isTagType, selectedDevice, property?.tag_id]);
+  }, [name, valueType, isTagType, chosenTagId, tagSource]);
 
   const canConfirm = !isLoading && missing === null;
 
@@ -111,7 +147,7 @@ export function AddPropertyContent({ elementKey, property }: Props) {
         name: name.trim(),
         component_id: ownerId,
         property_type: propertyType,
-        tag_id: isTagType ? (selectedDevice ?? property?.tag_id ?? "") : "",
+        tag_id: isTagType ? chosenTagId : "",
         description: description.trim(),
         value_type: valueType.trim(),
         default_value: defaultValue,
@@ -359,22 +395,72 @@ export function AddPropertyContent({ elementKey, property }: Props) {
         {/* Device Tree */}
         {isTagType ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <Waypoints className="h-4 w-4 text-indigo-500" />
-              Выберите тег в дереве устройств
+            <div className="flex gap-2">
+              {(["channel", "variable"] as TagSource[]).map(source => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => setTagSource(source)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm",
+                    tagSource === source
+                      ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800",
+                  )}
+                >
+                  {source === "channel" ? "Канал" : "Переменная проекта"}
+                </button>
+              ))}
             </div>
 
-            <div className="h-[360px] overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950/70">
-              <DeviceTreePanel />
-            </div>
+            {tagSource === "channel" ? (
+              <>
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <Waypoints className="h-4 w-4 text-indigo-500" />
+                  Выберите тег в дереве устройств
+                </div>
 
-            {/* Полный путь оставляем в `title`: подпись короткая, но проверить,
-                тот ли это узел дерева, по-прежнему можно наведением. */}
-            <p className="text-xs text-gray-500 dark:text-gray-500" title={selectedDevice ?? undefined}>
-              {selectedDevice
-                ? `Выбран тег: ${shortTagPath(selectedDevice)}`
-                : "Пока тег не выбран — кнопка сохранения будет недоступна."}
-            </p>
+                <div className="h-[360px] overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950/70">
+                  <DeviceTreePanel />
+                </div>
+
+                {/* Полный путь оставляем в `title`: подпись короткая, но проверить,
+                    тот ли это узел дерева, по-прежнему можно наведением. */}
+                <p className="text-xs text-gray-500 dark:text-gray-500" title={selectedDevice ?? undefined}>
+                  {selectedDevice
+                    ? `Выбран тег: ${shortTagPath(selectedDevice)}`
+                    : "Пока тег не выбран — кнопка сохранения будет недоступна."}
+                </p>
+              </>
+            ) : (
+              <div className="max-h-[360px] overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-800 p-2 space-y-1">
+                {variables === null && <p className="text-sm text-gray-500 px-2 py-1">Загрузка…</p>}
+                {variables?.length === 0 && (
+                  <p className="text-sm text-gray-500 px-2 py-1">
+                    У проекта нет переменных — заведите их на странице «Автоматизация».
+                  </p>
+                )}
+                {variables?.map(v => (
+                  <button
+                    key={v.name}
+                    type="button"
+                    onClick={() => {
+                      setVariableName(v.name);
+                      if (!valueType) setValueType(VARIABLE_VALUE_TYPE[v.value_type] ?? "");
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm",
+                      variableName === v.name
+                        ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800",
+                    )}
+                  >
+                    <span className="font-mono">{VARIABLE_TAG_PREFIX}{v.name}</span>
+                    <span className="ml-2 text-xs text-gray-500">{v.value_type}{v.description ? ` · ${v.description}` : ""}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/50 px-4 py-3 text-sm text-gray-600 dark:text-gray-400 flex items-start gap-3">

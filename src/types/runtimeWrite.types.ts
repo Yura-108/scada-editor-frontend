@@ -18,6 +18,7 @@ export type TagWriteStatus =
   | "REJECTED_NOT_WRITABLE"
   | "REJECTED_TYPE_MISMATCH"
   | "REJECTED_PROTOCOL_UNSUPPORTED"
+  | "REJECTED_VARIABLE"
   | "FAILED_NO_CONNECTION"
   | "FAILED_WRITE"
   | string;
@@ -78,6 +79,8 @@ export const TAG_WRITE_STATUS_LABELS: Record<string, string> = {
   REJECTED_NOT_WRITABLE: "Тег доступен только для чтения",
   REJECTED_TYPE_MISMATCH: "Значение не подходит по типу",
   REJECTED_PROTOCOL_UNSUPPORTED: "Протокол не поддерживает запись",
+  // Переменную проекта пишет только её задача automation, не оператор.
+  REJECTED_VARIABLE: "Переменная проекта только для чтения",
   FAILED_NO_CONNECTION: "Нет связи с контроллером",
   FAILED_WRITE: "Ошибка записи",
   INVALID_VALUE: "Значение не подходит по типу",

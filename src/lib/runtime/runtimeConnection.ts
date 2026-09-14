@@ -1,4 +1,5 @@
 import type {ProcedureEvent} from "@/types/recipe.types";
+import type {AutomationTaskStatus} from "@/types/automation.types";
 import {devLog} from "@/lib/devLog";
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -37,12 +38,17 @@ export interface RuntimeConnectionHandlers {
   ) => void;
   /** detail — причина для "rejected" (e.reason из close-события). */
   onStatus?: (status: RuntimeStatus, detail?: string) => void;
+  /** Статусы задач automation — приходят только после subscribeTasks(). */
+  onTasks?: (tasks: AutomationTaskStatus[]) => void;
 }
 
 export interface RuntimeConnection {
   close: () => void;
   /** Триггер серверного Java-скрипта: {"type":"ACTION","scriptId"} (задел Phase C). */
   sendAction: (scriptId: number) => void;
+  /** {"type":"SUBSCRIBE_TASKS"} — сервер пришлёт полный список статусов, дальше изменения. */
+  subscribeTasks: () => void;
+  unsubscribeTasks: () => void;
   /** id текущей сессии (для GET /snapshot) — null, если сокет ещё не подключён/уже закрыт.
    *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
   getSessionId: () => string | null;
@@ -58,7 +64,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,
-  {onUpdate, onStatus}: RuntimeConnectionHandlers,
+  {onUpdate, onStatus, onTasks}: RuntimeConnectionHandlers,
 ): RuntimeConnection {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -67,6 +73,9 @@ export function openRuntimeConnection(
   let reconnectDelay = 1000;
   let firstConnect = true;
   let currentSessionId: string | null = null;
+  // Подписка живёт на соединении, а не на сессии runtime: после переподключения новая сессия
+  // о ней не знает, поэтому onopen отправляет SUBSCRIBE_TASKS заново.
+  let tasksWanted = false;
 
   const setStatus = (s: RuntimeStatus, detail?: string) => onStatus?.(s, detail);
 
@@ -145,6 +154,7 @@ export function openRuntimeConnection(
           socket.send(JSON.stringify({type: "PING"}));
         }
       }, PING_INTERVAL_MS);
+      if (tasksWanted) socket.send(JSON.stringify({type: "SUBSCRIBE_TASKS"}));
     };
 
     socket.onmessage = (e) => {
@@ -154,6 +164,8 @@ export function openRuntimeConnection(
         properties?: RuntimePropertyUpdate[] | null;
         // Третий массив кадра — ход процедурного рецепта (контракт от 09.09.2026).
         procedures?: ProcedureEvent[] | null;
+        // Статусы задач automation — только после SUBSCRIBE_TASKS.
+        tasks?: AutomationTaskStatus[] | null;
       };
       try {
         msg = JSON.parse(String(e.data));
@@ -180,6 +192,7 @@ export function openRuntimeConnection(
         console.groupEnd();
       }
       onUpdate(tags, properties, procedures);
+      if (msg.tasks?.length) onTasks?.(msg.tasks);
     };
 
     socket.onclose = (e) => {
@@ -235,5 +248,13 @@ export function openRuntimeConnection(
       }
     },
     getSessionId: () => currentSessionId,
+    subscribeTasks: () => {
+      tasksWanted = true;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "SUBSCRIBE_TASKS"}));
+    },
+    unsubscribeTasks: () => {
+      tasksWanted = false;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "UNSUBSCRIBE_TASKS"}));
+    },
   };
 }

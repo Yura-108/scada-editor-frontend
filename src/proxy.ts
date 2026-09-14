@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/channels', '/editor', '/monitor', '/log'];
+const protectedRoutes = ['/channels', '/editor', '/monitor', '/automation', '/log'];
 const authRoutes = ['/login', '/register'];
 
 export function proxy(request: NextRequest) {
@@ -45,6 +45,7 @@ export const config = {
     '/editor/:path*',
     '/channels/:path*',
     '/monitor/:path*',
+    '/automation/:path*',
     '/log/:path*',
   ],
 };

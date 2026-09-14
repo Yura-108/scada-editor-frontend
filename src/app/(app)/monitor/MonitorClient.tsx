@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Pin, PinOff, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Cpu, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
@@ -10,6 +10,8 @@ import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
 import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
 import {ProcedureHud} from "@/components/monitor/ProcedureHud";
+import {AutomationTaskPanel, countTaskProblems} from "@/components/monitor/AutomationTaskPanel";
+import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
 import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 import {SceneTabs} from "@/components/editor/SceneTabs";
@@ -106,7 +108,17 @@ export default function MonitorClient() {
     if (currentProject) void loadSceneList(currentProject.id);
   }, [currentProject, loadSceneList]);
 
-  const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale} = useRuntimeEngine(Boolean(scene && currentProject));
+  const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale, subscribeTasks} =
+    useRuntimeEngine(Boolean(scene && currentProject));
+
+  // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
+  // и смене проекта: повторная подписка безвредна, сервер просто пришлёт полный список ещё раз.
+  useEffect(() => {
+    if (sessionId) subscribeTasks();
+  }, [sessionId, subscribeTasks]);
+
+  const [showTasks, setShowTasks] = useState(false);
+  const taskProblems = useAutomationTasksStore(s => countTaskProblems(s.byId));
 
   // Вкладка «Процедуры» — ровно тот же приём, что у «Рецептов» в редакторе:
   // SceneTabs умеет вкладку-не-схему через `extraTab`, менять его не пришлось.
@@ -181,6 +193,23 @@ export default function MonitorClient() {
           </button>
         )}
 
+        {status === "live" && sessionId && (
+          <button
+            onClick={() => setShowTasks(v => !v)}
+            aria-pressed={showTasks}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+              taskProblems > 0
+                ? "bg-red-500/15 text-red-600 dark:text-red-400 hover:bg-red-500/25"
+                : "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
+            )}
+            title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : "Фоновые задачи проекта"}
+          >
+            <Cpu size={14} />
+            Задачи{taskProblems > 0 ? `: ${taskProblems}` : ""}
+          </button>
+        )}
+
         {problemCount > 0 && (
           <span
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-600 dark:text-red-400"
@@ -249,6 +278,7 @@ export default function MonitorClient() {
 
         {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
         {!showProcedures && <ProcedureHud />}
+        {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
     </div>
   );

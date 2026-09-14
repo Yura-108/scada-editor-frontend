@@ -4,6 +4,7 @@ import {devLog} from "@/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {pushProcedureEvents} from "@/store/useProcedureStore";
+import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
@@ -67,6 +68,9 @@ export interface RuntimeEngineState {
   rejectionReason: string | null;
   /** true — соединение "live", но кадров нет дольше STALE_THRESHOLD_MS (см. useRuntimeEngine.ts). */
   isStale: boolean;
+  /** Подписка соединения на статусы задач automation (переживает переподключение). */
+  subscribeTasks: () => void;
+  unsubscribeTasks: () => void;
 }
 
 /**
@@ -505,8 +509,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     log(`движок запущен для проекта ${projectId}`);
     lastMessageAtRef.current = 0;
+    // Статусы принадлежат проекту: задачи прошлого проекта в панели остаться не должны.
+    resetTaskStatuses();
 
     const conn = openRuntimeConnection(projectId, {
+      onTasks: pushTaskStatuses,
       onUpdate: (tags, properties, procedures) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
 
@@ -587,6 +594,9 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     };
   }, [active, projectId]);
 
+  const subscribeTasks = useCallback(() => connRef.current?.subscribeTasks(), []);
+  const unsubscribeTasks = useCallback(() => connRef.current?.unsubscribeTasks(), []);
+
   return {
     status,
     compileErrors: index?.compileErrors ?? new Map(),
@@ -594,5 +604,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     sessionId,
     rejectionReason,
     isStale,
+    subscribeTasks,
+    unsubscribeTasks,
   };
 }
