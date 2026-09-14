@@ -154,7 +154,8 @@ export default function AutomationClient() {
     }
   };
 
-  const taskErrors = (name: string) => errors.filter(e => e.task === name);
+  // Бэкенд обрезает пробелы в имени задачи и в errors[].task присылает уже обрезанное.
+  const taskErrors = (name: string) => errors.filter(e => e.task === name.trim());
   // watchdog.tag, занятый выходом задачи, приходит с именем этой задачи — показываем его и на вкладке watchdog.
   const projectErrors = useMemo(
     () => errors.filter(e => e.task === null || e.field.startsWith("watchdog")),

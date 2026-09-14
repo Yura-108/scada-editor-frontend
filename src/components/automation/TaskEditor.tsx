@@ -71,9 +71,9 @@ export function TaskEditor({task, variables, errors, onChange, onDelete}: Props)
         </div>
 
         {errorOf("inputs") && <p className="text-xs text-red-600">{errorOf("inputs")}</p>}
-        <IoTable title="Входы" rows={task.inputs} variables={variables} onChange={inputs => set({inputs})} />
+        <IoTable title="Входы" rows={task.inputs} onChange={inputs => set({inputs})} />
         {errorOf("outputs") && <p className="text-xs text-red-600">{errorOf("outputs")}</p>}
-        <IoTable title="Выходы" rows={task.outputs} variables={[]} onChange={outputs => set({outputs})} />
+        <IoTable title="Выходы" rows={task.outputs} onChange={outputs => set({outputs})} />
 
         <div>
           <span className={label}>Пишет переменные</span>

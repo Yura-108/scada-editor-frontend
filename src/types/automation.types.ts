@@ -1,4 +1,4 @@
-/** Контракт сервиса automation и набора задач в editor (план 4 от 14.09.2026). */
+/** Контракт сервиса automation и набора задач в editor (сверено с кодом бэкенда ec49adb, 14.09.2026). */
 
 export type AutomationValueType = "bool" | "int" | "float" | "string";
 
@@ -70,6 +70,7 @@ export interface AutomationTaskStatus {
   taskId: number;
   name: string;
   state: AutomationTaskState;
+  /** epoch ms последнего такта — у DISABLED и INPUT_STALE тоже, это не «последний успешный запуск». */
   lastRunAt: number | null;
   lastDurationMs: number | null;
   lastError: string | null;
@@ -83,6 +84,7 @@ export interface AutomationTaskStatusRow {
   taskId: number;
   name: string;
   state: AutomationTaskState;
+  /** То же, что `lastRunAt` в кадре WS: имена полей в REST и WS у бэкенда разные. */
   lastRunAtMs: number | null;
   lastDurationMs: number | null;
   lastError: string | null;

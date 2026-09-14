@@ -57,6 +57,15 @@ export const restoreAutomationVersion = async (projectId: number, versionNo: num
   const res = await fetch(`/api/editor/history/automation/${projectId}/restore/${versionNo}`, {method: "POST"});
   if (!res.ok) {
     const data = await readJson(res);
+    // Восстановление проходит ту же проверку, что и сохранение: старая версия может не пройти
+    // нынешние правила, и тогда причина лежит в errors, а message нет вовсе.
+    if (data?.error === "automation_invalid" && Array.isArray(data.errors) && data.errors.length) {
+      const details = (data.errors as AutomationValidationError[])
+        .slice(0, 3)
+        .map(e => `${e.task ? `${e.task} · ` : ""}${e.field}: ${e.message}`)
+        .join("; ");
+      throw new Error(`Версия ${versionNo} не проходит проверку: ${details}`);
+    }
     throw new Error(data?.message ?? `Не удалось восстановить версию (${res.status})`);
   }
 };
