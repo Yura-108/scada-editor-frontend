@@ -19,6 +19,8 @@ interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
   onClick: () => void;
   onContextMenu: (e: ContextMenuTrigger, node: any) => void;
+  /** Текущее совпадение поиска по дереву. Это не выбор: выбранный узел в модалке — выбранный тег. */
+  highlighted?: boolean;
 }
 
 const NodeIcon = ({ depth, isLeaf }: { depth: number; isLeaf?: boolean }) => {
@@ -49,6 +51,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
   node,
   onClick,
   onContextMenu,
+  highlighted = false,
 }) => {
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
   const editingDevices = useDeviceStore((s) => s.editingDevices);
@@ -69,7 +72,10 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
         isEditing
           ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900 dark:from-teal-500/20 dark:via-teal-500/10 dark:border-teal-500/40 dark:text-teal-200'
           : 'text-gray-700 border-transparent dark:text-gray-300',
+        highlighted && 'ring-2 ring-amber-400 dark:ring-amber-500',
       )}
+      // По этому атрибуту панель дерева находит строку, чтобы прокрутить к найденному узлу.
+      data-tree-key={node.key}
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(e, node)}
       // Выделение узла и стрелки — забота rc-tree (у него свой role="treeitem"

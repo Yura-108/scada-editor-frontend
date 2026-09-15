@@ -102,6 +102,40 @@ export function leafKeysOf(nodes: FlatDeviceNode[]): Set<string> {
 }
 
 /**
+ * Поиск узла по полному названию.
+ *
+ * Название узла — последний сегмент его ключа, поэтому совпадение проверяется по хвосту пути:
+ * `канал` находит `…устройство.канал`, а запрос с точками (`устройство.канал`, полный путь)
+ * сужает выбор, если одноимённых узлов несколько. Сравнение без учёта регистра, пробелы по
+ * краям отбрасываются. Частичные совпадения не ищутся намеренно: пользователь вводит название
+ * целиком, и дерево не должно раскрываться на каждую букву.
+ *
+ * Результат — в порядке показа (обход дерева в глубину), чтобы «следующее совпадение» шло
+ * сверху вниз, а не в порядке прихода узлов с бэкенда.
+ */
+export function findTreeMatches(tree: DataNode[], query: string): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const suffix = `.${q}`;
+  const found: string[] = [];
+  const walk = (list: DataNode[]) => {
+    for (const node of list) {
+      const key = String(node.key).toLowerCase();
+      if (key === q || key.endsWith(suffix)) found.push(String(node.key));
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(tree);
+  return found;
+}
+
+/** Ключи всех предков узла — то, что надо раскрыть, чтобы узел стал виден. Сам узел не входит. */
+export function ancestorKeysOf(key: string): string[] {
+  const parts = key.split(".");
+  return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("."));
+}
+
+/**
  * Все ключи дерева, включая достроенные промежуточные сегменты.
  *
  * Нужно, чтобы отличить «узел сейчас в дереве» от «узел отфильтрован»: `rc-tree`
