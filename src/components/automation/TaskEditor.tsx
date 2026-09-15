@@ -77,7 +77,7 @@ export function TaskEditor({task, variables, errors, onChange, onDelete}: Props)
 
         <div>
           <span className={label}>Пишет переменные</span>
-          {variables.length === 0 && <p className="text-xs text-neutral-500">Переменных проекта нет — заведите на вкладке «Переменные».</p>}
+          {variables.length === 0 && <p className="text-xs text-neutral-500">Переменных проекта нет — заведите в разделе «Данные проекта» → «Переменные».</p>}
           <div className="flex flex-wrap gap-3">
             {variables.map(v => (
               <label key={v.name} className="flex items-center gap-1.5 text-sm">

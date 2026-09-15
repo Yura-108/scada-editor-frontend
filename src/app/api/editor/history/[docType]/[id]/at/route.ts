@@ -12,7 +12,7 @@ import {badPath, EDITOR_BACKEND_URL, parseDocType, parseId} from "@/lib/editorHi
  */
 export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
   const docType = parseDocType(params.docType);
-  if (!docType) return badPath("Неизвестный тип документа: ожидается scenes, templates или automation");
+  if (!docType) return badPath("Неизвестный тип документа: ожидается scenes, templates, automation или data");
 
   const id = parseId(params.id);
   if (id === null) return badPath("Идентификатор документа должен быть целым числом");

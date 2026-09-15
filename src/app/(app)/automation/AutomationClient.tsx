@@ -1,7 +1,8 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {History, Plus, RefreshCw, Save, Send} from "lucide-react";
+import Link from "next/link";
+import {Plus, RefreshCw, Save, Send} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
@@ -18,7 +19,8 @@ import {
 } from "@/lib/automation/automationApi";
 import {TASK_STATE_VIEW} from "@/components/monitor/AutomationTaskPanel";
 import {TaskEditor} from "@/components/automation/TaskEditor";
-import {VariablesEditor} from "@/components/automation/VariablesEditor";
+import {WatchdogEditor} from "@/components/automation/WatchdogEditor";
+import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import type {
   AutomationSet,
   AutomationTask,
@@ -27,7 +29,9 @@ import type {
 } from "@/types/automation.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 
-type Tab = "tasks" | "variables" | "history";
+type Tab = "tasks" | "watchdog" | "history";
+
+const TAB_LABELS: Record<Tab, string> = {tasks: "Задачи", watchdog: "Watchdog", history: "История"};
 
 const newTask = (index: number): AutomationTask => ({
   id: null,
@@ -47,6 +51,7 @@ const newTask = (index: number): AutomationTask => ({
 
 /**
  * Редактор фоновых задач проекта. Сохраняется набор целиком: задачи, переменные, watchdog.
+ * Переменные правятся в разделе «Данные проекта», здесь они только едут в наборе нетронутыми.
  * Исполняет задачи сервис automation — страница нужна только для правки определений.
  */
 export default function AutomationClient() {
@@ -161,6 +166,7 @@ export default function AutomationClient() {
     () => errors.filter(e => e.task === null || e.field.startsWith("watchdog")),
     [errors],
   );
+  const hasVariableErrors = projectErrors.some(e => e.field.startsWith("variables"));
   const statusOf = (task: AutomationTask) => statuses.find(s => s.taskId === task.id);
   const task = draft?.tasks[selected];
 
@@ -176,13 +182,13 @@ export default function AutomationClient() {
           <option value="" disabled>Проект…</option>
           {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        {(["tasks", "variables", "history"] as Tab[]).map(key => (
+        {(Object.keys(TAB_LABELS) as Tab[]).map(key => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={cn("px-3 py-1 rounded-lg text-sm", tab === key ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")}
           >
-            {key === "tasks" ? "Задачи" : key === "variables" ? "Переменные и watchdog" : "История"}
+            {TAB_LABELS[key]}
           </button>
         ))}
         <div className="flex-1" />
@@ -197,6 +203,12 @@ export default function AutomationClient() {
       {projectErrors.length > 0 && (
         <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300 space-y-0.5">
           {projectErrors.map((e, i) => <div key={i}>{e.field}: {e.message}</div>)}
+          {hasVariableErrors && (
+            <div>
+              Переменные правятся в разделе{" "}
+              <Link href="/data" className="underline">«Данные проекта» → «Переменные»</Link>.
+            </div>
+          )}
         </div>
       )}
 
@@ -238,33 +250,13 @@ export default function AutomationClient() {
             )}
           </div>
         </div>
-      ) : tab === "variables" ? (
+      ) : tab === "watchdog" ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <VariablesEditor
-            variables={draft.variables}
-            watchdog={draft.watchdog}
-            errors={projectErrors}
-            onVariablesChange={variables => update({variables})}
-            onWatchdogChange={watchdog => update({watchdog})}
-          />
+          <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => update({watchdog})} />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2 max-w-2xl">
-          {versions.length === 0 && <p className="text-sm text-neutral-500">Сохранений ещё не было.</p>}
-          {versions.map(v => (
-            <div key={v.version_no} className="flex items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2 text-sm">
-              <History size={14} className="text-neutral-400" />
-              <span className="font-medium">v{v.version_no}</span>
-              <span className="text-neutral-500">{v.kind}{v.restored_from ? ` из v${v.restored_from}` : ""}</span>
-              <span className="text-neutral-500">{v.user_name}</span>
-              <span className="flex-1 text-neutral-500">{new Date(v.created_at).toLocaleString("ru")}</span>
-              {v.version_no !== draft.version && (
-                <Button onClick={() => void handleRestore(v.version_no)} disabled={dirty} title={dirty ? "Сначала сохраните или перечитайте набор" : undefined}>
-                  Восстановить
-                </Button>
-              )}
-            </div>
-          ))}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <VersionHistoryList versions={versions} currentVersion={draft.version} dirty={dirty} onRestore={v => void handleRestore(v)} />
         </div>
       )}
     </div>
