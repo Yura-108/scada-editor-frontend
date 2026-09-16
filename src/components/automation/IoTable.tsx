@@ -5,13 +5,14 @@ import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/Button";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
-
-const cellInput = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm";
+import {cellInput} from "@/components/automation/formStyles";
 
 interface Props {
   title: string;
   rows: AutomationIo[];
   onChange: (rows: AutomationIo[]) => void;
+  /** Подпись пустого поля тега. У шаблона тега нет — там это «пример», а не «путь». */
+  tagPlaceholder?: string;
 }
 
 /**
@@ -20,7 +21,7 @@ interface Props {
  * Переменную проекта сюда не подставляем: бэкенд отвергает тег `@var.*` во входах и выходах
  * (AutomationSetValidator.checkIo) — скрипт читает переменные через `vars`, пишет через `setVar`.
  */
-export function IoTable({title, rows, onChange}: Props) {
+export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
   const selectedDevice = useDeviceStore(s => s.selectedDevice);
 
   const patch = (index: number, value: Partial<AutomationIo>) =>
@@ -37,7 +38,14 @@ export function IoTable({title, rows, onChange}: Props) {
       {rows.map((row, i) => (
         <div key={i} className="grid grid-cols-[140px_1fr_auto_100px_auto] gap-2 items-center">
           <input className={cellInput} placeholder="alias" value={row.alias} onChange={e => patch(i, {alias: e.target.value})} />
-          <input className={cellInput} placeholder="путь тега ПЛК" value={row.tag} onChange={e => patch(i, {tag: e.target.value})} title={row.tag} />
+          <input
+            className={cellInput}
+            /* Пример из шаблона — только подсказка: она исчезает, как только тег введён. */
+            placeholder={row.example_tag || tagPlaceholder || "путь тега ПЛК"}
+            value={row.tag}
+            onChange={e => patch(i, {tag: e.target.value})}
+            title={row.tag || (row.example_tag ? `Пример из шаблона: ${row.example_tag}` : undefined)}
+          />
           <Button
             onClick={() => selectedDevice && patch(i, {tag: selectedDevice})}
             disabled={!selectedDevice}

@@ -21,12 +21,21 @@ import {TASK_STATE_VIEW} from "@/components/monitor/AutomationTaskPanel";
 import {TaskEditor} from "@/components/automation/TaskEditor";
 import {WatchdogEditor} from "@/components/automation/WatchdogEditor";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
+import {TemplatePalette} from "@/components/automation/TemplatePalette";
+import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
+import {
+  missingVariables,
+  stripIoHints,
+  taskToTemplate,
+  templateToDraftTask,
+} from "@/lib/automation/automationTemplates";
 import type {
   AutomationSet,
   AutomationTask,
   AutomationTaskStatusRow,
   AutomationValidationError,
 } from "@/types/automation.types";
+import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 
 type Tab = "tasks" | "watchdog" | "history";
@@ -110,7 +119,8 @@ export default function AutomationClient() {
     try {
       const saved = await saveAutomation(projectId, {
         based_on_version: draft.version,
-        tasks: draft.tasks,
+        // example_tag — наша подсказка от шаблона, у задачи на бэкенде такого поля нет.
+        tasks: stripIoHints(draft.tasks),
         variables: draft.variables,
         watchdog: draft.watchdog,
       });
@@ -169,6 +179,28 @@ export default function AutomationClient() {
   const hasVariableErrors = projectErrors.some(e => e.field.startsWith("variables"));
   const statusOf = (task: AutomationTask) => statuses.find(s => s.taskId === task.id);
   const task = draft?.tasks[selected];
+
+  /** Вставка из палитры: в набор кладётся черновик, он уедет обычным сохранением набора. */
+  const handleInsertTemplate = (template: AutomationTaskTemplate) => {
+    if (!draft) return;
+    update({tasks: [...draft.tasks, templateToDraftTask(template, draft.tasks.map(t => t.name))]});
+    setSelected(draft.tasks.length);
+
+    // Набор ответит «Переменная 'X' не объявлена» уже при сохранении — говорим сразу.
+    const missing = missingVariables(template, draft.variables);
+    if (missing.length) {
+      toast.warning(`Переменные не объявлены в проекте: ${missing.join(", ")}`, {
+        description: "Заведите их в разделе «Данные проекта» → «Переменные» "
+          + "или снимите отметки у задачи, иначе набор не сохранится.",
+        duration: 12_000,
+      });
+    }
+  };
+
+  const handleSaveAsTemplate = () => {
+    if (!task) return;
+    openTemplateModal({mode: "create", initial: taskToTemplate(task)});
+  };
 
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
@@ -244,11 +276,13 @@ export default function AutomationClient() {
                 errors={taskErrors(task.name)}
                 onChange={t => updateTask(selected, t)}
                 onDelete={() => { update({tasks: draft.tasks.filter((_, i) => i !== selected)}); setSelected(0); }}
+                onSaveAsTemplate={handleSaveAsTemplate}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-neutral-500">Задач нет</div>
             )}
           </div>
+          <TemplatePalette onInsert={handleInsertTemplate} />
         </div>
       ) : tab === "watchdog" ? (
         <div className="flex-1 min-h-0 overflow-y-auto">

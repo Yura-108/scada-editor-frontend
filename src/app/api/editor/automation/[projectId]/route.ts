@@ -1,20 +1,13 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/lib/protected";
-import {badPath, EDITOR_BACKEND_URL, parseId} from "@/lib/editorHistoryProxy";
+import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/lib/editorHistoryProxy";
 
 /**
  * Набор фоновых задач проекта: `GET/PUT /api/editor/projects/{projectId}/automation`.
  *
- * Ответ бэкенда отдаётся как есть: 400 automation_invalid и 409 version_mismatch несут тело,
- * которое страница разбирает (список нарушений, номера версий).
+ * Ответ бэкенда отдаётся как есть (`passThrough`): 400 automation_invalid и 409 version_mismatch
+ * несут тело, которое страница разбирает (список нарушений, номера версий).
  */
-const passThrough = async (response: Response) => {
-  const text = await response.text().catch(() => "");
-  return new NextResponse(text || null, {
-    status: response.status,
-    headers: {"Content-Type": response.headers.get("content-type") ?? "application/json"},
-  });
-};
 
 export const GET = protectedRoute(async (_req: NextRequest, {token, params}) => {
   const projectId = parseId(params.projectId);

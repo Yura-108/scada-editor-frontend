@@ -11,6 +11,11 @@ export interface AutomationIo {
   alias: string;
   tag: string;
   value_type: AutomationValueType;
+  /**
+   * Пример тега из шаблона: показывается placeholder-ом, пока тег не задан.
+   * Поле клиентское — `stripIoHints` вырезает его перед PUT набора.
+   */
+  example_tag?: string | null;
 }
 
 export interface AutomationTask {

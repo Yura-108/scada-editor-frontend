@@ -29,6 +29,21 @@ export const parseId = (raw: unknown): number | null => {
 export const badPath = (message: string) => NextResponse.json({message}, {status: 400});
 
 /**
+ * Отдаёт ответ бэкенда как есть.
+ *
+ * Тела ошибок разбирает клиент: 400 `automation_invalid` несёт список нарушений
+ * (`errors[]` с task/field/message), 409 `version_mismatch` — номера версий. Подменять
+ * их своим `{message}` нельзя — форма не сможет подсветить поля.
+ */
+export const passThrough = async (response: Response) => {
+  const text = await response.text().catch(() => "");
+  return new NextResponse(text || null, {
+    status: response.status,
+    headers: {"Content-Type": response.headers.get("content-type") ?? "application/json"},
+  });
+};
+
+/**
  * Собирает query для списка версий.
  *
  * `kind` контракт разрешает передавать НЕСКОЛЬКО раз (MANUAL + RESTORE и т.п.),

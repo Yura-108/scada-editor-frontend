@@ -3,14 +3,12 @@
 import React from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
-import {Trash2} from "lucide-react";
+import {BookmarkPlus, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/Button";
 import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import {IoTable} from "@/components/automation/IoTable";
+import {fieldInput as input, fieldLabel as label} from "@/components/automation/formStyles";
 import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/types/automation.types";
-
-const input = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-1.5 text-sm";
-const label = "block text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1";
 
 interface Props {
   task: AutomationTask;
@@ -18,13 +16,15 @@ interface Props {
   errors: AutomationValidationError[];
   onChange: (task: AutomationTask) => void;
   onDelete: () => void;
+  /** «В шаблоны» — задача становится заготовкой в общей палитре. */
+  onSaveAsTemplate?: () => void;
 }
 
 type NumberField = "period_ms" | "timeout_ms" | "stale_after_ms";
 
 const toInt = (raw: string): number => (raw === "" ? 0 : Math.trunc(Number(raw)));
 
-export function TaskEditor({task, variables, errors, onChange, onDelete}: Props) {
+export function TaskEditor({task, variables, errors, onChange, onDelete, onSaveAsTemplate}: Props) {
   const set = (patch: Partial<AutomationTask>) => onChange({...task, ...patch});
   const errorOf = (field: string) => errors.filter(e => e.field === field).map(e => e.message).join("; ");
 
@@ -61,6 +61,11 @@ export function TaskEditor({task, variables, errors, onChange, onDelete}: Props)
           <label className="flex items-center gap-2 text-sm pb-2" title="Выполнять такт, даже если входы устарели (скрипт сам проверяет input(alias).stale)">
             <input type="checkbox" checked={task.run_on_stale} onChange={e => set({run_on_stale: e.target.checked})} />Работать на устаревших входах
           </label>
+          {onSaveAsTemplate && (
+            <Button onClick={onSaveAsTemplate} title="Сохранить задачу заготовкой в палитру шаблонов">
+              <BookmarkPlus size={14} />В шаблоны
+            </Button>
+          )}
           <Button variant="danger" onClick={onDelete}><Trash2 size={14} />Удалить</Button>
         </div>
 
