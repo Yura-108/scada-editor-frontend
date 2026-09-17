@@ -3,12 +3,14 @@
 import {useCallback, useState} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
+import {useEditorStore} from "@/store/useEditorStore";
 import {getRuntimeSessionId} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   abortProcedure,
   confirmStep,
   jumpToStep,
+  ProcedureConflictError,
   startProcedure,
 } from "@/lib/runtime/procedures";
 
@@ -17,54 +19,64 @@ import {
  *
  * ТОЛЬКО колбэки, без эффектов — поэтому хук безопасно вызывать из скольких угодно мест
  * (панель «Процедуры» и HUD над схемой делают это одновременно). Всё, что должно случаться
- * само по себе — опрос состояния, подсказка восстановления, тосты по алертам, — вынесено
- * в `useProcedureSync`, и тот монтируется ровно один раз.
+ * само по себе — сверка состояния и тосты по алертам, — вынесено в `useProcedureSync`,
+ * и тот монтируется ровно один раз.
  */
 export function useProcedureControls() {
   const [busy, setBusy] = useState(false);
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
 
   /**
-   * Сессию берём геттером, а не из состояния движка: копия в `useRuntimeEngine.sessionId`
-   * обновляется только на переходах статуса, а геттер всегда актуален.
+   * Ключ процедуры — проект: мойка идёт и без открытого монитора, поэтому сессия для
+   * действия не нужна. `sessionId` добавляем подписью, если сессия есть; её отсутствие
+   * действию не мешает.
    */
-  const withSession = useCallback(async (
+  const withProject = useCallback(async (
     fallback: string,
-    fn: (sessionId: string) => Promise<void>,
+    fn: (projectId: number, sessionId?: string) => Promise<void>,
   ) => {
-    const sessionId = getRuntimeSessionId();
-    if (!sessionId) {
-      toast.error("Нет активной сессии мониторинга");
+    if (projectId == null) {
+      toast.error("Проект не выбран");
       return;
     }
     setBusy(true);
     try {
-      await fn(sessionId);
+      await fn(projectId, getRuntimeSessionId() ?? undefined);
     } catch (err) {
       console.error(err);
+      if (err instanceof ProcedureConflictError) {
+        // Не ошибка, а состояние: мойка уже идёт либо проект не в эксплуатации. Если бэкенд
+        // прислал текущий статус — показываем его, чтобы оператор увидел, на каком она шаге.
+        if (err.procedure) useProcedureStore.getState().setStatus(err.procedure);
+        toast.warning(err.message);
+        return;
+      }
       toast.error(err instanceof Error ? err.message : fallback);
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [projectId]);
 
   const start = useCallback((recipeId: string) =>
-    withSession("Не удалось запустить процедуру", async (sessionId) => {
-      useProcedureStore.getState().setStatus(await startProcedure(recipeId, sessionId));
-    }), [withSession]);
+    withProject("Не удалось запустить процедуру", async (project, session) => {
+      useProcedureStore.getState().setStatus(await startProcedure(recipeId, project, session));
+    }), [withProject]);
 
   const confirm = useCallback((recipeId: string) =>
-    withSession("Не удалось подтвердить шаг", async (sessionId) => {
-      useProcedureStore.getState().setStatus(await confirmStep(recipeId, sessionId));
-    }), [withSession]);
+    withProject("Не удалось подтвердить шаг", async (project, session) => {
+      useProcedureStore.getState().setStatus(await confirmStep(recipeId, project, session));
+    }), [withProject]);
 
   const jump = useCallback((recipeId: string, stepIndex: number) =>
-    withSession("Не удалось перейти на шаг", async (sessionId) => {
-      useProcedureStore.getState().setStatus(await jumpToStep(recipeId, sessionId, stepIndex));
-    }), [withSession]);
+    withProject("Не удалось перейти на шаг", async (project, session) => {
+      useProcedureStore.getState().setStatus(
+        await jumpToStep(recipeId, project, stepIndex, session),
+      );
+    }), [withProject]);
 
   /** Прерывание необратимо для текущего шага, поэтому спрашиваем подтверждение. */
   const abort = useCallback((recipeId: string) =>
-    withSession("Не удалось прервать процедуру", async (sessionId) => {
+    withProject("Не удалось прервать процедуру", async (project, session) => {
       const ok = await confirmModal({
         title: "Прервать процедуру?",
         description: "Текущий шаг останется незавершённым, записанные значения в ПЛК не откатываются.",
@@ -72,10 +84,10 @@ export function useProcedureControls() {
         danger: true,
       });
       if (!ok) return;
-      await abortProcedure(recipeId, sessionId);
+      await abortProcedure(recipeId, project, session);
       // Наблюдение за тем же рецептом продолжаем, но с чистого листа.
       useProcedureStore.getState().watch(recipeId);
-    }), [withSession]);
+    }), [withProject]);
 
   return {busy, start, confirm, jump, abort};
 }

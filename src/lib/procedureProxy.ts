@@ -1,8 +1,8 @@
 import {NextResponse} from "next/server";
 
 /**
- * Общая часть шести прокси-роутов управления процедурой
- * (`/api/runtime/recipes/{id}/{start|status|confirm|jump|abort|resume-guess}`).
+ * Общая часть пяти прокси-роутов управления процедурой
+ * (`/api/runtime/recipes/{id}/{start|status|confirm|jump|abort}`).
  *
  * REST рантайма идёт через gateway — тот же адрес, что у сессий мониторинга.
  */
@@ -24,22 +24,38 @@ export const parseRecipeId = (raw: unknown): string | null =>
 export const badRecipeId = () =>
   NextResponse.json({message: "Недопустимый идентификатор рецепта"}, {status: 400});
 
-/** Непустой `sessionId` — его требует любая из шести ручек. */
+/**
+ * `projectId` — ключ процедуры, обязателен во всех ручках: мойка принадлежит проекту, а не
+ * открытому экрану.
+ */
+export const parseProjectId = (raw: unknown): number | null => {
+  const value = typeof raw === "string" ? Number(raw) : raw;
+  return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
+};
+
+export const missingProjectId = () =>
+  NextResponse.json(
+    {message: "Параметр projectId обязателен и должен быть целым числом"},
+    {status: 400},
+  );
+
+/**
+ * `sessionId` необязателен — это лишь подпись «из какого экрана нажали». Пустую строку
+ * подписью не считаем и на бэкенд не отправляем.
+ */
 export const parseSessionId = (raw: unknown): string | null => {
   const value = typeof raw === "string" ? raw.trim() : "";
   return value ? value : null;
 };
 
-export const missingSessionId = () =>
-  NextResponse.json({message: "Параметр sessionId обязателен"}, {status: 400});
-
 /**
  * Прокси к рантайму с пробросом РЕАЛЬНОГО статуса.
  *
- * Пробрасывать обязательно: 400 от `/status` («нет активной процедуры») — это не сбой,
- * а штатный сигнал «рантайм перезапустили, состояние в памяти потеряно», по которому
- * панель показывает подсказку `resume-guess`. Превратив его в 500, мы бы сломали
- * восстановление процедуры.
+ * Пробрасывать обязательно оба «нештатных» кода, и ни один из них не является сбоем:
+ * 400 — «в проекте нет активной процедуры, её ещё не запускали»; 409 — состояние не
+ * позволяет (процедура уже идёт, проект не в эксплуатации), и в теле приезжает текущий
+ * статус, который панель показывает оператору. Превратив их в 500, мы бы показали красную
+ * ошибку там, где надо показать, на каком шаге мойка.
  */
 export async function proxyProcedure(
   path: string,
