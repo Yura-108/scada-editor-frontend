@@ -3,7 +3,7 @@
 import {devLog} from "@/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {pushProcedureEvents} from "@/store/useProcedureStore";
+import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
@@ -514,6 +514,31 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     const conn = openRuntimeConnection(projectId, {
       onTasks: pushTaskStatuses,
+      /**
+       * Снимок состояния проекта при подключении. Идёт тем же путём, что телеметрия и
+       * запись оператором: значения в pendingRef, затем синхронный flush. Предзаписывать
+       * valuesRef НЕЛЬЗЯ — no-op-страж во flush счёл бы изменение отсутствующим, и ни
+       * одна привязка не сработала бы, то есть схема осталась бы в состоянии по умолчанию
+       * поверх идущего процесса.
+       */
+      onSnapshot: (tags, properties, procedures) => {
+        lastMessageAtRef.current = Date.now();
+        for (const t of tags) {
+          pendingRef.current.set(t.tagId, t.value);
+          const quality = t.quality ?? "GOOD";
+          const prevMeta = tagMetaRef.current.get(t.tagId);
+          if (!prevMeta || prevMeta.quality !== quality) qualityDirtyRef.current = true;
+          tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
+        }
+        for (const p of properties) {
+          pendingPropsRef.current.set(p.propertyId, String(p.value));
+          if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
+        }
+        // Список активных процедур проекта ПОЛНЫЙ: отсутствие наблюдаемой в нём означает
+        // «не запущена», а не «нет данных».
+        adoptProcedureStatuses(procedures);
+        flushRef.current();
+      },
       onUpdate: (tags, properties, procedures) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
 
