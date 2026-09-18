@@ -117,7 +117,7 @@ export default function MonitorClient() {
     for (const p of projectList) void loadProjectRuntimeFlag(p.id);
   }, [projectList, loadProjectRuntimeFlag]);
 
-  const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale, subscribeTasks} =
+  const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks} =
     useRuntimeEngine(Boolean(scene && currentProject));
 
   // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
@@ -248,11 +248,22 @@ export default function MonitorClient() {
 
         <span
           className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
-          title={status === "rejected" && rejectionReason ? rejectionReason : undefined}
+          title={statusDetail || undefined}
         >
           <Radio size={14} />
           {statusView.label}
         </span>
+
+        {/* Причина паузы рядом со статусом: «Переподключение…» без неё выглядит сбоем сети,
+            хотя чинить надо остановленный экземпляр runtime, а не связь у оператора. */}
+        {status === "reconnecting" && statusDetail && (
+          <span
+            className="max-w-xs truncate text-xs text-amber-600 dark:text-amber-400"
+            title={statusDetail}
+          >
+            {statusDetail}
+          </span>
+        )}
       </div>
 
       {/* Панель быстрого доступа — тот же компонент, что и в редакторе. Вкладки ведут
@@ -287,7 +298,7 @@ export default function MonitorClient() {
           <div className="h-full flex items-center justify-center p-6">
             <div className="max-w-md space-y-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
               <div className="font-medium">Монитор не подключён</div>
-              <p>{rejectionReason || "Рантайм отклонил подключение."}</p>
+              <p>{statusDetail || "Рантайм отклонил подключение."}</p>
               <p className="text-xs opacity-80">
                 Проект исполняется, только когда он введён в эксплуатацию. Включить его можно
                 в списке проектов; после этого выберите схему заново.

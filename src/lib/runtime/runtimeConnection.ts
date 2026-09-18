@@ -9,8 +9,11 @@ import {devLog} from "@/lib/devLog";
  *     на этом шаге) → {sessionId, wsPath, projectTree, token}. token — тот же JWT
  *     из httpOnly-cookie access_token; BFF отдаёт его в теле ответа, поскольку
  *     дальше сокет открывается напрямую браузером и cookie ему не виден.
- *  2. Raw WebSocket (НЕ SockJS/STOMP!) на рантайм-сервис `ws://…:8085` + wsPath.
- *     Gateway роутит только /api/** — wsPath НЕЛЬЗЯ клеить к origin gateway.
+ *  2. Raw WebSocket (НЕ SockJS/STOMP!) на GATEWAY + wsPath из ответа.
+ *     `wsPath` — `/ws/runtime/<instanceId>/<sessionId>`: экземпляров runtime может быть
+ *     несколько, и gateway выбирает нужный по имени экземпляра в пути (список берёт у
+ *     runtime раз в 10 с). Собирать путь вручную нельзя, а `sessionId` (`<instanceId>.<uuid>`)
+ *     — непрозрачная строка: её только передают обратно, не разбирают.
  *     Рантайм требует JWT в query (?token=…) — заголовок Authorization браузерный
  *     WebSocket слать не умеет; без валидного token соединение закрывается 401.
  *
@@ -72,8 +75,20 @@ export interface RuntimeConnection {
   getSessionId: () => string | null;
 }
 
+/**
+ * Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
+ * и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
+ * закроется кодом 1003 «Session belongs to instance …».
+ */
 const RUNTIME_WS_ORIGIN =
   process.env.NEXT_PUBLIC_RUNTIME_WS_URL ?? "ws://localhost:8080";
+
+/** Причина отказа из тела ответа рантайма: у него это всегда поле `message`. */
+const messageOf = async (res: Response, fallback: string): Promise<string> => {
+  const body = await res.json().catch(() => null);
+  const message = (body as {message?: unknown} | null)?.message;
+  return typeof message === "string" && message ? message : fallback;
+};
 
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -104,9 +119,10 @@ export function openRuntimeConnection(
     }
   };
 
-  const scheduleReconnect = () => {
+  /** `detail` — причина паузы (например, недоступный экземпляр): её показывает монитор. */
+  const scheduleReconnect = (detail?: string) => {
     if (closed || reconnectTimer) return;
-    setStatus("reconnecting");
+    setStatus("reconnecting", detail);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       void connect();
@@ -134,16 +150,25 @@ export function openRuntimeConnection(
         body: JSON.stringify({projectId}),
       });
 
-      // 409 — проект не введён в эксплуатацию. Это видимое состояние, а не сбой связи:
-      // рантайм его не поднимал, и повторные попытки ничего не изменят, пока не выставят
-      // флаг в редакторе. Текст бэкенда называет причину — показываем его как есть.
+      // 409 — состояние, а не сбой связи: проект не введён в эксплуатацию либо не назначен
+      // ни одному экземпляру runtime. Повторные попытки ничего не изменят, пока человек не
+      // выставит флаг или не раздаст назначение, поэтому реконнект не запускаем. Разные 409
+      // различаются только текстом — показываем его как есть, не подменяя своим.
       if (res.status === 409) {
-        const body = await res.json().catch(() => null);
-        const message = typeof (body as {message?: unknown} | null)?.message === "string"
-          ? (body as {message: string}).message
-          : "Проект не введён в эксплуатацию";
+        const message = await messageOf(res, "Проект недоступен для мониторинга");
         log(`сессия отклонена: ${message} — реконнект не запускаю`);
         if (!closed) setStatus("rejected", message);
+        return;
+      }
+
+      // 503 — экземпляр, на котором работает проект, недоступен или неизвестен. В отличие
+      // от 409 это временно: экземпляр могут поднять, и проект подхватится сам. Повторяем
+      // с обычной паузой, но с причиной на экране — без неё оператор видит голое
+      // «Переподключение…» и не понимает, что чинить не у него.
+      if (res.status === 503) {
+        const message = await messageOf(res, "Сервер исполнения недоступен");
+        log(`экземпляр недоступен: ${message} — повторю с паузой`);
+        scheduleReconnect(message);
         return;
       }
 

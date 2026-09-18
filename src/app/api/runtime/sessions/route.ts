@@ -1,9 +1,9 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/lib/protected";
 
-// REST рантайма идёт через gateway (Bearer обязателен); сам WebSocket фронт
-// открывает НАПРЯМУЮ на рантайм-сервис :8085 (NEXT_PUBLIC_RUNTIME_WS_URL) —
-// gateway не проксирует WS-upgrade.
+// И REST, и WebSocket монитора идут через gateway (Bearer обязателен). Сам сокет
+// браузер открывает по `wsPath` из ответа — `/ws/runtime/<instanceId>/<sessionId>`:
+// экземпляров runtime несколько, и нужный gateway выбирает по имени в пути.
 const BACKEND_URL = process.env.BACKEND_URL_RUNTIME || process.env.BACKEND_URL || "http://localhost:8080";
 
 export const POST = protectedRoute(async (req: NextRequest, {token}) => {
@@ -33,8 +33,8 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     return NextResponse.json(data, {status: response.status});
   }
 
-  // WS открывается браузером напрямую на :8085 и не может прочитать httpOnly-cookie
-  // и не умеет слать заголовок Authorization — поэтому отдаём тот же JWT в теле ответа,
-  // фронт добавит его как ?token= к wsPath.
+  // Сокет браузер открывает сам (через gateway, по wsPath из этого ответа): httpOnly-cookie
+  // ему не видна, а заголовок Authorization браузерный WebSocket слать не умеет — поэтому
+  // отдаём тот же JWT в теле ответа, фронт добавит его как ?token= к wsPath.
   return NextResponse.json({...data, token}, {status: response.status});
 });

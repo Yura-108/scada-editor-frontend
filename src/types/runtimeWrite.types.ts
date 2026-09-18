@@ -21,6 +21,9 @@ export type TagWriteStatus =
   | "REJECTED_VARIABLE"
   | "FAILED_NO_CONNECTION"
   | "FAILED_WRITE"
+  // Путь тега не покрыт топиками того экземпляра runtime, что обслуживает проект:
+  // слать команду наугад нельзя, поэтому в ПЛК она не ушла вовсе.
+  | "NO_TOPIC"
   | string;
 
 /** Одна запись: адрес тега и значение. */
@@ -88,6 +91,9 @@ export const TAG_WRITE_STATUS_LABELS: Record<string, string> = {
   // Локальные статусы CommandProducer: до шлюза команда не дошла вовсе.
   NOT_DELIVERED: "Брокер не принял команду",
   NO_TAG: "Тег не указан",
+  // Экземпляр runtime не обслуживает этот путь — команда никуда не отправлена.
+  // Лечится назначением топика с нужным префиксом, а не повтором записи.
+  NO_TOPIC: "Тег вне зоны этого сервера исполнения",
 };
 
 export const tagWriteStatusLabel = (result: TagWriteResultDto): string =>

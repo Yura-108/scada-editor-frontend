@@ -64,8 +64,12 @@ export interface RuntimeEngineState {
   runtimeErrors: Map<string, string>;
   /** id текущей WS-сессии (для GET /snapshot) — null, пока не подключены. */
   sessionId: string | null;
-  /** Причина отказа при status==="rejected" (e.reason из close-события 1003). */
-  rejectionReason: string | null;
+  /**
+   * Пояснение к текущему статусу, когда оно есть: причина отказа при `rejected`
+   * (проект не в эксплуатации, не назначен экземпляру, `e.reason` кода 1003) и причина
+   * паузы при `reconnecting` (недоступный экземпляр runtime).
+   */
+  statusDetail: string | null;
   /** true — соединение "live", но кадров нет дольше STALE_THRESHOLD_MS (см. useRuntimeEngine.ts). */
   isStale: boolean;
   /** Подписка соединения на статусы задач automation (переживает переподключение). */
@@ -74,7 +78,7 @@ export interface RuntimeEngineState {
 }
 
 /**
- * Движок биндингов режима монитора: держит рантайм-сессию (raw WS на :8085),
+ * Движок биндингов режима монитора: держит рантайм-сессию (raw WS через gateway),
  * коалесирует входящие значения тегов (last-write-wins на тег), тикает 5 Гц и
  * применяет интенты одним applyRuntimeBatch (один set() → один ре-рендер сцены,
  * сколько бы тегов ни изменилось). elements не мутируются — ни undo, ни автосейв
@@ -100,7 +104,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     setRuntimeErrors(map);
   }, []);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [statusDetail, setStatusDetail] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   // Момент последнего непустого UPDATE-кадра — обрыв Kafka-консьюмера на бэкенде
   // не рвёт WS, поэтому статус может оставаться "live" при замерших значениях;
@@ -569,7 +573,9 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       onStatus: (s, detail) => {
         log(`статус соединения: ${s}${detail ? ` (${detail})` : ""}`);
         setStatus(s);
-        setRejectionReason(s === "rejected" ? (detail ?? "") : null);
+        // Пояснение хранится для любого статуса, а не только для отказа: у «Переподключение…»
+        // оно называет недоступный экземпляр runtime. Нет пояснения — нет и старого текста.
+        setStatusDetail(detail ?? null);
         setSessionId(connRef.current?.getSessionId() ?? null);
       },
     });
@@ -614,7 +620,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       noDataKeysRef.current = new Set();
       useEditorStore.getState().clearRuntime();
       setSessionId(null);
-      setRejectionReason(null);
+      setStatusDetail(null);
       setIsStale(false);
     };
   }, [active, projectId]);
@@ -627,7 +633,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     compileErrors: index?.compileErrors ?? new Map(),
     runtimeErrors,
     sessionId,
-    rejectionReason,
+    statusDetail,
     isStale,
     subscribeTasks,
     unsubscribeTasks,
