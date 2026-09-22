@@ -74,6 +74,19 @@ export interface Recipe {
   name: string;
   tags: RecipeTag[];
   steps: RecipeStep[];
+  /**
+   * Безопасное состояние на паузе: что рантайм пишет, когда мойка встаёт (руками оператора
+   * или сама по аварии). Клапаны сюда обычно не включают — пауза останавливает подачу и
+   * нагрев, но не сливает контур. При снятии паузы ТОЛЬКО эти теги возвращаются к значениям
+   * текущего шага, остальные шаг не переприменяет.
+   *
+   * Поле рецепта, а не шага. Теги — короткие имена из манифеста, как в `RecipeStepAction`.
+   *
+   * ВНИМАНИЕ к `PUT`: `null`/отсутствие означает «оставить прежнее», а пустой массив —
+   * «очистить». Форма, которая поля не знает, обязана его не слать, иначе молча сотрёт
+   * безопасное состояние (`RecipesPanel` именно так и делает).
+   */
+  pause_action?: RecipeStepAction[] | null;
 }
 
 /** Тело POST/PUT — то же, что рецепт, без выданного сервером `id`. */
@@ -91,6 +104,17 @@ export interface ProcedureStatus {
   confirmed: boolean;
   completed: boolean;
   stalled: boolean;
+  /**
+   * Процедура стоит: оборудование переведено в `pause_action` рецепта, шаг не продвигается.
+   * Пауза бывает не только ручной — рантайм ставит её сам, пока активна авария.
+   */
+  paused: boolean;
+  /**
+   * Почему стоит: «остановлена оператором» либо «авария: …». Показывать обязательно —
+   * авария может уйти сама (пауза выключила насос, и «нет расхода» больше не выполняется),
+   * и без причины оператор видел бы стоящую мойку без объяснения.
+   */
+  pauseReason: string | null;
 }
 
 /**
@@ -104,6 +128,8 @@ export type ProcedureEventKind =
   | "STALLED"
   | "COMPLETED"
   | "ABORTED"
+  | "PAUSED"
+  | "RESUMED"
   | string;
 
 /** Событие из массива `procedures[]` кадра WS. */
@@ -133,4 +159,4 @@ export const isTerminalProcedureEvent = (kind: ProcedureEventKind): boolean =>
 
 /** Событие, о котором оператора надо предупредить отдельно. */
 export const isProcedureAlert = (kind: ProcedureEventKind): boolean =>
-  kind === "WRITE_FAILED" || kind === "STALLED";
+  kind === "WRITE_FAILED" || kind === "STALLED" || kind === "PAUSED";

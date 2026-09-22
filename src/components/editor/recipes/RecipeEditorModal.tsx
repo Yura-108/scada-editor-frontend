@@ -56,12 +56,18 @@ function RecipeEditorContent({recipe}: Props) {
   const [name, setName] = useState(recipe?.name ?? "");
   const [tags, setTags] = useState<RecipeTag[]>(recipe?.tags ?? []);
   const [steps, setSteps] = useState<RecipeStep[]>(recipe?.steps ?? [emptyStep()]);
+  /**
+   * Безопасное состояние на паузе — поле рецепта, а не шага: оно одно на всю процедуру.
+   * У нового рецепта пусто, и это допустимо — тогда пауза останавливает продвижение по
+   * шагам, но ничего в ПЛК не пишет.
+   */
+  const [pauseAction, setPauseAction] = useState(recipe?.pause_action ?? []);
   const [isSaving, setIsSaving] = useState(false);
   // Выбор тегов — ВЛОЖЕННЫЙ диалог, который рисуем сами. Через useModalStore нельзя:
   // он одноместный и подменил бы эту форму, потеряв всё набранное.
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
-  const problems = validateRecipe({name, tags, steps});
+  const problems = validateRecipe({name, tags, steps, pause_action: pauseAction});
 
   const patchTag = (index: number, patch: Partial<RecipeTag>) =>
     setTags(prev => prev.map((t, i) => i === index ? {...t, ...patch} : t));
@@ -97,6 +103,9 @@ function RecipeEditorContent({recipe}: Props) {
           condition_script: s.condition_script?.trim() ? s.condition_script : null,
           timeout_ms: s.timeout_ms,
         })),
+        // Шлём ВСЕГДА, в том числе пустым массивом: для бэкенда отсутствие поля означает
+        // «оставить прежнее», и промолчав, форма не смогла бы очистить безопасное состояние.
+        pause_action: pauseAction,
       };
 
       const saved = recipe
@@ -205,6 +214,74 @@ function RecipeEditorContent({recipe}: Props) {
               ))}
             </div>
           )}
+        </section>
+
+        {/* ─── Безопасное состояние на паузе ─── */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className={sectionTitle}>Безопасное состояние на паузе ({pauseAction.length})</span>
+            <button
+              type="button"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
+              disabled={tags.length === 0}
+              title={tags.length === 0 ? "Сначала добавьте теги в манифест" : undefined}
+              onClick={() => setPauseAction(prev => [
+                ...prev,
+                {tag: tags[0].name, value: coerceActionValue("", tags[0].value_type)},
+              ])}
+            >
+              + запись тега
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Что записать, когда процедура встаёт на паузу — вручную или сама по аварии.
+            Обычно это остановка подачи и нагрева; клапаны сюда не включают, чтобы пауза не
+            сливала контур. При снятии паузы к значениям текущего шага вернутся <b>только</b>
+            {" "}перечисленные здесь теги — остальное шаг не переприменяет.
+          </p>
+
+          {pauseAction.length === 0 ? (
+            <p className="text-xs text-gray-400 dark:text-gray-600 italic">
+              Пусто — пауза остановит продвижение по шагам, но ничего в ПЛК не запишет.
+            </p>
+          ) : pauseAction.map((action, ai) => {
+            const tag = tags.find(t => t.name === action.tag);
+            return (
+              <div key={ai} className="flex items-center gap-2">
+                {/* Тег выбирается ИЗ МАНИФЕСТА: бэкенд проверяет записи паузы тем же
+                    `checkAction`, что и действия шага, и свободный ввод давал бы 400. */}
+                <select
+                  className={cn(inputClass, "max-w-[45%]")}
+                  value={action.tag}
+                  onChange={(e) => {
+                    const picked = tags.find(t => t.name === e.target.value);
+                    setPauseAction(prev => prev.map((a, i) => i === ai
+                      ? {tag: e.target.value, value: coerceActionValue(actionValueText(a.value), picked?.value_type)}
+                      : a));
+                  }}
+                >
+                  {tags.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                </select>
+                <input
+                  className={inputClass}
+                  value={actionValueText(action.value)}
+                  placeholder={tag?.value_type === "bool" ? "true / false" : "значение"}
+                  onChange={(e) => setPauseAction(prev => prev.map((a, i) => i === ai
+                    ? {...a, value: coerceActionValue(e.target.value, tag?.value_type)}
+                    : a))}
+                />
+                <span className="text-xs text-gray-400 dark:text-gray-600 truncate max-w-[28%]" title={tag?.tag}>
+                  {tag ? shortTagPath(tag.tag) : "тег не найден"}
+                </span>
+                <button type="button" className="p-1 text-red-600 dark:text-red-400 hover:text-red-500"
+                        title="Убрать запись"
+                        onClick={() => setPauseAction(prev => prev.filter((_, i) => i !== ai))}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </section>
 
         {/* ─── Шаги ─── */}

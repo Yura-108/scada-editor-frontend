@@ -85,6 +85,10 @@ export function RecipesPanel() {
 
     setSavingId(recipe.id);
     try {
+      // `pause_action` здесь НЕ шлём намеренно: для бэкенда отсутствие поля означает
+      // «оставить прежнее», а пустой массив — «очистить». Эта панель правит только значения
+      // шагов и о безопасном состоянии ничего не знает; добавив сюда `pause_action: []`,
+      // мы бы молча стирали его при каждом сохранении значений. Правится оно в форме рецепта.
       const saved = await updateRecipe(recipe.id, {name: recipe.name, tags: recipe.tags, steps});
       if (saved) dropDraft(recipe.id);
     } finally {

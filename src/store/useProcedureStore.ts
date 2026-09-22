@@ -95,10 +95,17 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
             confirmed: false,
             completed: false,
             stalled: false,
+            paused: false,
+            pauseReason: null,
           };
           stepStartedAt = Date.now();
         } else if (event.kind === "STALLED" && status) {
           status = {...status, stalled: true};
+        } else if (event.kind === "PAUSED" && status) {
+          // Причина приходит текстом события: «остановлена оператором» либо «авария: …».
+          status = {...status, paused: true, pauseReason: event.message};
+        } else if (event.kind === "RESUMED" && status) {
+          status = {...status, paused: false, pauseReason: null};
         } else if (isTerminalProcedureEvent(event.kind)) {
           // У COMPLETED/ABORTED ни шага, ни его имени уже нет — не разыменовываем.
           status = status

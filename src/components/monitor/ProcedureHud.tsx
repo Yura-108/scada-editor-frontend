@@ -35,7 +35,7 @@ const SAVE_DELAY_MS = 300;
 export function ProcedureHud() {
   const {recipes, loaded, loadRecipes} = useRecipeStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, start, confirm, jump, abort} = useProcedureControls();
+  const {busy, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
   const hudRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<HudPrefs>(DEFAULT_HUD_PREFS);
@@ -139,8 +139,11 @@ export function ProcedureHud() {
 
   const isRunning = Boolean(status && !status.completed);
 
+  // Пауза важнее «завис»: стоящая мойка не должна выглядеть идущей, поэтому пульсацию
+  // снимаем — она и означает «процесс идёт».
   const dotClass = !status ? "bg-neutral-400"
     : status.completed ? "bg-emerald-500"
+    : status.paused ? "bg-amber-500"
     : status.stalled ? "bg-amber-500"
     : "bg-blue-500 animate-pulse";
 
@@ -196,7 +199,10 @@ export function ProcedureHud() {
             : !status ? "не запущена"
             : status.completed ? "завершена"
             : `Шаг ${status.stepIndex + 1}/${steps.length || "?"}`
-              + `${status.stepName ? ` · ${status.stepName}` : ""} · ${formatElapsed(elapsed)}`}
+              + `${status.stepName ? ` · ${status.stepName}` : ""} · ${formatElapsed(elapsed)}`
+              // Причину показываем всегда: авария могла уйти сама (пауза выключила насос),
+              // и без неё оператор видит стоящую мойку без объяснения.
+              + `${status.paused ? ` · ПАУЗА${status.pauseReason ? `: ${status.pauseReason}` : ""}` : ""}`}
         </span>
 
         {status?.stalled && (
@@ -228,19 +234,31 @@ export function ProcedureHud() {
               <Check size={13} />
               <span className="text-xs font-medium">Подтвердить</span>
             </button>
-            {/* Паузы на бэкенде НЕТ: у процедуры пять ручек (start/status/confirm/jump/
-                abort), и слова `pause` в рантайме не существует. Кнопка стоит
-                неактивной намеренно — «пауза», нарисованная на клиенте, была бы обманом:
-                процедура продолжала бы идти и писать теги в ПЛК, пока оператор считает её
-                остановленной. Включается одной строкой, как появится ручка. */}
-            <button
-              className={cn(iconButton, "gap-1 px-2 bg-neutral-200 dark:bg-neutral-800 text-neutral-500")}
-              disabled
-              title="Пауза пока недоступна: на бэкенде нет ручки POST /api/runtime/recipes/{id}/pause"
-            >
-              <Pause size={13} />
-              <span className="text-xs font-medium">Пауза</span>
-            </button>
+            {/* Пауза настоящая, серверная: рантайм переводит оборудование в `pause_action`
+                рецепта и останавливает продвижение по шагам. На паузу процедура встаёт и
+                сама, пока активна авария, — тогда «Продолжить» ответит отказом с её текстом,
+                и это не сбой, а причина, по которой продолжать нельзя. */}
+            {status?.paused ? (
+              <button
+                className={cn(iconButton, "gap-1 px-2 bg-emerald-600 text-white hover:bg-emerald-500")}
+                disabled={busy}
+                onClick={() => resume(recipeId)}
+                title="Продолжить процедуру: теги безопасного состояния вернутся к значениям текущего шага"
+              >
+                <Play size={13} />
+                <span className="text-xs font-medium">Продолжить</span>
+              </button>
+            ) : (
+              <button
+                className={cn(iconButton, "gap-1 px-2 bg-amber-600 text-white hover:bg-amber-500")}
+                disabled={busy}
+                onClick={() => pause(recipeId)}
+                title="Пауза: оборудование перейдёт в безопасное состояние рецепта"
+              >
+                <Pause size={13} />
+                <span className="text-xs font-medium">Пауза</span>
+              </button>
+            )}
             <button
               className={cn(iconButton, "bg-red-600 text-white hover:bg-red-500")}
               disabled={busy}

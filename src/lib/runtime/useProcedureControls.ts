@@ -10,7 +10,9 @@ import {
   abortProcedure,
   confirmStep,
   jumpToStep,
+  pauseProcedure,
   ProcedureConflictError,
+  resumeProcedure,
   startProcedure,
 } from "@/lib/runtime/procedures";
 
@@ -67,6 +69,21 @@ export function useProcedureControls() {
       useProcedureStore.getState().setStatus(await confirmStep(recipeId, project, session));
     }), [withProject]);
 
+  const pause = useCallback((recipeId: string) =>
+    withProject("Не удалось поставить процедуру на паузу", async (project, session) => {
+      useProcedureStore.getState().setStatus(await pauseProcedure(recipeId, project, session));
+    }), [withProject]);
+
+  /**
+   * Отказ при активной аварии приходит как 409 и разбирается общим обработчиком: оператор
+   * увидит текст аварии предупреждением, а не красной ошибкой, — продолжить сейчас нельзя,
+   * но и сломалось ничего.
+   */
+  const resume = useCallback((recipeId: string) =>
+    withProject("Не удалось продолжить процедуру", async (project, session) => {
+      useProcedureStore.getState().setStatus(await resumeProcedure(recipeId, project, session));
+    }), [withProject]);
+
   const jump = useCallback((recipeId: string, stepIndex: number) =>
     withProject("Не удалось перейти на шаг", async (project, session) => {
       useProcedureStore.getState().setStatus(
@@ -89,5 +106,5 @@ export function useProcedureControls() {
       useProcedureStore.getState().watch(recipeId);
     }), [withProject]);
 
-  return {busy, start, confirm, jump, abort};
+  return {busy, start, confirm, pause, resume, jump, abort};
 }

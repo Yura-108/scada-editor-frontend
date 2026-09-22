@@ -1,4 +1,6 @@
-import type {Recipe, RecipeCreatePayload, RecipeTag, RecipeValueType} from "@/types/recipe.types";
+import type {
+  Recipe, RecipeCreatePayload, RecipeStepAction, RecipeTag, RecipeValueType,
+} from "@/types/recipe.types";
 
 /**
  * Клиентская проверка рецепта — зеркало серверной (`RecipeServiceImpl`).
@@ -66,15 +68,12 @@ export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] 
     byName.set(name, tag);
   }
 
-  if (!payload.steps?.length) {
-    problems.push("Нужен хотя бы один шаг");
-    return problems;
-  }
-
-  payload.steps.forEach((step, index) => {
-    const label = step.name?.trim() || `Шаг ${index + 1}`;
-
-    for (const action of step.action ?? []) {
+  /**
+   * Записи тега проверяются одинаково у шага и у безопасного состояния: бэкенд гоняет их
+   * через один и тот же `checkAction`, и расходиться этим правилам незачем.
+   */
+  const checkActions = (actions: RecipeStepAction[] | null | undefined, label: string) => {
+    for (const action of actions ?? []) {
       const tag = byName.get(action.tag?.trim() ?? "");
       if (!tag) {
         problems.push(`${label}: тег «${action.tag}» не объявлен в манифесте`);
@@ -87,6 +86,21 @@ export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] 
         );
       }
     }
+  };
+
+  // Раньше проверки шагов: рецепт без шагов уходит из функции ниже, а ошибка в безопасном
+  // состоянии от этого не перестаёт быть ошибкой.
+  checkActions(payload.pause_action, "Безопасное состояние");
+
+  if (!payload.steps?.length) {
+    problems.push("Нужен хотя бы один шаг");
+    return problems;
+  }
+
+  payload.steps.forEach((step, index) => {
+    const label = step.name?.trim() || `Шаг ${index + 1}`;
+
+    checkActions(step.action, label);
 
     if (step.timeout_ms != null && (!Number.isFinite(step.timeout_ms) || step.timeout_ms <= 0)) {
       problems.push(`${label}: таймаут должен быть положительным числом миллисекунд`);

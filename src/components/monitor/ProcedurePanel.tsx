@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Play} from "lucide-react";
+import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -22,7 +22,7 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
 export function ProcedurePanel() {
   const {recipes, loaded, isLoading, loadRecipes} = useRecipeStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, start, confirm, jump, abort} = useProcedureControls();
+  const {busy, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
   /**
    * Секундомер шага. Держим готовое число, а не считаем `Date.now()` в теле рендера:
@@ -80,6 +80,17 @@ export function ProcedurePanel() {
                 <ChevronRight size={16} />
                 Подтвердить
               </Button>
+              {status?.paused ? (
+                <Button onClick={() => recipeId && resume(recipeId)} disabled={busy}>
+                  <Play size={16} />
+                  Продолжить
+                </Button>
+              ) : (
+                <Button onClick={() => recipeId && pause(recipeId)} disabled={busy}>
+                  <Pause size={16} />
+                  Пауза
+                </Button>
+              )}
               <Button variant="danger" onClick={() => recipeId && abort(recipeId)} disabled={busy}>
                 <CircleStop size={16} />
                 Прервать
@@ -93,12 +104,14 @@ export function ProcedurePanel() {
             "rounded-xl border px-4 py-3 text-sm",
             status.completed
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : status.stalled
+              : status.paused || status.stalled
                 ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
                 : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
           )}>
             <div className="flex items-center gap-2 font-medium">
-              {status.completed ? <CheckCircle2 size={15} /> : status.stalled ? <AlertTriangle size={15} /> : null}
+              {status.completed ? <CheckCircle2 size={15} />
+                : status.paused ? <Pause size={15} />
+                : status.stalled ? <AlertTriangle size={15} /> : null}
               {status.completed
                 ? "Процедура завершена"
                 : `Шаг ${status.stepIndex + 1}${status.stepName ? ` — ${status.stepName}` : ""}`}
@@ -107,6 +120,13 @@ export function ProcedurePanel() {
               <div className="text-gray-600 dark:text-gray-400">
                 На шаге: {formatElapsed(elapsed)}
                 {status.stalled && " · шаг подозрительно долго не завершается"}
+              </div>
+            )}
+            {/* Причина паузы — отдельной строкой и заметно: по ней оператор решает,
+                можно ли продолжать, и она же объясняет отказ «Продолжить». */}
+            {status.paused && !status.completed && (
+              <div className="mt-1 font-medium">
+                Процедура на паузе{status.pauseReason ? `: ${status.pauseReason}` : ""}
               </div>
             )}
           </div>

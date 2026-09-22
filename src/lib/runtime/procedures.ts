@@ -1,7 +1,7 @@
 import type {ProcedureStatus} from "@/types/recipe.types";
 
 /**
- * Клиент пяти ручек управления процедурой.
+ * Клиент семи ручек управления процедурой.
  *
  * Процедура адресуется **проектом**: мойка принадлежит объекту, а не открытому экрану, и
  * обязана идти, когда оператор закрыл браузер. `sessionId` необязателен и служит ровно одним —
@@ -96,6 +96,36 @@ export async function confirmStep(
   return readStatus(
     await post(recipeId, "confirm", body(projectId, sessionId)),
     "Не удалось подтвердить шаг",
+  );
+}
+
+/**
+ * Пауза: рантайм переводит оборудование в `pause_action` рецепта и останавливает продвижение
+ * по шагам. Повторная пауза уже стоящей процедуры — не ошибка, бэкенд просто вернёт статус.
+ */
+export async function pauseProcedure(
+  recipeId: string,
+  projectId: number,
+  sessionId?: string,
+): Promise<ProcedureStatus> {
+  return readStatus(
+    await post(recipeId, "pause", body(projectId, sessionId)),
+    "Не удалось поставить процедуру на паузу",
+  );
+}
+
+/**
+ * Снятие паузы. Пока авария активна, бэкенд отвечает **409** с текстом аварии и текущим
+ * статусом — это не сбой, а причина, по которой продолжать нельзя.
+ */
+export async function resumeProcedure(
+  recipeId: string,
+  projectId: number,
+  sessionId?: string,
+): Promise<ProcedureStatus> {
+  return readStatus(
+    await post(recipeId, "resume", body(projectId, sessionId)),
+    "Не удалось продолжить процедуру",
   );
 }
 
