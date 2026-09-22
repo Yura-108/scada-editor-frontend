@@ -71,15 +71,20 @@ const Modal: React.FC<ModalProps> = ({
         >
           <div className="shrink-0 border-b border-gray-200 dark:border-neutral-800 px-6 py-4 pr-14">
             <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
-            {/* Описание всегда в DOM ради a11y Radix; без текста — скрыто визуально. */}
-            <Dialog.Description
-              className={cn(
-                description
-                  ? 'mt-1 text-sm text-gray-600 dark:text-gray-400'
-                  : 'sr-only',
-              )}
-            >
-              {description ?? title}
+            {/* Описание всегда в DOM ради a11y Radix; без текста — скрыто визуально.
+                `asChild` + `div`: по умолчанию Radix рендерит абзац, а `description` здесь
+                `ReactNode` — первый же список внутри него дал бы `<ul>` в `<p>` и ошибку
+                гидрации (та же правка сделана в ConfirmModal). */}
+            <Dialog.Description asChild>
+              <div
+                className={cn(
+                  description
+                    ? 'mt-1 text-sm text-gray-600 dark:text-gray-400'
+                    : 'sr-only',
+                )}
+              >
+                {description ?? title}
+              </div>
             </Dialog.Description>
           </div>
 

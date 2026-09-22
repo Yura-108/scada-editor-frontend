@@ -37,14 +37,19 @@ export function TitleWithHint({
           <HelpCircle size={18} />
         </button>
       </div>
-      <Dialog.Description
-        className={cn(
-          open
-            ? "mt-2 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
-            : "sr-only",
-        )}
-      >
-        {description}
+      {/* `asChild` + `div`, а не абзац по умолчанию: `description` — `ReactNode`, и подсказки
+          здесь как раз бывают с разметкой (списки, абзацы). Блочный элемент внутри `<p>`
+          браузер закрывает досрочно — см. ту же правку в ConfirmModal и Modal. */}
+      <Dialog.Description asChild>
+        <div
+          className={cn(
+            open
+              ? "mt-2 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+              : "sr-only",
+          )}
+        >
+          {description}
+        </div>
       </Dialog.Description>
     </div>
   );

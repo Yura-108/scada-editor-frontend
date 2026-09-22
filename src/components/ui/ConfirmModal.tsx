@@ -90,9 +90,14 @@ function ConfirmDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "confirm
 
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
+              {/* `asChild` + `div`, а не абзац по умолчанию: описание у нас бывает с разметкой —
+                  список записываемых в ПЛК тегов, перечень мест в коде. `<ul>`/`<div>` внутри
+                  `<p>` браузер закрывает досрочно, и разметка на сервере расходится с
+                  клиентской (ошибка гидрации). Чиним здесь, а не в вызывающих: иначе каждый
+                  следующий диалог со списком ломал бы всё заново. */}
               {description ? (
-                <Dialog.Description className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  {description}
+                <Dialog.Description asChild>
+                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">{description}</div>
                 </Dialog.Description>
               ) : (
                 <Dialog.Description className="sr-only">{title}</Dialog.Description>
@@ -146,9 +151,10 @@ function ChoiceDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "choice"}
           )}
         >
           <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
+          {/* `div` вместо абзаца — по той же причине, что в ConfirmDialog выше. */}
           {description ? (
-            <Dialog.Description className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {description}
+            <Dialog.Description asChild>
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">{description}</div>
             </Dialog.Description>
           ) : (
             <Dialog.Description className="sr-only">{title}</Dialog.Description>
@@ -232,9 +238,11 @@ function PromptDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "prompt"}
           )}
         >
           <Dialog.Title className="mb-1 text-xl font-semibold">{title}</Dialog.Title>
+          {/* `div` вместо абзаца — как в двух диалогах выше: `description` здесь тоже
+              `ReactNode`, и первый же список внутри него повторил бы ту же ошибку. */}
           {description ? (
-            <Dialog.Description className="mb-6 text-sm text-gray-600 dark:text-gray-400">
-              {description}
+            <Dialog.Description asChild>
+              <div className="mb-6 text-sm text-gray-600 dark:text-gray-400">{description}</div>
             </Dialog.Description>
           ) : (
             <Dialog.Description className="sr-only">{title}</Dialog.Description>
