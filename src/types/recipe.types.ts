@@ -115,11 +115,16 @@ export interface ProcedureEvent {
   stepName: string | null;
   kind: ProcedureEventKind;
   message: string | null;
-}
-
-/** `GET /resume-guess` — только предположение, ничего не меняет. */
-export interface ProcedureResumeGuess {
-  suggestedStepIndex: number;
+  /**
+   * Кто нажал: имя из `X-Username` и экран, с которого нажали. Событие уходит всем
+   * наблюдателям проекта, и без автора второй оператор видел бы, что шаг перескочил, но не
+   * видел бы, кто это сделал.
+   *
+   * У переходов, которые сделал сам рантайм (условие шага, тик), оба поля `null` — это
+   * норма, а не потеря данных.
+   */
+  by: string | null;
+  sessionId: string | null;
 }
 
 /** Событие завершает процедуру: текущего шага после него нет. */

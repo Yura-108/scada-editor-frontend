@@ -2,7 +2,7 @@
 
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
-import {X} from "lucide-react";
+import {Power, PowerOff, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect} from "react";
 import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
@@ -36,6 +36,9 @@ export function ProjectContent() {
   const loadProjectList = useEditorStore(state => state.loadProjectList);
   const createProject = useEditorStore(state => state.createProject);
   const deleteProject = useEditorStore(state => state.deleteProject);
+  const runtimeFlags = useEditorStore(state => state.projectRuntimeFlags);
+  const loadProjectRuntimeFlag = useEditorStore(state => state.loadProjectRuntimeFlag);
+  const setProjectInOperation = useEditorStore(state => state.setProjectInOperation);
   const [selectedValue, setSelectedValue] = useState<string>("");
   const [newName, setNewName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -43,6 +46,30 @@ export function ProjectContent() {
   useEffect(() => {
     void loadProjectList();
   }, [loadProjectList]);
+
+  // Флаг эксплуатации приходит отдельным эндпоинтом на каждый проект: в списке проектов
+  // бэкенд его не отдаёт. Список короткий, поэтому спрашиваем по одному.
+  useEffect(() => {
+    for (const proj of projectList) void loadProjectRuntimeFlag(proj.id);
+  }, [projectList, loadProjectRuntimeFlag]);
+
+  const handleToggleOperation = async (e: React.MouseEvent, proj: EditorProject) => {
+    e.stopPropagation();
+    const next = !runtimeFlags[proj.id];
+    if (!next) {
+      // Вывод из эксплуатации гасит проект целиком: останавливаются серверные скрипты и
+      // идущие процедуры (мойка прервётся на текущем шаге).
+      const ok = await confirmModal({
+        title: `Вывести «${proj.name}» из эксплуатации?`,
+        description: "Рантайм остановит проект: прекратятся обработчики изменений и идущие "
+          + "процедуры, мониторы этого проекта отключатся.",
+        confirmLabel: "Вывести",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    await setProjectInOperation(proj.id, next);
+  };
 
   useEffect(() => {
     if (projectList.length > 0 && !selectedValue) {
@@ -120,6 +147,25 @@ export function ProjectContent() {
                 className="min-w-0 flex-1 truncate text-left cursor-pointer"
               >
                 {proj.name}
+              </button>
+              <button
+                type="button"
+                aria-pressed={runtimeFlags[proj.id] === true}
+                onClick={(e) => void handleToggleOperation(e, proj)}
+                className={cn(
+                  "ml-2 shrink-0 p-0.5 rounded transition-colors",
+                  runtimeFlags[proj.id]
+                    ? "text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                    : "text-neutral-400 hover:text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40",
+                )}
+                title={runtimeFlags[proj.id]
+                  ? "В эксплуатации: рантайм исполняет проект. Нажмите, чтобы вывести"
+                  : "Не в эксплуатации: рантайм проект не исполняет. Нажмите, чтобы ввести"}
+                aria-label={runtimeFlags[proj.id]
+                  ? `Вывести проект «${proj.name}» из эксплуатации`
+                  : `Ввести проект «${proj.name}» в эксплуатацию`}
+              >
+                {runtimeFlags[proj.id] ? <Power size={14} /> : <PowerOff size={14} />}
               </button>
               <button
                 type="button"

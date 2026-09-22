@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Play, TimerReset} from "lucide-react";
+import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Play} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -21,7 +21,7 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
  */
 export function ProcedurePanel() {
   const {recipes, loaded, isLoading, loadRecipes} = useRecipeStore();
-  const {recipeId, status, stepStartedAt, resumeHint, watch} = useProcedureStore();
+  const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, start, confirm, jump, abort} = useProcedureControls();
 
   /**
@@ -87,25 +87,6 @@ export function ProcedurePanel() {
             </>
           )}
         </div>
-
-        {resumeHint !== null && recipeId && (
-          <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300 space-y-2">
-            <div className="flex items-center gap-2 font-medium">
-              <TimerReset size={15} />
-              Процедура не найдена в памяти рантайма
-            </div>
-            <p>
-              Вероятно, он был перезапущен. Похоже, процедура остановилась на шаге{" "}
-              <b>{resumeHint + 1}</b>
-              {steps[resumeHint]?.name ? ` — «${steps[resumeHint].name}»` : ""}. Подсказка может
-              ошибаться на шагах с условием по времени или подтверждению — выберите шаг сами,
-              если она не подходит.
-            </p>
-            <Button variant="primary" onClick={() => jump(recipeId, resumeHint)} disabled={busy}>
-              Продолжить с шага {resumeHint + 1}
-            </Button>
-          </div>
-        )}
 
         {status && (
           <div className={cn(

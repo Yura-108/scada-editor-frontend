@@ -1,4 +1,4 @@
-import type {ProcedureEvent} from "@/types/recipe.types";
+import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
 import type {AutomationTaskStatus} from "@/types/automation.types";
 import {devLog} from "@/lib/devLog";
 /**
@@ -9,15 +9,22 @@ import {devLog} from "@/lib/devLog";
  *     на этом шаге) → {sessionId, wsPath, projectTree, token}. token — тот же JWT
  *     из httpOnly-cookie access_token; BFF отдаёт его в теле ответа, поскольку
  *     дальше сокет открывается напрямую браузером и cookie ему не виден.
- *  2. Raw WebSocket (НЕ SockJS/STOMP!) на рантайм-сервис `ws://…:8085` + wsPath.
- *     Gateway роутит только /api/** — wsPath НЕЛЬЗЯ клеить к origin gateway.
+ *  2. Raw WebSocket (НЕ SockJS/STOMP!) на GATEWAY + wsPath из ответа.
+ *     `wsPath` — `/ws/runtime/<instanceId>/<sessionId>`: экземпляров runtime может быть
+ *     несколько, и gateway выбирает нужный по имени экземпляра в пути (список берёт у
+ *     runtime раз в 10 с). Собирать путь вручную нельзя, а `sessionId` (`<instanceId>.<uuid>`)
+ *     — непрозрачная строка: её только передают обратно, не разбирают.
  *     Рантайм требует JWT в query (?token=…) — заголовок Authorization браузерный
  *     WebSocket слать не умеет; без валидного token соединение закрывается 401.
  *
- * Свойства сессии: обрыв WS убивает её на сервере — реконнект обязан заново
- * делать POST (новый sessionId); heartbeat на сервере нет — шлём клиентский ping
- * (неизвестные типы сервер молча игнорирует); ответ на ACTION минует батч и несёт
- * `tags: null` — нормализация `?? []` обязательна.
+ * Сессия — НАБЛЮДАТЕЛЬ проекта, а не владелец работы: проект живёт по флагу «в
+ * эксплуатации», процедуры и состояние свойств принадлежат ему и идут без единого
+ * открытого монитора. Уход со страницы снимает только подписку на кадры.
+ *
+ * Свойства сессии: реконнект заново делает POST (новый sessionId); heartbeat на сервере
+ * нет — шлём клиентский ping (неизвестные типы сервер молча игнорирует); ответ на ACTION
+ * минует батч и несёт `tags: null` — нормализация `?? []` обязательна. Первый кадр после
+ * подключения — `SNAPSHOT`, дальше привычные `UPDATE`.
  */
 
 /** quality отсутствует или "GOOD" — значение достоверно; любое другое — нет
@@ -26,8 +33,9 @@ export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number
 /** propertyName — имя свойства компонента; propertyId нестабилен
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
-/** rejected — окончательный отказ хендшейка (код закрытия 1003: сессия уже занята
- *  другим соединением, либо неизвестна) — реконнект в этом случае бессмысленен. */
+/** rejected — окончательный отказ: код закрытия 1003 (сессия уже занята другим соединением
+ *  либо неизвестна) или 409 на создание сессии (проект не в эксплуатации). Реконнект в
+ *  этих случаях бессмысленен и лишь прятал бы причину за «Переподключение…». */
 export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected";
 
 export interface RuntimeConnectionHandlers {
@@ -36,7 +44,20 @@ export interface RuntimeConnectionHandlers {
     properties: RuntimePropertyUpdate[],
     procedures: ProcedureEvent[],
   ) => void;
-  /** detail — причина для "rejected" (e.reason из close-события). */
+  /**
+   * Первый кадр после подключения: всё состояние проекта на этот момент.
+   *
+   * Проект работает и без наблюдателей, поэтому открывший монитор приходит в середину
+   * процесса и без снимка видел бы пустой экран до следующего изменения — у долгого шага
+   * мойки это десятки минут. Дубль с последующими `UPDATE` безвреден: значение
+   * перезаписывается по ключу.
+   */
+  onSnapshot?: (
+    tags: RuntimeTagUpdate[],
+    properties: RuntimePropertyUpdate[],
+    procedures: ProcedureStatus[],
+  ) => void;
+  /** detail — причина для "rejected" (e.reason из close-события либо текст отказа сессии). */
   onStatus?: (status: RuntimeStatus, detail?: string) => void;
   /** Статусы задач automation — приходят только после subscribeTasks(). */
   onTasks?: (tasks: AutomationTaskStatus[]) => void;
@@ -54,8 +75,20 @@ export interface RuntimeConnection {
   getSessionId: () => string | null;
 }
 
+/**
+ * Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
+ * и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
+ * закроется кодом 1003 «Session belongs to instance …».
+ */
 const RUNTIME_WS_ORIGIN =
   process.env.NEXT_PUBLIC_RUNTIME_WS_URL ?? "ws://localhost:8080";
+
+/** Причина отказа из тела ответа рантайма: у него это всегда поле `message`. */
+const messageOf = async (res: Response, fallback: string): Promise<string> => {
+  const body = await res.json().catch(() => null);
+  const message = (body as {message?: unknown} | null)?.message;
+  return typeof message === "string" && message ? message : fallback;
+};
 
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -64,7 +97,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,
-  {onUpdate, onStatus, onTasks}: RuntimeConnectionHandlers,
+  {onUpdate, onStatus, onTasks, onSnapshot}: RuntimeConnectionHandlers,
 ): RuntimeConnection {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -86,9 +119,10 @@ export function openRuntimeConnection(
     }
   };
 
-  const scheduleReconnect = () => {
+  /** `detail` — причина паузы (например, недоступный экземпляр): её показывает монитор. */
+  const scheduleReconnect = (detail?: string) => {
     if (closed || reconnectTimer) return;
-    setStatus("reconnecting");
+    setStatus("reconnecting", detail);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       void connect();
@@ -115,6 +149,28 @@ export function openRuntimeConnection(
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({projectId}),
       });
+
+      // 409 — состояние, а не сбой связи: проект не введён в эксплуатацию либо не назначен
+      // ни одному экземпляру runtime. Повторные попытки ничего не изменят, пока человек не
+      // выставит флаг или не раздаст назначение, поэтому реконнект не запускаем. Разные 409
+      // различаются только текстом — показываем его как есть, не подменяя своим.
+      if (res.status === 409) {
+        const message = await messageOf(res, "Проект недоступен для мониторинга");
+        log(`сессия отклонена: ${message} — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", message);
+        return;
+      }
+
+      // 503 — экземпляр, на котором работает проект, недоступен или неизвестен. В отличие
+      // от 409 это временно: экземпляр могут поднять, и проект подхватится сам. Повторяем
+      // с обычной паузой, но с причиной на экране — без неё оператор видит голое
+      // «Переподключение…» и не понимает, что чинить не у него.
+      if (res.status === 503) {
+        const message = await messageOf(res, "Сервер исполнения недоступен");
+        log(`экземпляр недоступен: ${message} — повторю с паузой`);
+        scheduleReconnect(message);
+        return;
+      }
 
       if (!res.ok) throw new Error(`POST /api/runtime/sessions → ${res.status}`);
 
@@ -162,8 +218,8 @@ export function openRuntimeConnection(
         type?: string;
         tags?: RuntimeTagUpdate[] | null;
         properties?: RuntimePropertyUpdate[] | null;
-        // Третий массив кадра — ход процедурного рецепта (контракт от 09.09.2026).
-        procedures?: ProcedureEvent[] | null;
+        // В UPDATE — события хода рецепта, в SNAPSHOT — статусы активных процедур проекта.
+        procedures?: ProcedureEvent[] | ProcedureStatus[] | null;
         // Статусы задач automation — только после SUBSCRIBE_TASKS.
         tasks?: AutomationTaskStatus[] | null;
       };
@@ -171,6 +227,17 @@ export function openRuntimeConnection(
         msg = JSON.parse(String(e.data));
       } catch {
         console.warn("[monitor:ws] битый JSON в сообщении, игнорирую:", e.data);
+        return;
+      }
+      if (msg?.type === "SNAPSHOT") {
+        const tags = msg.tags ?? [];
+        const properties = msg.properties ?? [];
+        const procedures = (msg.procedures ?? []) as ProcedureStatus[];
+        log(
+          `SNAPSHOT — тегов: ${tags.length}, свойств: ${properties.length},`
+          + ` активных процедур: ${procedures.length}`,
+        );
+        onSnapshot?.(tags, properties, procedures);
         return;
       }
       if (msg?.type !== "UPDATE") {
@@ -191,14 +258,15 @@ export function openRuntimeConnection(
         if (procedures.length) console.table(procedures);
         console.groupEnd();
       }
-      onUpdate(tags, properties, procedures);
+      onUpdate(tags, properties, procedures as ProcedureEvent[]);
       if (msg.tasks?.length) onTasks?.(msg.tasks);
     };
 
     socket.onclose = (e) => {
       stopPing();
       if (ws === socket) ws = null;
-      // Сессия умирает на сервере вместе с сокетом — snapshot по старому id больше не ответит.
+      // Наблюдатель снят, и следующий коннект получит НОВЫЙ sessionId — по старому
+      // `GET /sessions/{id}/snapshot` уже не ответит. Сама работа проекта продолжается.
       currentSessionId = null;
 
       // 1003 — окончательный отказ (у сессии уже есть живое соединение, либо она
@@ -226,8 +294,9 @@ export function openRuntimeConnection(
       closed = true;
       stopPing();
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-      // Best-effort явное закрытие сессии на бэкенде — до этого брошенная сессия
-      // продолжает получать значения тегов в буфер (reaper подберёт её не сразу).
+      // Best-effort снятие наблюдателя — до этого брошенная сессия продолжает копить
+      // значения тегов в буфер. Процедуры и состояние проекта это НЕ останавливает:
+      // мойка идёт дальше, гасит проект только снятие флага «в эксплуатации».
       // Не await'им (не блокируем закрытие сокета/уход со страницы), keepalive
       // переживает unload; ошибка ничего не ломает на клиенте.
       if (currentSessionId) {

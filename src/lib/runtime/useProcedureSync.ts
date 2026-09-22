@@ -3,30 +3,28 @@
 import {useEffect} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
-import {getRuntimeSessionId} from "@/lib/runtime/runtimeEventBus";
-import {
-  fetchProcedureStatus,
-  fetchResumeGuess,
-  NoActiveProcedureError,
-} from "@/lib/runtime/procedures";
+import {useEditorStore} from "@/store/useEditorStore";
+import {fetchProcedureStatus, NoActiveProcedureError} from "@/lib/runtime/procedures";
 
 /**
  * Фоновая часть процедуры: сверка состояния и уведомления об отказах.
  *
  * **Монтируется ровно один раз** — в `MonitorClient`. Состояние процедуры показывают двое
  * (панель «Процедуры» и HUD над схемой), и повтори каждый из них эти эффекты, вышло бы два
- * опроса `GET /status`, два запроса подсказки и по два тоста на каждое событие.
+ * опроса `GET /status` и по два тоста на каждое событие.
  */
 
 /**
- * Сверка со `/status`. Редкая намеренно: ход процедуры приезжает событиями по WS, а
- * секундомер тикает на клиенте — сеть нужна лишь чтобы поймать пропущенный кадр.
+ * Сверка со `/status`. Редкая намеренно: ход процедуры приезжает событиями по WS, состояние
+ * при подключении — кадром `SNAPSHOT`, а секундомер тикает на клиенте. Сеть нужна лишь чтобы
+ * поймать пропущенный кадр.
  */
 const STATUS_POLL_MS = 5000;
 
 export function useProcedureSync(): void {
   const recipeId = useProcedureStore(s => s.recipeId);
   const lastAlert = useProcedureStore(s => s.lastAlert);
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
 
   /**
    * Отказ записи внутри шага виден ТОЛЬКО этим каналом: запись из `action` идёт
@@ -42,26 +40,26 @@ export function useProcedureSync(): void {
   }, [lastAlert]);
 
   useEffect(() => {
-    if (!recipeId) return;
+    if (!recipeId || projectId == null) return;
 
     let cancelled = false;
 
     const sync = async () => {
-      const sessionId = getRuntimeSessionId();
-      if (!sessionId) return;
       try {
-        const next = await fetchProcedureStatus(recipeId, sessionId);
+        const next = await fetchProcedureStatus(recipeId, projectId);
         if (!cancelled) useProcedureStore.getState().setStatus(next);
       } catch (err) {
-        if (cancelled || !(err instanceof NoActiveProcedureError)) return;
-        // Рантайм перезапустили — процедуры в его памяти нет. Просим подсказку, но НЕ
-        // прыгаем сами: она ошибается на шагах с условием по времени или подтверждению.
-        try {
-          const guess = await fetchResumeGuess(recipeId, sessionId);
-          if (!cancelled) useProcedureStore.getState().setResumeHint(guess.suggestedStepIndex);
-        } catch {
-          // Подсказка необязательна: без неё оператор выберет шаг сам.
+        if (cancelled) return;
+        // 400 — процедуру просто не запускали. Раньше это означало «рантайм потерял
+        // состояние» и вело к подсказке `resume-guess`; теперь состояние хранится в базе
+        // и восстанавливается точно, поэтому единственный честный вывод — показать,
+        // что процедура не идёт.
+        if (err instanceof NoActiveProcedureError) {
+          useProcedureStore.getState().adoptStatuses([]);
+          return;
         }
+        // Остальное (сеть, 500) глотаем молча: состояние соединения оператор видит
+        // по индикатору WS, а тост раз в пять секунд был бы шумом.
       }
     };
 
@@ -71,5 +69,5 @@ export function useProcedureSync(): void {
       cancelled = true;
       clearInterval(id);
     };
-  }, [recipeId]);
+  }, [recipeId, projectId]);
 }

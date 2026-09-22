@@ -3,7 +3,7 @@
 import {devLog} from "@/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import {pushProcedureEvents} from "@/store/useProcedureStore";
+import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
@@ -64,8 +64,12 @@ export interface RuntimeEngineState {
   runtimeErrors: Map<string, string>;
   /** id текущей WS-сессии (для GET /snapshot) — null, пока не подключены. */
   sessionId: string | null;
-  /** Причина отказа при status==="rejected" (e.reason из close-события 1003). */
-  rejectionReason: string | null;
+  /**
+   * Пояснение к текущему статусу, когда оно есть: причина отказа при `rejected`
+   * (проект не в эксплуатации, не назначен экземпляру, `e.reason` кода 1003) и причина
+   * паузы при `reconnecting` (недоступный экземпляр runtime).
+   */
+  statusDetail: string | null;
   /** true — соединение "live", но кадров нет дольше STALE_THRESHOLD_MS (см. useRuntimeEngine.ts). */
   isStale: boolean;
   /** Подписка соединения на статусы задач automation (переживает переподключение). */
@@ -74,7 +78,7 @@ export interface RuntimeEngineState {
 }
 
 /**
- * Движок биндингов режима монитора: держит рантайм-сессию (raw WS на :8085),
+ * Движок биндингов режима монитора: держит рантайм-сессию (raw WS через gateway),
  * коалесирует входящие значения тегов (last-write-wins на тег), тикает 5 Гц и
  * применяет интенты одним applyRuntimeBatch (один set() → один ре-рендер сцены,
  * сколько бы тегов ни изменилось). elements не мутируются — ни undo, ни автосейв
@@ -100,7 +104,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     setRuntimeErrors(map);
   }, []);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [statusDetail, setStatusDetail] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   // Момент последнего непустого UPDATE-кадра — обрыв Kafka-консьюмера на бэкенде
   // не рвёт WS, поэтому статус может оставаться "live" при замерших значениях;
@@ -514,6 +518,31 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     const conn = openRuntimeConnection(projectId, {
       onTasks: pushTaskStatuses,
+      /**
+       * Снимок состояния проекта при подключении. Идёт тем же путём, что телеметрия и
+       * запись оператором: значения в pendingRef, затем синхронный flush. Предзаписывать
+       * valuesRef НЕЛЬЗЯ — no-op-страж во flush счёл бы изменение отсутствующим, и ни
+       * одна привязка не сработала бы, то есть схема осталась бы в состоянии по умолчанию
+       * поверх идущего процесса.
+       */
+      onSnapshot: (tags, properties, procedures) => {
+        lastMessageAtRef.current = Date.now();
+        for (const t of tags) {
+          pendingRef.current.set(t.tagId, t.value);
+          const quality = t.quality ?? "GOOD";
+          const prevMeta = tagMetaRef.current.get(t.tagId);
+          if (!prevMeta || prevMeta.quality !== quality) qualityDirtyRef.current = true;
+          tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
+        }
+        for (const p of properties) {
+          pendingPropsRef.current.set(p.propertyId, String(p.value));
+          if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
+        }
+        // Список активных процедур проекта ПОЛНЫЙ: отсутствие наблюдаемой в нём означает
+        // «не запущена», а не «нет данных».
+        adoptProcedureStatuses(procedures);
+        flushRef.current();
+      },
       onUpdate: (tags, properties, procedures) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
 
@@ -544,7 +573,9 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       onStatus: (s, detail) => {
         log(`статус соединения: ${s}${detail ? ` (${detail})` : ""}`);
         setStatus(s);
-        setRejectionReason(s === "rejected" ? (detail ?? "") : null);
+        // Пояснение хранится для любого статуса, а не только для отказа: у «Переподключение…»
+        // оно называет недоступный экземпляр runtime. Нет пояснения — нет и старого текста.
+        setStatusDetail(detail ?? null);
         setSessionId(connRef.current?.getSessionId() ?? null);
       },
     });
@@ -589,7 +620,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       noDataKeysRef.current = new Set();
       useEditorStore.getState().clearRuntime();
       setSessionId(null);
-      setRejectionReason(null);
+      setStatusDetail(null);
       setIsStale(false);
     };
   }, [active, projectId]);
@@ -602,7 +633,7 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     compileErrors: index?.compileErrors ?? new Map(),
     runtimeErrors,
     sessionId,
-    rejectionReason,
+    statusDetail,
     isStale,
     subscribeTasks,
     unsubscribeTasks,

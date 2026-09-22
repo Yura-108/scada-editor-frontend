@@ -63,8 +63,20 @@ type EditorState = {
   sceneList: {id: number; name: string}[];
   currentProject: EditorProject | null;
   projectList: EditorProject[];
+  /**
+   * Введён ли проект в эксплуатацию (`projectId` → флаг). Рантайм поднимает ТОЛЬКО такие
+   * проекты: у остальных нет ни телеметрии, ни onChange, ни процедур, и монитор получает
+   * 409 на создание сессии.
+   *
+   * Отдельной картой, а не полем `EditorProject`: на бэкенде это отдельная таблица, и в
+   * списке проектов флаг не приходит. Известен не для всех проектов — отсутствие ключа
+   * означает «ещё не спрашивали», а не «выключен».
+   */
+  projectRuntimeFlags: Record<number, boolean>;
   loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
   loadProjectList: () => Promise<EditorProject[] | void>;
+  loadProjectRuntimeFlag: (projectId: number) => Promise<void>;
+  setProjectInOperation: (projectId: number, inOperation: boolean) => Promise<void>;
   createProject: (name: string) => Promise<EditorProject | void>;
   deleteProject: (id: number) => Promise<void>;
   setCurrentProject: (project: EditorProject | null) => void;
@@ -1349,6 +1361,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       sceneList: [],
       currentProject: null,
       projectList: [],
+      projectRuntimeFlags: {},
       elements: [],
       selectedIds: [],
       activeGroupKey: null,
@@ -3379,6 +3392,49 @@ export const useEditorStore = create<EditorState>()(temporal(
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки списка проектов"));
+        }
+      },
+      /**
+       * Флаг эксплуатации живёт отдельным эндпоинтом, поэтому спрашивается точечно.
+       * Ошибку не показываем тостом: это фоновая подробность списка, и её недоступность
+       * не должна выглядеть сбоем — бейдж просто не появится.
+       */
+      loadProjectRuntimeFlag: async (projectId: number) => {
+        try {
+          const res = await fetch(`/api/editor/projects/${projectId}/runtime`);
+          if (!res.ok) return;
+          const data = await res.json().catch(() => null);
+          if (typeof data?.inOperation !== "boolean") return;
+          set(state => ({
+            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: data.inOperation},
+          }));
+        } catch (err: unknown) {
+          console.error(err);
+        }
+      },
+      /**
+       * Ввод и вывод из эксплуатации. Пишем точечно, НЕ через `setCurrentProject`: тот
+       * разрушительный — гасит открытую схему, элементы, список сцен и историю undo.
+       */
+      setProjectInOperation: async (projectId: number, inOperation: boolean) => {
+        try {
+          const res = await fetch(`/api/editor/projects/${projectId}/runtime`, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({inOperation}),
+          });
+          if (!res.ok) {
+            throw new Error(await res.text().catch(() => "Ошибка переключения эксплуатации"));
+          }
+          const data = await res.json().catch(() => null);
+          const value = typeof data?.inOperation === "boolean" ? data.inOperation : inOperation;
+          set(state => ({
+            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: value},
+          }));
+          toast.success(value ? "Проект введён в эксплуатацию" : "Проект выведен из эксплуатации");
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Ошибка переключения эксплуатации"));
         }
       },
       createProject: async (name: string) => {

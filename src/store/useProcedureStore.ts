@@ -1,6 +1,6 @@
 import {create} from "zustand";
 import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
-import {isTerminalProcedureEvent} from "@/types/recipe.types";
+import {isProcedureAlert, isTerminalProcedureEvent} from "@/types/recipe.types";
 
 /**
  * Состояние выполняющейся процедуры и журнал её событий.
@@ -25,16 +25,10 @@ type ProcedureState = {
   events: ProcedureEvent[];
   /** Последнее событие, о котором надо предупредить (WRITE_FAILED / STALLED). */
   lastAlert: ProcedureEvent | null;
-  /**
-   * Подсказка `resume-guess` — шаг, на котором процедура вероятно остановилась.
-   * Живёт в сторе, а не в компоненте: её показывают и панель, и HUD над схемой, а спрашивает
-   * её один общий `useProcedureSync`.
-   */
-  resumeHint: number | null;
 
   watch: (recipeId: string | null) => void;
   setStatus: (status: ProcedureStatus) => void;
-  setResumeHint: (stepIndex: number | null) => void;
+  adoptStatuses: (statuses: ProcedureStatus[]) => void;
   applyEvents: (events: ProcedureEvent[]) => void;
   clearAlert: () => void;
   reset: () => void;
@@ -43,14 +37,13 @@ type ProcedureState = {
 /** Чистое состояние — без него `watch`/`reset` расходились бы по полям. */
 const empty = (): Pick<
   ProcedureState,
-  "recipeId" | "status" | "stepStartedAt" | "events" | "lastAlert" | "resumeHint"
+  "recipeId" | "status" | "stepStartedAt" | "events" | "lastAlert"
 > => ({
   recipeId: null,
   status: null,
   stepStartedAt: null,
   events: [],
   lastAlert: null,
-  resumeHint: null,
 });
 
 export const useProcedureStore = create<ProcedureState>((set, get) => ({
@@ -58,12 +51,8 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
 
   watch: (recipeId) => set({...empty(), recipeId}),
 
-  setResumeHint: (stepIndex) => set({resumeHint: stepIndex}),
-
   setStatus: (status) => set(state => ({
     status,
-    // Статус пришёл — значит процедура в памяти рантайма есть, и подсказка неактуальна.
-    resumeHint: null,
     // Секундомер перезапускаем только при смене шага: иначе редкая сверка со
     // `/status` дёргала бы отсчёт назад на величину задержки запроса.
     stepStartedAt: state.status?.stepIndex === status.stepIndex && state.stepStartedAt !== null
@@ -71,9 +60,23 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
       : Date.now() - status.elapsedMs,
   })),
 
+  /**
+   * Полный список активных процедур проекта — из кадра `SNAPSHOT` при подключении и из
+   * сверки со `/status`. Список ПОЛНЫЙ, поэтому отсутствие наблюдаемого рецепта в нём
+   * означает «не запущена», а не «нет данных»: иначе экран показывал бы давно завершённую
+   * мойку как идущую.
+   */
+  adoptStatuses: (statuses) => {
+    const {recipeId} = get();
+    if (!recipeId) return;
+    const mine = statuses.find(s => s.recipeId === recipeId);
+    if (mine) get().setStatus(mine);
+    else set({status: null, stepStartedAt: null});
+  },
+
   applyEvents: (incoming) => {
     const {recipeId} = get();
-    // В сессии может идти чужая процедура — берём только свою.
+    // В проекте может идти чужая процедура — берём только свою.
     const mine = incoming.filter(e => e.recipeId === recipeId);
     if (!mine.length) return;
 
@@ -103,7 +106,7 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
             : status;
           stepStartedAt = null;
         }
-        if (event.kind === "WRITE_FAILED" || event.kind === "STALLED") lastAlert = event;
+        if (isProcedureAlert(event.kind)) lastAlert = event;
       }
 
       return {
@@ -122,4 +125,9 @@ export const useProcedureStore = create<ProcedureState>((set, get) => ({
 /** Точка входа для движка рантайма: события кадра WS попадают сюда напрямую. */
 export const pushProcedureEvents = (events: ProcedureEvent[]): void => {
   if (events.length) useProcedureStore.getState().applyEvents(events);
+};
+
+/** Точка входа для кадра `SNAPSHOT`: статусы всех активных процедур проекта. */
+export const adoptProcedureStatuses = (statuses: ProcedureStatus[]): void => {
+  useProcedureStore.getState().adoptStatuses(statuses);
 };

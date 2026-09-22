@@ -24,8 +24,9 @@ const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   live: {label: "Живые данные", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"},
   reconnecting: {label: "Переподключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
   closed: {label: "Нет соединения", className: "bg-neutral-500/15 text-neutral-500 dark:text-neutral-400"},
-  // Окончательный отказ (код закрытия 1003) — реконнект не запускается, обновление
-  // страницы/повторный выбор сцены нужны, чтобы попробовать снова.
+  // Окончательный отказ: код закрытия 1003 либо 409 на создание сессии (проект не введён
+  // в эксплуатацию). Реконнект не запускается — причина показывается оператору прямо на
+  // холсте, иначе выключенный проект выглядел бы неисправностью экрана.
   rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
 };
 
@@ -80,6 +81,8 @@ export default function MonitorClient() {
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
   const loadSceneList = useEditorStore(s => s.loadSceneList);
   const loadScene = useEditorStore(s => s.loadScene);
+  const runtimeFlags = useEditorStore(s => s.projectRuntimeFlags);
+  const loadProjectRuntimeFlag = useEditorStore(s => s.loadProjectRuntimeFlag);
 
   // Своя память вида: пан оператора не должен сбивать камеру в редакторе.
   useSceneCameraMemory("monitor");
@@ -108,7 +111,13 @@ export default function MonitorClient() {
     if (currentProject) void loadSceneList(currentProject.id);
   }, [currentProject, loadSceneList]);
 
-  const {status, compileErrors, runtimeErrors, sessionId, rejectionReason, isStale, subscribeTasks} =
+  // Флаг эксплуатации приходит отдельным эндпоинтом. Без него выключенный проект в списке
+  // неотличим от рабочего, и оператор узнавал бы о причине, только не дождавшись данных.
+  useEffect(() => {
+    for (const p of projectList) void loadProjectRuntimeFlag(p.id);
+  }, [projectList, loadProjectRuntimeFlag]);
+
+  const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks} =
     useRuntimeEngine(Boolean(scene && currentProject));
 
   // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
@@ -159,8 +168,12 @@ export default function MonitorClient() {
           }}
         >
           <option value="" disabled>Проект…</option>
+          {/* Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
+              Пометка у рабочих была бы шумом — их большинство. */}
           {projectList.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>
+              {p.name}{runtimeFlags[p.id] === false ? " — не в эксплуатации" : ""}
+            </option>
           ))}
         </select>
 
@@ -235,11 +248,22 @@ export default function MonitorClient() {
 
         <span
           className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
-          title={status === "rejected" && rejectionReason ? rejectionReason : undefined}
+          title={statusDetail || undefined}
         >
           <Radio size={14} />
           {statusView.label}
         </span>
+
+        {/* Причина паузы рядом со статусом: «Переподключение…» без неё выглядит сбоем сети,
+            хотя чинить надо остановленный экземпляр runtime, а не связь у оператора. */}
+        {status === "reconnecting" && statusDetail && (
+          <span
+            className="max-w-xs truncate text-xs text-amber-600 dark:text-amber-400"
+            title={statusDetail}
+          >
+            {statusDetail}
+          </span>
+        )}
       </div>
 
       {/* Панель быстрого доступа — тот же компонент, что и в редакторе. Вкладки ведут
@@ -268,6 +292,19 @@ export default function MonitorClient() {
       <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
         {showProcedures ? (
           <ProcedurePanel />
+        ) : status === "rejected" ? (
+          /* Состояние «проект выключен» должно быть видимым, а не выглядеть поломкой:
+             текст причины приходит с бэкенда и называет её прямо. */
+          <div className="h-full flex items-center justify-center p-6">
+            <div className="max-w-md space-y-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              <div className="font-medium">Монитор не подключён</div>
+              <p>{statusDetail || "Рантайм отклонил подключение."}</p>
+              <p className="text-xs opacity-80">
+                Проект исполняется, только когда он введён в эксплуатацию. Включить его можно
+                в списке проектов; после этого выберите схему заново.
+              </p>
+            </div>
+          </div>
         ) : scene ? (
           <Canvas readOnly />
         ) : (

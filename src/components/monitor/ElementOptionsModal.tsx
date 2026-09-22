@@ -187,7 +187,14 @@ function ElementOptionsContent({elementKey}: Props) {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const message = (data as {error?: string} | null)?.error;
+        // Причина лежит в `message` либо в `error`, и поле зависит от того, кто ответил:
+        // наш BFF на негодный запрос отдаёт `error`, а рантайм — `message` (в том числе
+        // 409 «проект не назначен экземпляру» и 503 «экземпляр недоступен», у которых
+        // поля `error` нет вовсе). Читать только `error` значило бы показать оператору
+        // «Ошибка записи (409)» без единого слова о причине.
+        const body = data as {message?: unknown; error?: unknown} | null;
+        const raw = body?.message ?? body?.error;
+        const message = typeof raw === "string" && raw ? raw : "";
         throw new Error(message || `Ошибка записи (${res.status})`);
       }
 

@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {
-  AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play, TimerReset,
+  AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play,
 } from "lucide-react";
 import {cn} from "@/lib/utils";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -34,7 +34,7 @@ const SAVE_DELAY_MS = 300;
 
 export function ProcedureHud() {
   const {recipes, loaded, loadRecipes} = useRecipeStore();
-  const {recipeId, status, stepStartedAt, resumeHint, watch} = useProcedureStore();
+  const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, start, confirm, jump, abort} = useProcedureControls();
 
   const hudRef = useRef<HTMLDivElement>(null);
@@ -174,7 +174,7 @@ export function ProcedureHud() {
         </div>
 
         {/* Переключать рецепт можно и на ходу: процедура на бэкенде живёт под ключом
-            (сессия, рецепт), и смена выбора меняет лишь то, за чем мы наблюдаем —
+            (проект, рецепт), и смена выбора меняет лишь то, за чем мы наблюдаем —
             запущенная продолжает идти, а по возвращении её состояние вернёт GET /status. */}
         <select
           className={cn(
@@ -228,8 +228,8 @@ export function ProcedureHud() {
               <Check size={13} />
               <span className="text-xs font-medium">Подтвердить</span>
             </button>
-            {/* Паузы на бэкенде НЕТ: у процедуры шесть ручек (start/status/confirm/jump/
-                abort/resume-guess), и слова `pause` в рантайме не существует. Кнопка стоит
+            {/* Паузы на бэкенде НЕТ: у процедуры пять ручек (start/status/confirm/jump/
+                abort), и слова `pause` в рантайме не существует. Кнопка стоит
                 неактивной намеренно — «пауза», нарисованная на клиенте, была бы обманом:
                 процедура продолжала бы идти и писать теги в ПЛК, пока оператор считает её
                 остановленной. Включается одной строкой, как появится ручка. */}
@@ -261,30 +261,9 @@ export function ProcedureHud() {
         </button>
       </div>
 
-      {/* ─── Развёрнутая часть: шаги, подсказка восстановления ─── */}
+      {/* ─── Развёрнутая часть: шаги ─── */}
       {!prefs.collapsed && recipeId && (
         <div className="max-h-72 overflow-y-auto custom-scrollbar border-t border-neutral-200 dark:border-neutral-800 px-3 py-2 space-y-2">
-          {resumeHint !== null && (
-            <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-medium">
-                <TimerReset size={13} />
-                Процедура не найдена в памяти рантайма
-              </div>
-              <p>
-                Похоже, она остановилась на шаге <b>{resumeHint + 1}</b>
-                {steps[resumeHint]?.name ? ` — «${steps[resumeHint].name}»` : ""}. Подсказка может
-                ошибаться на шагах с условием по времени или подтверждению.
-              </p>
-              <button
-                className="rounded-md bg-blue-600 px-2 py-1 font-medium text-white hover:bg-blue-500 disabled:opacity-40"
-                disabled={busy}
-                onClick={() => jump(recipeId, resumeHint)}
-              >
-                Продолжить с шага {resumeHint + 1}
-              </button>
-            </div>
-          )}
-
           {steps.length === 0 ? (
             <p className="text-xs text-neutral-500 dark:text-neutral-400">У процедуры нет шагов.</p>
           ) : (

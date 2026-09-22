@@ -120,22 +120,31 @@ gone from both sides.
 - **Execution lives in the monitor**, in two places over one store: a floating `ProcedureHud`
   above the mnemonic scheme (drag/collapse persisted in localStorage) and the detailed
   «Процедуры» tab. `SceneTabs` already supported a non-scene tab via `extraTab` (that's how the
-  editor mounts «Рецепты»). Six endpoints drive it: `start` / `status` / `confirm` / `jump` /
-  `abort` / `resume-guess`, proxied under `src/app/api/runtime/recipes/[id]/…`.
+  editor mounts «Рецепты»). Five endpoints drive it: `start` / `status` / `confirm` / `jump` /
+  `abort`, proxied under `src/app/api/runtime/recipes/[id]/…`. All of them are keyed by
+  `projectId`; `sessionId` rides along only as a signature of which screen pressed the button
+  and grants no rights.
 - **Behaviour is split so two views can coexist.** `useProcedureControls` is callbacks only
-  (safe to call from anywhere); every *effect* — the 5s `GET /status` poll, the `resume-guess`
-  fetch, the alert toasts — lives in `useProcedureSync`, **mounted exactly once** in
+  (safe to call from anywhere); every *effect* — the 5s `GET /status` poll and the alert
+  toasts — lives in `useProcedureSync`, **mounted exactly once** in
   `MonitorClient`. Duplicate that hook in a component and you get two polls and two toasts per
   event. A third consumer must follow the same rule.
 - **Switching the watched recipe mid-run is safe and needs no confirmation**: a procedure is
-  keyed `(sessionId, recipeId)` on the backend, so switching only changes what the UI watches —
+  keyed `(projectId, recipeId)` on the backend, so switching only changes what the UI watches —
   the running one keeps going and `GET /status` restores its state on return. Events for other
   recipes are filtered out by `applyEvents`, so their alerts are not shown while you look
   elsewhere; that is deliberate, since an alert without its step context misleads.
-- **A 400 from `/status` is not an error** — it means the runtime restarted and lost the
-  procedure. That is the signal to fetch `resume-guess` and offer the suggested step; never jump
-  automatically, since the guess is wrong on steps whose condition rests on `elapsedMs` or
-  `confirmed`. `jump` deliberately works without a prior `start` for exactly this recovery.
+- **A 400 from `/status` means the procedure is not running** — never started, or already
+  finished. It no longer means "the runtime lost its state": procedure state lives in
+  `runtime.procedure_state` and is restored exactly after a restart, so `resume-guess` is gone
+  from both sides. The frontend answers by clearing the shown status (`adoptStatuses([])`),
+  never by guessing a step.
+- **409 is a state, not a failure.** `start` on a running procedure, a `stepIndex` that no
+  longer matches, and any call against a project that is not in operation all answer 409. The
+  first two carry the current `ProcedureStatusDto` in a `procedure` field, which
+  `ProcedureConflictError` surfaces so the operator sees which step the wash is on instead of a
+  red toast — a repeated «Запустить» must never re-apply step 0 under a running wash. `jump`
+  still works without a prior `start`: that is how an operator places a procedure by hand.
 - **`procedures[]` is a third array in the WS `UPDATE` frame** and must NOT go through
   `pendingRef`/`flush`: that path coalesces *values* last-write-wins with a "same value" guard,
   which would swallow `STEP_STARTED`/`STEP_COMPLETED` pairs and drop `WRITE_FAILED`/`STALLED`
@@ -246,6 +255,22 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   **server** id — an unsaved script cannot run. `ElementScript.displayed` rides in the script DTO
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
+
+**The monitor session is an observer, not the owner of the work.** A project runs while its
+«in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,
+mirrored in the store as `projectRuntimeFlags` — the flag is a separate table and does **not**
+come with the project list, so it is fetched per project). Closing the tab drops the observer
+only; procedures keep running. Two consequences the frontend must honour:
+
+- `POST /sessions` answers **409** for a project that is not in operation. It is terminal —
+  status `rejected`, no reconnect — because the retry loop would hide the reason behind
+  «Переподключение…», and the monitor shows the backend's text on the canvas instead.
+- The **first WS frame is `SNAPSHOT`** (`{tags, properties, procedures}`, where `procedures`
+  are *statuses*, not events — the list is complete, so a watched recipe missing from it means
+  "not running"). Its values go through `pendingRef` + a synchronous `flush`, exactly like an
+  operator's tag write. Pre-writing `valuesRef` would make the no-op guard in `flush` swallow
+  them and no binding would fire, leaving the scheme at its defaults on top of a running
+  process — the worst failure mode here.
 
 **Switching scenes must re-run the bindings.** The WS session lives on `(active, projectId)`
 (`useRuntimeEngine`), so changing the scene inside a project keeps it — `valuesRef` holds the
