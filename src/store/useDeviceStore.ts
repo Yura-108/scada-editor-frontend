@@ -175,7 +175,31 @@ export const useDeviceStore = create<DeviceStoreState>()(
             processedNodes.push({key: projectKey, title, parentKey});
           });
 
-          const uniqueParams = Array.from(new Map(allParams.map(p => [p.key, p])).values());
+          // Собственные параметры узла проекта fullHierarchy не отдаёт: его запрос — строго
+          // `id_node LIKE 'root.%'`, то есть только потомки, сам корень в выдачу не попадает
+          // (NodeRepository.findByIdNodeStartingWith). Добираем их по площадке через
+          // `hierarchy` (прямые дети, ~2 КБ на площадку) — иначе у проекта не видно ни
+          // «Источника импорта», ни любого другого его собственного параметра.
+          const sites = Array.from(
+            new Set(rootPath.map((p) => p.split('.')[0]).filter(Boolean)),
+          );
+          const siteParams: NodeParamType[] = [];
+          await Promise.all(sites.map(async (site) => {
+            try {
+              const res = await fetch(`/api/device/hierarchy?site=${encodeURIComponent(site)}`);
+              if (!res.ok) return;
+              const json: {params?: NodeParamType[]} = await res.json();
+              // Берём только выбранные проекты: у площадки в ответе есть и соседние,
+              // а их узлов в дереве нет.
+              siteParams.push(...(json.params ?? []).filter((p) => rootPath.includes(p.parentKey)));
+            } catch {
+              // Данные необязательные: дерево уже загружено, молча обходимся без них.
+            }
+          }));
+
+          const uniqueParams = Array.from(
+            new Map([...allParams, ...siteParams].map(p => [p.key, p])).values(),
+          );
 
           set({
             nodes: processedNodes,

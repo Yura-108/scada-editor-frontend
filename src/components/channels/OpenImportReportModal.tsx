@@ -17,7 +17,9 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
 
   const list = (names: string[]) => (
     <ul className="max-h-48 overflow-y-auto space-y-0.5 text-xs text-gray-600 dark:text-gray-400 font-mono">
-      {names.map((name) => <li key={name}>{name}</li>)}
+      {/* Имя в ключе не уникально: один и тот же канал бэкенд перечисляет столько раз,
+          сколько групп в него слились. Это плоский список для чтения, порядок не меняется. */}
+      {names.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}
     </ul>
   );
 
