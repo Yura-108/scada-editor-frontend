@@ -35,6 +35,7 @@ import transformElements from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
+import type {AutobindReport} from "@/types/autobind.types";
 import {createUuid} from "@/lib/createUuid";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
@@ -83,6 +84,11 @@ type EditorState = {
   loadProjectList: () => Promise<EditorProject[] | void>;
   loadProjectRuntimeFlag: (projectId: number) => Promise<void>;
   setProjectInOperation: (projectId: number, inOperation: boolean) => Promise<void>;
+  /**
+   * Автопривязка проекта к базе каналов. Возвращает отчёт, а не `void` как соседи:
+   * его показывает диалог. Ошибку действие рисует тостом само и отдаёт `null`.
+   */
+  autobindProject: (projectId: number, channelRoot: string) => Promise<AutobindReport | null>;
   createProject: (name: string) => Promise<EditorProject | void>;
   deleteProject: (id: number) => Promise<void>;
   setCurrentProject: (project: EditorProject | null) => void;
@@ -3323,6 +3329,66 @@ export const useEditorStore = create<EditorState>()(temporal(
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка переключения эксплуатации"));
+        }
+      },
+      /**
+       * Автопривязка: компонент по своему имени находит объект в базе каналов, а теговое
+       * свойство по своему имени — поле. Совпавшие теги ПЕРЕЗАПИСЫВАЮТСЯ, и каждая
+       * изменённая сцена получает версию `MANUAL` — отменяется это восстановлением
+       * предыдущей версии, а не повторным запросом.
+       */
+      autobindProject: async (projectId: number, channelRoot: string) => {
+        const {scene, currentProject} = get();
+
+        // Автопривязка пишет новую версию сцены: несохранённая правка после неё упрётся в
+        // расхождение версий (слияние или 409). Поэтому спрашиваем ДО запроса.
+        if (scene && currentProject?.id === projectId && hasUnsavedWork()) {
+          const ok = await confirmModal({
+            title: "Сохранить схему перед автопривязкой?",
+            description: "Автопривязка запишет новую версию схемы. Если не сохранить сейчас, "
+              + "текущие правки потом упрутся в расхождение версий.",
+            confirmLabel: "Сохранить и привязать",
+          });
+          if (!ok) return null;
+          if (!await get().exportScene({kind: "MANUAL"})) return null;
+        }
+
+        try {
+          const res = await fetch(`/api/editor/projects/${projectId}/autobind`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({channel_root: channelRoot}),
+          });
+          if (!res.ok) {
+            // Тело ошибки — `{timestamp, status, error, message}`; сырой JSON в тосте
+            // пользователь читает как «ничего не произошло».
+            throw new Error(parseBackendErrorMessage(res.status, await res.text().catch(() => "")));
+          }
+          const report = await res.json() as AutobindReport;
+
+          // Открытую сцену перечитываем, иначе на холсте останутся прежние теги, а ближайшее
+          // сохранение затрёт автопривязку. Только для текущего проекта: `loadScene` берёт
+          // проект из `currentProject`, и для чужой сцены проверка принадлежности сбросит холст.
+          const openScene = get().scene;
+          if (currentProject?.id === projectId && openScene
+            && report.scenes.some(s => s.scene_id === Number(openScene.id))) {
+            const temporal = useEditorStore.temporal.getState();
+            temporal.pause();
+            try {
+              await get().loadScene(Number(openScene.id), {keepHistory: true});
+            } finally {
+              useEditorStore.temporal.getState().resume();
+            }
+            // Историю чистим: шаг undo вернул бы прежние теги поверх только что проставленных.
+            useEditorStore.temporal.getState().clear();
+          }
+
+          toast.success(`Привязано свойств: ${report.bound}, изменено: ${report.changed}`);
+          return report;
+        } catch (err: unknown) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Не удалось выполнить автопривязку"));
+          return null;
         }
       },
       createProject: async (name: string) => {

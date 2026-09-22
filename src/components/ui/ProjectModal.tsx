@@ -2,12 +2,13 @@
 
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
-import {Power, PowerOff, X} from "lucide-react";
+import {Link2, Power, PowerOff, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect} from "react";
 import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
+import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
 
 async function selectProjectAndOpenScenes(
@@ -69,6 +70,13 @@ export function ProjectContent() {
       if (!ok) return;
     }
     await setProjectInOperation(proj.id, next);
+  };
+
+  // Состояния занятости строке не заводим: диалог открывается через тот же `modalStore`,
+  // то есть заменяет собой окно проектов, и «занятой» строки на экране не остаётся.
+  const handleAutobind = (e: React.MouseEvent, proj: EditorProject) => {
+    e.stopPropagation();
+    openAutobindModal(proj.id, proj.name);
   };
 
   useEffect(() => {
@@ -166,6 +174,15 @@ export function ProjectContent() {
                   : `Ввести проект «${proj.name}» в эксплуатацию`}
               >
                 {runtimeFlags[proj.id] ? <Power size={14} /> : <PowerOff size={14} />}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleAutobind(e, proj)}
+                className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                title="Автопривязка к базе каналов"
+                aria-label={`Автопривязка проекта «${proj.name}» к базе каналов`}
+              >
+                <Link2 size={14} />
               </button>
               <button
                 type="button"
