@@ -9,6 +9,7 @@ import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
 import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
 import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenCreateContainerModal";
+import {openGatewayExportModal} from "@/components/channels/OpenGatewayExportModal";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
 
@@ -75,6 +76,11 @@ interface DeviceStoreState {
   loadDeviceTemplateList: () => Promise<void>;
   addDevice: (node: {type: number; idNode: string; parentKey: string}) => Promise<void>;
   removeDevice: (Key: string) => Promise<void>;
+  /**
+   * Удаление импортированного проекта целиком. Отдельно от `removeDevice`: тот чистит
+   * массив по точному ключу, а у проекта тысячи потомков — они остались бы сиротами.
+   */
+  removeImportedProject: (projectKey: string) => Promise<void>;
   deleteOptionParam: (key: string) => Promise<void>;
   removeParam: (key: string) => Promise<void>;
   addParam: (param: { id: number; value: string; parentKey: string }) => Promise<void>;
@@ -308,6 +314,41 @@ export const useDeviceStore = create<DeviceStoreState>()(
         }));
         toast.success('Узел удалён');
       },
+      removeImportedProject: async (projectKey: string) => {
+        const [site, project] = projectKey.split('.');
+        if (!site || !project) return;
+
+        try {
+          const res = await fetch(
+            `/api/device/import/${encodeURIComponent(site)}/${encodeURIComponent(project)}`,
+            {method: 'DELETE'},
+          );
+          if (!res.ok) {
+            // 409 — проект создан не импортом, 404 — его уже нет. Текст бэкенда объясняет
+            // причину точнее любого нашего.
+            const body = await res.json().catch(() => null);
+            const message = (body as {message?: string} | null)?.message;
+            throw new Error(message || `Не удалось удалить проект (${res.status})`);
+          }
+        } catch (err) {
+          console.error('Ошибка при удалении импортированного проекта:', err);
+          toast.error(errorMessage(err, 'Не удалось удалить проект'));
+          return;
+        }
+
+        // Локально массив не правим: под проектом тысячи узлов, и фильтр по точному ключу
+        // (как в removeDevice) оставил бы их в дереве без корня. Перечитываем то, что
+        // осталось, и убираем проект из загруженных — иначе следующая загрузка запросила бы
+        // уже несуществующий.
+        const rest = (get().loadedRootPath ?? []).filter(p => p !== projectKey);
+        set({loadedRootPath: rest, selectedDevice: null});
+        if (rest.length) {
+          await get().loadNodes(rest).catch(() => {});
+        } else {
+          set({nodes: [], params: []});
+        }
+        toast.success('Проект удалён');
+      },
       deleteOptionParam: async (key) => {
         try {
           const res = await fetch(`/api/device/param/${key}`, {
@@ -422,6 +463,23 @@ export const useDeviceStore = create<DeviceStoreState>()(
         }
         if (action === 'edit') {
           await get().toggleEditing(get().selectedDevice ?? '');
+        }
+        if (action === 'export_gateway') {
+          if (!nodeKey) return;
+          openGatewayExportModal(nodeKey);
+        }
+        if (action === 'delete_import') {
+          if (!nodeKey) return;
+          const confirmed = await confirmModal({
+            title: `Удалить проект ${nodeKey} целиком?`,
+            description: 'Схемы, привязанные к его тегам, потеряют связь. Отмены нет: '
+              + '«Отменить» в журнале действий импорт и удаление не откатывает.',
+            confirmLabel: 'Удалить',
+            danger: true,
+          });
+          if (confirmed) {
+            await get().removeImportedProject(nodeKey);
+          }
         }
         get().setContextMenu(null);
       },

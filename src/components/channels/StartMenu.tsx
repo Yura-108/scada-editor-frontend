@@ -3,9 +3,10 @@ import {useDeviceStore} from "@/store/useDeviceStore";
 import {unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
 import {
   Search, Building2, FolderOpen, AlertCircle,
-  RefreshCw, Check,
+  RefreshCw, Check, FileUp,
 } from 'lucide-react';
 import {MultiSelect} from "@/components/ui/MultiSelect";
+import {openImportCdbxModal} from "@/components/channels/OpenImportCdbxModal";
 
 export default function StartMenu() {
   // Состояния для MultiSelect
@@ -264,6 +265,17 @@ export default function StartMenu() {
                   Загрузить устройства
                 </>
               )}
+            </button>
+
+            {/* Импорт создаёт НОВЫЙ проект, поэтому стоит рядом с выбором: после отчёта он
+                сам подгружается в дерево и виден в этом же списке проектов. */}
+            <button
+              type="button"
+              onClick={openImportCdbxModal}
+              className="w-full py-4 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-300 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all flex items-center justify-center gap-3"
+            >
+              <FileUp className="w-5 h-5" />
+              Импорт базы из .cdbx
             </button>
           </form>
         </div>

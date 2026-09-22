@@ -5,6 +5,8 @@ import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
 import { useEditingDevices } from "@/lib/useIsEditingDevice";
+import { useDeviceStore } from "@/store/useDeviceStore";
+import { PARAM_IMPORT_SOURCE } from "@/types/cdbxImport.types";
 
 const ContextMenu = <T extends string = string>({
   menu,
@@ -101,6 +103,15 @@ const ContextMenu = <T extends string = string>({
   const editingDevices = useEditingDevices();
   const isEditing = (key: string) => editingDevices.includes(key);
 
+  // Проект, созданный импортом .cdbx, помечен параметром «Источник импорта» — по нему
+  // бэкенд и разрешает удалять базу целиком. Ищем ПО ИМЕНИ, а не по id типа: id справочника
+  // на разных стендах разные, бэкенд сам сопоставляет их по имени.
+  const isImportedProject = useDeviceStore(
+    (s) => Boolean(menuKey) && s.params.some(
+      (p) => p.parentKey === menuKey && p.name === PARAM_IMPORT_SOURCE,
+    ),
+  );
+
   if (!menu.visible) return null;
 
   // Меню дерева устройств содержит пункты площадки/проекта; меню параметров — нет.
@@ -133,6 +144,12 @@ const ContextMenu = <T extends string = string>({
         case 'exit_edit':
         case 'delete':
           return editing;
+        // Выгрузка и удаление целиком — только на узле проекта и только у импортированной
+        // базы: собранную руками (например, BN1_MCA1) бэкенд удалять откажется, а тегов с
+        // «Именем в ПЛК» у неё нет, и выгрузка вернула бы 404.
+        case 'export_gateway':
+        case 'delete_import':
+          return level === 2 && isImportedProject;
         default:
           return false;
       }
