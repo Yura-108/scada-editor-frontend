@@ -104,6 +104,14 @@ export function useStageInteractions({
     const { deltaX, deltaY } = normalizeWheelDelta(e.evt);
 
     if (e.evt.ctrlKey) {
+      // Масштаб зафиксирован замком в панели зума — жест его не меняет. Пинч на тачпаде
+      // приходит сюда же (браузер шлёт его как wheel с ctrlKey), поэтому отдельной ветки
+      // для него не нужно.
+      //
+      // `preventDefault` выше снимать НЕЛЬЗЯ: без него Ctrl+колесо достанется браузеру и
+      // начнёт масштабировать саму страницу — «отключённый» зум превратился бы в зум всей
+      // вёрстки, то есть в худший вариант того, от чего защищаемся.
+      if (useEditorStore.getState().zoomLocked) return;
       // Ctrl + Wheel → zoom to cursor point
       const oldScale = stage.scaleX();
       const pointer = stage.getPointerPosition();

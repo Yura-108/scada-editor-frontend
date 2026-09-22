@@ -160,6 +160,16 @@ type EditorState = {
   setCameraZoom: (newZoom: number) => void;
   setCamera: (x: number, y: number, zoom: number) => void;
   /**
+   * Масштаб зафиксирован: ни жест (Ctrl+колесо, пинч), ни кнопки панели зума его не меняют.
+   * Панорамирование остаётся — оператору нужно заглядывать в края схемы, не разблокируя вид.
+   *
+   * Живёт только в памяти сеанса, в отличие от самой камеры (`sceneCamera.ts`): пережив
+   * перезагрузку, блокировка встретила бы следующего оператора замершим холстом без видимой
+   * причины, а кнопка объясняет состояние ровно пока её видно.
+   */
+  zoomLocked: boolean;
+  toggleZoomLocked: () => void;
+  /**
    * Подвести камеру к элементу, если он вне видимой области (иначе ничего не делает).
    * Для панели «Слои»: выделение само по себе холст не двигает, и выбранный элемент
    * мог оказаться далеко за краем экрана.
@@ -1399,6 +1409,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         }))
       },
       setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
+
+      zoomLocked: false,
+      toggleZoomLocked: () => set(state => ({zoomLocked: !state.zoomLocked})),
 
       ensureElementVisible: (key) => {
         const {elements, canvasRect, camera} = get();

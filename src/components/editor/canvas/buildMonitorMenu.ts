@@ -1,5 +1,6 @@
 import { DiagramElement } from "@/types/editorElement.type";
 import { emitRuntimeScript } from "@/lib/runtime/runtimeEventBus";
+import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
 import type { CanvasMenuItem } from "./types";
 
@@ -60,8 +61,14 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
       label: `${script.name}${reason}`,
       disabled: !isSaved || !isLive,
       onClick: () => {
+        // Меню закрываем ДО подтверждения: иначе оно осталось бы висеть под диалогом.
+        // Пункт меню синхронный по типу, поэтому асинхронная часть уходит в `void (async…)()`.
         closeMenu();
-        emitRuntimeScript(el.key, script.name);
+        void (async () => {
+          if (await confirmMonitorAction({element: el, scriptName: script.name})) {
+            emitRuntimeScript(el.key, script.name);
+          }
+        })();
       },
     });
   }

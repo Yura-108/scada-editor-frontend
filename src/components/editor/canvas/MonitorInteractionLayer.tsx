@@ -8,8 +8,19 @@ import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/types
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {emitRuntimeEvent} from "@/lib/runtime/runtimeEventBus";
+import {confirmMonitorAction} from "@/lib/runtime/confirmMonitorAction";
 
 const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h.code.trim());
+
+/**
+ * Спрашиваем ДО запуска: скрипт события начинает писать теги с первой строки, и спросить
+ * после — значит спросить о том, что уже сделано. Отказ оператора оставляет схему нетронутой.
+ */
+const runConfirmed = async (el: DiagramElement, event: ElementEventName) => {
+  if (await confirmMonitorAction({element: el, event})) {
+    emitRuntimeEvent(el.key, event);
+  }
+};
 
 const findHandler = (events: ElementEvents | undefined, type: ElementEventName) =>
   events?.find(e => e.event_type === type)?.handler;
@@ -74,10 +85,10 @@ export function MonitorInteractionLayer({elements, elementsMap}: Props) {
             fill="transparent"
             onMouseEnter={e => setCursor(e, "pointer")}
             onMouseLeave={e => setCursor(e, "default")}
-            onClick={clickable ? leftButtonOnly(() => emitRuntimeEvent(el.key, "onClick")) : undefined}
-            onTap={clickable ? () => emitRuntimeEvent(el.key, "onClick") : undefined}
-            onDblClick={dblClickable ? leftButtonOnly(() => emitRuntimeEvent(el.key, "onDoubleClick")) : undefined}
-            onDblTap={dblClickable ? () => emitRuntimeEvent(el.key, "onDoubleClick") : undefined}
+            onClick={clickable ? leftButtonOnly(() => void runConfirmed(el, "onClick")) : undefined}
+            onTap={clickable ? () => void runConfirmed(el, "onClick") : undefined}
+            onDblClick={dblClickable ? leftButtonOnly(() => void runConfirmed(el, "onDoubleClick")) : undefined}
+            onDblTap={dblClickable ? () => void runConfirmed(el, "onDoubleClick") : undefined}
           />
         );
       })}

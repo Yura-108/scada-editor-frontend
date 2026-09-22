@@ -74,6 +74,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
     pendingPlacement, setEditingTextKey, editingTextKey,
     groupSelected, ungroupSelected,
+    zoomLocked, toggleZoomLocked,
   } = useEditorStore(useShallow(s => ({
     elements: s.elements, selectedIds: s.selectedIds, selectMultiple: s.selectMultiple,
     setCanvasRect: s.setCanvasRect,
@@ -90,6 +91,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     pendingPlacement: s.pendingPlacement,
     setEditingTextKey: s.setEditingTextKey, editingTextKey: s.editingTextKey,
     groupSelected: s.groupSelected, ungroupSelected: s.ungroupSelected,
+    zoomLocked: s.zoomLocked, toggleZoomLocked: s.toggleZoomLocked,
   })));
 
   const { resolvedTheme, themeColors } = useThemeColors();
@@ -596,7 +598,11 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
         onZoomBy={zoomBy}
         onFit={zoomFit}
         onFitSheet={zoomFitSheet}
-        onReset={() => setCamera(0, 0, 1)}
+        // Сброс к 100% — тоже изменение масштаба: при блокировке он не срабатывает,
+        // как и остальные кнопки панели.
+        onReset={() => { if (!zoomLocked) setCamera(0, 0, 1); }}
+        zoomLocked={zoomLocked}
+        onToggleZoomLock={toggleZoomLocked}
       />
 
       <CanvasContextMenu menu={contextMenu} onClose={closeMenu} />
