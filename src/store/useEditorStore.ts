@@ -21,8 +21,14 @@ import {
 } from "@/lib/editor/sheet";
 import {findStateNameRefs, renameStateNameInCode, type StateNameRef} from "@/lib/editor/stateNameRefs";
 import {rootComponentsOf} from "@/lib/editor/documentComponents";
-import {findTemplateRoot} from "@/lib/editor/templateRoot";
 import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
+import {
+  detachServerBindingIds,
+  detachServerEventIds,
+  detachServerScriptIds,
+  detachServerStateIds,
+} from "@/lib/editor/detachServerIds";
+import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements from "@/lib/transformElements";
@@ -242,6 +248,13 @@ type EditorState = {
   updateBinding: (elementKey: string, bindingId: string, patch: Partial<Omit<TagBinding, "v" | "id">>) => void;
   removeBinding: (elementKey: string, bindingId: string) => void;
   addTemplate: (screenX: number, screenY: number, template: DiagramElement[]) => void;
+  /**
+   * Кладёт готовые элементы на холст ОДНИМ действием — один шаг undo на весь импорт.
+   *
+   * Отдельно от `importElementsFromJson`: тот назначает ключи заново, но `propertyRefs`
+   * внутри биндингов не перекладывает, и у готовых копий ссылки на соседей протухли бы.
+   */
+  addImportedElements: (elements: DiagramElement[], mode: "append" | "replace") => void;
   deleteSelectedElement: () => void;
   copySelectedElement: () => void;
   pasteSelectedElement: () => void;
@@ -434,91 +447,6 @@ const applyShifts = (
 };
 
 /**
- * Клонирует набор элементов (с потомками) с ремапом ключей и смещением корней
- * вправо-вниз. Корни клона реparent'ятся в корень сцены. Общая база для
- * вставки (Ctrl+V) и дублирования (Ctrl+D).
- */
-/**
- * Снимает серверные id вложенных сущностей с копии элемента.
- *
- * `serverId` адресует КОНКРЕТНУЮ сущность на бэкенде. У копии (вставка, дублирование,
- * установка шаблона на холст) сущность новая — с `id: null`, — и отправить вместе с ней
- * чужой id состояния, скрипта, биндинга или события значит сказать серверу «это
- * состояние переехало сюда»: оригинал своё потеряет, а слияние выдаст конфликт на
- * ровном месте. Локальные `id` (React-ключи) при этом сохраняются.
- *
- * Свойства (`properties`) снимает отдельный `detachPropertyIds` — они заводятся своим
- * REST-путём (`/api/editor/tags`), а не вместе со сценой, поэтому у копии это черновики
- * без серверного номера.
- */
-const detachServerStateIds = (states: DiagramElement["states"] | undefined): DiagramElement["states"] =>
-  (states ?? []).map(state => {
-    if (state.serverId == null) return state;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const {serverId: _serverId, ...rest} = state;
-    return rest;
-  });
-
-/** Скрипты копии: новый локальный uuid + снятый серверный id. */
-const detachServerScriptIds = (
-  scripts: DiagramElement["scripts"] | undefined,
-): DiagramElement["scripts"] =>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (Array.isArray(scripts) ? scripts : []).map(({serverId: _serverId, ...s}) => ({
-    ...s,
-    id: createUuid(),
-  }));
-
-/** Биндинги копии: без серверного id и без пары «свойство», присвоенной сервером. */
-const detachServerBindingIds = (
-  bindings: DiagramElement["bindings"] | undefined,
-): DiagramElement["bindings"] =>
-  (Array.isArray(bindings) ? bindings : []).map(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ({serverId: _s, componentPropertyId: _pid, componentPropertyName: _pname, ...b}) => b,
-  );
-
-/**
- * Свойства копии: без серверных id.
- *
- * `id` адресует свойство на бэкенде, `component_id` — его владельца; у копии владелец
- * другой. Экземпляр шаблона заводит свои свойства сам, в момент назначения тега
- * (`addTags`), а до тех пор они черновики — см. `PropertyCreateDto.id`.
- */
-const detachPropertyIds = (
-  properties: DiagramElement["properties"] | undefined,
-): DiagramElement["properties"] =>
-  (Array.isArray(properties) ? properties : []).map(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ({id: _id, component_id: _cid, ...rest}) => rest as DiagramElement["properties"][number],
-  );
-
-/**
- * Перекладывает ссылки на свойства других элементов на новые ключи копии.
- *
- * `propertyRefs` живут внутри биндингов и обработчиков событий и адресуют элемент по
- * `componentKey`. Без перекладки ссылки внутри поставленного шаблона продолжали бы
- * указывать на ключи ИСХОДНОЙ сцены. Номер свойства (`propertyId`) при этом снимается:
- * у копии свойство ещё не заведено, номер проставит `addTags` по паре
- * «componentKey + propertyName».
- */
-const remapPropertyRefs = <T extends {propertyRefs?: PropertyRef[]}>(
-  owner: T,
-  keyMap: Record<string, string>,
-): T => {
-  if (!owner.propertyRefs?.length) return owner;
-  return {
-    ...owner,
-    propertyRefs: owner.propertyRefs.map(ref => {
-      const componentKey = keyMap[ref.componentKey] ?? ref.componentKey;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const {propertyId: _pid, componentId: _cid, ...rest} = ref;
-      return {...rest, componentKey} as PropertyRef;
-    }),
-  };
-};
-
-/**
  * Проставляет номера свойств тем ссылкам, что их ждали.
  *
  * Ссылка на свойство соседа адресует его парой «`componentKey` + `propertyName`», а
@@ -575,13 +503,11 @@ const resolvePendingPropertyRefs = (elements: DiagramElement[]): DiagramElement[
   return touched ? next : elements;
 };
 
-/** События копии: без серверного id (сопоставление всё равно по `event_type`). */
-const detachServerEventIds = (
-  events: DiagramElement["events"] | undefined,
-): DiagramElement["events"] =>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (Array.isArray(events) ? events : []).map(({serverId: _serverId, ...e}) => e);
-
+/**
+ * Клонирует набор элементов (с потомками) с ремапом ключей и смещением корней
+ * вправо-вниз. Корни клона реparent'ятся в корень сцены. Общая база для
+ * вставки (Ctrl+V) и дублирования (Ctrl+D).
+ */
 const cloneElementsWithOffset = (
   source: DiagramElement[],
   scene: SceneType | null,
@@ -2019,81 +1945,30 @@ export const useEditorStore = create<EditorState>()(temporal(
           return;
         }
 
-        const x = snap(screenX);
-        const y = snap(screenY);
-
-        const keyMap: Record<string, string> = {};
-        template.forEach(el => {
-          keyMap[el.key] = createUuid();
-        });
-
-        const root = findTemplateRoot(template) ?? template[0];
-
-        // Куда встанет корень. У группы позиция всегда в базе — её достаточно
-        // записать. У одиночного элемента (в палитру сохраняют и такие) живая
-        // позиция лежит в overrides состояния, а у линии её нет вовсе: там
-        // x1/y1/x2/y2. Поэтому не-группу СДВИГАЕМ на разницу между точкой
-        // постановки и её отрисованным габаритом: запись x/y в базу оставила бы
-        // overrides со старой позицией, и элемент приехал бы туда, где его
-        // сохранили.
-        const rootIsGroup = root.type === "group";
-        const rootBounds = rootIsGroup ? null : getElementBoundsRendered(root, template);
-        const rootDx = rootBounds ? x - rootBounds.minX : 0;
-        const rootDy = rootBounds ? y - rootBounds.minY : 0;
-
-        const newElements = template.map(el => {
-          // 1. Формируем базовый обновленный элемент (меняем только ключи и связи)
-          const updatedElement = {
-            ...el,
-            id: null,
-            key: keyMap[el.key],
-            parentKey: el.parentKey ? (keyMap[el.parentKey] || el.parentKey) : null,
-            children: el.children ? el.children.map(childKey => keyMap[childKey] || childKey) : undefined,
-            composition: el.composition ? el.composition.map(k => keyMap[k] || k) : [],
-            // Экземпляр шаблона — новая сущность сцены; серверные id вложенных
-            // сущностей принадлежат самому шаблону и уехать вместе с копией не должны.
-            scripts: detachServerScriptIds((el as DiagramElement).scripts),
-            // Ссылки на свойства соседей перекладываем на новые ключи копии — иначе они
-            // продолжали бы адресовать элементы ИСХОДНОЙ сцены.
-            bindings: detachServerBindingIds((el as DiagramElement).bindings)
-              .map(b => remapPropertyRefs(b, keyMap)),
-            ...((el as DiagramElement).events
-              ? {events: (detachServerEventIds((el as DiagramElement).events) ?? [])
-                  .map(e => e.handler
-                    ? {...e, handler: remapPropertyRefs(e.handler, keyMap)}
-                    : e)}
-              : {}),
-            states: detachServerStateIds((el as DiagramElement).states),
-            // Свойства шаблона — черновики: серверные номера принадлежат самому шаблону,
-            // а тега у них нет вовсе (см. buildPaletteComponentTree). Экземпляр заводит
-            // свои свойства при назначении тега.
-            properties: detachPropertyIds((el as DiagramElement).properties),
-            // Дочерние элементы шаблона ещё не сохранены на сервере,
-            // поэтому parentId у них null — бэкенд проставит id при сохранении сцены.
-            parentId: null,
-          };
-
-          // 2. Если это НАШ корневой элемент — задаем ему новые координаты на холсте
-          //    и привязываем к текущей сцене (parentId = scene.id, parentKey = String(scene.id)).
-          if (el.key === root.key) {
-            updatedElement.parentKey = String(scene?.id);
-            updatedElement.parentId = scene?.id ?? null;
-
-            if (rootIsGroup) {
-              updatedElement.x = x;
-              updatedElement.y = y;
-            } else {
-              return shiftElementPositions(updatedElement as DiagramElement, rootDx, rootDy);
-            }
-          }
-
-          return updatedElement as DiagramElement;
+        // Клонирование и позиционирование живут в `instantiateTemplate`: тем же кодом
+        // пользуется импорт плана устройств, которому нужны сотни экземпляров разом.
+        const newElements = instantiateTemplate(template, {
+          x: screenX,
+          y: screenY,
+          sceneId: scene?.id ?? null,
         });
 
         set(state => ({
           elements: [...state.elements, ...newElements],
         }));
 
+      },
+      addImportedElements: (elements, mode) => {
+        const {scene, currentProject} = get();
+
+        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
+          toast.error("Нельзя импортировать: сцена не принадлежит выбранному проекту");
+          return;
+        }
+
+        set(state => ({
+          elements: mode === "replace" ? elements : [...state.elements, ...elements],
+        }));
       },
       buildSceneExport: () => {
         const {elements, scene} = get();

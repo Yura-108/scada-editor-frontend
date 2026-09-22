@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import {downloadJson, safeFileName} from "@/lib/downloadJson";
 import {choiceModal} from "@/components/ui/ConfirmModal";
+import {
+  buildDeviceLayout,
+  isDeviceLayoutFile,
+  type DeviceLayoutFile,
+} from "@/lib/editor/deviceLayoutImport";
+import {openDeviceImportReportModal} from "@/components/editor/OpenDeviceImportReportModal";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
@@ -155,6 +161,70 @@ export default function ToolsPanel() {
     toast.success(`Сохранено элементов: ${file.elements.length}`);
   };
 
+  /**
+   * План устройств: «какой шаблон взять и в какие координаты поставить».
+   *
+   * Экземпляры собираются одним массивом и кладутся одним действием — иначе 47 вызовов
+   * `addTemplate` дали бы 47 шагов undo при лимите истории в 50.
+   */
+  const importDeviceLayout = async (file: DeviceLayoutFile) => {
+    // Палитра грузится при монтировании редактора, но если запрос не прошёл, в списке
+    // останутся только статические элементы — без шаблонов импортировать нечего.
+    if (!usePaletteStore.getState().paletteItems.some((i) => i.type === "custom")) {
+      await usePaletteStore.getState().loadPaletteItems();
+    }
+
+    const {scene, addImportedElements} = useEditorStore.getState();
+    const {elements, report} = buildDeviceLayout(
+      file,
+      usePaletteStore.getState().paletteItems,
+      scene?.id ?? null,
+    );
+
+    // Выходим ДО вопроса о режиме: с «Заменить» пустой результат стёр бы всю схему.
+    if (!elements.length) {
+      toast.error("Импорт не дал ни одного элемента", {
+        description: "Ни одного из шаблонов файла нет в палитре.",
+      });
+      openDeviceImportReportModal(report);
+      return;
+    }
+
+    let mode: "append" | "replace" = "replace";
+    if (useEditorStore.getState().elements.length) {
+      const answer = await choiceModal({
+        title: "На схеме уже есть элементы",
+        description: `В файле ${report.devices} устройств и ${report.lines} линий. Что с ними сделать?`,
+        options: [
+          {
+            id: "replace",
+            label: "Заменить содержимое схемы",
+            description: "Текущие элементы будут убраны. Отменяется через Ctrl+Z, на сервере — до ближайшего сохранения.",
+            danger: true,
+          },
+          {
+            id: "append",
+            label: "Добавить к существующим",
+            description: "Импортированное ляжет поверх текущего. Повторный импорт того же файла задвоит элементы.",
+          },
+        ],
+      });
+      if (!answer) return;
+      mode = answer as "append" | "replace";
+    }
+
+    addImportedElements(elements, mode);
+
+    toast.success(`Поставлено устройств: ${report.placed} из ${report.devices}`, {
+      description: `линий ${report.lines} · элементов на холсте ${elements.length}`,
+      duration: 12_000,
+    });
+
+    if (report.missing.length || report.ambiguous.length) {
+      openDeviceImportReportModal(report);
+    }
+  };
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,6 +237,14 @@ export default function ToolsPanel() {
     reader.onload = async (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
+
+        // План устройств — объект {devices, lines}, а не массив. Ветка должна стоять
+        // ДО общего распознавания: там объект без нашего конверта заворачивается в
+        // [json] и становится одним мусорным элементом.
+        if (isDeviceLayoutFile(json)) {
+          await importDeviceLayout(json);
+          return;
+        }
 
         // Свой файл приезжает конвертом (см. buildSceneExport), чужая выгрузка — голым
         // массивом. Флаг `native` важнее удобства: без него нормализатор CONTUR второй
