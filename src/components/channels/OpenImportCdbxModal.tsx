@@ -23,10 +23,42 @@ const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wi
 /** Площадка и проект — имена узлов базы, точка в них разделяет уровни пути. */
 const badSegment = (value: string) => !value.trim() || value.includes(".");
 
+/** Выбор одного файла исходников ПЛК; повторный клик по выбранному — сброс. */
+function PlcSourceButton({hint, file, onChange}: {
+  hint: string;
+  file: File | null;
+  onChange: (file: File | null) => void;
+}) {
+  const handleClick = async () => {
+    if (file) {
+      onChange(null);
+      return;
+    }
+    const picked = await pickFile("");
+    if (picked) onChange(picked);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleClick()}
+      title={file ? "Убрать файл" : `Выбрать ${hint}`}
+      className={cn(inputClass, "flex items-center gap-3 py-2 text-left text-sm", !file && "text-gray-500 dark:text-gray-400")}
+    >
+      <FileUp className="h-4 w-4 shrink-0 text-indigo-500" />
+      <span className="min-w-0 flex-1 truncate">{file ? file.name : hint}</span>
+      {file && <span className="shrink-0 text-xs text-gray-500">убрать</span>}
+    </button>
+  );
+}
+
 function ImportCdbxContent() {
   const closeModal = useModalStore((s) => s.closeModal);
 
   const [file, setFile] = useState<File | null>(null);
+  // Исходники проекта ПЛК (контракт, раздел 1.1): необязательны и независимы друг от друга.
+  const [ioFile, setIoFile] = useState<File | null>(null);
+  const [objectsFile, setObjectsFile] = useState<File | null>(null);
   const [site, setSite] = useState("");
   const [project, setProject] = useState("");
   const [sites, setSites] = useState<string[]>([]);
@@ -67,6 +99,9 @@ function ImportCdbxContent() {
       form.append("file", file);
       form.append("site", site.trim());
       form.append("project", project.trim());
+      // Только выбранные: расширение не проверяем, непохожее бэкенд молча пропустит.
+      if (ioFile) form.append("io", ioFile);
+      if (objectsFile) form.append("objects", objectsFile);
 
       const res = await fetch("/api/device/import", {method: "POST", body: form});
       const data = await res.json().catch(() => null);
@@ -153,6 +188,20 @@ function ImportCdbxContent() {
             className={inputClass}
           />
         </div>
+
+        <details className="rounded-xl border border-gray-200 dark:border-gray-700/80 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+            Исходники проекта ПЛК (необязательно, но дерево получится точнее)
+          </summary>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            Эти файлы лежат в проекте ПЛК рядом с <code>main.plua</code>. Без них приборы
+            раскладываются по общему правилу, а объекты получают имена вида <code>LINE1.OBJECT</code>.
+          </p>
+          <div className="mt-3 space-y-2">
+            <PlcSourceButton hint="main.io.lua" file={ioFile} onChange={setIoFile} />
+            <PlcSourceButton hint="main.objects.lua" file={objectsFile} onChange={setObjectsFile} />
+          </div>
+        </details>
 
         {(site.includes(".") || project.includes(".")) && (
           <p className="text-sm text-red-600 dark:text-red-400">
