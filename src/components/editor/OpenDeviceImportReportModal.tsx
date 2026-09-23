@@ -25,7 +25,8 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
 
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
         Поставлено устройств: <b>{report.placed}</b> из {report.devices}
-        {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}.
+        {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}
+        {report.junctions > 0 && <>, узлов: <b>{report.junctions}</b></>}.
       </Dialog.Description>
 
       <div className="space-y-3">
@@ -57,6 +58,17 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
                 <li key={a.template}>{a.template} — {a.count} шт.</li>
               ))}
             </ul>
+          </Collapsible>
+        )}
+
+        {report.unsupportedRotation.length > 0 && (
+          <Collapsible
+            title={`Угол не кратен 90°: ${report.unsupportedRotation.length}`}
+            badge={<span className="text-xs text-amber-600 dark:text-amber-400">поставлены без поворота</span>}
+          >
+            <p className="max-h-48 overflow-y-auto text-xs text-gray-600 dark:text-gray-400 font-mono">
+              {report.unsupportedRotation.join(", ")}
+            </p>
           </Collapsible>
         )}
 

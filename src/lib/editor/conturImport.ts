@@ -1,4 +1,5 @@
 import {createUuid} from "@/lib/createUuid";
+import {DEFAULT_DASH} from "@/lib/editor/dashArray";
 
 /**
  * Приведение выгрузки CONTUR (`visualization_export_hmi*.json`) к модели редактора.
@@ -27,7 +28,7 @@ const MIN_STROKE = 0.5;
 
 /** Толщина и штрих рамки техобъекта — своих значений CONTUR для них не передаёт. */
 const FRAME_STROKE_WIDTH = 1.5;
-const FRAME_DASH = "6 4";
+const FRAME_DASH = DEFAULT_DASH;
 
 export type ConturImportStats = {
   /** Техобъекты, ставшие группами. */

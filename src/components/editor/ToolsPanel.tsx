@@ -194,7 +194,7 @@ export default function ToolsPanel() {
     if (useEditorStore.getState().elements.length) {
       const answer = await choiceModal({
         title: "На схеме уже есть элементы",
-        description: `В файле ${report.devices} устройств и ${report.lines} линий. Что с ними сделать?`,
+        description: `В файле ${report.devices} устройств, ${report.lines} линий и ${report.junctions} узлов соединения. Что с ними сделать?`,
         options: [
           {
             id: "replace",
@@ -216,11 +216,17 @@ export default function ToolsPanel() {
     addImportedElements(elements, mode);
 
     toast.success(`Поставлено устройств: ${report.placed} из ${report.devices}`, {
-      description: `линий ${report.lines} · элементов на холсте ${elements.length}`,
+      description: [
+        `линий ${report.lines}`,
+        `узлов ${report.junctions}`,
+        `повёрнуто ${report.rotated}`,
+        `отражено ${report.mirrored}`,
+        `элементов на холсте ${elements.length}`,
+      ].join(" · "),
       duration: 12_000,
     });
 
-    if (report.missing.length || report.ambiguous.length) {
+    if (report.missing.length || report.ambiguous.length || report.unsupportedRotation.length) {
       openDeviceImportReportModal(report);
     }
   };

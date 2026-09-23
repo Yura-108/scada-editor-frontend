@@ -11,3 +11,7 @@ export const parseDashArray = (raw: string | undefined): number[] | undefined =>
   const nums = parts.filter((n) => Number.isFinite(n) && n >= 0);
   return nums.length ? nums : undefined;
 };
+
+/** Штрих «пунктир» по умолчанию — там, где источник говорит только «пунктир», без рисунка
+ *  (рамки техобъектов CONTUR, `dashed: true` в плане устройств). */
+export const DEFAULT_DASH = "6 4";
