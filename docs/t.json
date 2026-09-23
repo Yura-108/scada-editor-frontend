@@ -1,7 +1,9 @@
 {
   "devices": [
     {
-      "template": "V",
+      "template": "V_Bmk/85",
+      "group": "V",
+      "symbol": "Bmk/85",
       "name": "V1",
       "idNode": "TANK1.V1",
       "x": 320,
@@ -9,87 +11,111 @@
       "rotation": 90
     },
     {
-      "template": "R",
+      "template": "R_Bmk/81",
+      "group": "R",
+      "symbol": "Bmk/81",
       "name": "R1",
       "idNode": "TANK1.R1",
-      "x": 348,
-      "y": 100,
+      "x": 343.375,
+      "y": 99.975,
       "rotation": 90
     },
     {
-      "template": "M",
+      "template": "M_Bmk/82",
+      "group": "M",
+      "symbol": "Bmk/82",
       "name": "M1",
       "idNode": "TANK1.M1",
-      "x": 352,
+      "x": 356.5,
       "y": 100,
       "rotation": 180
     },
     {
-      "template": "TE",
+      "template": "TE_Bmk/115",
+      "group": "TE",
+      "symbol": "Bmk/115",
       "name": "TE1",
       "idNode": "TANK1.TE1",
       "x": 304,
       "y": 144
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/115",
+      "group": "LS",
+      "symbol": "Bmk/115",
       "name": "LS1",
       "idNode": "TANK1.LS1",
       "x": 336,
       "y": 152
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/159",
+      "group": "LS",
+      "symbol": "Bmk/159",
       "name": "LS2",
       "idNode": "TANK1.LS2",
       "x": 356,
       "y": 68
     },
     {
-      "template": "GS",
+      "template": "GS_Bmk/115",
+      "group": "GS",
+      "symbol": "Bmk/115",
       "name": "GS1",
       "idNode": "TANK1.GS1",
       "x": 336,
       "y": 116
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X7",
       "idNode": "TANK1.X7",
       "x": 320,
-      "y": 40
+      "y": 43
     },
     {
-      "template": "LT",
+      "template": "LT_Bmk/115",
+      "group": "LT",
+      "symbol": "Bmk/115",
       "name": "LT1",
       "idNode": "TANK1.LT1",
       "x": 356,
       "y": 132
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V11",
       "idNode": "TANK1.V11",
       "x": 320,
-      "y": 32
+      "y": 30.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/214",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/214",
       "name": "V12",
       "idNode": "TANK1.V12",
       "x": 272,
-      "y": 164,
+      "y": 162.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V13",
       "idNode": "TANK1.V13",
-      "x": 280,
-      "y": 100
+      "x": 280.5,
+      "y": 98.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk/85",
+      "group": "V",
+      "symbol": "Bmk/85",
       "name": "V1",
       "idNode": "TANK2.V1",
       "x": 444,
@@ -97,87 +123,111 @@
       "rotation": 90
     },
     {
-      "template": "R",
+      "template": "R_Bmk/81",
+      "group": "R",
+      "symbol": "Bmk/81",
       "name": "R1",
       "idNode": "TANK2.R1",
-      "x": 472,
-      "y": 100,
+      "x": 467.375,
+      "y": 99.975,
       "rotation": 90
     },
     {
-      "template": "M",
+      "template": "M_Bmk/82",
+      "group": "M",
+      "symbol": "Bmk/82",
       "name": "M1",
       "idNode": "TANK2.M1",
-      "x": 476,
+      "x": 480.5,
       "y": 100,
       "rotation": 180
     },
     {
-      "template": "TE",
+      "template": "TE_Bmk/115",
+      "group": "TE",
+      "symbol": "Bmk/115",
       "name": "TE1",
       "idNode": "TANK2.TE1",
       "x": 428,
       "y": 144
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/115",
+      "group": "LS",
+      "symbol": "Bmk/115",
       "name": "LS1",
       "idNode": "TANK2.LS1",
       "x": 460,
       "y": 152
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/159",
+      "group": "LS",
+      "symbol": "Bmk/159",
       "name": "LS2",
       "idNode": "TANK2.LS2",
       "x": 480,
       "y": 68
     },
     {
-      "template": "GS",
+      "template": "GS_Bmk/115",
+      "group": "GS",
+      "symbol": "Bmk/115",
       "name": "GS1",
       "idNode": "TANK2.GS1",
       "x": 460,
       "y": 116
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X7",
       "idNode": "TANK2.X7",
       "x": 444,
-      "y": 40
+      "y": 43
     },
     {
-      "template": "LT",
+      "template": "LT_Bmk/115",
+      "group": "LT",
+      "symbol": "Bmk/115",
       "name": "LT1",
       "idNode": "TANK2.LT1",
       "x": 480,
       "y": 132
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V11",
       "idNode": "TANK2.V11",
       "x": 444,
-      "y": 32
+      "y": 30.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/214",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/214",
       "name": "V12",
       "idNode": "TANK2.V12",
       "x": 396,
-      "y": 164,
+      "y": 162.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V13",
       "idNode": "TANK2.V13",
-      "x": 404,
-      "y": 100
+      "x": 404.5,
+      "y": 98.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk/85",
+      "group": "V",
+      "symbol": "Bmk/85",
       "name": "V1",
       "idNode": "TANK3.V1",
       "x": 568,
@@ -185,87 +235,111 @@
       "rotation": 90
     },
     {
-      "template": "R",
+      "template": "R_Bmk/81",
+      "group": "R",
+      "symbol": "Bmk/81",
       "name": "R1",
       "idNode": "TANK3.R1",
-      "x": 596,
-      "y": 100,
+      "x": 591.375,
+      "y": 99.975,
       "rotation": 90
     },
     {
-      "template": "M",
+      "template": "M_Bmk/82",
+      "group": "M",
+      "symbol": "Bmk/82",
       "name": "M1",
       "idNode": "TANK3.M1",
-      "x": 600,
+      "x": 604.5,
       "y": 100,
       "rotation": 180
     },
     {
-      "template": "TE",
+      "template": "TE_Bmk/115",
+      "group": "TE",
+      "symbol": "Bmk/115",
       "name": "TE1",
       "idNode": "TANK3.TE1",
       "x": 552,
       "y": 144
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/115",
+      "group": "LS",
+      "symbol": "Bmk/115",
       "name": "LS1",
       "idNode": "TANK3.LS1",
       "x": 584,
       "y": 152
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/159",
+      "group": "LS",
+      "symbol": "Bmk/159",
       "name": "LS2",
       "idNode": "TANK3.LS2",
       "x": 604,
       "y": 68
     },
     {
-      "template": "GS",
+      "template": "GS_Bmk/115",
+      "group": "GS",
+      "symbol": "Bmk/115",
       "name": "GS1",
       "idNode": "TANK3.GS1",
       "x": 584,
       "y": 116
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X7",
       "idNode": "TANK3.X7",
       "x": 568,
-      "y": 40
+      "y": 43
     },
     {
-      "template": "LT",
+      "template": "LT_Bmk/115",
+      "group": "LT",
+      "symbol": "Bmk/115",
       "name": "LT1",
       "idNode": "TANK3.LT1",
       "x": 604,
       "y": 132
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V11",
       "idNode": "TANK3.V11",
       "x": 568,
-      "y": 32
+      "y": 30.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/214",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/214",
       "name": "V12",
       "idNode": "TANK3.V12",
       "x": 520,
-      "y": 164,
+      "y": 162.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V13",
       "idNode": "TANK3.V13",
-      "x": 528,
-      "y": 100
+      "x": 528.5,
+      "y": 98.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk/85",
+      "group": "V",
+      "symbol": "Bmk/85",
       "name": "V1",
       "idNode": "TANK4.V1",
       "x": 692,
@@ -273,125 +347,159 @@
       "rotation": 90
     },
     {
-      "template": "R",
+      "template": "R_Bmk/81",
+      "group": "R",
+      "symbol": "Bmk/81",
       "name": "R1",
       "idNode": "TANK4.R1",
-      "x": 720,
-      "y": 100,
+      "x": 715.375,
+      "y": 99.975,
       "rotation": 90
     },
     {
-      "template": "M",
+      "template": "M_Bmk/82",
+      "group": "M",
+      "symbol": "Bmk/82",
       "name": "M1",
       "idNode": "TANK4.M1",
-      "x": 724,
+      "x": 728.5,
       "y": 100,
       "rotation": 180
     },
     {
-      "template": "TE",
+      "template": "TE_Bmk/115",
+      "group": "TE",
+      "symbol": "Bmk/115",
       "name": "TE1",
       "idNode": "TANK4.TE1",
       "x": 676,
       "y": 144
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/115",
+      "group": "LS",
+      "symbol": "Bmk/115",
       "name": "LS1",
       "idNode": "TANK4.LS1",
       "x": 708,
       "y": 152
     },
     {
-      "template": "LS",
+      "template": "LS_Bmk/159",
+      "group": "LS",
+      "symbol": "Bmk/159",
       "name": "LS2",
       "idNode": "TANK4.LS2",
       "x": 728,
       "y": 68
     },
     {
-      "template": "GS",
+      "template": "GS_Bmk/115",
+      "group": "GS",
+      "symbol": "Bmk/115",
       "name": "GS1",
       "idNode": "TANK4.GS1",
       "x": 708,
       "y": 116
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X7",
       "idNode": "TANK4.X7",
       "x": 692,
-      "y": 40
+      "y": 43
     },
     {
-      "template": "LT",
+      "template": "LT_Bmk/115",
+      "group": "LT",
+      "symbol": "Bmk/115",
       "name": "LT1",
       "idNode": "TANK4.LT1",
       "x": 728,
       "y": 132
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V11",
       "idNode": "TANK4.V11",
       "x": 692,
-      "y": 32
+      "y": 30.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/214",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/214",
       "name": "V12",
       "idNode": "TANK4.V12",
       "x": 644,
-      "y": 164,
+      "y": 162.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V13",
       "idNode": "TANK4.V13",
-      "x": 652,
-      "y": 100
+      "x": 652.5,
+      "y": 98.5
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "GR9.V3",
       "x": 552,
-      "y": 212,
+      "y": 214,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "GR9.V2",
       "x": 428,
-      "y": 212,
+      "y": 214,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "GR9.V1",
       "x": 304,
-      "y": 212,
+      "y": 214,
       "mirror": true
     },
     {
-      "template": "QT",
+      "template": "QT_Bmk/159",
+      "group": "QT",
+      "symbol": "Bmk/159",
       "name": "QT1",
       "idNode": "GR9.QT1",
       "x": 888,
       "y": 208
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/115",
+      "group": "FQT",
+      "symbol": "Bmk/115",
       "name": "FQT1",
       "idNode": "GR9.FQT1",
       "x": 928,
       "y": 216
     },
     {
-      "template": "V",
+      "template": "V_Bmk/85",
+      "group": "V",
+      "symbol": "Bmk/85",
       "name": "V202",
       "idNode": "CIP.V202",
       "x": 936,
@@ -399,586 +507,742 @@
       "rotation": 180
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "CIP.M1",
       "x": 888,
       "y": 624
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X1",
       "idNode": "GR9.X1",
       "x": 108,
-      "y": 216
+      "y": 219
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V37",
       "idNode": "GR9.V37",
       "x": 108,
-      "y": 208,
+      "y": 206.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V36",
       "idNode": "GR9.V36",
-      "x": 136,
-      "y": 208,
+      "x": 135.5,
+      "y": 206.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "GR9.V4",
       "x": 676,
-      "y": 212,
+      "y": 214,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V41",
       "idNode": "M15.V41",
       "x": 148,
-      "y": 348,
+      "y": 350,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "M15.V1",
       "x": 304,
-      "y": 344,
+      "y": 346,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "M15.V2",
       "x": 428,
-      "y": 344,
+      "y": 346,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "M15.V3",
       "x": 552,
-      "y": 344,
+      "y": 346,
       "mirror": true
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/28",
+      "group": "FQT",
+      "symbol": "Bmk/28",
       "name": "FQT1",
       "idNode": "M15.FQT1",
       "x": 928,
       "y": 348
     },
     {
-      "template": "FC",
+      "template": "FC_Bmk/110",
+      "group": "FC",
+      "symbol": "Bmk/110",
       "name": "FC1",
       "idNode": "M15.FC1",
       "x": 928,
       "y": 360
     },
     {
-      "template": "NY",
+      "template": "NY_Bmk/115",
+      "group": "NY",
+      "symbol": "Bmk/115",
       "name": "NY1",
       "idNode": "M15.NY1",
       "x": 908,
       "y": 360
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "M15.M1",
       "x": 888,
       "y": 348
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "M15.V4",
       "x": 676,
-      "y": 344,
+      "y": 346,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "GR1.V3",
       "x": 552,
-      "y": 256,
+      "y": 258,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "GR1.V2",
       "x": 428,
-      "y": 256,
+      "y": 258,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "GR1.V1",
       "x": 304,
-      "y": 256,
+      "y": 258,
       "mirror": true
     },
     {
-      "template": "QT",
+      "template": "QT_Bmk/159",
+      "group": "QT",
+      "symbol": "Bmk/159",
       "name": "QT1",
       "idNode": "GR1.QT1",
       "x": 888,
       "y": 252
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/115",
+      "group": "FQT",
+      "symbol": "Bmk/115",
       "name": "FQT1",
       "idNode": "GR1.FQT1",
       "x": 928,
       "y": 260
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X1",
       "idNode": "GR1.X1",
       "x": 108,
-      "y": 260
+      "y": 263
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V37",
       "idNode": "GR1.V37",
       "x": 108,
-      "y": 252,
+      "y": 250.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V36",
       "idNode": "GR1.V36",
-      "x": 136,
-      "y": 252,
+      "x": 135.5,
+      "y": 250.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "GR1.V4",
       "x": 676,
-      "y": 256,
+      "y": 258,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "RC4.V3",
       "x": 552,
-      "y": 300,
+      "y": 302,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "RC4.V2",
       "x": 428,
-      "y": 300,
+      "y": 302,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "RC4.V1",
       "x": 304,
-      "y": 300,
+      "y": 302,
       "mirror": true
     },
     {
-      "template": "QT",
+      "template": "QT_Bmk/159",
+      "group": "QT",
+      "symbol": "Bmk/159",
       "name": "QT1",
       "idNode": "RC4.QT1",
       "x": 888,
       "y": 296
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/115",
+      "group": "FQT",
+      "symbol": "Bmk/115",
       "name": "FQT1",
       "idNode": "RC4.FQT1",
       "x": 928,
       "y": 304
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X1",
       "idNode": "RC4.X1",
       "x": 108,
-      "y": 304
+      "y": 307
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/16",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/16",
       "name": "V37",
       "idNode": "RC4.V37",
       "x": 108,
-      "y": 296,
+      "y": 294.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/23",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/23",
       "name": "V36",
       "idNode": "RC4.V36",
-      "x": 136,
-      "y": 296,
+      "x": 135.5,
+      "y": 294.5,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "RC4.V4",
       "x": 676,
-      "y": 300,
+      "y": 302,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V31",
       "idNode": "M15.V31",
       "x": 108,
-      "y": 352
+      "y": 350
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V41",
       "idNode": "M16.V41",
       "x": 148,
-      "y": 400,
+      "y": 402,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "M16.V1",
       "x": 304,
-      "y": 396,
+      "y": 398,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "M16.V2",
       "x": 428,
-      "y": 396,
+      "y": 398,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "M16.V3",
       "x": 552,
-      "y": 396,
+      "y": 398,
       "mirror": true
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/28",
+      "group": "FQT",
+      "symbol": "Bmk/28",
       "name": "FQT1",
       "idNode": "M16.FQT1",
       "x": 928,
       "y": 400
     },
     {
-      "template": "FC",
+      "template": "FC_Bmk/110",
+      "group": "FC",
+      "symbol": "Bmk/110",
       "name": "FC1",
       "idNode": "M16.FC1",
       "x": 928,
       "y": 412
     },
     {
-      "template": "NY",
+      "template": "NY_Bmk/115",
+      "group": "NY",
+      "symbol": "Bmk/115",
       "name": "NY1",
       "idNode": "M16.NY1",
       "x": 908,
       "y": 412
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "M16.M1",
       "x": 888,
       "y": 400
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "M16.V4",
       "x": 676,
-      "y": 396,
+      "y": 398,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V31",
       "idNode": "M16.V31",
       "x": 108,
-      "y": 404
+      "y": 402
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V41",
       "idNode": "M17.V41",
       "x": 148,
-      "y": 452,
+      "y": 454,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "M17.V1",
       "x": 304,
-      "y": 448,
+      "y": 450,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "M17.V2",
       "x": 428,
-      "y": 448,
+      "y": 450,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "M17.V3",
       "x": 552,
-      "y": 448,
+      "y": 450,
       "mirror": true
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/28",
+      "group": "FQT",
+      "symbol": "Bmk/28",
       "name": "FQT1",
       "idNode": "M17.FQT1",
       "x": 928,
       "y": 452
     },
     {
-      "template": "FC",
+      "template": "FC_Bmk/110",
+      "group": "FC",
+      "symbol": "Bmk/110",
       "name": "FC1",
       "idNode": "M17.FC1",
       "x": 928,
       "y": 464
     },
     {
-      "template": "NY",
+      "template": "NY_Bmk/115",
+      "group": "NY",
+      "symbol": "Bmk/115",
       "name": "NY1",
       "idNode": "M17.NY1",
       "x": 908,
       "y": 464
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "M17.M1",
       "x": 888,
       "y": 452
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "M17.V4",
       "x": 676,
-      "y": 448,
+      "y": 450,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V31",
       "idNode": "M17.V31",
       "x": 108,
-      "y": 456
+      "y": 454
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V41",
       "idNode": "M19.V41",
       "x": 148,
-      "y": 504,
+      "y": 506,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "M19.V1",
       "x": 304,
-      "y": 500,
+      "y": 502,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "M19.V2",
       "x": 428,
-      "y": 500,
+      "y": 502,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "M19.V3",
       "x": 552,
-      "y": 500,
+      "y": 502,
       "mirror": true
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/28",
+      "group": "FQT",
+      "symbol": "Bmk/28",
       "name": "FQT1",
       "idNode": "M19.FQT1",
       "x": 928,
       "y": 504
     },
     {
-      "template": "FC",
+      "template": "FC_Bmk/110",
+      "group": "FC",
+      "symbol": "Bmk/110",
       "name": "FC1",
       "idNode": "M19.FC1",
       "x": 928,
       "y": 516
     },
     {
-      "template": "NY",
+      "template": "NY_Bmk/115",
+      "group": "NY",
+      "symbol": "Bmk/115",
       "name": "NY1",
       "idNode": "M19.NY1",
       "x": 908,
       "y": 516
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "M19.M1",
       "x": 888,
       "y": 504
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "M19.V4",
       "x": 676,
-      "y": 500,
+      "y": 502,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V31",
       "idNode": "M19.V31",
       "x": 108,
-      "y": 508
+      "y": 506
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V41",
       "idNode": "M18.V41",
       "x": 148,
-      "y": 556,
+      "y": 558,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V1",
       "idNode": "M18.V1",
       "x": 304,
-      "y": 552,
+      "y": 554,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V2",
       "idNode": "M18.V2",
       "x": 428,
-      "y": 552,
+      "y": 554,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V3",
       "idNode": "M18.V3",
       "x": 552,
-      "y": 552,
+      "y": 554,
       "mirror": true
     },
     {
-      "template": "FQT",
+      "template": "FQT_Bmk/28",
+      "group": "FQT",
+      "symbol": "Bmk/28",
       "name": "FQT1",
       "idNode": "M18.FQT1",
       "x": 928,
       "y": 556
     },
     {
-      "template": "FC",
+      "template": "FC_Bmk/110",
+      "group": "FC",
+      "symbol": "Bmk/110",
       "name": "FC1",
       "idNode": "M18.FC1",
       "x": 928,
       "y": 568
     },
     {
-      "template": "NY",
+      "template": "NY_Bmk/115",
+      "group": "NY",
+      "symbol": "Bmk/115",
       "name": "NY1",
       "idNode": "M18.NY1",
       "x": 908,
       "y": 568
     },
     {
-      "template": "M",
+      "template": "M_Bmk(KUZMA)/17",
+      "group": "M",
+      "symbol": "Bmk(KUZMA)/17",
       "name": "M1",
       "idNode": "M18.M1",
       "x": 888,
       "y": 556
     },
     {
-      "template": "V",
+      "template": "V_Bmk/91",
+      "group": "V",
+      "symbol": "Bmk/91",
       "name": "V4",
       "idNode": "M18.V4",
       "x": 676,
-      "y": 552,
+      "y": 554,
       "mirror": true
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V31",
       "idNode": "M18.V31",
       "x": 108,
-      "y": 560
+      "y": 558
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V14",
       "idNode": "TANK1.V14",
       "x": 304,
-      "y": 608
+      "y": 606
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V14",
       "idNode": "TANK2.V14",
       "x": 428,
-      "y": 608
+      "y": 606
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V14",
       "idNode": "TANK3.V14",
       "x": 552,
-      "y": 608
+      "y": 606
     },
     {
-      "template": "V",
+      "template": "V_Bmk(KUZMA)/20",
+      "group": "V",
+      "symbol": "Bmk(KUZMA)/20",
       "name": "V14",
       "idNode": "TANK4.V14",
       "x": 676,
-      "y": 608
+      "y": 606
     },
     {
-      "template": "V",
+      "template": "V_Bmk/86",
+      "group": "V",
+      "symbol": "Bmk/86",
       "name": "V201",
       "idNode": "CIP.V201",
       "x": 860,
@@ -986,14 +1250,18 @@
       "rotation": 90
     },
     {
-      "template": "X",
+      "template": "X_Bmk/78",
+      "group": "X",
+      "symbol": "Bmk/78",
       "name": "X7",
       "idNode": "CIP.X7",
       "x": 860,
-      "y": 644
+      "y": 647
     },
     {
-      "template": "V",
+      "template": "V_Bmk/86",
+      "group": "V",
+      "symbol": "Bmk/86",
       "name": "V101",
       "idNode": "CIP.V101",
       "x": 0,

@@ -42,8 +42,15 @@ const COUNTER_ROTATION_OP: TransformOp = ROTATION_OP === "cw" ? "ccw" : "cw";
 const JUNCTION_RADIUS = 1 * SCALE;
 
 export interface DeviceLayoutDevice {
-  /** Имя шаблона в палитре: «V», «LS», «UZ». */
+  /** Имя шаблона в палитре: «V_Bmk/85». Ищется внутри группы `group`, если она задана. */
   template: string;
+  /**
+   * Группа палитры (`PaletteItemType.category`), из которой брать шаблон: «V», «LS».
+   * Нет поля (старые файлы) — шаблон ищется по всей палитре.
+   */
+  group?: string;
+  /** Условное обозначение из чертежа: «Bmk/85». На будущее — импорт его не читает. */
+  symbol?: string;
   /** Имя устройства на схеме: «V3». */
   name: string;
   /** Узел базы каналов. НЕ уникален: один узел бывает нарисован несколько раз. */
@@ -94,10 +101,14 @@ export interface DeviceLayoutReport {
   mirrored: number;
   /** Угол не кратен 90 — устройство поставлено без поворота. «V3 (45°)». */
   unsupportedRotation: string[];
-  /** Шаблонов с таким именем в палитре нет — устройства пропущены. `names` — их idNode. */
-  missing: {template: string; count: number; names: string[]}[];
-  /** Имя шаблона встречается в палитре несколько раз — взят первый. */
-  ambiguous: {template: string; count: number}[];
+  /**
+   * Шаблон не найден — устройства пропущены. `names` — их idNode.
+   * `no-group`: группы `group` нет в палитре; `no-template`: в группе (или во всей палитре,
+   * если группа не задана) нет шаблона с таким именем.
+   */
+  missing: {template: string; group?: string; reason: TemplateMissReason; count: number; names: string[]}[];
+  /** Имя шаблона встречается несколько раз в своей группе (или в палитре) — взят первый. */
+  ambiguous: {template: string; group?: string; count: number}[];
 }
 
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -119,25 +130,89 @@ export const isDeviceLayoutFile = (json: unknown): json is DeviceLayoutFile => {
     && isFiniteNumber(first.y);
 };
 
+export type TemplateMissReason = "no-group" | "no-template";
+
+/** Ключи сравнения: точное значение и без регистра и пробелов по краям. */
+const keysOf = (value: string): string[] => [...new Set([value, value.trim().toLowerCase()])];
+
+/** Сначала точное совпадение, потом без регистра: «V» и «v» различимы, если есть оба. */
+const lookup = <T>(map: Map<string, T>, value: string): T | undefined =>
+  map.get(value) ?? map.get(value.trim().toLowerCase());
+
+const push = <T>(map: Map<string, T[]>, key: string, item: T) => {
+  const bucket = map.get(key);
+  if (bucket) bucket.push(item);
+  else map.set(key, [item]);
+};
+
+type NameIndex = Map<string, PaletteItemType[]>;
+
 /**
- * Индекс шаблонов палитры по имени.
- *
- * Фильтр `type === "custom"` обязателен: в палитре лежат ещё и статические элементы
- * (`src/constants/palette.ts`), у которых `template` нет вовсе. Сравнение точное —
- * подстрочный `filterPalette` здесь не годится, по нему «V» совпало бы с «VN», «VH» и «VC».
+ * Индекс шаблонов по имени. Сравнение точное — подстрочный `filterPalette` здесь не
+ * годится, по нему «V» совпало бы с «VN», «VH» и «VC».
  */
-const buildTemplateIndex = (paletteItems: PaletteItemType[]): Map<string, PaletteItemType[]> => {
-  const index = new Map<string, PaletteItemType[]>();
-  for (const item of paletteItems) {
-    if (item.type !== "custom" || !item.template?.length) continue;
-    for (const key of new Set([item.name, item.name.trim().toLowerCase()])) {
-      const bucket = index.get(key);
-      if (bucket) bucket.push(item);
-      else index.set(key, [item]);
-    }
+const indexByName = (items: PaletteItemType[]): NameIndex => {
+  const index: NameIndex = new Map();
+  for (const item of items) {
+    for (const key of keysOf(item.name)) push(index, key, item);
   }
   return index;
 };
+
+interface TemplateIndex {
+  /** Вся палитра — для файлов без `group`. */
+  all: NameIndex;
+  /** По группам палитры (`category`): группа → её шаблоны по имени. */
+  byGroup: Map<string, NameIndex>;
+}
+
+/**
+ * Индексы шаблонов палитры.
+ *
+ * Фильтр `type === "custom"` обязателен: в палитре лежат ещё и статические элементы
+ * (`src/constants/palette.ts`), у которых `template` нет вовсе.
+ */
+const buildTemplateIndex = (paletteItems: PaletteItemType[]): TemplateIndex => {
+  const templates = paletteItems.filter(item => item.type === "custom" && !!item.template?.length);
+
+  const groups = new Map<string, PaletteItemType[]>();
+  for (const item of templates) {
+    for (const key of keysOf(item.category ?? "")) push(groups, key, item);
+  }
+
+  return {
+    all: indexByName(templates),
+    byGroup: new Map([...groups].map(([key, items]) => [key, indexByName(items)])),
+  };
+};
+
+/**
+ * Шаблон для устройства.
+ *
+ * С `group` ищем ТОЛЬКО в этой группе и в соседние не заглядываем: одинаковые имена в
+ * разных группах — это разные символы, и подставить «похожий» из чужой группы значит
+ * молча нарисовать не то. Без `group` (старые файлы) — по всей палитре, как раньше.
+ */
+const findTemplate = (
+  index: TemplateIndex,
+  device: DeviceLayoutDevice,
+): {items: PaletteItemType[]; group?: string; reason?: TemplateMissReason} => {
+  const group = device.group?.trim() || undefined;
+
+  if (!group) {
+    const items = lookup(index.all, device.template) ?? [];
+    return items.length ? {items} : {items, reason: "no-template"};
+  }
+
+  const groupIndex = lookup(index.byGroup, group);
+  if (!groupIndex) return {items: [], group, reason: "no-group"};
+
+  const items = lookup(groupIndex, device.template) ?? [];
+  return items.length ? {items, group} : {items, group, reason: "no-template"};
+};
+
+/** Ключ отчёта: одинаковые имена шаблонов из разных групп не должны слипаться. */
+const reportKey = (template: string, group?: string) => `${group ?? ""}\u0000${template}`;
 
 /**
  * Операции над устройством: сначала отражение, потом поворот — обычная семантика
@@ -268,32 +343,35 @@ export const buildDeviceLayout = (
   const index = buildTemplateIndex(paletteItems);
   const elements: DiagramElement[] = [];
 
-  const missing = new Map<string, {count: number; names: string[]}>();
-  const ambiguous = new Map<string, number>();
+  const missing = new Map<string, DeviceLayoutReport["missing"][number]>();
+  const ambiguous = new Map<string, DeviceLayoutReport["ambiguous"][number]>();
   const unsupportedRotation: string[] = [];
   let placed = 0;
   let rotated = 0;
   let mirrored = 0;
 
   for (const device of file.devices) {
-    const found = index.get(device.template)
-      ?? index.get(device.template.trim().toLowerCase());
+    const {items: found, group, reason} = findTemplate(index, device);
     // Имя компонента на схеме — узел базы каналов («TANK1.V1»), а не короткое «V1»:
     // короткое повторяется в каждом танке и ничего не говорит ни в «Слоях», ни в отчёте.
     const title = device.idNode?.trim() || device.name;
+    const key = reportKey(device.template, group);
 
-    if (!found?.length) {
-      const miss = missing.get(device.template) ?? {count: 0, names: []};
+    if (reason) {
+      const miss = missing.get(key)
+        ?? {template: device.template, ...(group ? {group} : {}), reason, count: 0, names: []};
       miss.count += 1;
       miss.names.push(title);
-      missing.set(device.template, miss);
+      missing.set(key, miss);
       continue;
     }
 
     // Уникальность имён в палитре нигде не проверяется, поэтому дубль — штатная
     // ситуация: берём первый и сообщаем об этом в отчёте.
     if (found.length > 1) {
-      ambiguous.set(device.template, (ambiguous.get(device.template) ?? 0) + 1);
+      const dup = ambiguous.get(key) ?? {template: device.template, ...(group ? {group} : {}), count: 0};
+      dup.count += 1;
+      ambiguous.set(key, dup);
     }
 
     let ops = deviceOps(device);
@@ -359,10 +437,8 @@ export const buildDeviceLayout = (
       rotated,
       mirrored,
       unsupportedRotation,
-      missing: [...missing.entries()]
-        .map(([template, v]) => ({template, count: v.count, names: v.names}))
-        .sort((a, b) => b.count - a.count),
-      ambiguous: [...ambiguous.entries()].map(([template, count]) => ({template, count})),
+      missing: [...missing.values()].sort((a, b) => b.count - a.count),
+      ambiguous: [...ambiguous.values()],
     },
   };
 };

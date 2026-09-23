@@ -37,9 +37,17 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
           >
             <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-gray-600 dark:text-gray-400">
               {report.missing.map((m) => (
-                <li key={m.template}>
-                  <span className="font-mono font-semibold">{m.template}</span>
+                <li key={`${m.group ?? ""}/${m.template}`}>
+                  <span className="font-mono font-semibold">
+                    {m.group ? `${m.group} / ${m.template}` : m.template}
+                  </span>
                   {" — "}
+                  {/* Две разные беды: нет всей группы (переименовали/не завели) или нет
+                      одного шаблона в ней. Чинятся по-разному, поэтому и пишутся по-разному. */}
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {m.reason === "no-group" ? `группы «${m.group}» нет в палитре` : m.group ? `в группе «${m.group}» нет шаблона` : "шаблона нет в палитре"}
+                  </span>
+                  {", "}
                   {m.count} шт.:{" "}
                   <span className="font-mono">{m.names.join(", ")}</span>
                 </li>
@@ -55,7 +63,9 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
           >
             <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-gray-600 dark:text-gray-400 font-mono">
               {report.ambiguous.map((a) => (
-                <li key={a.template}>{a.template} — {a.count} шт.</li>
+                <li key={`${a.group ?? ""}/${a.template}`}>
+                  {a.group ? `${a.group} / ${a.template}` : a.template} — {a.count} шт.
+                </li>
               ))}
             </ul>
           </Collapsible>
@@ -75,7 +85,8 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         {report.missing.length > 0 && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Чтобы эти устройства встали на схему, сохраните компонент с таким именем в
-            палитру и повторите импорт.
+            указанную группу палитры и повторите импорт. Шаблон берётся только из группы,
+            указанной в файле, — одноимённый шаблон из другой группы не подставляется.
           </p>
         )}
       </div>
