@@ -94,7 +94,9 @@ export interface DeviceLayoutReport {
   mirrored: number;
   /** Угол не кратен 90 — устройство поставлено без поворота. «V3 (45°)». */
   unsupportedRotation: string[];
-  /** Шаблонов с таким именем в палитре нет — устройства пропущены. */
+  /** Группа палитры, из которой брались шаблоны. Нет — искали по всей палитре. */
+  category?: string;
+  /** Шаблонов с таким именем в палитре нет — устройства пропущены. `names` — их idNode. */
   missing: {template: string; count: number; names: string[]}[];
   /** Имя шаблона встречается в палитре несколько раз — взят первый. */
   ambiguous: {template: string; count: number}[];
@@ -120,23 +122,80 @@ export const isDeviceLayoutFile = (json: unknown): json is DeviceLayoutFile => {
 };
 
 /**
- * Индекс шаблонов палитры по имени.
+ * Шаблон палитры, годный для импорта.
  *
  * Фильтр `type === "custom"` обязателен: в палитре лежат ещё и статические элементы
- * (`src/constants/palette.ts`), у которых `template` нет вовсе. Сравнение точное —
- * подстрочный `filterPalette` здесь не годится, по нему «V» совпало бы с «VN», «VH» и «VC».
+ * (`src/constants/palette.ts`), у которых `template` нет вовсе.
  */
-const buildTemplateIndex = (paletteItems: PaletteItemType[]): Map<string, PaletteItemType[]> => {
-  const index = new Map<string, PaletteItemType[]>();
+const isTemplateItem = (item: PaletteItemType): boolean =>
+  item.type === "custom" && !!item.template?.length;
+
+/** Ключи, под которыми шаблон ищется: точное имя и имя без регистра и пробелов по краям. */
+const nameKeys = (name: string): string[] => [...new Set([name, name.trim().toLowerCase()])];
+
+type TemplateIndex = Map<string, PaletteItemType[]>;
+
+/**
+ * Индекс шаблонов палитры по имени — только из группы `category`, если она задана.
+ *
+ * Сравнение точное — подстрочный `filterPalette` здесь не годится, по нему «V» совпало
+ * бы с «VN», «VH» и «VC».
+ */
+const buildTemplateIndex = (paletteItems: PaletteItemType[], category?: string): TemplateIndex => {
+  const index: TemplateIndex = new Map();
   for (const item of paletteItems) {
-    if (item.type !== "custom" || !item.template?.length) continue;
-    for (const key of new Set([item.name, item.name.trim().toLowerCase()])) {
+    if (!isTemplateItem(item)) continue;
+    if (category !== undefined && item.category !== category) continue;
+    for (const key of nameKeys(item.name)) {
       const bucket = index.get(key);
       if (bucket) bucket.push(item);
       else index.set(key, [item]);
     }
   }
   return index;
+};
+
+/** Поиск шаблона: сначала точное имя, потом без регистра. Один путь для импорта и подсчёта. */
+const lookupTemplate = (index: TemplateIndex, template: string): PaletteItemType[] | undefined =>
+  index.get(template) ?? index.get(template.trim().toLowerCase());
+
+/** Сколько видов устройств файла нашлось в одной группе палитры. */
+export interface TemplateGroupMatch {
+  category: string;
+  /** Уникальных имён шаблонов из файла, найденных в группе. */
+  found: number;
+  /** Уникальных имён шаблонов в файле всего. */
+  total: number;
+  /** Имена шаблонов файла, которых в группе нет. */
+  missing: string[];
+}
+
+/** Уникальные имена шаблонов файла — в порядке первого появления. */
+export const templateNamesOf = (file: DeviceLayoutFile): string[] =>
+  [...new Set(file.devices.map(d => d.template))];
+
+/**
+ * Группы палитры, из которых можно взять шаблоны для файла: лучшие первыми.
+ *
+ * Группы без единого совпадения отброшены — выбирать их бессмысленно. Считается по тем же
+ * `buildTemplateIndex`/`lookupTemplate`, что и импорт, иначе обещанное в диалоге «14 из 16»
+ * разошлось бы с тем, что поставится на схему.
+ */
+export const rankTemplateGroups = (
+  file: DeviceLayoutFile,
+  paletteItems: PaletteItemType[],
+): TemplateGroupMatch[] => {
+  const names = templateNamesOf(file);
+  const categories = [...new Set(paletteItems.filter(isTemplateItem).map(i => i.category))];
+
+  return categories
+    .map(category => {
+      const index = buildTemplateIndex(paletteItems, category);
+      const missing = names.filter(n => !lookupTemplate(index, n)?.length);
+      return {category, found: names.length - missing.length, total: names.length, missing};
+    })
+    .filter(g => g.found > 0)
+    .sort((a, b) => b.found - a.found || a.category.localeCompare(b.category, "ru"));
 };
 
 /**
@@ -264,8 +323,10 @@ export const buildDeviceLayout = (
   file: DeviceLayoutFile,
   paletteItems: PaletteItemType[],
   sceneId: number | null,
+  /** Группа палитры (`category`), из которой брать шаблоны. Не задана — вся палитра. */
+  category?: string,
 ): {elements: DiagramElement[]; report: DeviceLayoutReport} => {
-  const index = buildTemplateIndex(paletteItems);
+  const index = buildTemplateIndex(paletteItems, category);
   const elements: DiagramElement[] = [];
 
   const missing = new Map<string, {count: number; names: string[]}>();
@@ -276,13 +337,15 @@ export const buildDeviceLayout = (
   let mirrored = 0;
 
   for (const device of file.devices) {
-    const found = index.get(device.template)
-      ?? index.get(device.template.trim().toLowerCase());
+    const found = lookupTemplate(index, device.template);
+    // Имя компонента на схеме — узел базы каналов («TANK1.V1»), а не короткое «V1»:
+    // короткое повторяется в каждом танке и ничего не говорит ни в «Слоях», ни в отчёте.
+    const title = device.idNode?.trim() || device.name;
 
     if (!found?.length) {
       const miss = missing.get(device.template) ?? {count: 0, names: []};
       miss.count += 1;
-      miss.names.push(device.name);
+      miss.names.push(title);
       missing.set(device.template, miss);
       continue;
     }
@@ -295,7 +358,7 @@ export const buildDeviceLayout = (
 
     let ops = deviceOps(device);
     if (!ops) {
-      unsupportedRotation.push(`${device.name} (${device.rotation}°)`);
+      unsupportedRotation.push(`${title} (${device.rotation}°)`);
       ops = device.mirror === true ? ["flipH"] : [];
     }
 
@@ -307,9 +370,12 @@ export const buildDeviceLayout = (
       x: 0,
       y: 0,
       sceneId,
-      // Имя видно в «Слоях». Если корень шаблона — прямоугольник без своего `text`,
-      // фолбэк ShapeElement напечатает подпись прямо на фигуре (см. план, ловушка 7).
-      label: device.name,
+      // label при сохранении становится `name` компонента, а по нему автопривязка ищет
+      // объект в базе каналов (`TANK1.V1` → `…TANK1.V1.ST`, контракт
+      // docs/contract/2026-09-22-autobind-contract.md). Запасное `name` — если idNode пуст.
+      // Если корень шаблона — прямоугольник без своего `text`, фолбэк ShapeElement
+      // напечатает это название прямо на фигуре (см. план, ловушка 7).
+      label: title,
       // Узел базы каналов. Своё поле переживает сохранение: buildBaseImage работает
       // по чёрному списку и всё незнакомое укладывает в states[].image.
       extra: {idNode: device.idNode},
@@ -348,6 +414,7 @@ export const buildDeviceLayout = (
     report: {
       devices: file.devices.length,
       placed,
+      ...(category !== undefined ? {category} : {}),
       lines: lines.length,
       junctions: junctions.length,
       rotated,

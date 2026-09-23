@@ -15,6 +15,8 @@ import {choiceModal} from "@/components/ui/ConfirmModal";
 import {
   buildDeviceLayout,
   isDeviceLayoutFile,
+  rankTemplateGroups,
+  templateNamesOf,
   type DeviceLayoutFile,
 } from "@/lib/editor/deviceLayoutImport";
 import {openDeviceImportReportModal} from "@/components/editor/OpenDeviceImportReportModal";
@@ -174,11 +176,38 @@ export default function ToolsPanel() {
       await usePaletteStore.getState().loadPaletteItems();
     }
 
+    const paletteItems = usePaletteStore.getState().paletteItems;
+
+    // Группа палитры, из которой брать шаблоны. Одно имя («V») бывает в нескольких группах,
+    // и молча взять первое попавшееся значит поставить не те символы. Спрашиваем, только
+    // когда есть из чего выбирать: при одной подходящей группе вопрос был бы лишним, а без
+    // единой — ниже сработает штатное «ни одного шаблона нет в палитре».
+    const groups = rankTemplateGroups(file, paletteItems);
+    let category: string | undefined = groups[0]?.category;
+    if (groups.length > 1) {
+      const names = templateNamesOf(file);
+      const shown = names.slice(0, 10).join(", ") + (names.length > 10 ? ", …" : "");
+      const answer = await choiceModal({
+        title: "Из какой группы брать шаблоны?",
+        description: `В файле ${names.length} видов устройств: ${shown}. Все шаблоны возьмутся из выбранной группы палитры.`,
+        // id — номер, а не имя группы: имя пользовательское и может быть любым.
+        options: groups.map((g, i) => ({
+          id: String(i),
+          label: g.category,
+          description: `Найдено ${g.found} из ${g.total} шаблонов`
+            + (g.missing.length ? ` · нет: ${g.missing.slice(0, 8).join(", ")}${g.missing.length > 8 ? ", …" : ""}` : ""),
+        })),
+      });
+      if (answer === null) return;
+      category = groups[Number(answer)]?.category;
+    }
+
     const {scene, addImportedElements} = useEditorStore.getState();
     const {elements, report} = buildDeviceLayout(
       file,
-      usePaletteStore.getState().paletteItems,
+      paletteItems,
       scene?.id ?? null,
+      category,
     );
 
     // Выходим ДО вопроса о режиме: с «Заменить» пустой результат стёр бы всю схему.
@@ -222,6 +251,7 @@ export default function ToolsPanel() {
         `повёрнуто ${report.rotated}`,
         `отражено ${report.mirrored}`,
         `элементов на холсте ${elements.length}`,
+        ...(report.category !== undefined ? [`группа «${report.category}»`] : []),
       ].join(" · "),
       duration: 12_000,
     });
