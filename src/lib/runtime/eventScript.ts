@@ -11,6 +11,9 @@ import {buildRawScope, toScopeValue, type BindingIntent} from "@/lib/runtime/exe
  * значения) и умеет ПИСАТЬ значения свойств через `setProperty("Имя", значение)`
  * (запись уходит в тот же буфер, что и серверные properties[] — на неё реагируют
  * биндинги других элементов). `setProp`/`setState` меняют сам элемент.
+ * `openScene(имя | id)` просит монитор открыть другую схему проекта — интентом в
+ * результате, а не колбэком: модуль остаётся чистым, и тест-прогон редактора видит
+ * переход, ничего не открывая.
  */
 
 /** Запись значения в свойство объекта (ключ маршрутизации — propertyId). */
@@ -25,8 +28,11 @@ export interface CompiledEventScript {
   fn: (...args: unknown[]) => unknown;
 }
 
+/** Цель `openScene`: имя схемы или её id. Сопоставление — `resolveSceneTarget`. */
+export type SceneTarget = string | number;
+
 export type EventExecResult =
-  | {writes: PropertyWrite[]; intents: BindingIntent[]}
+  | {writes: PropertyWrite[]; intents: BindingIntent[]; openScene?: SceneTarget}
   | {error: string};
 
 /** Компилирует обработчик; ошибка синтаксиса возвращается строкой, не бросается. */
@@ -44,6 +50,7 @@ export const compileEventScript = (
       "setState",
       "self",
       "runScript",
+      "openScene",
       // Старый синтаксис «Имя.V» переводим на новый — см. modernizeScopeCode.
       modernizeScopeCode(handler.code, scope.names),
     ) as (...args: unknown[]) => unknown;
@@ -88,6 +95,12 @@ export const executeEventScript = (
   const runScriptFn = (name: unknown) => {
     if (typeof name === "string" && name && runScript) runScript(name);
   };
+  // Переход на другую схему. Последний вызов выигрывает — как у setState.
+  let sceneTarget: SceneTarget | undefined;
+  const openScene = (target: unknown) => {
+    if (typeof target === "string" && target.trim()) sceneTarget = target;
+    else if (typeof target === "number" && Number.isSafeInteger(target)) sceneTarget = target;
+  };
 
   const rawOf = (name: string): string | null | undefined =>
     name in cb.scope.tagIdByName
@@ -105,6 +118,7 @@ export const executeEventScript = (
       setState,
       self ?? null,
       runScriptFn,
+      openScene,
     );
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
@@ -112,5 +126,9 @@ export const executeEventScript = (
 
   const intents: BindingIntent[] = [...propIntents.values()];
   if (stateIntent) intents.push(stateIntent);
-  return {writes: [...writes.values()], intents};
+  return {
+    writes: [...writes.values()],
+    intents,
+    ...(sceneTarget !== undefined ? {openScene: sceneTarget} : {}),
+  };
 };

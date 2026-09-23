@@ -11,6 +11,7 @@ import type {CompiledBinding} from "@/lib/runtime/executeBinding";
 import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
+import {openSceneFromScript} from "@/lib/runtime/openSceneFromScript";
 import {
   setRuntimeEventHandler,
   setRuntimeLive,
@@ -451,6 +452,10 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
 
     log(`событие ${event} по «${el.label ?? el.key}»: записей ${res.writes.length}, интентов ${res.intents.length}`);
     if (res.writes.length) flushRef.current();
+
+    // Переход — последним: записи setProperty уже ушли во flush выше, а смена схемы
+    // заменит elements, и применять интенты было бы уже не к чему.
+    if (res.openScene !== undefined) void openSceneFromScript(res.openScene, el.label ?? el.key);
   }, [runScriptOn]);
 
   /**

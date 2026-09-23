@@ -12,7 +12,7 @@ const RESERVED_WORDS = new Set([
   "switch", "this", "throw", "true", "try", "typeof", "var", "void", "while",
   "with", "yield", "let", "static", "await", "arguments", "eval",
   // имена API движка — заняты аргументами компилируемой функции
-  "setState", "setProp", "self", "setProperty", "runScript",
+  "setState", "setProp", "self", "setProperty", "runScript", "openScene",
   // объект исходных строк значений: RAW.ИмяСвойства
   "RAW",
 ]);

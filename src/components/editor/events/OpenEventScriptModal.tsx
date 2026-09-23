@@ -1,7 +1,7 @@
 import React, {useMemo, useRef, useState} from "react";
 import CodeMirror, {EditorView} from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
-import {Boxes, Play, Tag, Terminal, Wand2, X} from "lucide-react";
+import {Boxes, ExternalLink, Play, Tag, Terminal, Wand2, X} from "lucide-react";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {cn} from "@/lib/utils";
@@ -16,6 +16,7 @@ import {
 } from "@/types/binding.types";
 import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
+import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
 
@@ -51,6 +52,14 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
   );
   const [mockValues, setMockValues] = useState<Record<string, string>>({});
   const [testResult, setTestResult] = useState<TestResult>(null);
+  // Схемы текущего проекта — для чипов openScene и для тест-прогона. Текущую не
+  // предлагаем: переход на саму себя монитор просто пропустит.
+  const sceneList = useEditorStore(s => s.sceneList);
+  const currentSceneId = useEditorStore(s => s.scene?.id ?? null);
+  const otherScenes = useMemo(
+    () => sceneList.filter(s => s.id !== currentSceneId),
+    [sceneList, currentSceneId],
+  );
 
   const scope = useMemo(
     () => withPropertyRefs(collectTagScope(element.properties), propertyRefs),
@@ -123,6 +132,17 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         i.kind === "state" ? `setState("${i.stateName}")` : `setProp("${i.key}", ${JSON.stringify(i.value)})`,
       ),
     ];
+    if (res.openScene !== undefined) {
+      // Тот же разбор, что в мониторе, — иначе тест обещал бы переход, которого не будет.
+      const target = resolveSceneTarget(res.openScene, sceneList);
+      parts.push(
+        target.kind === "found"
+          ? `openScene → «${target.scene.name}» (#${target.scene.id})`
+          : target.kind === "ambiguous"
+            ? `openScene → несколько схем ${describeSceneTarget(res.openScene)}, перехода не будет`
+            : `openScene → не найдена: ${describeSceneTarget(res.openScene)}`,
+      );
+    }
     setTestResult({kind: "ok", text: parts.length ? parts.join("\n") : "Код выполнен, действий нет"});
   };
 
@@ -158,8 +178,9 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
             само значение тега/свойства (исходная строка — <code>RAW.Имя</code>).
             Запись свойства объекта: <code>setProperty(&quot;Имя&quot;, значение)</code> — на неё
             реагируют привязки других элементов. Серверный скрипт (запись тега в ПЛК):{" "}
-            <code>runScript(&quot;Имя&quot;)</code>. Также доступны <code>setProp</code>,{" "}
-            <code>setState</code>, <code>self</code>.
+            <code>runScript(&quot;Имя&quot;)</code>. Открыть другую схему проекта:{" "}
+            <code>openScene(&quot;Имя схемы&quot;)</code> или <code>openScene(id)</code>.
+            Также доступны <code>setProp</code>, <code>setState</code>, <code>self</code>.
           </>
         }
       />
@@ -229,6 +250,26 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
               >
                 <Terminal size={12} />
                 {script.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Схемы проекта — клик вставит openScene(id). Id, а не имя: он переживает
+            переименование схемы. Имя — блочным комментарием, чтобы код остался читаемым и
+            вставка посреди строки не закомментировала её хвост. */}
+        {otherScenes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Схемы:</span>
+            {otherScenes.map(scene => (
+              <span
+                key={scene.id}
+                className={cn(chipClasses, "bg-sky-950/60 text-sky-300 border-sky-800/40 hover:bg-sky-900/70")}
+                title={`Схема «${scene.name}» — клик вставит openScene`}
+                onClick={() => insertAtCursor(`openScene(${scene.id} /* ${scene.name.replace(/\*\//g, "* /")} */)`)}
+              >
+                <ExternalLink size={12} />
+                {scene.name}
               </span>
             ))}
           </div>
