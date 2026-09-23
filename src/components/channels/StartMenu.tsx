@@ -3,9 +3,10 @@ import {useDeviceStore} from "@/store/useDeviceStore";
 import {unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
 import {
   Search, Building2, FolderOpen, AlertCircle,
-  RefreshCw, Check,
+  RefreshCw, Check, Upload,
 } from 'lucide-react';
 import {MultiSelect} from "@/components/ui/MultiSelect";
+import {OpenImportCdbxModal} from "@/components/channels/CdbxModals";
 
 export default function StartMenu() {
   // Состояния для MultiSelect
@@ -27,7 +28,7 @@ export default function StartMenu() {
   const [error, setError] = useState<string | null>(null);
   const [activeSubscriptions, setActiveSubscriptions] = useState<{ site: string; project: string }[]>([]);
 
-  const { loadNodes, nodes, getParamsTypes } = useDeviceStore();
+  const { loadNodes, nodes, getParamsTypes, catalogVersion } = useDeviceStore();
   const hasData = nodes.length > 0;
 
   // Отписка при размонтировании
@@ -63,7 +64,8 @@ export default function StartMenu() {
       }
     };
     void fetchSites();
-  }, []);
+    // catalogVersion — после импорта/удаления проекта списки перечитываются.
+  }, [catalogVersion]);
 
 // 2. Загрузка проектов при изменении выбранных площадок
   useEffect(() => {
@@ -130,7 +132,7 @@ export default function StartMenu() {
     void fetchProjects();
 
     return () => { cancelled = true; };
-  }, [selectedSites]); // Хук зависит только от selectedSites
+  }, [selectedSites, catalogVersion]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,6 +268,15 @@ export default function StartMenu() {
               )}
             </button>
           </form>
+
+          <button
+            type="button"
+            onClick={OpenImportCdbxModal}
+            className="mt-4 w-full py-3 rounded-2xl border-2 border-dashed border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-all flex items-center justify-center gap-2"
+          >
+            <Upload className="w-5 h-5" />
+            Импорт .cdbx в новый проект
+          </button>
         </div>
 
         {/* Успешное сообщение */}

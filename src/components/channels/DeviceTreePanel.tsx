@@ -3,7 +3,8 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import Tree from 'rc-tree';
 import {DataNode, Key} from 'rc-tree/es/interface';
-import {Router} from 'lucide-react';
+import {Router, Upload} from 'lucide-react';
+import {OpenImportCdbxModal} from '@/components/channels/CdbxModals';
 import {useDeviceStore} from '@/store/useDeviceStore';
 import TitleRenderer from '@/components/ui/TitleRenderer';
 import {DeviceNodeType} from '@/types/nodeTypes';
@@ -153,6 +154,15 @@ const DeviceTreePanel = () => {
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
           <Router className={'w-6 h-6 text-purple-600 dark:text-purple-400'}/>
           Дерево устройств
+          <button
+            type="button"
+            onClick={OpenImportCdbxModal}
+            title="Импорт .cdbx"
+            aria-label="Импорт .cdbx"
+            className="ml-auto rounded-lg p-1.5 text-purple-600 hover:bg-white/60 dark:text-purple-400 dark:hover:bg-neutral-800/60 transition-colors"
+          >
+            <Upload className="w-5 h-5"/>
+          </button>
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}

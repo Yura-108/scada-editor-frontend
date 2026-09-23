@@ -6,7 +6,8 @@ import {devtools} from 'zustand/middleware';
 import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
-import {NodeParamType, NodeType} from "@/types/channelsTypes";
+import {CdbxImportReport, NodeParamType, NodeType} from "@/types/channelsTypes";
+import {OpenGatewayExportModal} from "@/components/channels/CdbxModals";
 import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
 import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenCreateContainerModal";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
@@ -41,6 +42,15 @@ const parseOk = async <T>(res: Response, fallback: string): Promise<T> => {
 
 const errorMessage = (err: unknown, fallback: string) =>
   err instanceof Error && err.message ? err.message : fallback;
+
+/** Параметр узла проекта, который бэкенд ставит только импортированным проектам. */
+export const IMPORT_SOURCE_PARAM = 'Источник импорта';
+
+/** «Барановичи-1.BN1_MCA2» → {site, project}. Точек в именах нет по контракту импорта. */
+export const splitProjectKey = (projectKey: string) => {
+  const dot = projectKey.indexOf('.');
+  return {site: projectKey.slice(0, dot), project: projectKey.slice(dot + 1)};
+};
 
 interface DeviceStoreState {
   nodes: NodeType[];
@@ -79,6 +89,15 @@ interface DeviceStoreState {
   removeParam: (key: string) => Promise<void>;
   addParam: (param: { id: number; value: string; parentKey: string }) => Promise<void>;
   updateParam: (value: { key: string; value: string }[]) => Promise<void>;
+  /** Растёт после импорта/удаления проекта — StartMenu перечитывает площадки и проекты. */
+  catalogVersion: number;
+  /** Импорт .cdbx в новый проект. Бросает Error с сообщением бэкенда (400/409). */
+  importCdbx: (form: FormData) => Promise<CdbxImportReport>;
+  /** Удаление проекта, созданного импортом (у узла есть параметр «Источник импорта»). */
+  deleteImportedProject: (projectKey: string) => Promise<void>;
+  isImportedProject: (projectKey: string) => boolean;
+  /** Блок для controllers.yaml шлюза. Бросает Error с сообщением бэкенда (404). */
+  exportGateway: (query: {root: string; controllerId: string; endpoint: string}) => Promise<string>;
   handleContextAction: (action: DeviceAction, nodeKey: string | null) => Promise<void>;
   handleContextParamAction: (action: ParamAction, paramKey: string | null) => Promise<void>;
 }
@@ -98,6 +117,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
       // OpenCreateDeviceModal (`deviceTemplateList.templates.length`) с TypeError.
       deviceTemplateList: {templates: []},
       editingDevices: [],
+      catalogVersion: 0,
       setContextMenu: (menu) => set({contextMenu: menu}),
       selectedDevice: null,
       markStale: () => set({isStale: true}),
@@ -395,7 +415,79 @@ export const useDeviceStore = create<DeviceStoreState>()(
           };
         });
       },
+      importCdbx: async (form) => {
+        const res = await fetch('/api/device/import', {method: 'POST', body: form});
+        const report = await parseOk<CdbxImportReport>(res, 'Не удалось импортировать .cdbx');
+
+        set((state) => ({catalogVersion: state.catalogVersion + 1}));
+
+        // Новый проект сразу показываем в дереве рядом с уже открытыми.
+        const loaded = get().loadedRootPath ?? [];
+        if (!loaded.includes(report.root)) {
+          await get().getParamsTypes().catch(() => {});
+          await get().loadNodes([...loaded, report.root]).catch(() => {});
+        }
+        return report;
+      },
+      deleteImportedProject: async (projectKey) => {
+        const {site, project} = splitProjectKey(projectKey);
+        try {
+          const res = await fetch(
+            `/api/device/import/${encodeURIComponent(site)}/${encodeURIComponent(project)}`,
+            {method: 'DELETE'},
+          );
+          await parseOk(res, 'Не удалось удалить проект');
+        } catch (err) {
+          console.error('Ошибка при удалении импортированного проекта:', err);
+          toast.error(errorMessage(err, 'Не удалось удалить проект'));
+          return;
+        }
+
+        const inProject = (key: string) => key === projectKey || key.startsWith(`${projectKey}.`);
+        set((state) => ({
+          nodes: state.nodes.filter((n) => !inProject(n.key)),
+          params: state.params.filter((p) => !inProject(p.parentKey)),
+          loadedRootPath: state.loadedRootPath?.filter((p) => p !== projectKey) ?? null,
+          selectedDevice: state.selectedDevice && inProject(state.selectedDevice) ? null : state.selectedDevice,
+          catalogVersion: state.catalogVersion + 1,
+        }));
+        toast.success(`Проект ${project} удалён`);
+      },
+      isImportedProject: (projectKey) =>
+        get().params.some((p) => p.parentKey === projectKey && p.name === IMPORT_SOURCE_PARAM),
+      exportGateway: async ({root, controllerId, endpoint}) => {
+        const query = new URLSearchParams({root, controllerId, endpoint});
+        const res = await fetch(`/api/device/export/gateway?${query}`);
+        const text = await res.text();
+        if (!res.ok) {
+          let message = '';
+          try {
+            message = JSON.parse(text)?.message ?? '';
+          } catch {
+            // тело не JSON — покажем текст
+          }
+          throw new Error(message || text.slice(0, 200) || `Не удалось выгрузить теги (${res.status})`);
+        }
+        return text;
+      },
       handleContextAction: async (action, nodeKey) => {
+        if (action === 'delete_import') {
+          if (!nodeKey) return;
+          const {project} = splitProjectKey(nodeKey);
+          const confirmed = await confirmModal({
+            title: 'Удалить импортированный проект?',
+            description: `Удалить проект ${project} целиком? Схемы, привязанные к его тегам, потеряют связь. Отменить это действие нельзя.`,
+            confirmLabel: 'Удалить',
+            danger: true,
+          });
+          if (confirmed) {
+            await get().deleteImportedProject(nodeKey);
+          }
+        }
+        if (action === 'export_gateway') {
+          if (!nodeKey) return;
+          OpenGatewayExportModal(nodeKey);
+        }
         if (action === 'delete') {
           if (!nodeKey) return;
           const confirmed = await confirmModal({

@@ -5,6 +5,7 @@ import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
 import { useEditingDevices } from "@/lib/useIsEditingDevice";
+import { useDeviceStore } from "@/store/useDeviceStore";
 
 const ContextMenu = <T extends string = string>({
   menu,
@@ -100,6 +101,10 @@ const ContextMenu = <T extends string = string>({
   // пункты по устаревшему состоянию блокировки.
   const editingDevices = useEditingDevices();
   const isEditing = (key: string) => editingDevices.includes(key);
+  // Удалять целиком можно только проект, созданный импортом .cdbx.
+  const isImportedProject = useDeviceStore(
+    (s) => typeof menuKey === 'string' && s.isImportedProject(menuKey),
+  );
 
   if (!menu.visible) return null;
 
@@ -133,6 +138,10 @@ const ContextMenu = <T extends string = string>({
         case 'exit_edit':
         case 'delete':
           return editing;
+        case 'export_gateway':
+          return level === 2;
+        case 'delete_import':
+          return level === 2 && isImportedProject;
         default:
           return false;
       }

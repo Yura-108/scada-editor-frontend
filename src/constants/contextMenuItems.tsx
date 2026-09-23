@@ -1,7 +1,9 @@
-import {Edit3, Plus, Trash2} from "lucide-react";
+import {Download, Edit3, Plus, Trash2} from "lucide-react";
 import {ContextMenuItem} from "@/types/contextMenu.type";
 
-export type DeviceAction = 'add' | 'add_site' | 'add_project' | 'delete' | 'edit';
+export type DeviceAction =
+  | 'add' | 'add_site' | 'add_project' | 'delete' | 'edit'
+  | 'export_gateway' | 'delete_import';
 
 export const nodeMenuItems: ContextMenuItem<DeviceAction>[] = [
   {
@@ -40,6 +42,19 @@ export const nodeMenuItems: ContextMenuItem<DeviceAction>[] = [
     label: 'Удалить',
     icon: <Trash2 className="w-4 h-4" />,
     action: 'delete',
+    danger: true,
+  },
+  {
+    key: 'export_gateway',
+    label: 'Выгрузить для шлюза',
+    icon: <Download className="w-4 h-4" />,
+    action: 'export_gateway',
+  },
+  {
+    key: 'delete_import',
+    label: 'Удалить импортированный проект',
+    icon: <Trash2 className="w-4 h-4" />,
+    action: 'delete_import',
     danger: true,
   },
 ];
