@@ -27,7 +27,6 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         Поставлено устройств: <b>{report.placed}</b> из {report.devices}
         {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}
         {report.junctions > 0 && <>, узлов: <b>{report.junctions}</b></>}.
-        {report.category !== undefined && <> Шаблоны из группы «{report.category}».</>}
       </Dialog.Description>
 
       <div className="space-y-3">
@@ -76,8 +75,7 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         {report.missing.length > 0 && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Чтобы эти устройства встали на схему, сохраните компонент с таким именем в
-            {report.category !== undefined ? <> группу «{report.category}»</> : " палитру"} и
-            повторите импорт.
+            палитру и повторите импорт.
           </p>
         )}
       </div>
