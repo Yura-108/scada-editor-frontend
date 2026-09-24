@@ -315,6 +315,30 @@ There is deliberately no sticky-override map any more (`manualTagValues` and its
 an override that outlives telemetry is a mimic that confidently shows what the hardware no longer
 holds.
 
+### Scene cache (fast scene switching)
+
+`src/lib/editor/sceneCache.ts` keeps the **raw** `GET /api/editor/scene/{id}` response per
+`(projectId, sceneId)` in tab memory; `loadScene` applies it through the same
+`applyLoadedScene` → `applyServerComponents` path as a network load, so editor and runtime
+behave identically either way. After `loadSceneList`, every scene of the project is prefetched
+in the background (2 at a time, pinned tabs first, stops when the project changes).
+
+- **The cached `version` is the base of that exact document** and becomes `sceneVersion` on a
+  hit. It must be fetched *before* the scene request starts (`fetchSceneWithVersion`), so the
+  document can only be newer than its number — the harmless direction (an extra server merge),
+  never a silent overwrite. `undefined` = unknown, and such an entry is not a hit.
+- A hit is revalidated in the background with `versions?limit=1`. Different number → refetch
+  and swap quietly **only if the scene is untouched** (`!isDirty`, same `documentGeneration`);
+  otherwise leave it and let the normal save-conflict path handle it.
+- Whoever changes a scene on the server must update the cache: a successful save drops the
+  entry and puts the tree from the response; restore does the same; `deleteScene` drops.
+  `loadScene({keepHistory})` never reads the cache and uses `fresh` so it cannot pick up a
+  background request started before the save. A request's result is not stored if the entry
+  was written or dropped while it was in flight.
+- Entries are cloned on read: `transformElements` reuses some input objects (bindings) by
+  reference, so without the clone a store edit would leak into the cache.
+- In development `loadScene` logs `[scene] … загрузка / распаковка / отрисовка` timings.
+
 ### Document versions (undo → versioning)
 
 Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026). The unit of history is the **whole scene**, not an action. Client-side Ctrl+Z (zundo) is unrelated and stays.

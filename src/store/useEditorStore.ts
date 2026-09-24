@@ -32,6 +32,8 @@ import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements, {normalizeProperty} from "@/lib/transformElements";
+import {dropScene, fetchSceneWithVersion, getCachedScene, prefetchScenes, putScene} from "@/lib/editor/sceneCache";
+import {readPinnedTabs} from "@/lib/editor/pinnedScenes";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
@@ -1089,6 +1091,119 @@ const applyServerComponents = (
   });
 
   return elements;
+};
+
+/** Номер последнего вызова `loadScene` — см. проверку устаревших ответов там. */
+let sceneLoadSeq = 0;
+
+/**
+ * Кладёт на холст сцену, полученную целиком (из сети или из кэша сцен).
+ *
+ * `version` — номер версии ИМЕННО этого документа: он станет `based_on_version`
+ * следующего сохранения. `null` — версий нет (или номер не узнали).
+ * false — сцена не из текущего проекта, холст очищен.
+ */
+const applyLoadedScene = (scene: Record<string, unknown>, version: number | null): boolean => {
+  const {currentProject} = useEditorStore.getState();
+  // Иерархия: сцена обязана принадлежать выбранному проекту.
+  if (!sceneBelongsToCurrentProject(scene as unknown as SceneType, currentProject)) {
+    toast.error("Сцена не принадлежит выбранному проекту");
+    useEditorStore.setState({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
+    return false;
+  }
+
+  useEditorStore.setState({scene: scene as unknown as SceneType});
+  applyServerComponents((scene?.children as unknown[]) ?? [], scene as {id?: number | string});
+  // Только что загруженная сцена не считается изменённой.
+  // persisted=false: время последнего сейва загрузкой не обновляем.
+  markSceneSaved(false);
+  // Версии прошлой сцены к этой не относятся — сбрасываем всё разом.
+  useEditorStore.setState({
+    sceneVersion: version, versions: [], versionsExhausted: false,
+    saveConflict: null, staleBaseVersion: null,
+  });
+  return true;
+};
+
+/**
+ * Проверка свежести схемы, показанной из кэша.
+ *
+ * Номер версии совпал — показано актуальное, ничего не делаем (обычный случай: один
+ * лёгкий запрос вместо сборки всего дерева). Не совпал — перечитываем схему и тихо
+ * подменяем, но только если пользователь её ещё не тронул. Если тронул — не подменяем:
+ * `sceneVersion` остаётся номером показанного документа, и сохранение пойдёт обычным
+ * путём конфликта (ручное — диалог слияния, автосохранение — баннер). Своей логики
+ * слияния здесь нет и быть не должно.
+ */
+const revalidateCachedScene = async (
+  projectId: number,
+  sceneId: number,
+  shownVersion: number | null,
+  generation: number,
+): Promise<void> => {
+  try {
+    const latest = await fetchCurrentVersion("scenes", sceneId);
+    if (latest === shownVersion) return;
+
+    const {scene, version} = await fetchSceneWithVersion(projectId, sceneId, {fresh: true});
+    const s = useEditorStore.getState();
+    if (
+      documentGeneration !== generation
+      || s.scene?.id !== sceneId
+      || s.currentProject?.id !== projectId
+      || s.isDirty
+      || s.versionPreview
+    ) return;
+
+    applyLoadedScene(scene, version ?? null);
+    if (version === undefined) void s.refreshSceneVersion();
+    // Шагов undo у нетронутой схемы нет, но подмена документа — граница истории.
+    useEditorStore.temporal.getState().clear();
+  } catch (err) {
+    // Молча: показанная схема остаётся, а сохранение всё равно сверит версию.
+    console.warn("[scene-cache] не удалось проверить свежесть схемы:", err);
+  }
+};
+
+/**
+ * Фоновая загрузка всех схем проекта в кэш — чтобы быстрым был и ПЕРВЫЙ переход.
+ *
+ * Отложена до простоя браузера: сначала должна спокойно загрузиться схема, которую
+ * открывают прямо сейчас. Закреплённые схемы (вкладки) — первыми в очереди, на них
+ * переходят чаще всего. Сменили проект — очередь старого останавливается.
+ */
+const scheduleScenePrefetch = (projectId: number, list: {id: number}[]) => {
+  if (typeof window === "undefined") return;
+
+  const run = () => {
+    if (useEditorStore.getState().currentProject?.id !== projectId) return;
+    const pinned = readPinnedTabs(projectId).pins.map(p => p.id);
+    const ids = [...new Set([...pinned, ...list.map(s => s.id)])]
+      .filter(id => list.some(s => s.id === id));
+    void prefetchScenes(projectId, ids, () => useEditorStore.getState().currentProject?.id === projectId);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, {timeout: 2000});
+  } else {
+    setTimeout(run, 500);
+  }
+};
+
+/**
+ * Время перехода на схему — только в разработке: чтобы было видно, куда уходят секунды
+ * (сеть, распаковка или отрисовка холста). Отрисовку меряем до второго кадра — первый
+ * лишь планирует рендер Konva.
+ */
+const logSceneTiming = (sceneId: number, source: string, startedAt: number, applyAt: number) => {
+  if (process.env.NODE_ENV === "production" || typeof requestAnimationFrame === "undefined") return;
+  const appliedAt = performance.now();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    console.info(
+      `[scene] ${sceneId} (${source}): загрузка ${Math.round(applyAt - startedAt)} мс, `
+      + `распаковка ${Math.round(appliedAt - applyAt)} мс, отрисовка ${Math.round(performance.now() - appliedAt)} мс`,
+    );
+  }));
 };
 
 /**
@@ -2851,6 +2966,10 @@ export const useEditorStore = create<EditorState>()(temporal(
             const savedVersion: number | null =
               typeof saved?.version_no === "number" ? saved.version_no : null;
 
+            // На сервере теперь другой документ — прежняя запись кэша сцен устарела при
+            // любом исходе ниже. Где дерево из ответа ложится на холст, оно же ляжет и в кэш.
+            if (currentProject) dropScene(currentProject.id, sceneId);
+
             // Пока летел запрос, документ на холсте заменили целиком — почти всегда это
             // восстановление версии, начатое до того, как сохранение успело вернуться.
             // Сохранение состоялось, но описывает уже ПРОШЛОЕ состояние: подменить им
@@ -2915,6 +3034,13 @@ export const useEditorStore = create<EditorState>()(temporal(
                   // в нём никто не гарантировал, доверять ему холст нельзя, и мы уходим
                   // в честную перезагрузку сцены.
                   applyServerComponents(savedComponents, scene);
+                  if (currentProject) {
+                    putScene(
+                      currentProject.id,
+                      {...(scene as unknown as Record<string, unknown>), children: savedComponents},
+                      savedVersion,
+                    );
+                  }
                 } else {
                   await get().loadScene(scene.id, {keepHistory: true});
                 }
@@ -3147,11 +3273,22 @@ export const useEditorStore = create<EditorState>()(temporal(
             const trustResponse =
               restored.version_no != null && (restored.components.length > 0 || !hadElements);
 
+            // Восстановление записало новую версию — запись кэша сцен устарела.
+            const projectId = get().currentProject?.id;
+            if (projectId != null) dropScene(projectId, scene.id);
+
             const temporal = useEditorStore.temporal.getState();
             temporal.pause();
             try {
               if (trustResponse) {
                 applyServerComponents(restored.components, scene);
+                if (projectId != null) {
+                  putScene(
+                    projectId,
+                    {...(scene as unknown as Record<string, unknown>), children: restored.components},
+                    restored.version_no,
+                  );
+                }
               } else {
                 await get().loadScene(Number(scene.id), {keepHistory: true});
               }
@@ -3269,6 +3406,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const json = await res.json();
           const list = Array.isArray(json) ? json : [];
           set({sceneList: list});
+          scheduleScenePrefetch(projectId, list);
           return list;
         } catch (err: unknown) {
           console.error(err);
@@ -3482,6 +3620,11 @@ export const useEditorStore = create<EditorState>()(temporal(
         // просмотра не пересекает.
         discardVersionPreview();
 
+        // Номер вызова: ответ, пришедший после того как пользователь открыл другую
+        // схему, применять нельзя — иначе на холсте окажется не та, что выбрана.
+        const seq = ++sceneLoadSeq;
+        const startedAt = performance.now();
+
         try {
           const {currentProject} = get();
           if (!currentProject) {
@@ -3489,39 +3632,32 @@ export const useEditorStore = create<EditorState>()(temporal(
             set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
             return;
           }
+          const projectId = currentProject.id;
 
-          const res = await fetch(`/api/editor/scene/${id}?project_id=${currentProject.id}`);
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Ошибка ${res.status}: ${text}`);
-          }
-
-          const scene = await res.json();
-
-          // Иерархия: сцена обязана принадлежать выбранному проекту.
-          if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-            toast.error("Сцена не принадлежит выбранному проекту");
-            set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
+          // Попадание в кэш — показываем сразу, свежесть проверяем в фоне (см.
+          // lib/editor/sceneCache.ts). Перечитывание после сохранения (keepHistory) в
+          // кэш не смотрит: ему нужно именно состояние сервера после записи.
+          const cached = loadOpts?.keepHistory ? null : getCachedScene(projectId, id);
+          if (cached && cached.version !== undefined) {
+            const applyAt = performance.now();
+            if (!applyLoadedScene(cached.scene, cached.version)) return;
+            logSceneTiming(id, "кэш", startedAt, applyAt);
+            void revalidateCachedScene(projectId, id, cached.version, documentGeneration);
             return;
           }
 
-          set({scene});
-          applyServerComponents(scene?.children ?? [], scene);
-          // Только что загруженная сцена не считается изменённой.
-          // persisted=false: время последнего сейва загрузкой не обновляем.
-          markSceneSaved(false);
+          const {scene, version} = await fetchSceneWithVersion(projectId, id, {fresh: loadOpts?.keepHistory});
+          if (seq !== sceneLoadSeq) return;
 
-          // Версию спрашиваем отдельно и НЕ ждём: без неё редактор работает, а
-          // based_on_version подставится к моменту первого сохранения. Сбрасываем
-          // заранее, чтобы не отправить в новую сцену версию предыдущей.
-          set({
-            sceneVersion: null, versions: [], versionsExhausted: false,
-            saveConflict: null, staleBaseVersion: null,
-          });
-          void get().refreshSceneVersion();
+          const applyAt = performance.now();
+          if (!applyLoadedScene(scene, version ?? null)) return;
+          logSceneTiming(id, "сеть", startedAt, applyAt);
+          // Номер не получили — спросим ещё раз в фоне, как раньше: без него редактор
+          // работает, а based_on_version подставится к моменту первого сохранения.
+          if (version === undefined) void get().refreshSceneVersion();
 
         } catch (err: unknown) {
+          if (seq !== sceneLoadSeq) return;
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
           // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
@@ -3534,7 +3670,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           // границу сцены не пересекаем, и чистка здесь означала бы, что любое
           // сохранение (в том числе тихое автосохранение раз в 10 минут) молча
           // стирает весь стек undo/redo пользователя.
-          if (!loadOpts?.keepHistory) {
+          // Устаревший вызов историю не трогает: она уже принадлежит схеме, открытой позже.
+          if (!loadOpts?.keepHistory && seq === sceneLoadSeq) {
             useEditorStore.temporal.getState().clear();
           }
         }
@@ -3622,6 +3759,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             : await fetchCurrentVersion("scenes", id).catch(() => null);
 
           await deleteComponentsRequest([id], basedOnVersion);
+          dropScene(currentProject.id, id);
 
           set(state => ({
             sceneList: state.sceneList.filter(s => s.id !== id),

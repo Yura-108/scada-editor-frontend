@@ -40,7 +40,10 @@ export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
 
   if (!response.ok) return backendErrorResponse(response);
 
-  const data = await response.json().catch(() => null);
-
-  return NextResponse.json(data);
+  // Тело — как есть, потоком: дерево сцены большое, а разбирать его здесь и собирать
+  // заново ради того же JSON незачем.
+  return new NextResponse(response.body, {
+    status: response.status,
+    headers: {'Content-Type': 'application/json'},
+  });
 });
