@@ -95,7 +95,7 @@ export function TableResizeHandles({
           key={`col-divider-${c}`}
           axis="x"
           pos={colX[c]}
-          from={0}
+          from={headerH}
           to={h}
           grip={grip}
           color={themeColors.selection}

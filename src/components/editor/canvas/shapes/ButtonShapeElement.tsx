@@ -19,7 +19,11 @@ export function ButtonShapeElement({ el, isSelected, onElementClick, updateEleme
   const rx = rendered.rx ?? 6;
   const pressed = !!rendered.pressed;
   const enabled = rendered.enabled !== false;
-  const fontSize = Math.max(11, Math.min(18, Math.floor(h * 0.4)));
+  // Размер задаётся в панели свойств. У кнопок, созданных до этой настройки, его нет —
+  // для них остаётся прежний расчёт от высоты, чтобы старые схемы не поменялись.
+  const fontSize = typeof rendered.fontSize === "number"
+    ? Math.max(8, Math.min(72, rendered.fontSize))
+    : Math.max(11, Math.min(18, Math.floor(h * 0.4)));
 
   return (
     <Group

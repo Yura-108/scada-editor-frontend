@@ -524,6 +524,7 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     { key: "color", label: "Цвет фона", type: "color", defaultValue: "#3b82f6" },
     { key: "label", label: "Текст", type: "text", defaultValue: "Кнопка" },
     { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#ffffff" },
+    { key: "fontSize", label: "Размер текста", type: "number", min: 8, max: 72, defaultValue: 16 },
     { key: "rx", label: "Скругление углов", type: "number", min: 0, max: 40, defaultValue: 6 },
     { key: "pressed", label: "Нажата (превью)", type: "boolean", defaultValue: false },
     { key: "enabled", label: "Активна", type: "boolean", defaultValue: true },

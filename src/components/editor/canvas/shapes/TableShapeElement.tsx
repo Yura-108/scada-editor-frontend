@@ -71,11 +71,12 @@ export function TableShapeElement({ el, isSelected, onElementClick, updateElemen
     );
   }
 
-  // Вертикальные линии
+  // Вертикальные линии — только в теле: заголовок сплошной строкой на всю ширину,
+  // колонками он не делится.
   for (let c = 0; c <= cols; c++) {
     const x = colX[c];
     lines.push(
-      <Line key={`vl-${c}`} points={[x, 0, x, h]} stroke={strokeCol} strokeWidth={1} listening={false} />
+      <Line key={`vl-${c}`} points={[x, headerH, x, h]} stroke={strokeCol} strokeWidth={1} listening={false} />
     );
   }
 

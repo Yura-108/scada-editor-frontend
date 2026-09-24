@@ -31,7 +31,7 @@ import {
 import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
-import transformElements from "@/lib/transformElements";
+import transformElements, {normalizeProperty} from "@/lib/transformElements";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
@@ -2121,7 +2121,8 @@ export const useEditorStore = create<EditorState>()(temporal(
             children,
             scripts:     Array.isArray(raw.scripts)    ? raw.scripts    : [],
             bindings:    Array.isArray(raw.bindings)   ? raw.bindings   : [],
-            properties:  Array.isArray(raw.properties) ? raw.properties : [],
+            // Старые выгрузки несут description вместо gateway_name — см. normalizeProperty.
+            properties:  Array.isArray(raw.properties) ? raw.properties.map(normalizeProperty) : [],
             states,
             // Convert percentage strings to pixel coordinates using the logical canvas size
             x:  parseCoord(raw.x,  CANVAS_W),
@@ -2314,7 +2315,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const newElement: DiagramElement = {
             id: null, key: createUuid(), type, composition,
             x, y, w: 120, h: 40,
-            label: "Кнопка", color: "#3b82f6", textColor: "#ffffff",
+            label: "Кнопка", color: "#3b82f6", textColor: "#ffffff", fontSize: 16,
             rx: 6, pressed: false, enabled: true, bg: "transparent",
             parentId: scene?.id || null, parentKey: String(scene?.id) || null,
             children: [], scripts: [], bindings: [], properties: [],
@@ -3786,7 +3787,7 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
       },
       ungroupSelected: async () => {
-        const { elements, selectedIds, activeGroupKey } = get();
+        const { elements, selectedIds, activeGroupKey, scene } = get();
 
         // 1. Находим среди выделенных элементов только группы
         const groupsToUngroup = elements.filter(
@@ -3818,17 +3819,27 @@ export const useEditorStore = create<EditorState>()(temporal(
           const memberKeys = [...(group.children ?? []), ...(group.composition ?? [])];
           newlySelectedIds.push(...memberKeys);
 
+          // parentId «дедушки»: корень сцены → id сцены, группа → её серверный id
+          // (null, если она ещё не сохранена — бэкенд свяжет по parent_key).
+          const grandParentId =
+            grandParentKey === String(scene?.id)
+              ? scene?.id ?? null
+              : (updatedElements.find((el) => el.key === grandParentKey)?.id ?? null);
+
           // Шаг А: Обновляем ВСЕХ членов разбиваемой группы (по parentKey — покрывает
           // и children, и composition). Прибавляем координаты исчезающей группы, причём
           // сдвигаем и базовые поля, и позиционные ключи в overrides состояний:
           // у перемещённого внутри группы листа актуальная позиция живёт в overrides,
           // и сдвиг только базового x/y «телепортирует» его на старое место.
+          // parentId переписываем вместе с parentKey: иначе в нём остаётся серверный id
+          // удалённой группы, и сохранение падает с 400 «Component not found».
           updatedElements = updatedElements.map((el) => {
             if (el.parentKey === groupId) {
               return {
                 ...shiftElementPositions(el, groupX, groupY),
                 // Член переходит под крыло "дедушки" (если группа сама была внутри группы)
                 parentKey: grandParentKey,
+                parentId: grandParentId,
               };
             }
             return el;

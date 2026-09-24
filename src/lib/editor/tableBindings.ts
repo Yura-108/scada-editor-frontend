@@ -19,13 +19,24 @@ import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
 /** Поля свойства для выбора в панели. `value` — живое, остальные статические. */
 export const CELL_SOURCE_FIELDS: {value: CellSourceField; label: string}[] = [
   {value: "value", label: "Значение (живое)"},
-  {value: "name", label: "Имя"},
+  {value: "name", label: "Название"},
+  {value: "label", label: "Имя"},
   {value: "tag_id", label: "Тег"},
   {value: "value_type", label: "Тип значения"},
   {value: "property_type", label: "Тип свойства"},
   {value: "default_value", label: "Значение по умолчанию"},
-  {value: "description", label: "Описание"},
+  {value: "gateway_name", label: "Имя для шлюза"},
 ];
+
+/**
+ * Поля для выбора с учётом текущей привязки. `description` (до 24.09.2026 — «Описание»,
+ * теперь «Имя для шлюза») новым не предлагаем, но у уже сохранённой привязки он остаётся
+ * в списке: иначе select показал бы первый пункт вместо того, что реально привязано.
+ */
+export const cellSourceFieldsFor = (current?: CellSourceField) =>
+  current === "description"
+    ? [...CELL_SOURCE_FIELDS, {value: "description" as const, label: "Имя для шлюза (старая привязка)"}]
+    : CELL_SOURCE_FIELDS;
 
 /**
  * Через рантайм идёт только живое значение. Остальные поля лежат в самом свойстве и
@@ -63,7 +74,10 @@ const staticFieldText = (prop: PropertyCreateDto, field: CellSourceField): strin
     case "value_type": return prop.value_type ?? "";
     case "property_type": return prop.property_type ?? "";
     case "default_value": return prop.default_value ?? "";
-    case "description": return prop.description ?? "";
+    case "label": return prop.label ?? "";
+    case "gateway_name": return prop.gateway_name ?? "";
+    // Старые привязки: поле переименовано, значение то же.
+    case "description": return prop.gateway_name ?? "";
     default: return "";
   }
 };

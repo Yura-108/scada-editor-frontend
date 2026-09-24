@@ -68,7 +68,8 @@ export function AddPropertyContent({ elementKey, property }: Props) {
   const [propertyType, setPropertyType] = useState<PropertyType>(
     (property?.property_type as PropertyType) || "Тег"
   );
-  const [description, setDescription] = useState(property?.description || "");
+  const [label, setLabel] = useState(property?.label || "");
+  const [gatewayName, setGatewayName] = useState(property?.gateway_name || "");
   const [valueType, setValueType] = useState(property?.value_type || "");
   const [defaultValue, setDefaultValue] = useState(property?.default_value || "");
   const [logging, setLogging] = useState(property?.logging || false);
@@ -95,7 +96,8 @@ export function AddPropertyContent({ elementKey, property }: Props) {
   useEffect(() => {
     setName(property?.name || "");
     setPropertyType((property?.property_type as PropertyType) || "Тег");
-    setDescription(property?.description || "");
+    setLabel(property?.label || "");
+    setGatewayName(property?.gateway_name || "");
     setValueType(property?.value_type || "");
     setDefaultValue(property?.default_value || "");
     setLogging(property?.logging || false);
@@ -148,7 +150,8 @@ export function AddPropertyContent({ elementKey, property }: Props) {
         component_id: ownerId,
         property_type: propertyType,
         tag_id: isTagType ? chosenTagId : "",
-        description: description.trim(),
+        label: label.trim() || null,
+        gateway_name: gatewayName.trim() || null,
         value_type: valueType.trim(),
         default_value: defaultValue,
         logging,
@@ -222,6 +225,20 @@ export function AddPropertyContent({ elementKey, property }: Props) {
           />
         </div>
 
+        {/* Имя — для оператора; «Название» занято скриптами */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+            Имя
+          </label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Как свойство видит оператор"
+            className={inputClass}
+          />
+        </div>
+
         {/* Тип свойства */}
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
@@ -250,17 +267,17 @@ export function AddPropertyContent({ elementKey, property }: Props) {
           </Select.Root>
         </div>
 
-        {/* Описание + Тип значения */}
+        {/* Имя для шлюза + Тип значения */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-              Описание
+              Имя для шлюза
             </label>
             <input
               type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Краткое описание свойства"
+              value={gatewayName}
+              onChange={(e) => setGatewayName(e.target.value)}
+              placeholder="OBJECT10.S_PAR_F[ 4 ]"
               className={inputClass}
             />
           </div>

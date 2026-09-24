@@ -38,6 +38,9 @@ export type CellSourceField =
   | "value_type"
   | "property_type"
   | "default_value"
+  | "label"
+  | "gateway_name"
+  /** Устаревшее имя gateway_name — только у привязок, сохранённых до 24.09.2026. */
   | "description";
 
 export interface CellBinding {

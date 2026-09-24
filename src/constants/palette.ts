@@ -79,7 +79,7 @@ export const paletteItems: PaletteItemType[] = [
     type: "button",
     name: "Кнопка",
     category: "Управление",
-    defaultProps: {label: "Кнопка", w: 120, h: 40, color: "#3b82f6", textColor: "#ffffff", rx: 6, pressed: false, enabled: true},
+    defaultProps: {label: "Кнопка", w: 120, h: 40, color: "#3b82f6", textColor: "#ffffff", fontSize: 16, rx: 6, pressed: false, enabled: true},
   },
   {
     id: 10 ** 5 + 11,

@@ -2,6 +2,7 @@ import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/lib/createUuid";
 import {parseBindings} from "@/lib/parseBindings";
 import {parseEvents} from "@/lib/parseEvents";
+import type {PropertyCreateDto} from "@/types/tags.types";
 
 type BackendStateDto = {
   id?: number | string;
@@ -19,12 +20,35 @@ type BackendPropertyDto = {
   name?: string;
   property_type: string | null;
   tag_id: string | null;
-  description: string | null;
+  label?: string | null;
+  gateway_name?: string | null;
+  /** Устаревшее зеркало gateway_name (до 24.09.2026). Читает только normalizeProperty. */
+  description?: string | null;
   value_type: string | null;
   default_value: string | null;
   logging: boolean;
   onChange: string | null;
 };
+
+/**
+ * Приводит свойство к полям после 24.09.2026: `description` → `gateway_name`.
+ *
+ * Старое имя приходит из трёх мест: ответ бэкенда (пока он отдаёт зеркало), старые
+ * снимки версий и запечённые `composition`-дескрипторы — это блоб фронта, в старых
+ * сценах `description` там останется навсегда. Сам `description` выбрасываем: свойства
+ * уезжают на сервер целиком, и без этого поле ушло бы двумя именами сразу.
+ */
+export const normalizeProperty = (raw: unknown): PropertyCreateDto => {
+  const {description, ...rest} = (raw ?? {}) as BackendPropertyDto;
+  return {
+    ...rest,
+    label: rest.label ?? null,
+    gateway_name: rest.gateway_name ?? description ?? null,
+  } as PropertyCreateDto;
+};
+
+const normalizeProperties = (value: unknown): PropertyCreateDto[] =>
+  Array.isArray(value) ? value.map(normalizeProperty) : [];
 
 type ComponentDto = {
   id: number;
@@ -229,7 +253,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         // Composition-дескриптор хранит TagBinding[] сырыми объектами; parseBindings
         // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
         bindings: parseBindings(desc.bindings),
-        properties: normalizeArray(desc.properties as unknown[]) as DiagramElement["properties"],
+        properties: normalizeProperties(desc.properties),
         ...(desc.events ? {events: parseEvents(desc.events)} : {}),
         label: String(desc.label ?? ""),
       } as DiagramElement);
@@ -272,7 +296,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       // Для type==="table" это же поле несёт привязки строк к тегам (property_type
       // "TAG:<row>", см. src/lib/editor/rowBinding.ts) — номер строки едет внутри
       // property_type, реконструкция позиции по индексу массива не нужна.
-      properties: Array.isArray(el.properties) ? el.properties : [],
+      properties: normalizeProperties(el.properties),
       label: el.name,
     };
 

@@ -7,7 +7,10 @@ export interface PropertyCreateRequestDto {
   component_id: number | null;
   property_type: string;
   tag_id: string | null;
-  description: string;
+  /** Человеческое имя для оператора («Опции» монитора). name занят скриптами. */
+  label?: string | null;
+  /** Имя для шлюза (до 24.09.2026 — description). */
+  gateway_name?: string | null;
   value_type: string;
   default_value: string;
   logging: boolean;

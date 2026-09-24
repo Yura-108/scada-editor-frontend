@@ -29,7 +29,7 @@ import {ChooseObjectPropertyModal} from "@/components/editor/bindings/OpenChoose
 import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
-import {CELL_SOURCE_FIELDS, cellBindingAt} from "@/lib/editor/tableBindings";
+import {cellBindingAt, cellSourceFieldsFor} from "@/lib/editor/tableBindings";
 import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {MIN_SIZE} from "@/components/editor/canvas/types";
@@ -836,7 +836,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     >
                       <option value="">— свободный текст —</option>
                       {(element.properties ?? []).map(p => (
-                        <option key={propertyKey(p)} value={p.name}>{p.name}</option>
+                        <option key={propertyKey(p)} value={p.name}>
+                          {p.label?.trim() ? `${p.name} — ${p.label.trim()}` : p.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -854,7 +856,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                         bindCell(ownCellBinding.cell.propertyName, e.target.value as CellSourceField);
                       }}
                     >
-                      {CELL_SOURCE_FIELDS.map(f => (
+                      {cellSourceFieldsFor(ownCellBinding?.cell?.field).map(f => (
                         <option key={f.value} value={f.value}>{f.label}</option>
                       ))}
                     </select>

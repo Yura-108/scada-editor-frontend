@@ -94,6 +94,14 @@ Consequences worth knowing:
   from here; removing it is a deliberate separate change.
 - `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
   the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
+- A property has **three names** (contract `docs/contract/2026-09-24-property-label-contract.md`):
+  `name` — the script address (`OP.V`, `component_property_name`), `label` («Имя») — what the
+  operator sees in the monitor's «Опции», `gateway_name` («Имя для шлюза») — formerly
+  `description`. Properties travel as whole objects, so `normalizeProperty`
+  (`transformElements.ts`) maps `description → gateway_name` and **drops** `description` on every
+  way in (scene/template load, baked `composition` descriptors, JSON import); otherwise the old
+  name would ride along to the server. Table cells bound to `field: "description"` still render
+  `gateway_name`.
 - `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric
   `propertyId` the runtime routes by is filled in from the save response
   (`resolvePendingPropertyRefs`).

@@ -33,6 +33,9 @@ const isNumericType = (valueType?: string) => {
   return t === "integer" || t === "float" || t === "int" || t === "double";
 };
 
+/** Имя свойства для оператора: `label`, а без него — технический `name` из скриптов. */
+const propertyTitle = (p: PropertyCreateDto) => p.label?.trim() || p.name;
+
 /** Строка к записи: свойство, адрес тега и значение, которое уедет в ПЛК. */
 interface WriteRow {
   property: PropertyCreateDto;
@@ -134,7 +137,7 @@ function ElementOptionsContent({elementKey}: Props) {
     if (invalid) {
       // Отправлять остальные строки без нечисловой не начинаем: оператор задавал набор
       // значений целиком, и частичный набор в ПЛК — не то, о чём он просил.
-      toast.error(`«${invalid.property.name}»: значение должно быть числом`);
+      toast.error(`«${propertyTitle(invalid.property)}»: значение должно быть числом`);
       return;
     }
 
@@ -151,7 +154,7 @@ function ElementOptionsContent({elementKey}: Props) {
           <ul className="mt-2 space-y-1">
             {rows.map(r => (
               <li key={r.tagId}>
-                «{r.property.name}» = «{r.value}»
+                «{propertyTitle(r.property)}» = «{r.value}»
               </li>
             ))}
           </ul>
@@ -214,7 +217,7 @@ function ElementOptionsContent({elementKey}: Props) {
           ?? results.find(r => r.tagId === row.tagId);
 
         if (!result) {
-          toast.error(`«${row.property.name}»: бэкенд не вернул отчёт о записи`);
+          toast.error(`«${propertyTitle(row.property)}»: бэкенд не вернул отчёт о записи`);
           return;
         }
         const outcome = tagWriteOutcome(result);
@@ -224,7 +227,7 @@ function ElementOptionsContent({elementKey}: Props) {
           // выводим — телеметрия покажет, чем дело кончилось.
           unknown.push(row);
           toast.warning(
-            `«${row.property.name}»: результат неизвестен — сверьтесь с телеметрией`
+            `«${propertyTitle(row.property)}»: результат неизвестен — сверьтесь с телеметрией`
             + `${result.message ? ` (${result.message})` : ""}`,
           );
           return;
@@ -233,7 +236,7 @@ function ElementOptionsContent({elementKey}: Props) {
           // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и НЕ
           // выводим значение на схему, записи ведь не произошло.
           toast.error(
-            `«${row.property.name}»: ${tagWriteStatusLabel(result)}${result.message ? ` — ${result.message}` : ""}`,
+            `«${propertyTitle(row.property)}»: ${tagWriteStatusLabel(result)}${result.message ? ` — ${result.message}` : ""}`,
           );
           return;
         }
@@ -248,7 +251,7 @@ function ElementOptionsContent({elementKey}: Props) {
 
       if (applied.length === rows.length) {
         toast.success(rows.length === 1
-          ? `«${rows[0].property.name}»: команда отправлена (${tagWriteStatusLabel(applied[0].result)})`
+          ? `«${propertyTitle(rows[0].property)}»: команда отправлена (${tagWriteStatusLabel(applied[0].result)})`
           : `Отправлено команд: ${rows.length}`);
       } else if (applied.length || unknown.length) {
         // Частичный результат обязан читаться как частичный, причём тремя числами:
@@ -314,13 +317,16 @@ function ElementOptionsContent({elementKey}: Props) {
                     <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {p.name}
+                        {propertyTitle(p)}
                       </span>
-                      {/* Полный путь — в title: подпись короткая, но узел проверить можно. */}
+                      {/* Полный путь — в title: подпись короткая, но узел проверить можно.
+                          Технический name — рядом, если подпись его скрыла: он нужен при
+                          отладке скриптов. */}
                       <span
                         className="block truncate text-xs text-gray-500 dark:text-gray-400"
                         title={tagId || undefined}
                       >
+                        {p.label?.trim() ? `${p.name} · ` : ""}
                         {tagId ? shortTagPath(tagId) : "тег не назначен"}
                       </span>
                     </span>
