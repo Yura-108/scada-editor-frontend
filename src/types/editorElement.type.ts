@@ -166,6 +166,12 @@ export interface BaseCanvasElement {
    * значениях порядок остаётся прежним — порядком массива. См. lib/editor/zOrder.ts.
    */
   zIndex?: number;
+  /**
+   * Окно «Опции» в мониторе: размер и шрифт под этот компонент. Нет поля или ключа —
+   * значение по умолчанию. От состояния не зависит (BASE_ONLY_KEYS), на сервер едет
+   * внутри image, как zIndex. См. lib/editor/optionsWindow.ts.
+   */
+  optionsWindow?: OptionsWindowSettings;
 }
 
 export type ElementType =
@@ -342,4 +348,11 @@ export type PropertySchema =
   type: "select";
   options: {label: string; value: string}[];
   defaultValue?: string;
+}
+
+/** Размер и шрифт окна «Опции» в мониторе, px. Пределы — lib/editor/optionsWindow.ts. */
+export interface OptionsWindowSettings {
+  width?: number;
+  height?: number;
+  fontSize?: number;
 }

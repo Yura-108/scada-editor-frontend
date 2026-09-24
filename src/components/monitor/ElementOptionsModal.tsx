@@ -9,6 +9,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
+import {DEFAULT_OPTIONS_FONT_SIZE, optionsWindowStyle, readOptionsWindow} from "@/lib/editor/optionsWindow";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
@@ -282,17 +283,24 @@ function ElementOptionsContent({elementKey}: Props) {
   const inputClass = cn(
     "w-full rounded-lg border bg-white dark:bg-neutral-900",
     "border-neutral-300 dark:border-neutral-700",
-    "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
+    "px-3 py-1.5 text-[1em] text-neutral-900 dark:text-neutral-100",
     "outline-none focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
   );
 
+  // Шрифт окна задаётся компоненту в редакторе. Размеры текста ниже — в em, чтобы
+  // масштабировались от него; при 14px вид совпадает с прежними text-sm/text-xs.
+  const fontSize = readOptionsWindow(element?.optionsWindow)?.fontSize ?? DEFAULT_OPTIONS_FONT_SIZE;
+
   return (
-    <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
+    <div
+      className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]"
+      style={{fontSize}}
+    >
       <div className="shrink-0 mb-4">
-        <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
+        <Dialog.Title className="text-[1.43em] font-semibold mb-1 text-gray-900 dark:text-white">
           Опции · {element?.label || element?.type || "компонент"}
         </Dialog.Title>
-        <Dialog.Description className="text-gray-500 dark:text-gray-400 text-sm">
+        <Dialog.Description className="text-gray-500 dark:text-gray-400 text-[1em]">
           Значения привязанных тегов. Записанное показывается, пока контроллер не пришлёт
           следующее.
         </Dialog.Description>
@@ -300,7 +308,7 @@ function ElementOptionsContent({elementKey}: Props) {
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {tagProps.length === 0 ? (
-          <div className="flex min-h-[120px] items-center justify-center text-sm text-gray-500 dark:text-gray-400 italic">
+          <div className="flex min-h-[120px] items-center justify-center text-[1em] text-gray-500 dark:text-gray-400 italic">
             У компонента нет свойств, привязанных к тегам
           </div>
         ) : (
@@ -314,16 +322,16 @@ function ElementOptionsContent({elementKey}: Props) {
               return (
                 <div key={p.id ?? p.name} className="px-4 py-3 space-y-2">
                   <div className="flex items-center gap-3">
-                    <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" />
+                    <Waypoints className="h-[1.15em] w-[1.15em] shrink-0 text-indigo-500" />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <span className="block text-[1em] font-medium text-gray-900 dark:text-gray-100">
                         {propertyTitle(p)}
                       </span>
                       {/* Полный путь — в title: подпись короткая, но узел проверить можно.
                           Технический name — рядом, если подпись его скрыла: он нужен при
                           отладке скриптов. */}
                       <span
-                        className="block truncate text-xs text-gray-500 dark:text-gray-400"
+                        className="block truncate text-[0.857em] text-gray-500 dark:text-gray-400"
                         title={tagId || undefined}
                       >
                         {p.label?.trim() ? `${p.name} · ` : ""}
@@ -331,23 +339,23 @@ function ElementOptionsContent({elementKey}: Props) {
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <span className="block text-[1em] font-medium text-gray-900 dark:text-gray-100">
                         {shownValueOf(tagId)}
                       </span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      <span className="block text-[0.857em] text-gray-500 dark:text-gray-400">
                         текущее значение
                       </span>
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 pl-7">
+                  <div className="flex items-center gap-2 pl-[2em]">
                     {isBool ? (
-                      <label className="flex flex-1 items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+                      <label className="flex flex-1 items-center gap-2 text-[1em] text-gray-700 dark:text-gray-200 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={draft === "true"}
                           onChange={(e) => setDrafts({...drafts, [tagId]: e.target.checked ? "true" : "false"})}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                          className="h-[1.15em] w-[1.15em] rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
                         />
                         {draft === "true" ? "true" : "false"}
                       </label>
@@ -366,7 +374,7 @@ function ElementOptionsContent({elementKey}: Props) {
                       onClick={() => write(p)}
                       disabled={!tagId || isBusy || (!isBool && !draft.trim())}
                       className={cn(
-                        "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors",
+                        "shrink-0 rounded-lg px-3 py-1.5 text-[1em] font-medium text-white transition-colors",
                         "bg-red-600 hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed",
                       )}
                     >
@@ -382,8 +390,8 @@ function ElementOptionsContent({elementKey}: Props) {
       </div>
 
       <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-        <span className="mr-auto flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-          <AlertTriangle size={14} />
+        <span className="mr-auto flex items-center gap-1.5 text-[0.857em] text-amber-600 dark:text-amber-400">
+          <AlertTriangle size="1em" />
           Запись в ПЛК необратима
         </span>
         {/* Пакетная запись. Одна строка обходится кнопкой в самой строке, поэтому кнопка
@@ -411,5 +419,8 @@ function ElementOptionsContent({elementKey}: Props) {
 /** Открывает «Опции» компонента из меню монитора. */
 export function openElementOptionsModal(props: Props) {
   const {openModal} = useModalStore.getState();
-  openModal(<ElementOptionsContent {...props} />);
+  // Размер окна — из настроек компонента (редактор, вкладка «Свойства»).
+  const element = useEditorStore.getState().elements.find(el => el.key === props.elementKey);
+  const style = optionsWindowStyle(readOptionsWindow(element?.optionsWindow));
+  openModal(<ElementOptionsContent {...props} />, {style});
 }

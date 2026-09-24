@@ -3,6 +3,8 @@ import {createUuid} from "@/lib/createUuid";
 import {parseBindings} from "@/lib/parseBindings";
 import {parseEvents} from "@/lib/parseEvents";
 import type {PropertyCreateDto} from "@/types/tags.types";
+import type {OptionsWindowSettings} from "@/types/editorElement.type";
+import {readOptionsWindow} from "@/lib/editor/optionsWindow";
 
 type BackendStateDto = {
   id?: number | string;
@@ -47,7 +49,13 @@ export const normalizeProperty = (raw: unknown): PropertyCreateDto => {
   } as PropertyCreateDto;
 };
 
-const normalizeProperties = (value: unknown): PropertyCreateDto[] =>
+/** Ключ добавляется, только если что-то задано: элемент без настроек не несёт пустое поле. */
+const optionsWindowOf = (raw: unknown): {optionsWindow?: OptionsWindowSettings} => {
+  const optionsWindow = readOptionsWindow(raw);
+  return optionsWindow ? {optionsWindow} : {};
+};
+
+const normalizeProperties =(value: unknown): PropertyCreateDto[] =>
   Array.isArray(value) ? value.map(normalizeProperty) : [];
 
 type ComponentDto = {
@@ -150,7 +158,8 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
     // zIndex — слой отрисовки, живёт в БАЗЕ элемента (см. BASE_ONLY_KEYS в сторе):
     // оставить его в overrides значило бы, что {...base, ...overrides} на следующем
     // сохранении вернёт старое значение и правка слоя молча потеряется.
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex"]);
+    // optionsWindow — настройка окна «Опции», тоже базовая (BASE_ONLY_KEYS).
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "optionsWindow"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -212,7 +221,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         const d = compArr[i] ?? desc;
         // scripts/bindings/properties/events — данные примитива, не визуальные overrides.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, ...overrides } = d;
+        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, optionsWindow: _ow, ...overrides } = d;
         return {
           id: createUuid(),
           name: cs.name,
@@ -236,6 +245,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         ...primOverrides,
         // Слой примитива — в базу, а не в overrides (симметрия с buildShapeDescriptor).
         zIndex: toFiniteNumber(desc.zIndex, 0),
+        ...optionsWindowOf(desc.optionsWindow),
         states: primStates.length
           ? primStates
           : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
@@ -273,6 +283,8 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       ...(image || {}),
       // Слой берём из НЕобрезанного image: из overrides он вырезан как структурный.
       zIndex: toFiniteNumber(defaultRawImage.zIndex, 0),
+      // Настройки окна «Опции» — тоже из необрезанного image: из overrides они вырезаны.
+      ...optionsWindowOf(defaultRawImage.optionsWindow),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,

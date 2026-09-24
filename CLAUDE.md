@@ -264,6 +264,15 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
 
+**The «Опции» window is sized per component.** `element.optionsWindow` (`{width, height,
+fontSize}` in px, set in the editor on the «Свойства» tab via `OptionsWindowSettingsBlock`) rides
+inside `states[].image` like `zIndex`: it is in `BASE_ONLY_KEYS` (never written to overrides) and
+in `STRUCTURAL_KEYS` of `transformElements` (stripped from overrides, restored into the base from
+the default image — for `composition` primitives too). `readOptionsWindow`
+(`src/lib/editor/optionsWindow.ts`) clamps it on every read. The size reaches `ModalRoot` through
+`openModal(..., {style})`; the font is a `fontSize` on the window root, which is why text sizes
+inside `ElementOptionsModal` are in **`em`, not `rem`** — a `text-sm` there would ignore it.
+
 **The monitor session is an observer, not the owner of the work.** A project runs while its
 «in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,
 mirrored in the store as `projectRuntimeFlags` — the flag is a separate table and does **not**

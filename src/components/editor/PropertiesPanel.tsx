@@ -30,6 +30,7 @@ import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 import {cellBindingAt, cellSourceFieldsFor} from "@/lib/editor/tableBindings";
+import {OptionsWindowSettingsBlock} from "@/components/editor/OptionsWindowSettingsBlock";
 import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {MIN_SIZE} from "@/components/editor/canvas/types";
@@ -1217,6 +1218,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               <Plus size={18}/>
               Добавить свойство
             </button>
+
+            {/* «Опции» в мониторе открываются только у элемента со свойствами-тегами —
+                без них настраивать нечего. */}
+            {sortedProperties.some(p => p.property_type === "Тег") && (
+              <OptionsWindowSettingsBlock
+                value={element.optionsWindow}
+                onChange={(optionsWindow) => updateElementVisual(element.key, {optionsWindow})}
+                inputClassName={baseInputClasses}
+              />
+            )}
           </div>
         )}
 
