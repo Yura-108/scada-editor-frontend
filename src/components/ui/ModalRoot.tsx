@@ -18,10 +18,8 @@ import {useModalStore} from "@/store/modalStore";
  * редактором кода, либо собственный `Dialog.Title` — так сделаны все остальные.
  */
 export function ModalRoot() {
-  const { open, content, variant, style, openKey, closeModal } = useModalStore();
+  const { open, content, variant, openKey, closeModal } = useModalStore();
   const fullscreen = variant === "fullscreen";
-  // Заданная ширина: max-w-4xl срезал бы её, предел держит сам style (maxWidth).
-  const customWidth = !fullscreen && style?.width != null;
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && closeModal()}>
@@ -43,7 +41,7 @@ export function ModalRoot() {
             fullscreen
               // Почти во весь экран — для редакторов кода нужно много места.
               ? "w-[98vw] h-[96vh] max-w-none"
-              : cn("w-[95vw] max-h-[92vh]", !customWidth && "max-w-4xl"),
+              : "w-[95vw] max-w-4xl max-h-[92vh]",
             "border border-gray-200 dark:border-gray-800/70 shadow-2xl shadow-black/50",
             // анимация (можно оставить framer-motion, но Radix тоже хорошо анимирует)
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -52,7 +50,6 @@ export function ModalRoot() {
             "data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2",
             "focus:outline-none"
           )}
-          style={fullscreen ? undefined : style}
         >
           {/* Кнопка закрытия — вне прокручиваемой области, всегда в углу */}
           <Dialog.Close asChild>
@@ -71,9 +68,8 @@ export function ModalRoot() {
               {content}
             </div>
           ) : (
-            // Прокручиваемая область: padding здесь, чтобы скролл-бар был у края.
-            // flex-1 min-h-0 — чтобы заданная окну высота (style) доходила до содержимого.
-            <div key={openKey} className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8">
+            // Прокручиваемая область: padding здесь, чтобы скролл-бар был у края
+            <div key={openKey} className="overflow-y-auto p-6 sm:p-8">
               {content}
             </div>
           )}

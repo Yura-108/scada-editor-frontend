@@ -44,7 +44,8 @@ import { buildMonitorMenu, hasMonitorMenu } from "./canvas/buildMonitorMenu";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
-import type { DiagramElement } from "@/types/editorElement.type";
+import type { DiagramElement, MonitorMenuSettings } from "@/types/editorElement.type";
+import { readMonitorMenu } from "@/lib/editor/monitorMenu";
 
 /**
  * Насколько «стол» выходит за края листа. Константа, а не доля от листа: лист
@@ -96,7 +97,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
 
   const { resolvedTheme, themeColors } = useThemeColors();
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: CanvasMenuItem[] } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null>(null);
   const [moveToGroupState, setMoveToGroupState] = useState<{ isOpen: boolean; elementKey: string | null }>({ isOpen: false, elementKey: null });
   const [addComponentState, setAddComponentState] = useState<{ isOpen: boolean; targetKey: string | null }>({ isOpen: false, targetKey: null });
 
@@ -290,7 +291,8 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive() });
     if (!items.length) return;
 
-    setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, items });
+    // Вид меню задаётся тому компоненту, чьё это меню (см. подъём по parentKey выше).
+    setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, items, settings: readMonitorMenu(el.monitorMenu) });
   };
 
   // Монитор: двойной клик входит внутрь составного компонента — та же механика уровня

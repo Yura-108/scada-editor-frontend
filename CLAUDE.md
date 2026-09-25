@@ -264,14 +264,16 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
 
-**The «Опции» window is sized per component.** `element.optionsWindow` (`{width, height,
-fontSize}` in px, set in the editor on the «Свойства» tab via `OptionsWindowSettingsBlock`) rides
-inside `states[].image` like `zIndex`: it is in `BASE_ONLY_KEYS` (never written to overrides) and
-in `STRUCTURAL_KEYS` of `transformElements` (stripped from overrides, restored into the base from
-the default image — for `composition` primitives too). `readOptionsWindow`
-(`src/lib/editor/optionsWindow.ts`) clamps it on every read. The size reaches `ModalRoot` through
-`openModal(..., {style})`; the font is a `fontSize` on the window root, which is why text sizes
-inside `ElementOptionsModal` are in **`em`, not `rem`** — a `text-sm` there would ignore it.
+**The right-click menu is sized per component.** `element.monitorMenu` (`{width, fontSize,
+itemHeight}` in px — the menu *plate* with «Опции» and the `displayed` actions, not the «Опции»
+modal) is set in the editor on the «Свойства» tab via `MonitorMenuSettingsBlock`, which also
+renders a live preview through the same `ContextMenuPanel` the monitor uses. It rides inside
+`states[].image` like `zIndex`: it is in `BASE_ONLY_KEYS` (never written to overrides) and in
+`STRUCTURAL_KEYS` of `transformElements` (stripped from overrides, restored into the base from the
+default image — for `composition` primitives too). `readMonitorMenu` (`src/lib/editor/monitorMenu.ts`)
+clamps it on every read. The settings come from the element that **owns** the menu — the ancestor
+`handleMonitorContextMenu` climbs to — and editor menus never get any. `optionsWindow` is a dead
+predecessor (sized the modal for a day): it is only stripped on load, never restored.
 
 **The monitor session is an observer, not the owner of the work.** A project runs while its
 «in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,

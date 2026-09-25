@@ -167,11 +167,11 @@ export interface BaseCanvasElement {
    */
   zIndex?: number;
   /**
-   * Окно «Опции» в мониторе: размер и шрифт под этот компонент. Нет поля или ключа —
-   * значение по умолчанию. От состояния не зависит (BASE_ONLY_KEYS), на сервер едет
-   * внутри image, как zIndex. См. lib/editor/optionsWindow.ts.
+   * Контекстное меню компонента в мониторе (ПКМ): ширина, шрифт, высота пункта. Нет поля
+   * или ключа — значение по умолчанию. От состояния не зависит (BASE_ONLY_KEYS), на сервер
+   * едет внутри image, как zIndex. См. lib/editor/monitorMenu.ts.
    */
-  optionsWindow?: OptionsWindowSettings;
+  monitorMenu?: MonitorMenuSettings;
 }
 
 export type ElementType =
@@ -350,9 +350,11 @@ export type PropertySchema =
   defaultValue?: string;
 }
 
-/** Размер и шрифт окна «Опции» в мониторе, px. Пределы — lib/editor/optionsWindow.ts. */
-export interface OptionsWindowSettings {
+/** Контекстное меню компонента в мониторе, px. Пределы — lib/editor/monitorMenu.ts. */
+export interface MonitorMenuSettings {
+  /** Ширина плашки; без неё меню по самой длинной подписи. */
   width?: number;
-  height?: number;
   fontSize?: number;
+  /** Минимальная высота пункта (подпись может перенестись на вторую строку). */
+  itemHeight?: number;
 }

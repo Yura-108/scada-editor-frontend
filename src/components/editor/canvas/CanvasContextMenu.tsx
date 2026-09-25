@@ -2,9 +2,12 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanvasMenuItem } from "./types";
+import type { MonitorMenuSettings } from "@/types/editorElement.type";
+import { monitorMenuStyles } from "@/lib/editor/monitorMenu";
 
 interface CanvasContextMenuProps {
-  menu: { x: number; y: number; items: CanvasMenuItem[] } | null;
+  /** settings — вид меню компонента в мониторе; у меню редактора их нет. */
+  menu: { x: number; y: number; items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null;
   /** Закрытие по Escape и клику вне меню. */
   onClose?: () => void;
 }
@@ -78,33 +81,63 @@ export function CanvasContextMenu({ menu, onClose }: CanvasContextMenuProps) {
         visibility: pos ? "visible" : "hidden",
       }}
     >
-      <div
+      <ContextMenuPanel
+        items={menu.items}
+        settings={menu.settings}
         style={{ maxHeight: `calc(100vh - ${MARGIN * 2}px)` }}
-        className="min-w-40 overflow-y-auto bg-white dark:bg-neutral-800 rounded-md p-1 shadow-xl border border-gray-200 dark:border-neutral-700"
-      >
-        {/* disabled и variant раньше игнорировались: заблокированный пункт
-            выглядел активным и вызывал обработчик, а «Удалить» не отличалось
-            от обычных пунктов. */}
-        {menu.items.map((item, idx) => (
-          <button
-            key={idx}
-            type="button"
-            disabled={item.disabled}
-            onClick={item.disabled ? undefined : item.onClick}
-            className={[
-              "group flex w-full items-center px-3 py-2 text-sm text-left rounded-sm whitespace-nowrap",
-              "focus-visible:outline-none focus-visible:bg-indigo-500 focus-visible:text-white",
-              item.disabled
-                ? "cursor-not-allowed opacity-40 text-gray-500 dark:text-neutral-500"
-                : item.variant === "danger"
-                  ? "cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white"
-                  : "cursor-pointer text-gray-700 dark:text-white hover:bg-indigo-500 hover:text-white",
-            ].join(" ")}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      />
+    </div>
+  );
+}
+
+interface ContextMenuPanelProps {
+  items: CanvasMenuItem[];
+  settings?: MonitorMenuSettings;
+  style?: React.CSSProperties;
+  /** false — только вид (превью в панели свойств): клики и фокус не принимаются. */
+  interactive?: boolean;
+}
+
+/**
+ * Сама плашка меню — отдельно от позиционирования, чтобы редактор мог показать превью
+ * меню компонента ровно в том виде, в каком его увидит оператор.
+ */
+export function ContextMenuPanel({ items, settings, style, interactive = true }: ContextMenuPanelProps) {
+  const styles = monitorMenuStyles(settings);
+
+  return (
+    <div
+      style={{ ...style, ...styles.panel }}
+      className={[
+        "min-w-40 overflow-y-auto bg-white dark:bg-neutral-800 rounded-md p-1 shadow-xl border border-gray-200 dark:border-neutral-700",
+        interactive ? "" : "pointer-events-none select-none",
+      ].join(" ")}
+      aria-hidden={interactive ? undefined : true}
+    >
+      {/* disabled и variant раньше игнорировались: заблокированный пункт
+          выглядел активным и вызывал обработчик, а «Удалить» не отличалось
+          от обычных пунктов. */}
+      {items.map((item, idx) => (
+        <button
+          key={idx}
+          type="button"
+          disabled={item.disabled}
+          tabIndex={interactive ? undefined : -1}
+          onClick={!interactive || item.disabled ? undefined : item.onClick}
+          style={styles.item}
+          className={[
+            "group flex w-full items-center px-3 py-2 text-sm text-left rounded-sm whitespace-nowrap",
+            "focus-visible:outline-none focus-visible:bg-indigo-500 focus-visible:text-white",
+            item.disabled
+              ? "cursor-not-allowed opacity-40 text-gray-500 dark:text-neutral-500"
+              : item.variant === "danger"
+                ? "cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white"
+                : "cursor-pointer text-gray-700 dark:text-white hover:bg-indigo-500 hover:text-white",
+          ].join(" ")}
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   );
 }
