@@ -26,6 +26,7 @@ import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPane
 import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
 import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBanner";
 import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner";
+import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
 
 function TooltipBtn({
   icon,
@@ -567,6 +568,7 @@ export default function ToolsPanel() {
           поэтому потомки включают его себе сами. */}
       <VersionPreviewBanner />
       <StaleVersionBanner />
+      <AutosaveErrorBanner />
       <div className="pointer-events-auto">
         <VersionHistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
       </div>

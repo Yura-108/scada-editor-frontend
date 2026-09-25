@@ -319,12 +319,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     if (!element) return;
     openScriptEditorModal({
       title: "Добавление скрипта",
-      // Скрипты компонента исполняются НА СЕРВЕРЕ (Java): монитор только шлёт
-      // ACTION с их id (см. runScript в useRuntimeEngine). Обработчики событий и
-      // привязки — наоборот, JavaScript в браузере. Раньше подписи путали одно
-      // с другим: «Напишите Java-код для обработки событий» здесь и
-      // «Отредактируйте JS-код скрипта» на соседней кнопке.
-      description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
+      // Скрипты компонента исполняются НА СЕРВЕРЕ — это JavaScript в GraalJS
+      // (script-core бэкенда), а не Java, как долго писали в подписях: монитор только
+      // шлёт ACTION с их id (см. runScript в useRuntimeEngine). Обработчики событий и
+      // привязки — тоже JavaScript, но в браузере.
+      description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
       onConfirm: (name, content, displayed) => {
         const newScript = { id: createUuid(), name, content, displayed };
         updateElement(element.key, {
@@ -1262,7 +1261,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     onClick={() => {
                         openScriptEditorModal({
                           title: "Редактирование скрипта",
-                          description: "Java-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
+                          description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
                           defaultName: script.name,
                           defaultContent: script.content,
                           defaultDisplayed: script.displayed,

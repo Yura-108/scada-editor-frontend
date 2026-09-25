@@ -17,6 +17,7 @@ import {
   withPropertyRefs,
 } from "@/lib/runtime/bindingScope";
 import {compileBinding, executeBinding, type BindingIntent} from "@/lib/runtime/executeBinding";
+import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 
@@ -146,8 +147,12 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
     }
   };
 
+  // Бэкенд отклонит всю сцену со скриптом, который не разбирается (контракт 25.09.2026):
+  // показываем ошибку сразу и не даём сохранить — см. checkScriptSyntax.
+  const syntaxError = useMemo(() => checkScriptSyntax(code), [code]);
+
   const handleSave = () => {
-    if (!name.trim() || !code.trim() || !canSave) return;
+    if (!name.trim() || !code.trim() || !canSave || syntaxError) return;
     const store = useEditorStore.getState();
     if (binding) {
       store.updateBinding(element.key, binding.id, {name: name.trim(), code, propertyRefs});
@@ -373,6 +378,12 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
         </Collapsible>
       )}
 
+      {syntaxError && (
+        <div role="alert" className="shrink-0 text-sm text-red-600 dark:text-red-400">
+          Синтаксическая ошибка: {syntaxError}
+        </div>
+      )}
+
       <div className="shrink-0 flex gap-3 justify-end">
         <button
           onClick={closeModal}
@@ -384,8 +395,10 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
         </button>
         <button
           onClick={handleSave}
-          disabled={!name.trim() || !code.trim() || !canSave}
-          title={!canSave ? "У элемента нет сохранённого свойства — см. предупреждение выше" : undefined}
+          disabled={!name.trim() || !code.trim() || !canSave || Boolean(syntaxError)}
+          title={!canSave
+            ? "У элемента нет сохранённого свойства — см. предупреждение выше"
+            : syntaxError ? "Исправьте синтаксическую ошибку в коде" : undefined}
           className="px-6 py-2.5 rounded-lg font-medium
           bg-linear-to-r from-indigo-600 to-blue-600
           hover:from-indigo-500 hover:to-blue-500

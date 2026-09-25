@@ -316,6 +316,12 @@ type EditorState = {
    * а разбираться будет ручное сохранение, у которого есть слияние.
    */
   staleBaseVersion: number | null;
+  /**
+   * Почему не прошло последнее АВТОСОХРАНЕНИЕ (текст бэкенда), `null` — прошло или не
+   * запускалось. Нужен, чтобы ошибка, которая повторяется каждый такт (синтаксис скрипта,
+   * контракт 25.09.2026), показывалась тостом один раз, а дальше висела плашкой.
+   */
+  autosaveError: string | null;
   /** Режим просмотра старой версии: холст только для чтения, правки спрятаны. */
   versionPreview: VersionPreview | null;
 
@@ -1120,7 +1126,7 @@ const applyLoadedScene = (scene: Record<string, unknown>, version: number | null
   // Версии прошлой сцены к этой не относятся — сбрасываем всё разом.
   useEditorStore.setState({
     sceneVersion: version, versions: [], versionsExhausted: false,
-    saveConflict: null, staleBaseVersion: null,
+    saveConflict: null, staleBaseVersion: null, autosaveError: null,
   });
   return true;
 };
@@ -1326,13 +1332,18 @@ export const hasUnsavedWork = (): boolean => {
  * С 09.09.2026 рецепт — процедура над ТЕГАМИ, о свойствах компонента он не знает, и той
  * причины не осталось. Запрос сохранён: чем ещё занят этот эндпоинт, с фронта не видно.
  *
- * Возвращает false, если сервер отказал: тогда локальное переименование не применяем,
- * иначе имя разъедется с тем, что знает бэкенд.
+ * `ok: false` — сервер отказал: тогда локальное переименование не применяем, иначе имя
+ * разъедется с тем, что знает бэкенд.
+ *
+ * Правка свойства записывает на сервере НОВУЮ ВЕРСИЮ сцены и возвращает её номер
+ * (`version_no`, scada-r9lr). Раньше тело выбрасывалось, и сцена на сервере уходила на
+ * N+1, пока стор считал её N: ручное сохранение шло через лишнее слияние, а
+ * автосохранение получало 409. Что с номером делать — решает adoptPropertyEditVersion.
  */
 const renamePropertyOnServer = async (
   propertyId: number,
   payload: PropertyCreateRequestDto,
-): Promise<boolean> => {
+): Promise<{ok: false} | {ok: true; versionNo: number | null}> => {
   try {
     const res = await fetch(`/api/editor/tags/${propertyId}`, {
       method: "PUT",
@@ -1341,13 +1352,51 @@ const renamePropertyOnServer = async (
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(text || `ошибка ${res.status}`);
+      throw new Error(parseBackendErrorMessage(res.status, text));
     }
-    return true;
+    const body = await res.json().catch(() => null);
+    return {ok: true, versionNo: typeof body?.version_no === "number" ? body.version_no : null};
   } catch (err) {
     console.error(err);
     toast.error(getErrorMessage(err, "Не удалось переименовать свойство"));
-    return false;
+    return {ok: false};
+  }
+};
+
+/**
+ * Номер версии сцены после точечной правки свойства на сервере.
+ *
+ * Номер из ответа — база только если он продолжает НАШУ: равен `sceneVersion` (сервер
+ * ничего не записал, содержимое не изменилось) или больше ровно на один (записал нашу
+ * правку). Любой другой номер значит, что между нашей загрузкой и правкой сцену сохранил
+ * кто-то ещё. Принять его базой — значит, что следующее сохранение уйдёт в обход слияния
+ * и молча затрёт чужую работу. Поэтому база остаётся прежней, а расхождение показываем
+ * той же плашкой, что и 409 автосохранения: ручное сохранение сведёт правки.
+ *
+ * Документ на сервере изменился при любом исходе, так что запись кэша сцен сбрасываем.
+ * Пока летел запрос, могли открыть другую схему (или заменить документ) — тогда номер
+ * относится не к ней и в стор не пишется.
+ */
+const adoptPropertyEditVersion = (
+  projectId: number | undefined,
+  sceneId: number | string | undefined,
+  generation: number,
+  versionNo: number | null,
+) => {
+  if (projectId != null && sceneId != null) dropScene(projectId, sceneId);
+
+  const s = useEditorStore.getState();
+  if (documentGeneration !== generation || s.scene?.id !== sceneId) return;
+  if (versionNo == null) return;
+
+  const base = s.sceneVersion;
+  // Базы нет (номер так и не узнали) — сверять не с чем, оставляем как было.
+  if (base == null) return;
+
+  if (versionNo === base || versionNo === base + 1) {
+    useEditorStore.setState({sceneVersion: versionNo});
+  } else {
+    useEditorStore.setState({staleBaseVersion: versionNo});
   }
 };
 
@@ -1445,6 +1494,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       versionsKinds: null,
       saveConflict: null,
       staleBaseVersion: null,
+      autosaveError: null,
       versionPreview: null,
 
       camera: {x: 0, y: 0, zoom: 1},
@@ -2624,8 +2674,12 @@ export const useEditorStore = create<EditorState>()(temporal(
         // Вызов сохранён: что ещё делает `PUT /api/editor/properties/{id}` на бэкенде,
         // отсюда не видно, и убирать его надо отдельно и осознанно.
         if (target.id != null && target.name.trim() !== name) {
-          const migrated = await renamePropertyOnServer(target.id, {...payload, name});
-          if (!migrated) return false;
+          const {currentProject, scene} = get();
+          const generation = documentGeneration;
+          const renamed = await renamePropertyOnServer(target.id, {...payload, name});
+          if (!renamed.ok) return false;
+          // Номер версии — ДО локального применения имени (контракт scada-r9lr).
+          adoptPropertyEditVersion(currentProject?.id, scene?.id, generation, renamed.versionNo);
         }
 
         set(state => ({
@@ -2978,7 +3032,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             // Поэтому ответ принимаем к сведению и не трогаем ни холст, ни базу; версию
             // спрашиваем у истории, там порядок событий уже разрешён.
             if (documentGeneration !== generationAtSend) {
-              set({saveConflict: null, staleBaseVersion: null});
+              set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
               if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
               void get().refreshSceneVersion();
               if (get().versions.length) void get().loadVersions();
@@ -3002,6 +3056,8 @@ export const useEditorStore = create<EditorState>()(temporal(
               saveConflict: null,
               // Сохранение прошло — расхождение, о котором предупреждала плашка, закрыто.
               staleBaseVersion: null,
+              // И причина прошлого отказа автосохранения больше не актуальна.
+              autosaveError: null,
               ...(savedVersion != null ? {sceneVersion: savedVersion} : {}),
             });
 
@@ -3088,7 +3144,21 @@ export const useEditorStore = create<EditorState>()(temporal(
             return true;
           } catch (err: unknown) {
             console.error(err);
-            toast.error(getErrorMessage(err, opts?.silent ? "Автосохранение не удалось" : "Ошибка экспорта сцены"));
+            if (opts?.silent) {
+              // Автосохранение повторяется каждый такт, и та же причина (синтаксическая
+              // ошибка в скрипте, контракт 25.09.2026) приходила бы тостом раз в 10 минут,
+              // пока скрипт не исправят. Тост — только на НОВУЮ причину, дальше висит
+              // плашка AutosaveErrorBanner.
+              const message = getErrorMessage(err, "Автосохранение не удалось");
+              if (message !== get().autosaveError) {
+                toast.error("Автосохранение не удалось", {description: message});
+              }
+              set({autosaveError: message});
+            } else {
+              // Сообщение бэкенда называет скрипт, компонент и строку — его надо успеть
+              // прочитать, поэтому тост держится дольше обычного.
+              toast.error(getErrorMessage(err, "Ошибка экспорта сцены"), {duration: 30_000});
+            }
             return false;
           } finally {
             set({isSaving: false});
@@ -3301,11 +3371,11 @@ export const useEditorStore = create<EditorState>()(temporal(
             useEditorStore.temporal.getState().clear();
 
             if (trustResponse) {
-              set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null});
+              set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null, autosaveError: null});
               markSceneSaved(true);
             } else {
               // loadScene уже расставил elements/снимок и сам спросил текущую версию.
-              set({saveConflict: null, staleBaseVersion: null});
+              set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
             }
             void get().loadVersions();
 
@@ -3604,6 +3674,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           versionsExhausted: false,
           saveConflict: null,
           staleBaseVersion: null,
+          autosaveError: null,
         }));
         pasteCount = 0;
         // Координата курсора и точка последней вставки принадлежали прошлой схеме.
@@ -3727,6 +3798,7 @@ export const useEditorStore = create<EditorState>()(temporal(
             versionsExhausted: false,
             saveConflict: null,
             staleBaseVersion: null,
+            autosaveError: null,
           });
 
           // Новая сцена — новая точка отсчёта для undo, и просмотр версии прошлой
@@ -3769,7 +3841,7 @@ export const useEditorStore = create<EditorState>()(temporal(
                   selectedTableCell: null, currentComponentStateByElementKey: {},
                   // Версии удалённой сцены больше ни к чему не относятся.
                   sceneVersion: null, versions: [], versionsExhausted: false,
-                  saveConflict: null, staleBaseVersion: null,
+                  saveConflict: null, staleBaseVersion: null, autosaveError: null,
                 }
               : {}),
           }));

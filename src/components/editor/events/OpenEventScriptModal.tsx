@@ -16,6 +16,7 @@ import {
 } from "@/types/binding.types";
 import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
+import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
@@ -146,8 +147,12 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
     setTestResult({kind: "ok", text: parts.length ? parts.join("\n") : "Код выполнен, действий нет"});
   };
 
+  // Бэкенд отклонит всю сцену со скриптом, который не разбирается (контракт 25.09.2026):
+  // показываем ошибку сразу и не даём сохранить — см. checkScriptSyntax.
+  const syntaxError = useMemo(() => checkScriptSyntax(code), [code]);
+
   const handleSave = () => {
-    if (!code.trim()) return;
+    if (!code.trim() || syntaxError) return;
     const nextHandler: ElementEventHandler = {code, propertyRefs};
     const nextEvents: ElementEvents = [
       ...(element.events ?? []).filter(e => e.event_type !== event),
@@ -351,6 +356,12 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         </Collapsible>
       )}
 
+      {syntaxError && (
+        <div role="alert" className="shrink-0 text-sm text-red-600 dark:text-red-400">
+          Синтаксическая ошибка: {syntaxError}
+        </div>
+      )}
+
       <div className="shrink-0 flex gap-3 justify-end">
         <button
           onClick={closeModal}
@@ -360,7 +371,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         </button>
         <button
           onClick={handleSave}
-          disabled={!code.trim()}
+          disabled={!code.trim() || Boolean(syntaxError)}
           className="px-6 py-2.5 rounded-lg font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 disabled:text-gray-500 text-white shadow-lg shadow-indigo-900/30 transition-all disabled:shadow-none"
         >
           Сохранить

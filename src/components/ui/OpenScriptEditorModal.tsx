@@ -1,12 +1,13 @@
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
-import React, {useId, useState, useEffect} from "react";
+import React, {useId, useState, useEffect, useMemo} from "react";
 import CodeMirror from '@uiw/react-codemirror';
-import {java} from "@codemirror/lang-java";
+import {javascript} from "@codemirror/lang-javascript";
 import {Wand2} from "lucide-react";
 import {formatCode} from "@/lib/formatCode";
 import {TitleWithHint} from "./codeModalParts";
 import { Button, ModalFooter } from "@/components/ui/Button";
+import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 
 interface ScriptModalProps {
   title: string;
@@ -42,8 +43,13 @@ export function ScriptEditorModalContent({
     setDisplayed(defaultDisplayed);
   }, [defaultName, defaultContent, defaultDisplayed]);
 
+  // Бэкенд отклонит всю сцену со скриптом, который не разбирается (контракт 25.09.2026),
+  // поэтому битый код не даём сохранить здесь — автор видит ошибку сразу, а не при
+  // сохранении схемы одним сообщением на все её скрипты.
+  const syntaxError = useMemo(() => checkScriptSyntax(content), [content]);
+
   const handleConfirmAction = async () => {
-    if (!name?.trim() || !content?.trim()) return;
+    if (!name?.trim() || !content?.trim() || syntaxError) return;
 
     setIsLoading(true);
     try {
@@ -106,7 +112,7 @@ export function ScriptEditorModalContent({
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex items-center justify-between mb-1 ml-1">
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Код скрипта (Java)
+            Код скрипта (JavaScript)
           </label>
           <button
             type="button"
@@ -123,11 +129,16 @@ export function ScriptEditorModalContent({
             value={content}
             height="100%"
             className="h-full text-sm"
-            extensions={[java()]}
+            extensions={[javascript()]}
             onChange={(value) => setContent(value)}
             theme="dark"
           />
         </div>
+        {syntaxError && (
+          <div role="alert" className="mt-2 ml-1 text-sm text-red-600 dark:text-red-400">
+            Синтаксическая ошибка: {syntaxError}
+          </div>
+        )}
       </div>
 
       <ModalFooter className="shrink-0 mt-0">
@@ -135,7 +146,8 @@ export function ScriptEditorModalContent({
         <Button
           variant="primary"
           onClick={handleConfirmAction}
-          disabled={!name.trim() || !content.trim() || isLoading}
+          disabled={!name.trim() || !content.trim() || Boolean(syntaxError) || isLoading}
+          title={syntaxError ? "Исправьте синтаксическую ошибку в коде" : undefined}
         >
           {isLoading ? "Загрузка..." : confirmLabel}
         </Button>

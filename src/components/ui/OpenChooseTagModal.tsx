@@ -18,6 +18,7 @@ import { Button, ModalFooter } from "@/components/ui/Button";
 import { confirmDeleteProperty } from "@/lib/editor/confirmDeleteProperty";
 import {fetchAutomation} from "@/lib/automation/automationApi";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
+import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 
 interface Props {
   /**
@@ -122,14 +123,20 @@ export function AddPropertyContent({ elementKey, property }: Props) {
    * свойство роняет сохранение ВСЕЙ сцены — раньше отказ приходил на свой же запрос и
    * дальше свойства не пускал. Поэтому проверяем здесь, до создания.
    */
+  // onChange бэкенд с 25.09.2026 разбирает как JavaScript и при ошибке отклоняет всю
+  // сцену. OnCanChange он не проверяет — о нём только предупреждаем, сохранять не мешаем.
+  const onChangeError = useMemo(() => checkScriptSyntax(onChange), [onChange]);
+  const onCanChangeError = useMemo(() => checkScriptSyntax(onCanChange), [onCanChange]);
+
   const missing = useMemo(() => {
     if (!name.trim()) return "Введите название свойства";
     if (!valueType.trim()) return "Выберите тип значения";
     if (isTagType && !chosenTagId) {
       return tagSource === "variable" ? "Выберите переменную проекта" : "Выберите тег в дереве устройств";
     }
+    if (onChangeError) return "Исправьте синтаксическую ошибку в onChange";
     return null;
-  }, [name, valueType, isTagType, chosenTagId, tagSource]);
+  }, [name, valueType, isTagType, chosenTagId, tagSource, onChangeError]);
 
   const canConfirm = !isLoading && missing === null;
 
@@ -384,12 +391,17 @@ export function AddPropertyContent({ elementKey, property }: Props) {
             <textarea
               value={onChange}
               onChange={(e) => setOnChange(e.target.value)}
-              placeholder="Код/описание обработчика изменения"
+              placeholder="JavaScript-код обработчика изменения"
               rows={5}
               className={cn(inputClass, "min-h-28 resize-y pr-11")}
             />
             <TextCursorInput className="absolute right-4 top-4 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
           </div>
+          {onChangeError && (
+            <div role="alert" className="ml-1 text-xs text-red-600 dark:text-red-400">
+              Синтаксическая ошибка: {onChangeError}
+            </div>
+          )}
         </div>
 
         {/* OnCanChange */}
@@ -401,12 +413,17 @@ export function AddPropertyContent({ elementKey, property }: Props) {
             <textarea
               value={onCanChange}
               onChange={(e) => setOnCanChange(e.target.value)}
-              placeholder="Код/описание обработчика проверки возможности изменения"
+              placeholder="JavaScript-код проверки возможности изменения"
               rows={5}
               className={cn(inputClass, "min-h-28 resize-y pr-11")}
             />
             <TextCursorInput className="absolute right-4 top-4 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
           </div>
+          {onCanChangeError && (
+            <div className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+              Похоже на синтаксическую ошибку: {onCanChangeError}
+            </div>
+          )}
         </div>
 
         {/* Device Tree */}
