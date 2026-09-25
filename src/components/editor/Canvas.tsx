@@ -266,18 +266,18 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
   }, []);
 
   /**
-   * Монитор: меню по правому клику — от того элемента, ПО КОТОРОМУ щёлкнули.
+   * Монитор: меню компонента — от того элемента, ПО КОТОРОМУ щёлкнули.
    *
    * Хит-тест отдаёт самый глубокий элемент под курсором, а теги и действия в схемах обычно
    * висят на компоненте, тогда как его внутренние примитивы пусты. Поэтому от найденного
    * поднимаемся по `parentKey` до ближайшего предка, у которого пункты есть: «точечно»
    * сохраняется (сначала пробуем именно кликнутый), но клик не проваливается в пустоту.
    *
-   * Ничего не нашли по всей цепочке — меню не открываем вовсе.
+   * Ничего не нашли по всей цепочке — null, меню не открываем вовсе.
    */
-  const handleMonitorContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+  const resolveMonitorMenu = (): { items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null => {
     const picked = pickMonitorAtPointer();
-    if (!picked) return;
+    if (!picked) return null;
 
     const byKey = useEditorStore.getState().elements;
     const map = new Map(byKey.map(el => [el.key, el] as const));
@@ -286,35 +286,116 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     while (el && !hasMonitorMenu(el)) {
       el = el.parentKey ? map.get(el.parentKey) : undefined;
     }
-    if (!el) return;
+    if (!el) return null;
 
     const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive() });
-    if (!items.length) return;
+    if (!items.length) return null;
 
     // Вид меню задаётся тому компоненту, чьё это меню (см. подъём по parentKey выше).
-    setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, items, settings: readMonitorMenu(el.monitorMenu) });
+    return { items, settings: readMonitorMenu(el.monitorMenu) };
   };
 
-  // Монитор: двойной клик входит внутрь составного компонента — та же механика уровня
-  // (activeGroupKey), что и в редакторе, чтобы меню можно было вызвать у вложенного.
-  const handleMonitorDblClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    // Клик поглотила хит-область слоя интеракции — значит он адресован элементу с
-    // обработчиком события (на любой глубине), и тот уже отработал. Перехватывать
-    // такой двойной клик входом в группу нельзя: это сломало бы готовые схемы.
-    // Проверяем именно цель Konva: в readOnly только эти области и слушают.
-    if (e.target !== e.target.getStage()) return;
+  /**
+   * Меню по ЛКМ/касанию, отложенное на окно двойного клика (см. handleMonitorClick).
+   * Метка последнего касания — чтобы эмулированный браузером `click` после `tap` не
+   * считался вторым кликом.
+   */
+  const pendingMonitorMenuRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapAtRef = useRef(0);
+  const cancelPendingMonitorMenu = useCallback(() => {
+    if (pendingMonitorMenuRef.current) clearTimeout(pendingMonitorMenuRef.current);
+    pendingMonitorMenuRef.current = null;
+  }, []);
+  useEffect(() => cancelPendingMonitorMenu, [cancelPendingMonitorMenu]);
 
-    // Для входа нужен КОНТЕЙНЕР, а не самый глубокий элемент: тот, как правило, лист,
-    // и заходить внутрь стало бы нечем.
+  const handleMonitorContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    cancelPendingMonitorMenu();
+    const menu = resolveMonitorMenu();
+    if (menu) setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, ...menu });
+  };
+
+  /**
+   * Контейнер под курсором, в который двойной клик мог бы войти. Нужен КОНТЕЙНЕР, а не
+   * самый глубокий элемент: тот, как правило, лист, и заходить внутрь стало бы нечем.
+   */
+  const containerAtPointer = (): DiagramElement | null => {
     const pos = stageRef.current?.getRelativePointerPosition();
-    if (!pos) return;
+    if (!pos) return null;
     const s = useEditorStore.getState();
     const el = pickMonitorContainer(pos, {
       elementIndex: getElementIndex(s.elements),
       activeGroupKey: s.activeGroupKey,
       sceneId: String(s.scene?.id ?? ""),
     });
-    if (el && isMonitorContainer(el)) enterGroup(el.key);
+    return el && isMonitorContainer(el) ? el : null;
+  };
+
+  /**
+   * Монитор: ЛКМ или касание по компоненту без скрипта `onClick` открывает то же меню,
+   * что и ПКМ. На сенсорной панели правой кнопки нет, и без этого «Опции» и действия там
+   * были недоступны. Клик, который отработал скриптом `onClick`, сюда не доходит: его
+   * область в MonitorInteractionLayer гасит всплытие.
+   *
+   * Меню откладывается на окно двойного клика, если двойной клик здесь что-то значит
+   * (вход в группу, скрипт `onDoubleClick`): меню открывается под курсором, и второй
+   * клик попал бы в его пункт, а не на холст, — Konva не увидела бы двойного клика, а
+   * оператор нажал бы «Опции» или действие. Второй клик в окне снимает отложенное меню.
+   *
+   * Касание откладывается всегда: на пустом месте Konva не гасит касание, и браузер
+   * следом шлёт эмулированные mousedown/click — mousedown закрыл бы только что открытое
+   * меню (useStageInteractions), а click сошёл бы за второй клик.
+   */
+  const handleMonitorClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const isTouch = e.type === "tap";
+    if (isTouch) {
+      lastTapAtRef.current = performance.now();
+    } else {
+      if ((e.evt as MouseEvent).button !== 0) return;
+      if (performance.now() - lastTapAtRef.current < Konva.dblClickWindow) return;
+    }
+
+    // Второй клик в окне — это двойной клик, его разберёт handleMonitorDblClick.
+    if (pendingMonitorMenuRef.current) {
+      cancelPendingMonitorMenu();
+      return;
+    }
+
+    const menu = resolveMonitorMenu();
+    if (!menu) return;
+    const point = "changedTouches" in e.evt
+      ? e.evt.changedTouches[0]
+      : e.evt;
+    if (!point) return;
+    const open = () => setContextMenu({ x: point.clientX, y: point.clientY, ...menu });
+
+    const dblClickMatters = isTouch
+      || e.target !== e.target.getStage()   // область скрипта onDoubleClick
+      || containerAtPointer() !== null;
+    if (!dblClickMatters) { open(); return; }
+
+    const sceneAt = useEditorStore.getState().scene?.id;
+    pendingMonitorMenuRef.current = setTimeout(() => {
+      pendingMonitorMenuRef.current = null;
+      // Пока ждали, схему могли сменить (скриптом, вкладкой) — меню той уже не к месту.
+      if (useEditorStore.getState().scene?.id !== sceneAt) return;
+      open();
+    }, Konva.dblClickWindow);
+  };
+
+  // Монитор: двойной клик входит внутрь составного компонента — та же механика уровня
+  // (activeGroupKey), что и в редакторе, чтобы меню можно было вызвать у вложенного.
+  const handleMonitorDblClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    // Двойной клик — не два одиночных: отложенное меню первого клика не показываем.
+    cancelPendingMonitorMenu();
+
+    // Клик поглотила хит-область слоя интеракции — значит он адресован элементу с
+    // обработчиком события (на любой глубине), и тот уже отработал. Перехватывать
+    // такой двойной клик входом в группу нельзя: это сломало бы готовые схемы.
+    // Проверяем именно цель Konva: в readOnly только эти области и слушают.
+    if (e.target !== e.target.getStage()) return;
+
+    const el = containerAtPointer();
+    if (el) enterGroup(el.key);
   };
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -401,7 +482,8 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
           onMouseDown={handleStageMouseDown}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
-          onClick={readOnly ? undefined : handleStagePlacementClick}
+          onClick={readOnly ? handleMonitorClick : handleStagePlacementClick}
+          onTap={readOnly ? handleMonitorClick : undefined}
           onDblClick={readOnly ? handleMonitorDblClick : undefined}
           onDblTap={readOnly ? handleMonitorDblClick : undefined}
           onContextMenu={handleStageContextMenu}

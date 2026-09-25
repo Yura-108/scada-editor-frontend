@@ -263,6 +263,20 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   **server** id — an unsaved script cannot run. `ElementScript.displayed` rides in the script DTO
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
+- **Left click and tap open the same menu** when nothing consumed them (`Canvas.handleMonitorClick`,
+  Stage `onClick`/`onTap`): a rect with an `onClick` script sets `cancelBubble`, so the menu only
+  appears for a click without an `onClick` — including on an `onDoubleClick`-only element. Touch
+  panels have no right button; without this the menu was unreachable there. The menu is **delayed
+  by `Konva.dblClickWindow`** when a double click means something (enterable container,
+  `onDoubleClick` rect) and always for touch: the menu opens under the pointer, so the second click
+  would land on a menu item instead of the canvas, and on empty Stage Konva does not
+  `preventDefault` a touch, so the browser's emulated `mousedown` would close the menu and its
+  emulated `click` would pass for a second click (ignored via `lastTapAtRef`). A second click
+  inside the window, or any dblclick, cancels the pending menu.
+- **Scene navigation skips the confirmation.** `isNavigationOnlyScript` (`lib/runtime/eventScript.ts`)
+  is a static check: `openScene(` present and no mention of `runScript`/`setProperty` anywhere,
+  comments included — so any doubt keeps the dialog. `setProp`/`setState` only restyle the element
+  and do not count. Menu actions (server scripts) always confirm.
 
 **The right-click menu is sized per component.** `element.monitorMenu` (`{width, fontSize,
 itemHeight}` in px — the menu *plate* with «Опции» and the `displayed` actions, not the «Опции»

@@ -132,3 +132,18 @@ export const executeEventScript = (
     ...(sceneTarget !== undefined ? {openScene: sceneTarget} : {}),
   };
 };
+
+/**
+ * Обработчик только переводит на другую схему — в ПЛК он ничего не пишет, и спрашивать
+ * оператора «Выполнить действие?» незачем (см. confirmMonitorAction).
+ *
+ * Разбор статический, а не холостым прогоном: скрипт не исполняется дважды, и ошибка
+ * всегда в безопасную сторону — любое упоминание `runScript` (запись в ПЛК через сервер)
+ * или `setProperty` (запись свойства, на которую реагируют чужие биндинги) оставляет
+ * диалог, даже в ветке условия или в комментарии. `setProp`/`setState` меняют лишь вид
+ * самого элемента и переходу не мешают.
+ */
+export const isNavigationOnlyScript = (code: string | undefined | null): boolean =>
+  typeof code === "string"
+  && /\bopenScene\s*\(/.test(code)
+  && !/\b(runScript|setProperty)\b/.test(code);

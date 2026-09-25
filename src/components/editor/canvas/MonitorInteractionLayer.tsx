@@ -9,6 +9,7 @@ import {getRenderedElement} from "@/lib/getRenderedElement";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {emitRuntimeEvent} from "@/lib/runtime/runtimeEventBus";
 import {confirmMonitorAction} from "@/lib/runtime/confirmMonitorAction";
+import {isNavigationOnlyScript} from "@/lib/runtime/eventScript";
 
 const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h.code.trim());
 
@@ -17,6 +18,11 @@ const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h
  * после — значит спросить о том, что уже сделано. Отказ оператора оставляет схему нетронутой.
  */
 const runConfirmed = async (el: DiagramElement, event: ElementEventName) => {
+  // Переход на другую схему ничего не пишет — спрашивать не о чем (см. isNavigationOnlyScript).
+  if (isNavigationOnlyScript(findHandler(el.events, event)?.code)) {
+    emitRuntimeEvent(el.key, event);
+    return;
+  }
   if (await confirmMonitorAction({element: el, event})) {
     emitRuntimeEvent(el.key, event);
   }
@@ -41,6 +47,16 @@ const isInteractive = (events?: ElementEvents): boolean =>
 const leftButtonOnly = (run: () => void) => (e: Konva.KonvaEventObject<MouseEvent>) => {
   if (e.evt.button !== 0) return;
   run();
+  consumed(e);
+};
+
+/**
+ * Клик отработал скриптом — дальше Stage он идти не должен: там ЛКМ по компоненту
+ * без `onClick` открывает меню монитора (Canvas.handleMonitorClick), и без этого
+ * оператор получил бы и действие, и меню разом.
+ */
+const consumed = (e: Konva.KonvaEventObject<Event>) => {
+  e.cancelBubble = true;
 };
 
 interface Props {
@@ -86,7 +102,7 @@ export function MonitorInteractionLayer({elements, elementsMap}: Props) {
             onMouseEnter={e => setCursor(e, "pointer")}
             onMouseLeave={e => setCursor(e, "default")}
             onClick={clickable ? leftButtonOnly(() => void runConfirmed(el, "onClick")) : undefined}
-            onTap={clickable ? () => void runConfirmed(el, "onClick") : undefined}
+            onTap={clickable ? (e) => { void runConfirmed(el, "onClick"); consumed(e); } : undefined}
             onDblClick={dblClickable ? leftButtonOnly(() => void runConfirmed(el, "onDoubleClick")) : undefined}
             onDblTap={dblClickable ? () => void runConfirmed(el, "onDoubleClick") : undefined}
           />
