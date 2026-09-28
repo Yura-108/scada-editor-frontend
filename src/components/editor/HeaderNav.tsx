@@ -58,7 +58,14 @@ export default function HeaderNav() {
 
   return (
     <>
-    <nav className="hidden md:flex items-center gap-1" aria-label="Основная навигация">
+    {/* Ширина по ступеням: с 1400px — все подписи, уже — иконки с подсказкой, а подпись
+        остаётся только у активного раздела (где ты находишься, видно всегда). Разделители —
+        лишь на самых широких экранах: на 7 разделах именно они съедали место. Ниже md —
+        гамбургер (ниже). */}
+    <nav
+      className="hidden md:flex min-w-0 flex-1 items-center justify-center gap-0.5 2xl:gap-1"
+      aria-label="Основная навигация"
+    >
       {navItems.map((item, index) => {
         const isActive = isSectionActive(pathname, item.href);
 
@@ -67,8 +74,11 @@ export default function HeaderNav() {
             <Link
               href={item.href}
               aria-current={isActive ? "page" : undefined}
+              // Подпись бывает скрыта (display: none) — имя ссылки и подсказку даём явно.
+              aria-label={item.name}
+              title={item.name}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
+                "flex shrink-0 items-center gap-2 px-2.5 min-[1400px]:px-3 2xl:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
                 "active:scale-95",
                 isActive
                   ? "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
@@ -79,14 +89,14 @@ export default function HeaderNav() {
               )}
             >
               <item.icon className={cn(
-                "w-4 h-4 transition-colors",
+                "w-4 h-4 shrink-0 transition-colors",
                 isActive ? "text-indigo-400" : "text-current"
               )} />
-              {item.name}
+              <span className={isActive ? "inline" : "hidden min-[1400px]:inline"}>{item.name}</span>
             </Link>
 
             {index < navItems.length - 1 && (
-              <div className="w-px h-4 bg-gray-100 dark:bg-gray-800 mx-2" />
+              <div className="hidden 2xl:block w-px h-4 shrink-0 bg-gray-100 dark:bg-gray-800 mx-1" />
             )}
           </React.Fragment>
         )
