@@ -124,16 +124,18 @@ export default function ActionsClient() {
   }, [draftFrom, draftTo, projectId, username, kind, load]);
 
   // Первый показ — последние сутки по всем проектам (фильтр по умолчанию, `loading` уже true).
-  const initialLoadRef = useRef(false);
+  //
+  // Отмена — из ЭТОГО же эффекта, без флага «уже загружали». Strict Mode в разработке
+  // монтирует компонент дважды: с флагом учебное размонтирование обрывало первый запрос,
+  // а повторное монтирование нового уже не слало — и `loading` оставался true навсегда
+  // (оборванный запрос его не сбрасывает). Так запрос просто уходит заново; уход со
+  // страницы по-прежнему обрывает текущий.
   useEffect(() => {
-    if (initialLoadRef.current) return;
-    initialLoadRef.current = true;
     const filter: ActionLogFilter = {from: openedAt - 24 * 3600_000, to: openedAt};
     filterRef.current = filter;
     request(filter, 0);
+    return () => ctrlRef.current?.abort();
   }, [openedAt, request]);
-
-  useEffect(() => () => ctrlRef.current?.abort(), []);
 
   const applyPreset = useCallback((ms: number) => {
     const now = Date.now();
