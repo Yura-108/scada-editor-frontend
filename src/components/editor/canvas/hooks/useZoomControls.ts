@@ -11,19 +11,35 @@ interface ZoomControlsDeps {
 }
 
 /**
+ * Следующий масштаб при шаге кнопкой: ровно ±1 процентный пункт, с выравниванием на целый
+ * процент. Масштаб с дробным процентом (после колеса или «вписать», например 37.4%) первым
+ * нажатием встаёт на ближайший целый в сторону шага — 38% или 37%, — а дальше идёт по
+ * единице, чтобы нужный зум можно было выставить точно.
+ */
+export function stepZoomPercent(zoom: number, direction: 1 | -1): number {
+  const pct = zoom * 100;
+  // Допуск: 0.29 * 100 = 28.999999999999996 — это 29%, а не «чуть меньше 29».
+  const eps = 1e-6;
+  const next = direction > 0 ? Math.floor(pct + eps) + 1 : Math.ceil(pct - eps) - 1;
+  return clampZoom(next / 100);
+}
+
+/**
  * Логика zoom-панели: приближение вокруг центра видимой области и fit-to-content.
  *
  * Каждое действие проверяет `zoomLocked` само, хотя при блокировке кнопки панели и так
  * неактивны: логика не должна полагаться на то, что её вызывают только оттуда.
  */
 export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
-  const zoomBy = useCallback((factor: number) => {
+  /** Кнопки «−»/«+»: шаг ровно в 1% (см. stepZoomPercent). */
+  const zoomStep = useCallback((direction: 1 | -1) => {
     if (useEditorStore.getState().zoomLocked) return;
     // Зумируем вокруг центра видимой области, чтобы картинка не «уезжала».
     const cx = (canvasRect?.width ?? 800) / 2;
     const cy = (canvasRect?.height ?? 600) / 2;
     const cam = useEditorStore.getState().camera;
-    const nz = clampZoom(cam.zoom * factor);
+    const nz = stepZoomPercent(cam.zoom, direction);
+    if (nz === cam.zoom) return;
     setCamera(cx - ((cx - cam.x) * nz) / cam.zoom, cy - ((cy - cam.y) * nz) / cam.zoom, nz);
   }, [canvasRect, setCamera]);
 
@@ -71,5 +87,5 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     setCamera(cam.x, cam.y, cam.zoom);
   }, [canvasRect, setCamera]);
 
-  return { zoomBy, zoomFit, zoomFitSheet };
+  return { zoomStep, zoomFit, zoomFitSheet };
 }

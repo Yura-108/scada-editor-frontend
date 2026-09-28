@@ -247,7 +247,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     [rootElements, elementIndex, camera, canvasRect, selectedIds, activeGroupKey],
   );
 
-  const { zoomBy, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
+  const { zoomStep, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
 
   /**
    * Что под курсором в мониторе. Свой хит-тест, а не Konva: в readOnly основной слой
@@ -679,7 +679,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
 
       <ZoomControls
         zoom={camera.zoom}
-        onZoomBy={zoomBy}
+        onZoomStep={zoomStep}
         onFit={zoomFit}
         onFitSheet={zoomFitSheet}
         // Сброс к 100% — тоже изменение масштаба: при блокировке он не срабатывает,
