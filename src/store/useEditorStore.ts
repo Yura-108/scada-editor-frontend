@@ -1,4 +1,5 @@
 import {snap, GRID} from "@/lib/utils";
+import type {MonitorView} from "@/lib/editor/monitorView";
 import {create} from "zustand/react";
 import {GroupElement, ComponentState, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
@@ -174,15 +175,12 @@ type EditorState = {
   setCameraZoom: (newZoom: number) => void;
   setCamera: (x: number, y: number, zoom: number) => void;
   /**
-   * Масштаб зафиксирован: ни жест (Ctrl+колесо, пинч), ни кнопки панели зума его не меняют.
-   * Панорамирование остаётся — оператору нужно заглядывать в края схемы, не разблокируя вид.
-   *
-   * Живёт только в памяти сеанса, в отличие от самой камеры (`sceneCamera.ts`): пережив
-   * перезагрузку, блокировка встретила бы следующего оператора замершим холстом без видимой
-   * причины, а кнопка объясняет состояние ровно пока её видно.
+   * Зафиксировать вид сцены для монитора (замок в панели зума редактора) или снять его
+   * (`null`). Это данные сцены, а не состояние просмотра: вид пишется в служебный элемент
+   * рядом с размером листа, попадает в undo, помечает сцену несохранённой и уезжает на
+   * сервер с сохранением. См. lib/editor/monitorView.ts.
    */
-  zoomLocked: boolean;
-  toggleZoomLocked: () => void;
+  setMonitorView: (view: MonitorView | null) => void;
   /**
    * Подвести камеру к элементу, если он вне видимой области (иначе ничего не делает).
    * Для панели «Слои»: выделение само по себе холст не двигает, и выбранный элемент
@@ -1512,8 +1510,43 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
 
-      zoomLocked: false,
-      toggleZoomLocked: () => set(state => ({zoomLocked: !state.zoomLocked})),
+      setMonitorView: (view) => {
+        const {scene, currentProject, versionPreview} = get();
+        // Просмотр версии — только для чтения; сцена чужого проекта — не наша.
+        if (versionPreview || !sceneBelongsToCurrentProject(scene, currentProject)) return;
+
+        set(state => {
+          const meta = state.elements.find(isMetaElement);
+          if (meta) {
+            const {monitorView: _old, ...rest} = meta as unknown as Record<string, unknown>;
+            void _old;
+            const next = view ? {...rest, monitorView: view} : rest;
+            return {
+              elements: state.elements.map(el => el.key === meta.key ? next as unknown as DiagramElement : el),
+            };
+          }
+          if (!view) return {};
+
+          // Служебного элемента ещё нет (лист по умолчанию) — заводим его тем же видом, что
+          // и setSheet, но без блока `canvas`: лист остаётся по умолчанию.
+          const created = {
+            id: null,
+            key: createUuid(),
+            type: "meta",
+            visible: false,
+            monitorView: view,
+            x: 0, y: 0, w: 0, h: 0,
+            composition: [],
+            parentId: scene?.id ?? null,
+            parentKey: String(scene?.id ?? ""),
+            children: [],
+            label: "Лист",
+            scripts: [], bindings: [], properties: [],
+            states: [{id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true}],
+          } as unknown as DiagramElement;
+          return {elements: [...state.elements, created]};
+        });
+      },
 
       ensureElementVisible: (key) => {
         const {elements, canvasRect, camera} = get();

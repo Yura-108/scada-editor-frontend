@@ -9,6 +9,8 @@ import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/editor/zoomLimits";
 import { getElementIndex } from "@/lib/editor/elementIndex";
 import { pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
+import { cameraForMonitorView, resolveMonitorView } from "@/lib/editor/monitorView";
+import { resolveSheet } from "@/lib/editor/sheet";
 import type { SelectionRect } from "../types";
 
 
@@ -24,6 +26,14 @@ const normalizeWheelDelta = (e: WheelEvent): {deltaX: number; deltaY: number} =>
     : 1;
   return {deltaX: e.deltaX * factor, deltaY: e.deltaY * factor};
 };
+
+/**
+ * Монитор с зафиксированным видом (lib/editor/monitorView.ts): камера стоит, как её
+ * выставил инженер, а оператору доступна только прокрутка колесом по вертикали.
+ * В редакторе замок на камеру не действует — всегда null.
+ */
+const lockedMonitorView = (readOnly: boolean) =>
+  readOnly ? resolveMonitorView(useEditorStore.getState().elements) : null;
 
 interface StageInteractionsDeps {
   stageRef: RefObject<Konva.Stage | null>;
@@ -72,6 +82,8 @@ export function useStageInteractions({
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!middlePanRef.current) return;
+      // Вид зафиксировали, пока тянули, — жест обрываем, а не двигаем закреплённую камеру.
+      if (lockedMonitorView(readOnly)) { middlePanRef.current = null; return; }
       const dx = e.clientX - middlePanRef.current.x;
       const dy = e.clientY - middlePanRef.current.y;
       middlePanRef.current = { x: e.clientX, y: e.clientY };
@@ -92,7 +104,7 @@ export function useStageInteractions({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [stageRef]);
+  }, [stageRef, readOnly]);
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -103,15 +115,22 @@ export function useStageInteractions({
     // Без нормализации в Firefox холст пролистывался по 3px, а зум был незаметен.
     const { deltaX, deltaY } = normalizeWheelDelta(e.evt);
 
+    // Зафиксированный вид монитора: только вертикальная прокрутка в пределах листа.
+    // Ctrl+колесо и пинч (браузер шлёт его как wheel с ctrlKey) не зумят, Shift и
+    // горизонталь тачпада не двигают вбок. `preventDefault` выше снимать НЕЛЬЗЯ: без него
+    // Ctrl+колесо достанется браузеру и начнёт масштабировать саму страницу.
+    const locked = lockedMonitorView(readOnly);
+    if (locked) {
+      if (e.evt.ctrlKey || !deltaY) return;
+      const { camera: cam, canvasRect, elements: els } = useEditorStore.getState();
+      if (!canvasRect) return;
+      const top = -cam.y / cam.zoom + deltaY / cam.zoom;
+      const next = cameraForMonitorView(locked, resolveSheet(els), canvasRect, top);
+      if (next.y !== cam.y) useEditorStore.getState().setCamera(next.x, next.y, next.zoom);
+      return;
+    }
+
     if (e.evt.ctrlKey) {
-      // Масштаб зафиксирован замком в панели зума — жест его не меняет. Пинч на тачпаде
-      // приходит сюда же (браузер шлёт его как wheel с ctrlKey), поэтому отдельной ветки
-      // для него не нужно.
-      //
-      // `preventDefault` выше снимать НЕЛЬЗЯ: без него Ctrl+колесо достанется браузеру и
-      // начнёт масштабировать саму страницу — «отключённый» зум превратился бы в зум всей
-      // вёрстки, то есть в худший вариант того, от чего защищаемся.
-      if (useEditorStore.getState().zoomLocked) return;
       // Ctrl + Wheel → zoom to cursor point
       const oldScale = stage.scaleX();
       const pointer = stage.getPointerPosition();
@@ -186,6 +205,8 @@ export function useStageInteractions({
     // поверх жеста.
     if (e.evt instanceof MouseEvent && e.evt.button === 1) {
       e.evt.preventDefault();
+      // Зафиксированный вид монитора не панорамируют — только колесо по вертикали.
+      if (lockedMonitorView(readOnly)) return;
       middlePanRef.current = { x: e.evt.clientX, y: e.evt.clientY };
       const container = stageRef.current?.container();
       if (container) container.style.cursor = "grabbing";

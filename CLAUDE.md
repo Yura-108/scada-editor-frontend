@@ -57,6 +57,25 @@ Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===tru
 
 **The circle is the one type with two anchor points.** The model stores the bbox top-left in `x/y` (plus `radius` and `w = h = 2·radius` — keep all three in sync), but every interaction speaks in terms of the **centre**: the dragged Konva node's position *is* the centre, so `useMultiDragAndGuides` snaps it absolutely (`snapAbsolute`, unlike line/polygon whose inner node carries an offset), `CircleResizeHandle` snaps the radius to `GRID` live and keeps the centre fixed by committing `x = cx − r`, and the properties panel shows «X/Y центра». Centre on a node + radius a multiple of 20 puts the bbox on the grid too. Break the pairing and the shape jumps at drop — the preview grows around the centre while the commit grows around the corner.
 
+### Monitor view lock (the lock in the zoom panel)
+
+The lock is **set in the editor and acts in the monitor**. Pressing it stores what the engineer
+currently sees — `monitorView = {x, y, w, h}` in world units — in the sheet's meta element
+(`isMetaElement`, next to `canvas`), so it is scene data: undo, dirty flag, saved with the
+scene, visible on any machine. The editor camera is never restricted; the editor only draws a
+dashed frame of the locked area. `src/lib/editor/monitorView.ts` holds all the math.
+
+- **Width-fit, not the same camera**: the monitor canvas is a different size from the editor's,
+  so the monitor zooms to fit `w` into its full width and aligns the left and top edges
+  (`cameraForMonitorView`). `h` is only for the editor frame.
+- **Monitor with a locked view**: no zoom (Ctrl+wheel, pinch, buttons — the zoom panel is replaced
+  by a badge), no middle-button pan, no horizontal wheel; the wheel scrolls vertically, clamped to
+  the sheet (`lockedTopRange`; the locked top itself is always allowed even if it sits outside
+  the sheet). `useSceneCameraMemory("monitor")` applies it over the browser's remembered camera
+  and re-fits on resize, keeping the operator's scroll for the same scene.
+- `monitorView` is in `STRUCTURAL_KEYS` of `transformElements` and restored from the default
+  image: `setMonitorView` writes the base, and a copy left in overrides would win on the next save.
+
 ### Serialization round-trip (bake ↔ unbake)
 
 The backend stores each component's visual state as an **opaque JSON string** in `states[].image`, so the frontend can enrich it without a contract change.

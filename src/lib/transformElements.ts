@@ -6,6 +6,7 @@ import type {PropertyCreateDto} from "@/types/tags.types";
 import type {MonitorMenuSettings, TrendSettings} from "@/types/editorElement.type";
 import {readMonitorMenu} from "@/lib/editor/monitorMenu";
 import {readTrendSettings} from "@/lib/editor/trendSettings";
+import {readMonitorView} from "@/lib/editor/monitorView";
 
 type BackendStateDto = {
   id?: number | string;
@@ -54,6 +55,12 @@ export const normalizeProperty = (raw: unknown): PropertyCreateDto => {
 const monitorMenuOf = (raw: unknown): {monitorMenu?: MonitorMenuSettings} => {
   const monitorMenu = readMonitorMenu(raw);
   return monitorMenu ? {monitorMenu} : {};
+};
+
+/** Зафиксированный вид монитора (служебный элемент листа) — тоже только если задан. */
+const monitorViewOf = (raw: unknown) => {
+  const monitorView = readMonitorView(raw);
+  return monitorView ? {monitorView} : {};
 };
 
 /** Оформление тренда — по тому же правилу: пустое не добавляем. */
@@ -167,9 +174,11 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
     // сохранении вернёт старое значение и правка слоя молча потеряется.
     // monitorMenu — настройка меню монитора, тоже базовая (BASE_ONLY_KEYS).
     // trend — оформление тренда (окно, шаг, перья), тоже базовое (BASE_ONLY_KEYS).
+    // monitorView — вид для монитора в служебном элементе листа (setMonitorView пишет в
+    // базу): останься он в overrides, на сохранении {...base, ...overrides} вернул бы старый.
     // optionsWindow — её предшественница (размер окна «Опции», 24–25.09.2026): только
     // вырезаем, чтобы не осела в overrides; для меню её значения не годятся.
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "trend", "optionsWindow"]);
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "trend", "monitorView", "optionsWindow"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -297,6 +306,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       // Настройки меню монитора — тоже из необрезанного image: из overrides они вырезаны.
       ...monitorMenuOf(defaultRawImage.monitorMenu),
       ...trendOf(defaultRawImage.trend),
+      ...monitorViewOf(defaultRawImage.monitorView),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,

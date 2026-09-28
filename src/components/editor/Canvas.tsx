@@ -41,6 +41,7 @@ import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
 import { buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
+import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorView";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
@@ -83,7 +84,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
     pendingPlacement, setEditingTextKey, editingTextKey,
     groupSelected, ungroupSelected,
-    zoomLocked, toggleZoomLocked,
+    setMonitorView,
   } = useEditorStore(useShallow(s => ({
     elements: s.elements, selectedIds: s.selectedIds, selectMultiple: s.selectMultiple,
     setCanvasRect: s.setCanvasRect,
@@ -100,7 +101,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     pendingPlacement: s.pendingPlacement,
     setEditingTextKey: s.setEditingTextKey, editingTextKey: s.editingTextKey,
     groupSelected: s.groupSelected, ungroupSelected: s.ungroupSelected,
-    zoomLocked: s.zoomLocked, toggleZoomLocked: s.toggleZoomLocked,
+    setMonitorView: s.setMonitorView,
   })));
 
   const { resolvedTheme, themeColors } = useThemeColors();
@@ -135,6 +136,9 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
 
   /** Лист сцены. Считается из elements (кэш по ссылке на массив), в сторе не хранится. */
   const sheet = useMemo(() => resolveSheet(elements), [elements]);
+  // Вид, зафиксированный для монитора (замок в панели зума). В редакторе — рамка и
+  // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. lib/editor/monitorView.ts).
+  const monitorView = useMemo(() => resolveMonitorView(elements), [elements]);
 
   // Шаг сетки по зуму: паттерн живёт в мировых координатах и ужимается вместе со
   // сценой, поэтому на «весь лист» (A0 — это 0.056) мелкая клетка занимает около
@@ -563,6 +567,24 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
               Живёт отдельно, чтобы движение мыши при протяжке рамки или
               перетаскивании перерисовывало только его, а не всю сцену. */}
           <Layer listening={!readOnly}>
+            {/* Рамка вида для монитора — только в редакторе: инженер видит, что именно
+                зафиксировал. Ширина — точно то, что монитор впишет во всю ширину экрана;
+                высота — сколько было видно у инженера (в мониторе по вертикали прокручивают). */}
+            {!readOnly && monitorView && (
+              <Rect
+                name="monitor-view-frame"
+                x={monitorView.x}
+                y={monitorView.y}
+                width={monitorView.w}
+                height={monitorView.h}
+                stroke={themeColors.selection}
+                strokeWidth={2}
+                dash={[10, 6]}
+                strokeScaleEnabled={false}
+                listening={false}
+              />
+            )}
+
             {/* «Нет данных» (монитор, docs/contract/TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
                 вне монитора — движок рантайма там не запущен. */}
             <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
@@ -691,11 +713,14 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
         onZoomStep={zoomStep}
         onFit={zoomFit}
         onFitSheet={zoomFitSheet}
-        // Сброс к 100% — тоже изменение масштаба: при блокировке он не срабатывает,
-        // как и остальные кнопки панели.
-        onReset={() => { if (!zoomLocked) setCamera(0, 0, 1); }}
-        zoomLocked={zoomLocked}
-        onToggleZoomLock={toggleZoomLocked}
+        onReset={() => setCamera(0, 0, 1)}
+        readOnly={readOnly}
+        viewLocked={!!monitorView}
+        // Замок фиксирует то, что видно СЕЙЧАС; повторное нажатие снимает фиксацию.
+        onToggleViewLock={() => {
+          if (monitorView) { setMonitorView(null); return; }
+          if (canvasRect) setMonitorView(monitorViewFromCamera(camera, canvasRect));
+        }}
       />
 
       <CanvasContextMenu menu={contextMenu} onClose={closeMenu} />

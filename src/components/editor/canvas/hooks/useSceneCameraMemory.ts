@@ -5,6 +5,7 @@ import { useEditorStore } from "@/store/useEditorStore";
 import { resolveSheet } from "@/lib/editor/sheet";
 import { cameraForSheet } from "@/lib/editor/fitCamera";
 import { CameraScope, readSceneCamera, writeSceneCamera } from "@/lib/editor/sceneCamera";
+import { cameraForMonitorView, resolveMonitorView } from "@/lib/editor/monitorView";
 
 /** Задержка отложенной записи — как у раскладки редактора (WorkSpace). */
 const SAVE_DELAY = 300;
@@ -29,6 +30,10 @@ export function useSceneCameraMemory(scope: CameraScope) {
   /** Ключ сцены, для которой камера уже восстановлена. */
   const restoredKeyRef = useRef<string | null>(null);
 
+  // Вид, зафиксированный инженером, — только для монитора: в редакторе замок камеру не
+  // трогает. Он важнее запомненной камеры браузера (см. lib/editor/monitorView.ts).
+  const lockedView = scope === "monitor" ? resolveMonitorView(elements) : null;
+
   useEffect(() => {
     if (sceneId == null) {
       restoredKeyRef.current = null;
@@ -36,6 +41,19 @@ export function useSceneCameraMemory(scope: CameraScope) {
     }
 
     const key = `${scope}:${projectId ?? "-"}:${sceneId}`;
+
+    // Зафиксированный вид: ширина области — во весь холст, верх — как у инженера. На
+    // ресайзе окна и перезагрузке той же сцены пересчитываем, сохраняя прокрутку
+    // оператора; другая сцена начинает с верхнего края вида.
+    if (lockedView) {
+      if (!canvasRect) return;
+      const cam = useEditorStore.getState().camera;
+      const top = restoredKeyRef.current === key ? -cam.y / cam.zoom : lockedView.y;
+      restoredKeyRef.current = key;
+      const next = cameraForMonitorView(lockedView, resolveSheet(elements), canvasRect, top);
+      setCamera(next.x, next.y, next.zoom);
+      return;
+    }
     // Восстанавливаем ровно один раз на сцену. Это же условие делает безопасной
     // перезагрузку ТОЙ ЖЕ сцены после сохранения и после восстановления версии
     // (loadScene с keepHistory): id не меняется — вид не дёргается на автосохранении.
@@ -56,7 +74,7 @@ export function useSceneCameraMemory(scope: CameraScope) {
     restoredKeyRef.current = key;
     const cam = cameraForSheet(resolveSheet(elements), canvasRect);
     setCamera(cam.x, cam.y, cam.zoom);
-  }, [scope, projectId, sceneId, canvasRect, elements, setCamera]);
+  }, [scope, projectId, sceneId, canvasRect, elements, setCamera, lockedView]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

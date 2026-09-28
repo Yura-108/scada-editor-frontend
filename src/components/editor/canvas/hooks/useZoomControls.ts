@@ -27,13 +27,12 @@ export function stepZoomPercent(zoom: number, direction: 1 | -1): number {
 /**
  * Логика zoom-панели: приближение вокруг центра видимой области и fit-to-content.
  *
- * Каждое действие проверяет `zoomLocked` само, хотя при блокировке кнопки панели и так
- * неактивны: логика не должна полагаться на то, что её вызывают только оттуда.
+ * Замок вида (lib/editor/monitorView.ts) здесь не проверяется: в редакторе масштаб
+ * свободен всегда, а в мониторе с зафиксированным видом панели с этими кнопками нет.
  */
 export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
   /** Кнопки «−»/«+»: шаг ровно в 1% (см. stepZoomPercent). */
   const zoomStep = useCallback((direction: 1 | -1) => {
-    if (useEditorStore.getState().zoomLocked) return;
     // Зумируем вокруг центра видимой области, чтобы картинка не «уезжала».
     const cx = (canvasRect?.width ?? 800) / 2;
     const cy = (canvasRect?.height ?? 600) / 2;
@@ -44,7 +43,7 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
   }, [canvasRect, setCamera]);
 
   const zoomFit = useCallback(() => {
-    if (!canvasRect || useEditorStore.getState().zoomLocked) return;
+    if (!canvasRect) return;
     const { elements: els, scene: sc } = useEditorStore.getState();
     // `visible: false` (служебный элемент импорта) в габарит не входит: он стоит в (0, 0)
     // нулевого размера и растянул бы «вписать в экран» до начала координат.
@@ -80,7 +79,7 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
    * уже нет. Переход «весь лист - рабочий зум» из-за этого частый.
    */
   const zoomFitSheet = useCallback(() => {
-    if (!canvasRect || useEditorStore.getState().zoomLocked) return;
+    if (!canvasRect) return;
     // Формула — в общем хелпере: той же камерой открывается сцена, у которой ещё нет
     // запомненного положения (см. useSceneCameraMemory).
     const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), canvasRect);
