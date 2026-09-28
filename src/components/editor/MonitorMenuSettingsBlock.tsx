@@ -4,7 +4,7 @@ import React from "react";
 import {NumberInput} from "@/components/ui/NumberInput";
 import type {DiagramElement, MonitorMenuSettings} from "@/types/editorElement.type";
 import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/lib/editor/monitorMenu";
-import {monitorActions, tagProperties} from "@/components/editor/canvas/buildMonitorMenu";
+import {isOpenableTrend, monitorActions, tagProperties} from "@/components/editor/canvas/buildMonitorMenu";
 import {ContextMenuPanel} from "@/components/editor/canvas/CanvasContextMenu";
 import type {CanvasMenuItem} from "@/components/editor/canvas/types";
 
@@ -35,6 +35,7 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
     onChange(readMonitorMenu({...value, [key]: v}));
 
   const previewItems: CanvasMenuItem[] = [
+    ...(isOpenableTrend(element) ? [{label: "Открыть тренд"}] : []),
     ...(tagProperties(element).length ? [{label: "Опции"}] : []),
     ...monitorActions(element).map(s => ({label: s.name})),
   ];

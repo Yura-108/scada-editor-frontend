@@ -603,18 +603,16 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
     { key: "alternateColor", label: "Цвет чётных строк", type: "color", defaultValue: "#0f172a" },
   ],
   trend: [
+    // Перья, окно и масштаб — на вкладке «Свойства» (TrendSettingsBlock): перо — это
+    // тег-свойство, а его масштаб и цвет живут в `trend.pens`, общих min/max больше нет.
     { key: "title", label: "Заголовок", type: "text", defaultValue: "Тренд" },
-    { key: "lineColor", label: "Цвет линии", type: "color", defaultValue: "#3b82f6" },
     { key: "backgroundColor", label: "Цвет фона", type: "color", defaultValue: "#1e293b" },
     { key: "strokeColor", label: "Цвет рамки", type: "color", defaultValue: "#475569" },
     { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#94a3b8" },
     { key: "gridColor", label: "Цвет сетки", type: "color", defaultValue: "#1e3a5f" },
     { key: "showGrid", label: "Сетка", type: "boolean", defaultValue: true },
-    { key: "showDots", label: "Точки данных", type: "boolean", defaultValue: false },
-    { key: "filled", label: "Заливка под линией", type: "boolean", defaultValue: false },
-    { key: "fillColor", label: "Цвет заливки", type: "color", defaultValue: "#1d4ed8" },
-    { key: "min", label: "Мин. значение оси Y", type: "number", defaultValue: 0 },
-    { key: "max", label: "Макс. значение оси Y", type: "number", defaultValue: 100 },
+    { key: "showLegend", label: "Легенда перьев", type: "boolean", defaultValue: true },
+    { key: "showDots", label: "Точки изменений", type: "boolean", defaultValue: false },
   ],
   chart: [
     { key: "title", label: "Заголовок", type: "text", defaultValue: "График" },

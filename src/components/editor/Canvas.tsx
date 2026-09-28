@@ -40,7 +40,7 @@ import { useZoomControls } from "./canvas/hooks/useZoomControls";
 import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
-import { buildMonitorMenu, hasMonitorMenu } from "./canvas/buildMonitorMenu";
+import { buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
@@ -60,9 +60,17 @@ interface CanvasProps {
    * маркиз/хоткеи/контекст-меню отключены; пан/зум камеры остаются.
    */
   readOnly?: boolean;
+  /**
+   * Монитор в режиме «Архив»: действия выключены — слой кликов по скриптам не монтируется,
+   * а меню элемента сводится к «Открыть тренд». Записей в ПЛК из архива быть не может.
+   */
+  archive?: boolean;
 }
 
-export default function Canvas({ readOnly = false }: CanvasProps) {
+export default function Canvas({ readOnly = false, archive = false }: CanvasProps) {
+  // Обработчики монитора не пересоздаются на смену режима — читают его через ref.
+  const archiveRef = useRef(archive);
+  useEffect(() => { archiveRef.current = archive; }, [archive]);
   // Точечный срез вместо подписки на весь стор: без него холст перерисовывался на
   // ЛЮБОЕ изменение (sceneList, projectList, clipboard, currentProject …), а не
   // только на то, что он рисует. Ср. тот же приём в WorkSpace.
@@ -283,12 +291,13 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
     const map = new Map(byKey.map(el => [el.key, el] as const));
 
     let el: DiagramElement | undefined = picked;
-    while (el && !hasMonitorMenu(el)) {
+    const hasMenu = archiveRef.current ? isOpenableTrend : hasMonitorMenu;
+    while (el && !hasMenu(el)) {
       el = el.parentKey ? map.get(el.parentKey) : undefined;
     }
     if (!el) return null;
 
-    const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive() });
+    const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive(), archive: archiveRef.current });
     if (!items.length) return null;
 
     // Вид меню задаётся тому компоненту, чьё это меню (см. подъём по parentKey выше).
@@ -665,7 +674,7 @@ export default function Canvas({ readOnly = false }: CanvasProps) {
 
           {/* Монитор: отдельный слой кликов по элементам с обработчиками событий
               (основной слой в readOnly не слушает — интерактив только здесь). */}
-          {readOnly && <MonitorInteractionLayer elements={elements} elementsMap={elementsMap} />}
+          {readOnly && !archive && <MonitorInteractionLayer elements={elements} elementsMap={elementsMap} />}
         </Stage>
       </div>
 

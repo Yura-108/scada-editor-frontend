@@ -2,11 +2,22 @@ import { DiagramElement } from "@/types/editorElement.type";
 import { emitRuntimeScript } from "@/lib/runtime/runtimeEventBus";
 import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
+import { openTrendModal } from "@/components/monitor/TrendModal";
+import { trendPens } from "@/lib/editor/trendSettings";
 import type { CanvasMenuItem } from "./types";
 
-/** Свойства элемента, привязанные к тегу — их и переназначают через «Опции». */
+/**
+ * Свойства элемента, привязанные к тегу — их и переназначают через «Опции».
+ *
+ * У тренда тег-свойства — это перья: писать в ПЛК с графика нечего, поэтому «Опций» у
+ * него нет, вместо них — «Открыть тренд».
+ */
 export const tagProperties = (el: DiagramElement) =>
-  (el.properties ?? []).filter(p => p.property_type === "Тег");
+  el.type === "trend" ? [] : (el.properties ?? []).filter(p => p.property_type === "Тег");
+
+/** Тренд с хотя бы одним пером — его можно открыть в окне просмотра. */
+export const isOpenableTrend = (el: DiagramElement) =>
+  el.type === "trend" && trendPens(el).length > 0;
 
 /** Скрипты, помеченные автором схемы как действие монитора (ElementScript.displayed). */
 export const monitorActions = (el: DiagramElement) =>
@@ -16,6 +27,8 @@ export interface BuildMonitorMenuDeps {
   closeMenu: () => void;
   /** Сессия рантайма поднята: без неё ACTION уходить некуда. */
   isLive: boolean;
+  /** Режим «Архив»: только просмотр — из пунктов остаётся «Открыть тренд». */
+  archive?: boolean;
 }
 
 /**
@@ -32,11 +45,24 @@ export interface BuildMonitorMenuDeps {
  * подъёма до ближайшего предка с пунктами ПКМ по такому примитиву не открывал бы ничего.
  */
 export const hasMonitorMenu = (el: DiagramElement): boolean =>
-  tagProperties(el).length > 0 || monitorActions(el).length > 0;
+  tagProperties(el).length > 0 || monitorActions(el).length > 0 || isOpenableTrend(el);
 
 export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps): CanvasMenuItem[] {
-  const { closeMenu, isLive } = deps;
+  const { closeMenu, isLive, archive } = deps;
   const items: CanvasMenuItem[] = [];
+
+  // Архив доступен и без живой сессии — пункт не зависит от isLive.
+  if (isOpenableTrend(el)) {
+    items.push({
+      label: "Открыть тренд",
+      onClick: () => {
+        closeMenu();
+        openTrendModal({ elementKey: el.key });
+      },
+    });
+  }
+
+  if (archive) return items;
 
   if (tagProperties(el).length) {
     // Без живой сессии в «Опциях» нечего показывать (значений нет) и некуда писать.

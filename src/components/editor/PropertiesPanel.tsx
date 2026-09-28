@@ -31,6 +31,7 @@ import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
 import {cellBindingAt, cellSourceFieldsFor} from "@/lib/editor/tableBindings";
 import {MonitorMenuSettingsBlock} from "@/components/editor/MonitorMenuSettingsBlock";
+import {TrendSettingsBlock} from "@/components/editor/TrendSettingsBlock";
 import {hasMonitorMenu} from "@/components/editor/canvas/buildMonitorMenu";
 import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
 import {shortTagPath} from "@/lib/editor/tagPath";
@@ -1218,6 +1219,18 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
               <Plus size={18}/>
               Добавить свойство
             </button>
+
+            {/* Перья тренда — те же тег-свойства, что выше, плюс их оформление. */}
+            {element.type === "trend" && (
+              <TrendSettingsBlock
+                element={element}
+                onChange={(trend) => updateElementVisual(element.key, {trend})}
+                inputClassName={baseInputClasses}
+                addButtonClassName={baseAddButtonClasses}
+                canAddPen={canAddProperty}
+                addPenHint={addPropertyHint}
+              />
+            )}
 
             {/* Меню по ПКМ в мониторе есть только у элемента со свойствами-тегами или
                 с действием «Добавить действие в монитор?» — у остальных настраивать нечего. */}

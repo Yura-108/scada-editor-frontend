@@ -28,6 +28,11 @@ interface Props {
    */
   elementKey: string;
   property?: PropertyCreateDto;
+  /**
+   * Начальные значения НОВОГО свойства (без `property`): так перо тренда открывает форму
+   * уже с именем `penN`, типом «Тег» и `float`. На режим правки не влияет.
+   */
+  preset?: Partial<PropertyCreateDto>;
 }
 
 type PropertyType = "Тег" | "Глобальный" | "Локальный";
@@ -59,27 +64,28 @@ const valueTypeOptions: Array<{ value: string; label: string }> = [
 const ACCESS_LEVEL_MIN = 0;
 const ACCESS_LEVEL_MAX = 10;
 
-export function AddPropertyContent({ elementKey, property }: Props) {
+export function AddPropertyContent({ elementKey, property, preset }: Props) {
+  // Источник начальных значений формы: правимое свойство либо заготовка нового.
+  const init = property ?? preset;
   const closeModal = useModalStore((s) => s.closeModal);
   const selectedDevice = useDeviceStore((s) => s.selectedDevice);
   const addProperty = useEditorStore((s) => s.addProperty);
   const editProperty = useEditorStore((s) => s.editProperty);
 
-  const [name, setName] = useState(property?.name || "");
+  const [name, setName] = useState(init?.name || "");
   const [propertyType, setPropertyType] = useState<PropertyType>(
-    (property?.property_type as PropertyType) || "Тег"
+    (init?.property_type as PropertyType) || "Тег"
   );
-  const [label, setLabel] = useState(property?.label || "");
-  const [gatewayName, setGatewayName] = useState(property?.gateway_name || "");
-  const [valueType, setValueType] = useState(property?.value_type || "");
-  const [defaultValue, setDefaultValue] = useState(property?.default_value || "");
-  const [logging, setLogging] = useState(property?.logging || false);
-  const [onChange, setOnChange] = useState(property?.onChange || "");
-  const [accessLevel, setAccessLevel] = useState(property?.access_level ?? ACCESS_LEVEL_MIN);
-  const [onCanChange, setOnCanChange] = useState(property?.OnCanChange || "");
+  const [label, setLabel] = useState(init?.label || "");
+  const [gatewayName, setGatewayName] = useState(init?.gateway_name || "");
+  const [valueType, setValueType] = useState(init?.value_type || "");
+  const [defaultValue, setDefaultValue] = useState(init?.default_value || "");
+  const [onChange, setOnChange] = useState(init?.onChange || "");
+  const [accessLevel, setAccessLevel] = useState(init?.access_level ?? ACCESS_LEVEL_MIN);
+  const [onCanChange, setOnCanChange] = useState(init?.OnCanChange || "");
   const [isLoading, setIsLoading] = useState(false);
 
-  const initialVariable = variableNameOf(property?.tag_id);
+  const initialVariable = variableNameOf(init?.tag_id);
   const [tagSource, setTagSource] = useState<TagSource>(initialVariable ? "variable" : "channel");
   const [variableName, setVariableName] = useState<string | null>(initialVariable);
   const [variables, setVariables] = useState<AutomationVariable[] | null>(null);
@@ -95,20 +101,19 @@ export function AddPropertyContent({ elementKey, property }: Props) {
   }, [tagSource, variables, currentProjectId]);
 
   useEffect(() => {
-    setName(property?.name || "");
-    setPropertyType((property?.property_type as PropertyType) || "Тег");
-    setLabel(property?.label || "");
-    setGatewayName(property?.gateway_name || "");
-    setValueType(property?.value_type || "");
-    setDefaultValue(property?.default_value || "");
-    setLogging(property?.logging || false);
-    setOnChange(property?.onChange || "");
-    setAccessLevel(property?.access_level ?? ACCESS_LEVEL_MIN);
-    setOnCanChange(property?.OnCanChange || "");
-    const variable = variableNameOf(property?.tag_id);
+    setName(init?.name || "");
+    setPropertyType((init?.property_type as PropertyType) || "Тег");
+    setLabel(init?.label || "");
+    setGatewayName(init?.gateway_name || "");
+    setValueType(init?.value_type || "");
+    setDefaultValue(init?.default_value || "");
+    setOnChange(init?.onChange || "");
+    setAccessLevel(init?.access_level ?? ACCESS_LEVEL_MIN);
+    setOnCanChange(init?.OnCanChange || "");
+    const variable = variableNameOf(init?.tag_id);
     setTagSource(variable ? "variable" : "channel");
     setVariableName(variable);
-  }, [property]);
+  }, [init]);
 
   const isTagType = propertyType === "Тег";
   // Путь канала из прошлого выбора не подставляем вместо переменной и наоборот.
@@ -161,7 +166,10 @@ export function AddPropertyContent({ elementKey, property }: Props) {
         gateway_name: gatewayName.trim() || null,
         value_type: valueType.trim(),
         default_value: defaultValue,
-        logging,
+        // Галочку убрали: архив runtime пишет все теги топиков без исключений (контракт
+        // 2026-09-28-tag-archive-contract.md, раздел 6). Поле на бэкенде пока есть, а
+        // свойство уезжает целиком — поэтому значение сохраняем как было.
+        logging: property?.logging ?? false,
         onChange: onChange.trim(),
         access_level: accessLevel,
         OnCanChange: onCanChange.trim(),
@@ -317,9 +325,8 @@ export function AddPropertyContent({ elementKey, property }: Props) {
           </div>
         </div>
 
-        {/* Значение по умолчанию + Логирование */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="space-y-2">
+        {/* Значение по умолчанию */}
+        <div className="space-y-2">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
               Значение по умолчанию
             </label>
@@ -345,22 +352,6 @@ export function AddPropertyContent({ elementKey, property }: Props) {
                 <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
               </div>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-              Логирование
-            </label>
-            <label className="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3.5 text-sm text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900/80 transition-colors cursor-pointer">
-              <input
-                type="checkbox"
-                checked={logging}
-                onChange={(e) => setLogging(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
-              />
-              Включить логирование
-            </label>
-          </div>
         </div>
 
         {/* Уровень доступа */}

@@ -3,8 +3,9 @@ import {createUuid} from "@/lib/createUuid";
 import {parseBindings} from "@/lib/parseBindings";
 import {parseEvents} from "@/lib/parseEvents";
 import type {PropertyCreateDto} from "@/types/tags.types";
-import type {MonitorMenuSettings} from "@/types/editorElement.type";
+import type {MonitorMenuSettings, TrendSettings} from "@/types/editorElement.type";
 import {readMonitorMenu} from "@/lib/editor/monitorMenu";
+import {readTrendSettings} from "@/lib/editor/trendSettings";
 
 type BackendStateDto = {
   id?: number | string;
@@ -53,6 +54,12 @@ export const normalizeProperty = (raw: unknown): PropertyCreateDto => {
 const monitorMenuOf = (raw: unknown): {monitorMenu?: MonitorMenuSettings} => {
   const monitorMenu = readMonitorMenu(raw);
   return monitorMenu ? {monitorMenu} : {};
+};
+
+/** Оформление тренда — по тому же правилу: пустое не добавляем. */
+const trendOf = (raw: unknown): {trend?: TrendSettings} => {
+  const trend = readTrendSettings(raw);
+  return trend ? {trend} : {};
 };
 
 const normalizeProperties =(value: unknown): PropertyCreateDto[] =>
@@ -159,9 +166,10 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
     // оставить его в overrides значило бы, что {...base, ...overrides} на следующем
     // сохранении вернёт старое значение и правка слоя молча потеряется.
     // monitorMenu — настройка меню монитора, тоже базовая (BASE_ONLY_KEYS).
+    // trend — оформление тренда (окно, шаг, перья), тоже базовое (BASE_ONLY_KEYS).
     // optionsWindow — её предшественница (размер окна «Опции», 24–25.09.2026): только
     // вырезаем, чтобы не осела в overrides; для меню её значения не годятся.
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "optionsWindow"]);
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "trend", "optionsWindow"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -223,7 +231,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         const d = compArr[i] ?? desc;
         // scripts/bindings/properties/events — данные примитива, не визуальные overrides.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, monitorMenu: _mm, optionsWindow: _ow, ...overrides } = d;
+        const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, monitorMenu: _mm, trend: _tr, optionsWindow: _ow, ...overrides } = d;
         return {
           id: createUuid(),
           name: cs.name,
@@ -248,6 +256,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         // Слой примитива — в базу, а не в overrides (симметрия с buildShapeDescriptor).
         zIndex: toFiniteNumber(desc.zIndex, 0),
         ...monitorMenuOf(desc.monitorMenu),
+        ...trendOf(desc.trend),
         states: primStates.length
           ? primStates
           : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
@@ -287,6 +296,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       zIndex: toFiniteNumber(defaultRawImage.zIndex, 0),
       // Настройки меню монитора — тоже из необрезанного image: из overrides они вырезаны.
       ...monitorMenuOf(defaultRawImage.monitorMenu),
+      ...trendOf(defaultRawImage.trend),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,

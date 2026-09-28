@@ -130,7 +130,7 @@ export const paletteItems: PaletteItemType[] = [
     type: "trend",
     name: "Тренды",
     category: "Визуализация",
-    defaultProps: {w: 300, h: 160, lineColor: "#3b82f6", backgroundColor: "#1e293b", strokeColor: "#475569", textColor: "#94a3b8", gridColor: "#1e3a5f", showGrid: true, showDots: false, filled: false, fillColor: "#1d4ed8", title: "Тренд", min: 0, max: 100},
+    defaultProps: {w: 320, h: 180, backgroundColor: "#1e293b", strokeColor: "#475569", textColor: "#94a3b8", gridColor: "#1e3a5f", showGrid: true, showDots: false, showLegend: true, title: "Тренд"},
   },
   {
     id: 10 ** 5 + 18,

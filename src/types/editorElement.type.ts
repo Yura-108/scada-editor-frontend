@@ -172,6 +172,12 @@ export interface BaseCanvasElement {
    * едет внутри image, как zIndex. См. lib/editor/monitorMenu.ts.
    */
   monitorMenu?: MonitorMenuSettings;
+  /**
+   * Оформление тренда (только у `type === "trend"`): окно, шаг сетки и вид перьев. Перья
+   * сами — тег-свойства элемента, связь по `name`. Базовый ключ, как monitorMenu: от
+   * состояния не зависит, едет внутри image. См. lib/editor/trendSettings.ts.
+   */
+  trend?: TrendSettings;
 }
 
 export type ElementType =
@@ -348,6 +354,24 @@ export type PropertySchema =
   type: "select";
   options: {label: string; value: string}[];
   defaultValue?: string;
+}
+
+/** Оформление одного пера тренда. Нет поля — значение по умолчанию (масштаб — по данным). */
+export interface TrendPenStyle {
+  color?: string;
+  min?: number;
+  max?: number;
+  width?: number;
+}
+
+/** Настройка тренда (контракт 2026-09-28-tag-archive-contract.md, раздел 1). */
+export interface TrendSettings {
+  /** Живое окно, секунды. */
+  window?: number;
+  /** Шаг сетки и подписей времени по X, секунды. На данные не влияет. */
+  step?: number;
+  /** Ключ — `name` свойства-пера. */
+  pens?: Record<string, TrendPenStyle>;
 }
 
 /** Контекстное меню компонента в мониторе, px. Пределы — lib/editor/monitorMenu.ts. */

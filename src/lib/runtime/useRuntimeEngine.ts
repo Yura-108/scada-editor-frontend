@@ -22,6 +22,13 @@ import {
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
+import {fetchArchiveValues, toTrendValue} from "@/lib/runtime/archive";
+import {isBooleanValueType} from "@/lib/editor/valueTypes";
+import {trendPens, trendTiming} from "@/lib/editor/trendSettings";
+import {
+  appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore,
+  setTrendClock, setTrendWatch, useTrendStore,
+} from "@/store/useTrendStore";
 import {cellBindings, isLiveField, propertyByName} from "@/lib/editor/tableBindings";
 import type {ElementEventName} from "@/types/binding.types";
 import type {DiagramElement} from "@/types/editorElement.type";
@@ -36,6 +43,56 @@ const log = (...args: unknown[]) => devLog("[monitor:engine]", ...args);
 
 /** quality отсутствует или "GOOD" — достоверно; всё остальное — нет (не сравнивать на "BAD"). */
 const isTagQualityGood = (quality?: string) => quality === undefined || quality === "GOOD";
+
+/**
+ * Точки трендов из кадра WS. Идут МИМО pendingRef/flush — тот буфер коалесцирует значения
+ * (last-write-wins и страж «то же значение»), а тренду нужна каждая смена со своим
+ * временем: два изменения в одном такте флаша иначе слились бы в одно.
+ */
+const pushTrendPoints = (tags: readonly {tagId: string; value: string | null; ts?: number; quality?: string}[]) => {
+  const now = Date.now();
+  const points: {tag: string; ts: number; value: number | null}[] = [];
+  for (const t of tags) {
+    if (!isTrendWatched(t.tagId)) continue;
+    const value = toTrendValue(t.value, isTagQualityGood(t.quality));
+    if (value === undefined) continue;
+    points.push({tag: t.tagId, ts: normalizeTs(t.ts, now), value});
+  }
+  appendTrendPoints(points);
+};
+
+/**
+ * Теги, которые по WS приходили как `"true"`/`"false"`. Архив хранит bool числом 1/0, и
+ * вернуть ему вид WS можно, только зная, что тег дискретный (см. archiveValueToWire).
+ * Модульный — переживает переподключение и смену режима в пределах вкладки.
+ */
+const wireBoolTags = new Set<string>();
+const rememberWireBools = (tags: readonly {tagId: string; value: string | null}[]) => {
+  for (const t of tags) if (t.value === "true" || t.value === "false") wireBoolTags.add(t.tagId);
+};
+
+/** Изменение тега из архива — уже в виде WS (строка), с качеством и временем. */
+export interface ArchiveTagChange {
+  tag: string;
+  value: string | null;
+  good: boolean;
+  ts: number;
+}
+
+/** Вход движка для воспроизведения архива (режим `archive`). */
+export interface RuntimeArchiveInput {
+  /** Начать с чистого листа на момент `at`: значения, состояния, серии трендов. */
+  reset: (at: number) => void;
+  /** Применить изменения одним тиком — тем же путём, что кадр WS. */
+  apply: (changes: readonly ArchiveTagChange[]) => void;
+  /** Все теги открытой схемы — их и просим у архива. */
+  sceneTags: string[];
+  /** Дискретный ли тег (для обратного приведения 1/0 → "true"/"false"). */
+  isBoolTag: (tag: string) => boolean;
+}
+
+/** Источник значений: живой WS или воспроизведение архива. */
+export type RuntimeMode = "live" | "archive";
 
 const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
   a.size === b.size && [...a].every(k => b.has(k));
@@ -76,6 +133,7 @@ export interface RuntimeEngineState {
   /** Подписка соединения на статусы задач automation (переживает переподключение). */
   subscribeTasks: () => void;
   unsubscribeTasks: () => void;
+  archive: RuntimeArchiveInput;
 }
 
 /**
@@ -85,7 +143,7 @@ export interface RuntimeEngineState {
  * сколько бы тегов ни изменилось). elements не мутируются — ни undo, ни автосейв
  * рантайм не видят.
  */
-export function useRuntimeEngine(active: boolean): RuntimeEngineState {
+export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): RuntimeEngineState {
   const elements = useEditorStore(s => s.elements);
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
 
@@ -154,7 +212,9 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     const pending = pendingRef.current;
     const pendingProps = pendingPropsRef.current;
     const pendingNames = pendingPropNameRef.current;
-    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size)) return;
+    // Пересчёт «нет данных» без значений — после сброса архива, когда у тегов ещё нет ни
+    // одной точки: оверлей обязан лечь, даже если применять нечего.
+    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size && !qualityDirtyRef.current)) return;
     pendingRef.current = new Map();
     pendingPropsRef.current = new Map();
     pendingPropNameRef.current = new Map();
@@ -488,8 +548,11 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
   // Регистрируем обработчики в шине, пока движок активен: события (клик по фигуре),
   // прямой запуск скрипта (пункт меню монитора), чтение текущих значений тегов и
   // уведомление о записи значений в ПЛК.
+  //
+  // В архиве — не регистрируем ничего: записи в ПЛК там невозможны по построению, и клик,
+  // дошедший до скрипта, не должен ни запустить действие, ни поменять вид элемента.
   useEffect(() => {
-    if (!active) return;
+    if (!active || mode !== "live") return;
     setRuntimeEventHandler(runEvent);
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
@@ -503,18 +566,63 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       setRuntimeTagWriteHandler(null);
       setRuntimeSessionGetter(null);
     };
-  }, [active, runEvent, runScriptByKey, onTagsWritten]);
+  }, [active, mode, runEvent, runScriptByKey, onTagsWritten]);
 
   // Признак «связь есть» для интерфейса вне движка (пункты меню монитора).
   useEffect(() => {
-    setRuntimeLive(status === "live");
+    setRuntimeLive(mode === "live" && status === "live");
     return () => setRuntimeLive(false);
-  }, [status]);
+  }, [mode, status]);
+
+  /**
+   * История трендов за самое широкое окно, кончающееся в `at` (сейчас или курсор архива).
+   * Прошлый запрос обрывается: при перемотке его ответ лёг бы поверх нового ряда.
+   */
+  const trendHistoryAbortRef = useRef<AbortController | null>(null);
+  const loadTrendHistory = useCallback((at: number): AbortController => {
+    trendHistoryAbortRef.current?.abort();
+    const controller = new AbortController();
+    trendHistoryAbortRef.current = controller;
+    const {watched, retentionMs} = useTrendStore.getState();
+    fetchArchiveValues([...watched], at - retentionMs, at, {signal: controller.signal})
+      .then(series => {
+        if (!controller.signal.aborted) mergeTrendHistory(series, at);
+      })
+      .catch(e => {
+        if (controller.signal.aborted) return;
+        // Без истории тренд всё равно дописывается точками — не повод для тоста.
+        console.warn("[monitor:trend] история не загружена:", e);
+      });
+    return controller;
+  }, []);
+
+  /**
+   * Всё, что принадлежит сессии значений (WS или воспроизведения архива): буферы, качество,
+   * счётчики ошибок, рантайм-карты стора и серии трендов. Общий сброс для выхода из обоих
+   * режимов — чтобы в архив не протекли живые значения, а из архива в живой режим прошлое.
+   */
+  const resetSessionState = useCallback(() => {
+    pendingRef.current = new Map();
+    valuesRef.current = new Map();
+    // Теневой буфер живых значений тоже принадлежит сессии: без сброса «снять подмену»
+    // после переподключения вернуло бы значение из прошлой сессии.
+    pendingPropsRef.current = new Map();
+    valuesByPropRef.current = new Map();
+    pendingPropNameRef.current = new Map();
+    valuesByPropNameRef.current = new Map();
+    errorCountRef.current = new Map();
+    disabledRef.current = new Set();
+    tagMetaRef.current = new Map();
+    qualityDirtyRef.current = false;
+    noDataKeysRef.current = new Set();
+    useEditorStore.getState().clearRuntime();
+    resetTrendStore();
+  }, []);
 
   // Соединение живёт на пару (active, projectId) — смена сцены внутри проекта
   // его не пересоздаёт (индекс подменяется через ref).
   useEffect(() => {
-    if (!active || projectId == null) return;
+    if (!active || projectId == null || mode !== "live") return;
 
     log(`движок запущен для проекта ${projectId}`);
     lastMessageAtRef.current = 0;
@@ -546,6 +654,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         // Список активных процедур проекта ПОЛНЫЙ: отсутствие наблюдаемой в нём означает
         // «не запущена», а не «нет данных».
         adoptProcedureStatuses(procedures);
+        rememberWireBools(tags);
+        pushTrendPoints(tags);
         flushRef.current();
       },
       onUpdate: (tags, properties, procedures) => {
@@ -557,6 +667,8 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
         // схлопнулись бы, WRITE_FAILED/STALLED потерялись бы вовсе, а задержка на такте
         // флаша сместила бы секундомер шага. Отдаём сразу.
         pushProcedureEvents(procedures);
+        rememberWireBools(tags);
+        pushTrendPoints(tags);
         // Несколько апдейтов одного тега в батче: Map даёт last-write-wins.
         for (const t of tags) {
           pendingRef.current.set(t.tagId, t.value);
@@ -610,25 +722,125 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
       document.removeEventListener("visibilitychange", onVisibility);
       conn.close();
       connRef.current = null;
-      pendingRef.current = new Map();
-      valuesRef.current = new Map();
-      // Теневой буфер живых значений тоже принадлежит сессии: без сброса «снять подмену»
-      // после переподключения вернуло бы значение из прошлой сессии.
-      pendingPropsRef.current = new Map();
-      valuesByPropRef.current = new Map();
-      pendingPropNameRef.current = new Map();
-      valuesByPropNameRef.current = new Map();
-      errorCountRef.current = new Map();
-      disabledRef.current = new Set();
-      tagMetaRef.current = new Map();
-      qualityDirtyRef.current = false;
-      noDataKeysRef.current = new Set();
-      useEditorStore.getState().clearRuntime();
+      resetSessionState();
       setSessionId(null);
       setStatusDetail(null);
       setIsStale(false);
     };
-  }, [active, projectId]);
+  }, [active, projectId, mode, resetSessionState]);
+
+  /**
+   * Режим «Архив»: WS не подключается, значения подаёт плеер через `archive.apply`. Здесь —
+   * только вход и выход: статус «нет соединения» (закрытое соединение его не всегда
+   * присылает) и сброс всего проигранного при выходе.
+   */
+  useEffect(() => {
+    if (!active || mode !== "archive") return;
+    log("режим архива: живое соединение не открывается");
+    setStatus("closed");
+    setStatusDetail(null);
+    return () => {
+      trendHistoryAbortRef.current?.abort();
+      resetSessionState();
+    };
+  }, [active, mode, resetSessionState]);
+
+  /**
+   * Тренды открытой схемы: набор тегов перьев и история за самое широкое окно.
+   *
+   * На смену `index` — как и повторный прогон биндингов: это единственная надёжная точка
+   * «на холст лёг другой документ». Дальше тренды дописываются из кадров WS
+   * (pushTrendPoints). История грузится одним запросом по всем перьям (пачки по 20 тегов
+   * режет fetchArchiveValues); смена схемы обрывает запрос прошлой.
+   */
+  //
+  // В архиве здесь только набор перьев: историю грузит `archive.reset` на момент курсора,
+  // потому что после каждой перемотки она нужна заново.
+  useEffect(() => {
+    if (!active || !index) return;
+    const tags = new Set<string>();
+    let windowSec = 0;
+    for (const el of useEditorStore.getState().elements) {
+      if (el.type !== "trend") continue;
+      const pens = trendPens(el);
+      if (!pens.length) continue;
+      for (const pen of pens) tags.add(pen.tag);
+      windowSec = Math.max(windowSec, trendTiming(el.trend).window);
+    }
+    setTrendWatch(tags, windowSec * 1000);
+    if (mode !== "live" || !tags.size) return;
+    const controller = loadTrendHistory(Date.now());
+    return () => controller.abort();
+  }, [active, index, mode, loadTrendHistory]);
+
+  // Теги открытой схемы для запроса воспроизведения. Перья трендов входят через
+  // elementKeysByTagId — это тег-свойства.
+  const sceneTags = useMemo(() => {
+    if (!index) return [] as string[];
+    const all = new Set<string>(index.tagIds);
+    for (const map of [index.elementKeysByTagId, index.tableCellsByTagId, index.directTagsByTagId]) {
+      for (const tag of map.keys()) all.add(tag);
+    }
+    return [...all].sort();
+  }, [index]);
+
+  // Дискретные теги схемы по типу свойства — на случай, если по WS тег в этой вкладке ещё
+  // не приходил и его вид неизвестен.
+  const boolPropertyTagsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const set = new Set<string>();
+    for (const el of elements) {
+      for (const p of el.properties ?? []) {
+        if (p.property_type === "Тег" && p.tag_id && isBooleanValueType(p.value_type ?? undefined)) set.add(p.tag_id);
+      }
+    }
+    boolPropertyTagsRef.current = set;
+  }, [elements]);
+
+  const isBoolTag = useCallback(
+    (tag: string) => wireBoolTags.has(tag) || boolPropertyTagsRef.current.has(tag),
+    [],
+  );
+
+  const archiveReset = useCallback((at: number) => {
+    pendingRef.current = new Map();
+    valuesRef.current = new Map();
+    tagMetaRef.current = new Map();
+    // Ни у одного тега ещё нет точки — «нет данных» пересчитается на первом apply.
+    qualityDirtyRef.current = true;
+    noDataKeysRef.current = new Set();
+    errorCountRef.current = new Map();
+    disabledRef.current = new Set();
+    useEditorStore.getState().clearRuntime();
+
+    clearTrendSeries();
+    setTrendClock(at);
+    if (useTrendStore.getState().watched.size) loadTrendHistory(at);
+  }, [loadTrendHistory]);
+
+  /**
+   * Изменения из архива — тем же путём, что кадр WS: значения в pendingRef, качество в
+   * tagMetaRef, точки трендов мимо flush, затем синхронный flush. Суточная опорная точка с тем
+   * же значением отсекается no-op-стражем flush и ничего не перерисовывает.
+   */
+  const archiveApply = useCallback((changes: readonly ArchiveTagChange[]) => {
+    const frames = changes.map(c => ({
+      tagId: c.tag, value: c.value, ts: c.ts, quality: c.good ? "GOOD" : "BAD",
+    }));
+    for (const f of frames) {
+      pendingRef.current.set(f.tagId, f.value);
+      const prevMeta = tagMetaRef.current.get(f.tagId);
+      if (!prevMeta || prevMeta.quality !== f.quality) qualityDirtyRef.current = true;
+      tagMetaRef.current.set(f.tagId, {quality: f.quality, ts: f.ts});
+    }
+    pushTrendPoints(frames);
+    flushRef.current();
+  }, []);
+
+  const archive = useMemo<RuntimeArchiveInput>(
+    () => ({reset: archiveReset, apply: archiveApply, sceneTags, isBoolTag}),
+    [archiveReset, archiveApply, sceneTags, isBoolTag],
+  );
 
   const subscribeTasks = useCallback(() => connRef.current?.subscribeTasks(), []);
   const unsubscribeTasks = useCallback(() => connRef.current?.unsubscribeTasks(), []);
@@ -642,5 +854,6 @@ export function useRuntimeEngine(active: boolean): RuntimeEngineState {
     isStale,
     subscribeTasks,
     unsubscribeTasks,
+    archive,
   };
 }

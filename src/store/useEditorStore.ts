@@ -412,8 +412,10 @@ const isPatchEffective = (
  *
  * `monitorMenu` — ширина, шрифт и высота пунктов контекстного меню в мониторе:
  * настройка компонента, а не его вида, и меню одинаково в любом состоянии.
+ *
+ * `trend` — окно, шаг и оформление перьев тренда: та же настройка элемента.
  */
-const BASE_ONLY_KEYS = new Set(["zIndex", "monitorMenu"]);
+const BASE_ONLY_KEYS = new Set(["zIndex", "monitorMenu", "trend"]);
 
 /** Делит патч на часть «в базу» и часть «в overrides состояния». */
 const splitBaseOnly = (

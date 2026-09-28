@@ -1,11 +1,13 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Cpu, Pin, PinOff, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Cpu, History, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
-import {useRuntimeEngine} from "@/lib/runtime/useRuntimeEngine";
+import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
+import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
+import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/lib/utils";
 import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
@@ -117,8 +119,22 @@ export default function MonitorClient() {
     for (const p of projectList) void loadProjectRuntimeFlag(p.id);
   }, [projectList, loadProjectRuntimeFlag]);
 
-  const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks} =
-    useRuntimeEngine(Boolean(scene && currentProject));
+  // «Архив» — воспроизведение сцены по архиву тегов: WS не подключается, действия выключены.
+  // Смена проекта возвращает в живой режим: период и курсор принадлежали прошлому.
+  // Режим помнится вместе с проектом, в котором его выбрали: для другого проекта он «живой».
+  const projectKey = currentProject?.id ?? null;
+  const [modeChoice, setModeChoice] = useState<{mode: RuntimeMode; project: number | null}>(
+    {mode: "live", project: null},
+  );
+  const mode: RuntimeMode = modeChoice.project === projectKey ? modeChoice.mode : "live";
+  const setMode = (m: RuntimeMode) => setModeChoice({mode: m, project: projectKey});
+  const isArchive = mode === "archive";
+
+  const engineActive = Boolean(scene && currentProject);
+  const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks, archive} =
+    useRuntimeEngine(engineActive, mode);
+  // Плеер — ровно один, здесь же: два применяли бы ленту дважды.
+  const replayControls = useArchiveReplay(archive, engineActive && isArchive);
 
   // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
   // и смене проекта: повторная подписка безвредна, сервер просто пришлёт полный список ещё раз.
@@ -144,6 +160,7 @@ export default function MonitorClient() {
   );
 
   const statusView = STATUS_VIEW[scene ? status : "closed"];
+  const isLive = !isArchive && status === "live";
 
   const selectClasses = cn(
     "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg",
@@ -196,7 +213,34 @@ export default function MonitorClient() {
 
         <div className="flex-1" />
 
-        {status === "live" && sessionId && !showProcedures && (
+        <div className="flex rounded-full border border-neutral-200 dark:border-neutral-700 p-0.5 text-xs font-medium">
+          {([["live", "Живые данные"], ["archive", "Архив"]] as const).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              disabled={m === "archive" && !scene}
+              onClick={() => {
+                setMode(m);
+                // Процедуры — живое управление, в архиве им не место.
+                if (m === "archive") { setShowProcedures(false); setShowTasks(false); }
+              }}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-40",
+                mode === m
+                  ? (m === "archive"
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")
+                  : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
+              )}
+            >
+              {m === "archive" ? <History size={12} /> : <Radio size={12} />}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {isLive && sessionId && !showProcedures && (
           <button
             onClick={() => setShowProcedures(true)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
@@ -206,7 +250,7 @@ export default function MonitorClient() {
           </button>
         )}
 
-        {status === "live" && sessionId && (
+        {isLive && sessionId && (
           <button
             onClick={() => setShowTasks(v => !v)}
             aria-pressed={showTasks}
@@ -236,7 +280,7 @@ export default function MonitorClient() {
           </span>
         )}
 
-        {isStale && (
+        {!isArchive && isStale && (
           <span
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
             title="Соединение живое, но новых значений давно не приходило — данные на экране могут быть устаревшими"
@@ -246,17 +290,19 @@ export default function MonitorClient() {
           </span>
         )}
 
-        <span
-          className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
-          title={statusDetail || undefined}
-        >
-          <Radio size={14} />
-          {statusView.label}
-        </span>
+        {!isArchive && (
+          <span
+            className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
+            title={statusDetail || undefined}
+          >
+            <Radio size={14} />
+            {statusView.label}
+          </span>
+        )}
 
         {/* Причина паузы рядом со статусом: «Переподключение…» без неё выглядит сбоем сети,
             хотя чинить надо остановленный экземпляр runtime, а не связь у оператора. */}
-        {status === "reconnecting" && statusDetail && (
+        {!isArchive && status === "reconnecting" && statusDetail && (
           <span
             className="max-w-xs truncate text-xs text-amber-600 dark:text-amber-400"
             title={statusDetail}
@@ -265,6 +311,8 @@ export default function MonitorClient() {
           </span>
         )}
       </div>
+
+      {isArchive && scene && <ArchivePlayerBar controls={replayControls} />}
 
       {/* Панель быстрого доступа — тот же компонент, что и в редакторе. Вкладки ведут
           только на закреплённые схемы, поэтому список «Схема…» выше остаётся: он
@@ -280,7 +328,7 @@ export default function MonitorClient() {
           // несохранённые правки не о чем, палитра ему не нужна.
           if (Number.isSafeInteger(id) && id !== scene?.id) void loadScene(id);
         }}
-        extraTab={PROCEDURES_TAB}
+        extraTab={isArchive ? undefined : PROCEDURES_TAB}
         contentId="monitor-canvas"
         ariaLabel="Закреплённые схемы"
       />
@@ -292,7 +340,7 @@ export default function MonitorClient() {
       <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
         {showProcedures ? (
           <ProcedurePanel />
-        ) : status === "rejected" ? (
+        ) : !isArchive && status === "rejected" ? (
           /* Состояние «проект выключен» должно быть видимым, а не выглядеть поломкой:
              текст причины приходит с бэкенда и называет её прямо. */
           <div className="h-full flex items-center justify-center p-6">
@@ -306,7 +354,7 @@ export default function MonitorClient() {
             </div>
           </div>
         ) : scene ? (
-          <Canvas readOnly />
+          <Canvas readOnly archive={isArchive} />
         ) : (
           <div className="h-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">
             Выберите проект и сцену для мониторинга
@@ -314,7 +362,7 @@ export default function MonitorClient() {
         )}
 
         {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
-        {!showProcedures && <ProcedureHud />}
+        {!showProcedures && !isArchive && <ProcedureHud />}
         {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
     </div>
