@@ -54,6 +54,9 @@ const readPen = (raw: unknown): TrendPenStyle | undefined => {
   // 0 обнулил бы перо, не число — ничего бы не значило: в обоих случаях коэффициента нет (= 1).
   const k = num(src.k);
   if (k !== undefined && k !== 0) pen.k = k;
+  // Сдвиг 0 — то же, что его отсутствие: не кладём, чтобы перо без сдвига не таскало поле.
+  const b = num(src.b);
+  if (b !== undefined && b !== 0) pen.b = b;
   const width = num(src.width);
   if (width !== undefined) pen.width = clamp(width, TREND_LIMITS.width);
   return Object.keys(pen).length ? pen : undefined;
@@ -112,8 +115,9 @@ export interface TrendPen {
   tag: string;
   color: string;
   width: number;
-  /** Коэффициент: значение пера на графике — `value × k`. */
+  /** Коэффициент и сдвиг: значение пера на графике — `value × k + b`. */
   k: number;
+  b: number;
 }
 
 export const isTrendPenProperty = (p: PropertyCreateDto): boolean =>
@@ -134,6 +138,7 @@ export function trendPens(el: Pick<DiagramElement, "properties"> & {trend?: Tren
         color: style.color ?? TREND_PEN_COLORS[i % TREND_PEN_COLORS.length],
         width: style.width ?? TREND_DEFAULTS.penWidth,
         k: style.k ?? 1,
+        b: style.b ?? 0,
       };
     });
 }

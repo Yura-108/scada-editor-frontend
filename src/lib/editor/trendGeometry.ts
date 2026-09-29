@@ -158,8 +158,8 @@ export function buildTrendGeometry(args: {
 
   // 1. Видимые значения каждого пера — уже × k.
   const prepared = pens.map(pen => {
-    const k = pen.k;
-    const scaled = (v: number | null): number | null => (v === null ? null : v * k);
+    const {k, b} = pen;
+    const scaled = (v: number | null): number | null => (v === null ? null : v * k + b);
     const all = (seriesByTag[pen.tag] ?? []) as TrendPoint[];
     const si = startIndex(all, from);
     const startValue = si >= 0 ? scaled(all[si].value) : null;

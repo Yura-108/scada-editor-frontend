@@ -331,7 +331,7 @@ function TrendModalContent({elementKey}: Props) {
             {visiblePens.map(pen => {
               // Как на графике и в легенде — с коэффициентом пера.
               const raw = valueAt(seriesByTag[pen.tag] ?? [], hoverTs);
-              const v = raw == null ? raw : raw * pen.k;
+              const v = raw == null ? raw : raw * pen.k + pen.b;
               return (
                 <div key={pen.name} className="flex items-center gap-1.5">
                   <span className="inline-block h-2 w-2 rounded-sm" style={{background: pen.color}} />
@@ -395,9 +395,9 @@ function TrendModalContent({elementKey}: Props) {
               <span className="w-24 text-right font-mono text-xs text-gray-600 dark:text-gray-300">
                 {g?.last === null || g?.last === undefined ? "—" : formatTrendValue(g.last)}
               </span>
-              {pen.k !== 1 && (
-                <span className="text-xs text-gray-500" title="Коэффициент пера: на графике значение тега × k">
-                  ×{pen.k}
+              {(pen.k !== 1 || pen.b !== 0) && (
+                <span className="text-xs text-gray-500" title="Коэффициент и сдвиг пера: на графике значение тега × k + b">
+                  {pen.k !== 1 ? `×${pen.k}` : ""}{pen.b !== 0 ? ` ${pen.b > 0 ? "+" : "−"}${Math.abs(pen.b)}` : ""}
                 </span>
               )}
             </div>

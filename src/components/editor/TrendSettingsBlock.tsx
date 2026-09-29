@@ -126,7 +126,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Пусто — по данным всех перьев. Единицу пишите в «Имя» пера («Масса, т»), а к шкале её
-        приводит коэффициент: на графике значение тега × коэффициент.
+        приводят коэффициент и сдвиг: на графике значение тега × коэффициент + сдвиг.
       </p>
 
       <div className="space-y-2">
@@ -182,10 +182,10 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                   </>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label htmlFor={`trend-${pen.name}-k`} className={labelClass}>Коэффициент</label>
+                    <label htmlFor={`trend-${pen.name}-k`} className={labelClass} title="На графике: значение × коэффициент + сдвиг">Коэфф.</label>
                     {style?.k !== undefined && (
                       <button
                         type="button"
@@ -204,6 +204,27 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                     step={0.001}
                     // 0 обнулил бы перо — readTrendSettings такой коэффициент не примет.
                     onCommit={v => commitPen(pen.name, {k: v})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor={`trend-${pen.name}-b`} className={labelClass} title="Разводит дискретные сигналы по высоте: ступеньки 0/5 не лягут друг на друга">Сдвиг</label>
+                    {style?.b !== undefined && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                        onClick={() => commitPen(pen.name, {}, "b")}
+                      >
+                        сбросить
+                      </button>
+                    )}
+                  </div>
+                  <NumberInput
+                    id={`trend-${pen.name}-b`}
+                    className={inputClassName}
+                    value={style?.b}
+                    placeholder="0"
+                    onCommit={v => commitPen(pen.name, {b: v})}
                   />
                 </div>
                 <div className="space-y-1">
