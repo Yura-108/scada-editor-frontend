@@ -216,11 +216,16 @@ operator action journal, section 5, is the read-only `/actions` page — `GET /a
 returns a bare array with no total, so "more" means "the last page was full").
 
 - **A pen is a tag property** of the `trend` element (`property_type === "Тег"`, name `pen1`,
-  `pen2`, …). Its look lives in `element.trend` (`{window, step, pens: {<name>: {color, min, max,
-  width}}}`) — a base key like `monitorMenu`: in `BASE_ONLY_KEYS`, in `STRUCTURAL_KEYS` of
+  `pen2`, …). Its look lives in `element.trend` (`{window, step, min, max, pens: {<name>: {color,
+  width, k}}}`) — a base key like `monitorMenu`: in `BASE_ONLY_KEYS`, in `STRUCTURAL_KEYS` of
   `transformElements`, restored from the default image (composition descriptors too), clamped by
   `readTrendSettings` (`lib/editor/trendSettings.ts`). A `pens` entry without a property is
-  ignored; there are no element-wide `min`/`max` any more.
+  ignored.
+- **One Y axis per trend** (`docs/contract/2026-09-29-trend-common-scale-contract.md`): `trend.min/max`
+  is the common scale (a missing bound is auto over all pens), and a pen's `k` brings its units to
+  that scale — the chart, axis, hover and legend all show `value × k` (the archive and WS stay raw).
+  Per-pen `min/max` used to exist and made the axis lie (it was labelled by the first pen); they are
+  no longer read, so they disappear from a scene on its next save. `k` of 0 or non-numeric means 1.
 - **Drawn as steps**, never sloped lines: the archive stores only changes, so the value holds until
   the next point. `null` is a gap (bad quality). `lib/editor/trendGeometry.ts` is the single pure
   implementation, shared by the Konva shape and the monitor's SVG `TrendModal`.

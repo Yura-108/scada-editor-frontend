@@ -9,7 +9,7 @@ import {useEditorStore} from "@/store/useEditorStore";
 import {useTrendStore} from "@/store/useTrendStore";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {shortTagPath} from "@/lib/editor/tagPath";
-import {TREND_WINDOW_PRESETS, trendPens, trendTiming} from "@/lib/editor/trendSettings";
+import {TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming} from "@/lib/editor/trendSettings";
 import {buildTrendGeometry, formatTrendTime, formatTrendValue} from "@/lib/editor/trendGeometry";
 import {ARCHIVE_DEPTH_MS, fetchArchiveValues, type TrendPoint} from "@/lib/runtime/archive";
 
@@ -64,7 +64,8 @@ function TrendModalContent({elementKey}: Props) {
   // null — следуем за текущим временем; число — конец просматриваемого периода.
   const [endTs, setEndTs] = useState<number | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  const [scale, setScale] = useState<Record<string, {min?: number; max?: number}>>({});
+  // Общая шкала Y, заданная оператором поверх настройки тренда — только в этом окне.
+  const [scale, setScale] = useState<{min?: number; max?: number}>({});
 
   const [history, setHistory] = useState<{series: Record<string, TrendPoint[]>; to: number} | null>(null);
   const [aggregated, setAggregated] = useState(false);
@@ -154,19 +155,32 @@ function TrendModalContent({elementKey}: Props) {
     return out;
   }, [tags, history, live, follow]);
 
+  const settingsScale = trendScale(element?.trend);
   const visiblePens = useMemo(() => pens.filter(p => !hidden.has(p.name)), [pens, hidden]);
   const plot = {x: MARGIN.l, y: MARGIN.t, w: Math.max(1, size.w - MARGIN.l - MARGIN.r), h: Math.max(1, size.h - MARGIN.t - MARGIN.b)};
   const geometry = useMemo(
     () => buildTrendGeometry({
-      pens: visiblePens, seriesByTag, from, to, stepSec: timing.step, plot, scaleOverride: scale,
+      pens: visiblePens, seriesByTag, from, to, stepSec: timing.step, plot,
+      // Граница оператора важнее настройки тренда; нет ни той, ни другой — авто по перьям.
+      scale: {min: scale.min ?? settingsScale.min, max: scale.max ?? settingsScale.max},
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visiblePens, seriesByTag, from, to, timing.step, plot.w, plot.h, scale],
+    [visiblePens, seriesByTag, from, to, timing.step, plot.w, plot.h, scale, settingsScale.min, settingsScale.max],
   );
 
   // Курсор: время и значения всех перьев под ним.
   const [hoverX, setHoverX] = useState<number | null>(null);
   const hoverTs = hoverX === null ? null : from + ((hoverX - plot.x) / plot.w) * (to - from);
+
+  const setBound = (key: "min" | "max", raw: string) => {
+    const n = raw.trim() === "" ? undefined : Number(raw);
+    if (n !== undefined && !Number.isFinite(n)) return;
+    setScale(prev => {
+      const next = {...prev};
+      if (n === undefined) delete next[key]; else next[key] = n;
+      return next;
+    });
+  };
 
   const shift = (dir: -1 | 1) => {
     const base = endTs ?? clockNow();
@@ -281,7 +295,7 @@ function TrendModalContent({elementKey}: Props) {
             <g key={`y-${i}`}>
               <line x1={plot.x} x2={plot.x + plot.w} y1={t.y} y2={t.y} stroke="#1e3a5f" />
               <text x={plot.x - 6} y={t.y + 3} textAnchor="end" fontSize={11}
-                fill={visiblePens.length > 1 && geometry.yScaleColor ? geometry.yScaleColor : "#94a3b8"}>
+                fill="#94a3b8">
                 {t.label}
               </text>
             </g>
@@ -315,7 +329,9 @@ function TrendModalContent({elementKey}: Props) {
           >
             <div className="mb-1 text-gray-400">{formatDateTime(hoverTs)}</div>
             {visiblePens.map(pen => {
-              const v = valueAt(seriesByTag[pen.tag] ?? [], hoverTs);
+              // Как на графике и в легенде — с коэффициентом пера.
+              const raw = valueAt(seriesByTag[pen.tag] ?? [], hoverTs);
+              const v = raw == null ? raw : raw * pen.k;
               return (
                 <div key={pen.name} className="flex items-center gap-1.5">
                   <span className="inline-block h-2 w-2 rounded-sm" style={{background: pen.color}} />
@@ -333,16 +349,33 @@ function TrendModalContent({elementKey}: Props) {
         )}
       </div>
 
-      {/* Перья: видимость и масштаб — только в этом окне */}
+      {/* Общая шкала Y и перья (видимость, последнее значение) — только в этом окне */}
+      <div className="shrink-0 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+        <span className="font-medium text-gray-700 dark:text-gray-300">Шкала Y</span>
+        {(["min", "max"] as const).map(key => (
+          <label key={key} className="flex items-center gap-1">
+            {key === "min" ? "мин" : "макс"}
+            <input
+              key={`${key}-${scale[key] === undefined ? "auto" : "set"}`}
+              type="number"
+              defaultValue={scale[key] ?? ""}
+              placeholder={formatTrendValue(geometry.scale[key])}
+              onBlur={e => setBound(key, e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") setBound(key, e.currentTarget.value); }}
+              className="w-24 rounded-md border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-1.5 py-0.5 text-gray-900 dark:text-gray-100"
+            />
+          </label>
+        ))}
+        {(scale.min !== undefined || scale.max !== undefined) && (
+          <button type="button" className="text-blue-600 dark:text-blue-400 hover:underline" onClick={() => setScale({})}>
+            как в настройке
+          </button>
+        )}
+      </div>
+
       <div className="shrink-0 grid gap-1.5">
-        {pens.map((pen, i) => {
+        {pens.map(pen => {
           const g = geometry.pens.find(x => x.name === pen.name);
-          const override = scale[pen.name] ?? {};
-          const setBound = (key: "min" | "max", raw: string) => {
-            const n = raw.trim() === "" ? undefined : Number(raw);
-            if (n !== undefined && !Number.isFinite(n)) return;
-            setScale(prev => ({...prev, [pen.name]: {...prev[pen.name], [key]: n}}));
-          };
           return (
             <div key={pen.name} className="flex flex-wrap items-center gap-3 text-sm">
               <label className="flex min-w-48 items-center gap-2">
@@ -362,32 +395,10 @@ function TrendModalContent({elementKey}: Props) {
               <span className="w-24 text-right font-mono text-xs text-gray-600 dark:text-gray-300">
                 {g?.last === null || g?.last === undefined ? "—" : formatTrendValue(g.last)}
               </span>
-              {(["min", "max"] as const).map(key => (
-                <label key={key} className="flex items-center gap-1 text-xs text-gray-500">
-                  {key === "min" ? "мин" : "макс"}
-                  <input
-                    key={`${i}-${key}-${override[key] === undefined ? "auto" : "set"}`}
-                    type="number"
-                    defaultValue={override[key] ?? ""}
-                    placeholder={pen[key] !== undefined ? String(pen[key]) : (g ? formatTrendValue(g.scale[key]) : "авто")}
-                    onBlur={e => setBound(key, e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") setBound(key, e.currentTarget.value); }}
-                    className="w-20 rounded-md border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-1.5 py-0.5"
-                  />
-                </label>
-              ))}
-              {(override.min !== undefined || override.max !== undefined) && (
-                <button
-                  type="button"
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  onClick={() => setScale(prev => {
-                    const next = {...prev};
-                    delete next[pen.name];
-                    return next;
-                  })}
-                >
-                  сбросить
-                </button>
+              {pen.k !== 1 && (
+                <span className="text-xs text-gray-500" title="Коэффициент пера: на графике значение тега × k">
+                  ×{pen.k}
+                </span>
               )}
             </div>
           );

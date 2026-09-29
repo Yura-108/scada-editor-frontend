@@ -5,7 +5,7 @@ import { Group, Rect, Line, Text, Circle } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { trendPens, trendTiming } from "@/lib/editor/trendSettings";
+import { trendPens, trendScale, trendTiming } from "@/lib/editor/trendSettings";
 import { buildTrendGeometry, formatTrendValue } from "@/lib/editor/trendGeometry";
 import { useTrendStore } from "@/store/useTrendStore";
 import type { TrendPoint } from "@/lib/runtime/archive";
@@ -41,6 +41,9 @@ export function TrendShapeElement({ el, isSelected, onElementClick, updateElemen
   // Перья и окно — из базы элемента (trend и properties от состояния не зависят).
   const pens = useMemo(() => trendPens(el), [el]);
   const { window: windowSec, step } = trendTiming(el.trend);
+  // Общая шкала Y тренда (контракт 2026-09-29-trend-common-scale-contract.md). Примитивами —
+  // для зависимостей мемо ниже: объект создавался бы заново на каждый рендер.
+  const { min: scaleMin, max: scaleMax } = trendScale(el.trend);
 
   const live = useTrendStore(s => pens.some(p => s.watched.has(p.tag)));
   // Курсор воспроизведения архива: пока он задан, окно стоит на нём, а не на часах.
@@ -74,10 +77,13 @@ export function TrendShapeElement({ el, isSelected, onElementClick, updateElemen
   const to = live ? (clockTs ?? now) : Date.now();
   const from = to - windowSec * 1000;
   const geometry = useMemo(
-    () => buildTrendGeometry({ pens, seriesByTag: live ? series : EMPTY_SERIES, from, to, stepSec: step, plot }),
+    () => buildTrendGeometry({
+      pens, seriesByTag: live ? series : EMPTY_SERIES, from, to, stepSec: step, plot,
+      scale: { min: scaleMin, max: scaleMax },
+    }),
     // plot пересчитывается из примитивов ниже — объект в deps менялся бы каждый рендер.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pens, series, live, from, to, step, plot.x, plot.y, plot.w, plot.h],
+    [pens, series, live, from, to, step, scaleMin, scaleMax, plot.x, plot.y, plot.w, plot.h],
   );
 
   // Легенда: цветной маркер, подпись и последнее значение пера (в мониторе).
@@ -126,7 +132,7 @@ export function TrendShapeElement({ el, isSelected, onElementClick, updateElemen
         <Line key={`gv-${i}`} points={[t.x, plot.y, t.x, plot.y + plot.h]} stroke={gridCol} strokeWidth={1} listening={false} />
       ))}
 
-      {/* Подписи осей: Y — по шкале первого пера с данными, её цветом */}
+      {/* Подписи осей: Y — по общей шкале тренда, одна ось на все перья */}
       {geometry.yTicks.map((t, i) => (
         <Text
           key={`yl-${i}`}
@@ -134,7 +140,7 @@ export function TrendShapeElement({ el, isSelected, onElementClick, updateElemen
           width={marginL - 4}
           text={t.label}
           fontSize={9}
-          fill={pens.length > 1 && geometry.yScaleColor ? geometry.yScaleColor : textCol}
+          fill={textCol}
           align="right"
           listening={false}
         />

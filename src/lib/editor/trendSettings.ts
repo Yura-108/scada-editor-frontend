@@ -42,15 +42,18 @@ const num = (v: unknown): number | undefined => {
 
 const clamp = (v: number, {min, max}: {min: number; max: number}) => Math.min(max, Math.max(min, v));
 
+/**
+ * Перо: цвет, толщина, коэффициент. `min`/`max` пера (до 29.09.2026 у каждого пера была своя
+ * шкала) больше не читаются — и потому пропадут из сцены при первом же сохранении.
+ */
 const readPen = (raw: unknown): TrendPenStyle | undefined => {
   if (typeof raw !== "object" || raw === null) return undefined;
   const src = raw as Record<string, unknown>;
   const pen: TrendPenStyle = {};
   if (typeof src.color === "string" && src.color) pen.color = src.color;
-  const min = num(src.min);
-  const max = num(src.max);
-  if (min !== undefined) pen.min = min;
-  if (max !== undefined) pen.max = max;
+  // 0 обнулил бы перо, не число — ничего бы не значило: в обоих случаях коэффициента нет (= 1).
+  const k = num(src.k);
+  if (k !== undefined && k !== 0) pen.k = k;
   const width = num(src.width);
   if (width !== undefined) pen.width = clamp(width, TREND_LIMITS.width);
   return Object.keys(pen).length ? pen : undefined;
@@ -69,6 +72,11 @@ export function readTrendSettings(raw: unknown): TrendSettings | undefined {
   if (window !== undefined) result.window = Math.round(clamp(window, TREND_LIMITS.window));
   const step = num(src.step);
   if (step !== undefined) result.step = Math.round(clamp(step, TREND_LIMITS.step));
+  // Общая шкала: каждое по отдельности — задан только верх, низ считается по данным.
+  const min = num(src.min);
+  const max = num(src.max);
+  if (min !== undefined) result.min = min;
+  if (max !== undefined) result.max = max;
   if (typeof src.pens === "object" && src.pens !== null) {
     const pens: Record<string, TrendPenStyle> = {};
     for (const [name, value] of Object.entries(src.pens as Record<string, unknown>)) {
@@ -78,6 +86,15 @@ export function readTrendSettings(raw: unknown): TrendSettings | undefined {
     if (Object.keys(pens).length) result.pens = pens;
   }
   return Object.keys(result).length ? result : undefined;
+}
+
+/** Общая шкала Y тренда; отсутствующая граница — авто по данным. */
+export function trendScale(settings: TrendSettings | undefined): {min?: number; max?: number} {
+  const s = readTrendSettings(settings);
+  return {
+    ...(s?.min !== undefined ? {min: s.min} : {}),
+    ...(s?.max !== undefined ? {max: s.max} : {}),
+  };
 }
 
 /** Окно и шаг тренда в секундах, с дефолтами. */
@@ -95,8 +112,8 @@ export interface TrendPen {
   tag: string;
   color: string;
   width: number;
-  min?: number;
-  max?: number;
+  /** Коэффициент: значение пера на графике — `value × k`. */
+  k: number;
 }
 
 export const isTrendPenProperty = (p: PropertyCreateDto): boolean =>
@@ -116,8 +133,7 @@ export function trendPens(el: Pick<DiagramElement, "properties"> & {trend?: Tren
         tag: p.tag_id as string,
         color: style.color ?? TREND_PEN_COLORS[i % TREND_PEN_COLORS.length],
         width: style.width ?? TREND_DEFAULTS.penWidth,
-        ...(style.min !== undefined ? {min: style.min} : {}),
-        ...(style.max !== undefined ? {max: style.max} : {}),
+        k: style.k ?? 1,
       };
     });
 }

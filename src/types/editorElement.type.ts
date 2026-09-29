@@ -356,20 +356,27 @@ export type PropertySchema =
   defaultValue?: string;
 }
 
-/** Оформление одного пера тренда. Нет поля — значение по умолчанию (масштаб — по данным). */
+/** Оформление одного пера тренда. Нет поля — значение по умолчанию. */
 export interface TrendPenStyle {
   color?: string;
-  min?: number;
-  max?: number;
   width?: number;
+  /**
+   * Коэффициент пера: на график, ось, подсказку и легенду идёт `value × k` — так разные
+   * единицы приводятся к общей шкале (масса ×0,001 → т). Нет — 1. Своей шкалы у пера больше нет
+   * (контракт 2026-09-29-trend-common-scale-contract.md).
+   */
+  k?: number;
 }
 
-/** Настройка тренда (контракт 2026-09-28-tag-archive-contract.md, раздел 1). */
+/** Настройка тренда (контракты 2026-09-28-tag-archive, раздел 1, и 2026-09-29-trend-common-scale). */
 export interface TrendSettings {
   /** Живое окно, секунды. */
   window?: number;
   /** Шаг сетки и подписей времени по X, секунды. На данные не влияет. */
   step?: number;
+  /** Общая шкала Y всего тренда. Не задано — авто по данным всех перьев после `k`. */
+  min?: number;
+  max?: number;
   /** Ключ — `name` свойства-пера. */
   pens?: Record<string, TrendPenStyle>;
 }

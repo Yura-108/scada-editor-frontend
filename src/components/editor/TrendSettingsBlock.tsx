@@ -95,6 +95,40 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
         Шаг — только сетка и подписи времени ({step} с).
       </p>
 
+      {/* Одна ось на весь тренд (контракт 2026-09-29-trend-common-scale-contract.md): разные
+          единицы приводятся к ней коэффициентом пера, а не своей шкалой у каждого. */}
+      <div className="grid grid-cols-2 gap-3">
+        {(["min", "max"] as const).map(key => (
+          <div key={key} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor={`trend-scale-${key}`} className={labelClass}>
+                Шкала Y: {key === "min" ? "мин" : "макс"}
+              </label>
+              {settings?.[key] !== undefined && (
+                <button
+                  type="button"
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                  onClick={() => commit({[key]: undefined})}
+                >
+                  авто
+                </button>
+              )}
+            </div>
+            <NumberInput
+              id={`trend-scale-${key}`}
+              className={inputClassName}
+              value={settings?.[key]}
+              placeholder="авто"
+              onCommit={v => commit({[key]: v})}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        Пусто — по данным всех перьев. Единицу пишите в «Имя» пера («Масса, т»), а к шкале её
+        приводит коэффициент: на графике значение тега × коэффициент.
+      </p>
+
       <div className="space-y-2">
         <div className={labelClass}>Перья</div>
         {pens.length === 0 && (
@@ -148,32 +182,30 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                   </>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {(["min", "max"] as const).map(key => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor={`trend-${pen.name}-${key}`} className={labelClass}>
-                        {key === "min" ? "Мин." : "Макс."}
-                      </label>
-                      {style?.[key] !== undefined && (
-                        <button
-                          type="button"
-                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                          onClick={() => commitPen(pen.name, {}, key)}
-                        >
-                          авто
-                        </button>
-                      )}
-                    </div>
-                    <NumberInput
-                      id={`trend-${pen.name}-${key}`}
-                      className={inputClassName}
-                      value={style?.[key]}
-                      placeholder="авто"
-                      onCommit={v => commitPen(pen.name, {[key]: v})}
-                    />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor={`trend-${pen.name}-k`} className={labelClass}>Коэффициент</label>
+                    {style?.k !== undefined && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                        onClick={() => commitPen(pen.name, {}, "k")}
+                      >
+                        сбросить
+                      </button>
+                    )}
                   </div>
-                ))}
+                  <NumberInput
+                    id={`trend-${pen.name}-k`}
+                    className={inputClassName}
+                    value={style?.k}
+                    placeholder="1"
+                    step={0.001}
+                    // 0 обнулил бы перо — readTrendSettings такой коэффициент не примет.
+                    onCommit={v => commitPen(pen.name, {k: v})}
+                  />
+                </div>
                 <div className="space-y-1">
                   <label htmlFor={`trend-${pen.name}-width`} className={labelClass}>Толщина</label>
                   <NumberInput
