@@ -2,13 +2,14 @@
 
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
-import {Link2, Power, PowerOff, X} from "lucide-react";
+import {Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect} from "react";
 import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
+import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
 
 async function selectProjectAndOpenScenes(
@@ -38,6 +39,7 @@ export function ProjectContent() {
   const createProject = useEditorStore(state => state.createProject);
   const deleteProject = useEditorStore(state => state.deleteProject);
   const runtimeFlags = useEditorStore(state => state.projectRuntimeFlags);
+  const prodVersions = useEditorStore(state => state.projectProdVersions);
   const loadProjectRuntimeFlag = useEditorStore(state => state.loadProjectRuntimeFlag);
   const setProjectInOperation = useEditorStore(state => state.setProjectInOperation);
   const [selectedValue, setSelectedValue] = useState<string>("");
@@ -155,6 +157,24 @@ export function ProjectContent() {
                 className="min-w-0 flex-1 truncate text-left cursor-pointer"
               >
                 {proj.name}
+              </button>
+              {/* Какой выпуск исполняется (или будет при вводе в эксплуатацию). */}
+              {prodVersions[proj.id] != null && (
+                <span
+                  className="ml-2 shrink-0 rounded-full bg-neutral-500/10 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+                  title="prod-выпуск: его показывает монитор и исполняет runtime"
+                >
+                  prod №{prodVersions[proj.id]}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); openReleasesModal(proj.id, proj.name); }}
+                className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                title="Выпуски проекта: выпустить черновик, сделать prod"
+                aria-label={`Выпуски проекта «${proj.name}»`}
+              >
+                <Rocket size={14} />
               </button>
               <button
                 type="button"

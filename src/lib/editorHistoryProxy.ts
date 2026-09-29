@@ -10,7 +10,10 @@ import {NextResponse} from "next/server";
 
 export const EDITOR_BACKEND_URL = process.env.BACKEND_URL_EDITOR || "http://localhost:8080";
 
-const DOC_TYPES = ["scenes", "templates", "automation", "data"] as const;
+// "projects" — выпуски проекта (docs/contract/2026-09-29-project-release-contract.md): список и
+// чтение идут тем же общим контроллером версий. Восстановление проекта бэкенд не поддерживает
+// (`restore/{n}` → 400), и интерфейс его не вызывает.
+const DOC_TYPES = ["scenes", "templates", "automation", "data", "projects"] as const;
 export type VersionDocType = (typeof DOC_TYPES)[number];
 
 export const parseDocType = (raw: unknown): VersionDocType | null =>

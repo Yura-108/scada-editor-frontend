@@ -61,6 +61,13 @@ export interface RuntimeConnectionHandlers {
   onStatus?: (status: RuntimeStatus, detail?: string) => void;
   /** Статусы задач automation — приходят только после subscribeTasks(). */
   onTasks?: (tasks: AutomationTaskStatus[]) => void;
+  /**
+   * Номер prod-выпуска, который крутит проект (контракт 2026-09-29-project-release-contract.md).
+   * `changed: false` — из ответа на создание сессии (при каждом (ре)коннекте); `true` — кадр
+   * `TREE_CHANGED`: проект переключили на другой выпуск, схемы надо перечитать. Следом за ним
+   * сервер шлёт `SNAPSHOT`, и он идёт обычным `onSnapshot`.
+   */
+  onRelease?: (versionNo: number, changed: boolean) => void;
 }
 
 export interface RuntimeConnection {
@@ -97,7 +104,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,
-  {onUpdate, onStatus, onTasks, onSnapshot}: RuntimeConnectionHandlers,
+  {onUpdate, onStatus, onTasks, onSnapshot, onRelease}: RuntimeConnectionHandlers,
 ): RuntimeConnection {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -182,6 +189,7 @@ export function openRuntimeConnection(
       wsPath = data.wsPath;
       wsToken = data.token;
       currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
+      if (typeof data?.versionNo === "number" && !closed) onRelease?.(data.versionNo, false);
 
       log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${RUNTIME_WS_ORIGIN}${wsPath}`);
     } catch (err) {
@@ -222,6 +230,8 @@ export function openRuntimeConnection(
         procedures?: ProcedureEvent[] | ProcedureStatus[] | null;
         // Статусы задач automation — только после SUBSCRIBE_TASKS.
         tasks?: AutomationTaskStatus[] | null;
+        // TREE_CHANGED — номер нового prod-выпуска.
+        versionNo?: number;
       };
       try {
         msg = JSON.parse(String(e.data));
@@ -238,6 +248,11 @@ export function openRuntimeConnection(
           + ` активных процедур: ${procedures.length}`,
         );
         onSnapshot?.(tags, properties, procedures);
+        return;
+      }
+      if (msg?.type === "TREE_CHANGED") {
+        log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}`);
+        if (typeof msg.versionNo === "number") onRelease?.(msg.versionNo, true);
         return;
       }
       if (msg?.type !== "UPDATE") {

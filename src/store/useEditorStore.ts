@@ -33,7 +33,13 @@ import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import transformElements, {normalizeProperty} from "@/lib/transformElements";
-import {dropScene, fetchSceneWithVersion, getCachedScene, prefetchScenes, putScene} from "@/lib/editor/sceneCache";
+import {
+  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, prefetchScenes, putScene,
+  releaseVersionOf, SceneLoadError, type SceneSource,
+} from "@/lib/editor/sceneCache";
+import {
+  createRelease, NoProdReleaseError, parseRuntimeInfo, putInOperation, setProdRelease, type CreatedRelease,
+} from "@/lib/editor/releasesApi";
 import {readPinnedTabs} from "@/lib/editor/pinnedScenes";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
@@ -83,10 +89,35 @@ type EditorState = {
    * означает «ещё не спрашивали», а не «выключен».
    */
   projectRuntimeFlags: Record<number, boolean>;
+  /** prod-выпуск проекта (`projectId` → номер; null — не назначен). Из того же `…/runtime`. */
+  projectProdVersions: Record<number, number | null>;
+  /**
+   * Откуда берутся схемы: `draft` — черновик (редактор), `release` — prod-выпуск (монитор).
+   * Выставляет страница, а не действие: монитор открывает схемы ещё и из скриптов
+   * (`openSceneFromScript`) и вкладок, и любой обходной путь без флага открыл бы черновик.
+   * См. docs/contract/2026-09-29-project-release-contract.md.
+   */
+  sceneSource: SceneSource;
+  setSceneSource: (source: SceneSource) => void;
+  /** Номер выпуска, который сейчас рисует монитор (`X-Release-Version`, сессия, `TREE_CHANGED`). */
+  releaseVersionNo: number | null;
+  setReleaseVersionNo: (versionNo: number | null) => void;
+  /** Почему монитор не может показать выпуск (проект не в эксплуатации); null — всё в порядке. */
+  releaseError: string | null;
+  /** prod сменился (кадр `TREE_CHANGED`): перечитать список и текущую схему выпуска. */
+  reloadRelease: (versionNo: number) => Promise<void>;
   loadSceneList: (projectId: number) => Promise<{id: number; name: string}[] | void>;
   loadProjectList: () => Promise<EditorProject[] | void>;
   loadProjectRuntimeFlag: (projectId: number) => Promise<void>;
   setProjectInOperation: (projectId: number, inOperation: boolean) => Promise<void>;
+  /**
+   * «Выпустить»: снимок СОХРАНЁННОГО черновика проекта. Несохранённую правку открытой схемы
+   * сначала предлагает сохранить — иначе в выпуск ушло бы не то, что видно на холсте.
+   * null — отказ или ошибка (тост уже показан).
+   */
+  releaseProject: (projectId: number, comment: string) => Promise<CreatedRelease | null>;
+  /** «Сделать prod»: работающий проект переключится сам, мониторы получат TREE_CHANGED. */
+  makeProdRelease: (projectId: number, versionNo: number) => Promise<boolean>;
   /**
    * Автопривязка проекта к базе каналов. Возвращает отчёт, а не `void` как соседи:
    * его показывает диалог. Ошибку действие рисует тостом само и отдаёт `null`.
@@ -1037,6 +1068,28 @@ let stackedPastes = 0;
 let savedElementsSnapshot: DiagramElement[] | null = null;
 
 /**
+ * Документ редактора, отложенный на время работы монитора.
+ *
+ * Редактор и монитор — один стор, а монитор рисует prod-выпуск, не черновик. Без стеша вход
+ * в монитор затёр бы несохранённые правки инженера, а возврат показал бы в редакторе выпуск
+ * как черновик — и первое же сохранение записало бы его поверх черновика. При возврате
+ * документ кладётся на место целиком, если проект тот же; сменили проект в мониторе — стеш
+ * отбрасывается (смена проекта и в редакторе сбрасывает документ).
+ */
+let draftStash: {
+  projectId: number | null;
+  scene: SceneType | null;
+  sceneList: {id: number; name: string}[];
+  elements: DiagramElement[];
+  selectedIds: string[];
+  activeGroupKey: string | null;
+  currentComponentStateByElementKey: Record<string, string>;
+  isDirty: boolean;
+  sceneVersion: number | null;
+  savedSnapshot: DiagramElement[] | null;
+} | null = null;
+
+/**
  * Живое состояние редактора, отложенное на время просмотра старой версии.
  *
  * Просмотр подменяет `elements` содержимым версии, поэтому несохранённые правки надо
@@ -1178,15 +1231,20 @@ const revalidateCachedScene = async (
  * открывают прямо сейчас. Закреплённые схемы (вкладки) — первыми в очереди, на них
  * переходят чаще всего. Сменили проект — очередь старого останавливается.
  */
-const scheduleScenePrefetch = (projectId: number, list: {id: number}[]) => {
+const scheduleScenePrefetch = (projectId: number, list: {id: number}[], source: SceneSource) => {
   if (typeof window === "undefined") return;
 
+  // Сменили проект или источник (ушли из монитора в редактор) — очередь больше не нужна.
+  const relevant = () => {
+    const s = useEditorStore.getState();
+    return s.currentProject?.id === projectId && s.sceneSource === source;
+  };
   const run = () => {
-    if (useEditorStore.getState().currentProject?.id !== projectId) return;
+    if (!relevant()) return;
     const pinned = readPinnedTabs(projectId).pins.map(p => p.id);
     const ids = [...new Set([...pinned, ...list.map(s => s.id)])]
       .filter(id => list.some(s => s.id === id));
-    void prefetchScenes(projectId, ids, () => useEditorStore.getState().currentProject?.id === projectId);
+    void prefetchScenes(projectId, ids, relevant, source);
   };
 
   if (typeof window.requestIdleCallback === "function") {
@@ -1319,7 +1377,9 @@ const discardVersionPreview = () => {
  * предупреждение — молча потеряв работу, которая никуда не делась.
  */
 export const hasUnsavedWork = (): boolean => {
-  const {isDirty, versionPreview} = useEditorStore.getState();
+  const {isDirty, versionPreview, sceneSource} = useEditorStore.getState();
+  // В мониторе на холсте выпуск; правки инженера лежат в стеше черновика.
+  if (sceneSource === "release") return draftStash?.isDirty ?? false;
   return versionPreview ? (versionPreviewStash?.isDirty ?? false) : isDirty;
 };
 
@@ -1471,6 +1531,98 @@ export const useEditorStore = create<EditorState>()(temporal(
       currentProject: null,
       projectList: [],
       projectRuntimeFlags: {},
+      projectProdVersions: {},
+      sceneSource: "draft",
+      releaseVersionNo: null,
+      releaseError: null,
+      setReleaseVersionNo: (versionNo) => {
+        if (get().releaseVersionNo !== versionNo) set({releaseVersionNo: versionNo});
+      },
+      setSceneSource: (source) => {
+        const state = get();
+        if (state.sceneSource === source) return;
+
+        if (source === "release") {
+          // Просмотр версии — тоже подмена холста; сначала вернуть живой документ, иначе в
+          // стеш легла бы версия вместо правок.
+          if (state.versionPreview) state.exitVersionPreview();
+          const s = get();
+          draftStash = {
+            projectId: s.currentProject?.id ?? null,
+            scene: s.scene,
+            sceneList: s.sceneList,
+            elements: s.elements,
+            selectedIds: s.selectedIds,
+            activeGroupKey: s.activeGroupKey,
+            currentComponentStateByElementKey: s.currentComponentStateByElementKey,
+            isDirty: s.isDirty,
+            sceneVersion: s.sceneVersion,
+            savedSnapshot: savedElementsSnapshot,
+          };
+          set({sceneSource: "release", releaseVersionNo: null, releaseError: null, selectedIds: []});
+          // Показанная схема — черновик; в мониторе её место занимает та же схема из выпуска.
+          const projectId = s.currentProject?.id;
+          const sceneId = s.scene?.id;
+          set({scene: null, elements: [], sceneList: []});
+          if (projectId != null) {
+            void get().loadSceneList(projectId).then(list => {
+              if (sceneId == null || get().sceneSource !== "release") return;
+              if (list?.some(x => x.id === Number(sceneId))) void get().loadScene(Number(sceneId));
+            });
+          }
+          return;
+        }
+
+        // Возврат в редактор.
+        const stash = draftStash;
+        draftStash = null;
+        const projectId = state.currentProject?.id ?? null;
+        set({sceneSource: "draft", releaseVersionNo: null, releaseError: null});
+        if (stash && stash.projectId === projectId) {
+          set({
+            scene: stash.scene,
+            sceneList: stash.sceneList,
+            elements: stash.elements,
+            selectedIds: stash.selectedIds,
+            activeGroupKey: stash.activeGroupKey,
+            selectedTableCell: null,
+            currentComponentStateByElementKey: stash.currentComponentStateByElementKey,
+            isDirty: stash.isDirty,
+            sceneVersion: stash.sceneVersion,
+          });
+          // Снимок «что на сервере» — тоже прежний, иначе isDirty пересчитался бы от выпуска.
+          savedElementsSnapshot = stash.savedSnapshot;
+          return;
+        }
+        // Проект сменили в мониторе — черновик прежнего отброшен. Та схема, что открыта
+        // сейчас, перечитывается из черновика: выпуск в редакторе показывать нельзя.
+        const sceneId = state.scene?.id;
+        set({scene: null, elements: [], sceneList: []});
+        if (projectId != null) {
+          void get().loadSceneList(projectId).then(list => {
+            if (sceneId == null || get().sceneSource !== "draft") return;
+            if (list?.some(x => x.id === Number(sceneId))) void get().loadScene(Number(sceneId));
+          });
+        }
+      },
+      reloadRelease: async (versionNo) => {
+        const {currentProject, sceneSource} = get();
+        if (sceneSource !== "release" || !currentProject) return;
+        const projectId = currentProject.id;
+        dropReleaseScenes(projectId);
+        set({releaseVersionNo: versionNo});
+        const list = await get().loadSceneList(projectId);
+        // Пока грузили список, ушли из монитора или сменили проект — дальше не наше.
+        const s = get();
+        if (s.sceneSource !== "release" || s.currentProject?.id !== projectId || !list) return;
+        const currentId = s.scene?.id != null ? Number(s.scene.id) : null;
+        const target = currentId != null && list.some(x => x.id === currentId) ? currentId : list[0]?.id;
+        if (target != null) {
+          await get().loadScene(target);
+        } else {
+          set({scene: null, elements: []});
+        }
+      },
       elements: [],
       selectedIds: [],
       activeGroupKey: null,
@@ -3501,17 +3653,37 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
 
       loadSceneList: async (projectId: number) => {
+        const source = get().sceneSource;
         try {
-          const res = await fetch(`/api/editor/scene?project_id=${projectId}`);
+          // Монитор — схемы prod-выпуска; редактор — черновика.
+          const res = await fetch(source === "release"
+            ? `/api/runtime/projects/${projectId}/scenes`
+            : `/api/editor/scene?project_id=${projectId}`);
 
+          // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
+          if (source === "release" && res.status === 409) {
+            if (get().sceneSource !== "release") return;
+            const body = await res.json().catch(() => null) as {message?: string} | null;
+            set({
+              sceneList: [], scene: null, elements: [], releaseVersionNo: null,
+              releaseError: body?.message || "Проект не в эксплуатации — выпуск не исполняется",
+            });
+            return [];
+          }
           if (!res.ok) {
             throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
           }
 
           const json = await res.json();
+          // Ответ устарел: пока шёл запрос, ушли из монитора (или вернулись в него).
+          if (get().sceneSource !== source) return;
           const list = Array.isArray(json) ? json : [];
-          set({sceneList: list});
-          scheduleScenePrefetch(projectId, list);
+          set({sceneList: list, ...(source === "release" ? {releaseError: null} : {})});
+          if (source === "release") {
+            const release = releaseVersionOf(res);
+            if (release != null) get().setReleaseVersionNo(release);
+          }
+          scheduleScenePrefetch(projectId, list, source);
           return list;
         } catch (err: unknown) {
           console.error(err);
@@ -3544,10 +3716,11 @@ export const useEditorStore = create<EditorState>()(temporal(
         try {
           const res = await fetch(`/api/editor/projects/${projectId}/runtime`);
           if (!res.ok) return;
-          const data = await res.json().catch(() => null);
-          if (typeof data?.inOperation !== "boolean") return;
+          const info = parseRuntimeInfo(await res.json().catch(() => null));
+          if (!info) return;
           set(state => ({
-            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: data.inOperation},
+            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
+            projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
           }));
         } catch (err: unknown) {
           console.error(err);
@@ -3558,24 +3731,78 @@ export const useEditorStore = create<EditorState>()(temporal(
        * разрушительный — гасит открытую схему, элементы, список сцен и историю undo.
        */
       setProjectInOperation: async (projectId: number, inOperation: boolean) => {
+        const adopt = (info: {inOperation: boolean; prodVersionNo: number | null}) => set(state => ({
+          projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
+          projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
+        }));
         try {
-          const res = await fetch(`/api/editor/projects/${projectId}/runtime`, {
-            method: "PUT",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({inOperation}),
-          });
-          if (!res.ok) {
-            throw new Error(await res.text().catch(() => "Ошибка переключения эксплуатации"));
+          let info;
+          try {
+            info = await putInOperation(projectId, inOperation);
+          } catch (err) {
+            // Runtime крутит только prod-выпуск: без него вводить нечего. Предлагаем выпустить
+            // текущий черновик, сделать его prod и повторить — ровно то, чего хотел пользователь.
+            if (!(err instanceof NoProdReleaseError)) throw err;
+            const ok = await confirmModal({
+              title: "У проекта нет prod-выпуска",
+              description: "Монитор и runtime работают только по выпуску. Выпустить текущий "
+                + "сохранённый черновик, сделать его prod и ввести проект в эксплуатацию?"
+                + (hasUnsavedWork() ? " Несохранённые правки открытой схемы в выпуск не попадут." : ""),
+              confirmLabel: "Выпустить и ввести",
+            });
+            if (!ok) return;
+            const release = await createRelease(projectId, "Ввод в эксплуатацию");
+            await setProdRelease(projectId, release.version_no);
+            info = await putInOperation(projectId, inOperation);
           }
-          const data = await res.json().catch(() => null);
-          const value = typeof data?.inOperation === "boolean" ? data.inOperation : inOperation;
-          set(state => ({
-            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: value},
-          }));
-          toast.success(value ? "Проект введён в эксплуатацию" : "Проект выведен из эксплуатации");
+          adopt(info);
+          toast.success(info.inOperation ? "Проект введён в эксплуатацию" : "Проект выведен из эксплуатации");
         } catch (err: unknown) {
           console.error(err);
           toast.error(getErrorMessage(err, "Ошибка переключения эксплуатации"));
+        }
+      },
+      releaseProject: async (projectId, comment) => {
+        const {scene, currentProject} = get();
+        if (scene && currentProject?.id === projectId && hasUnsavedWork()) {
+          const ok = await confirmModal({
+            title: "Сохранить схему перед выпуском?",
+            description: "Выпуск снимает то, что сохранено на сервере. Несохранённые правки "
+              + "открытой схемы в него не попадут.",
+            confirmLabel: "Сохранить и выпустить",
+          });
+          if (!ok) return null;
+          if (!await get().exportScene({kind: "MANUAL"})) return null;
+        }
+        try {
+          const release = await createRelease(projectId, comment);
+          if (release.unchanged) {
+            toast.info(`Изменений с прошлого выпуска нет — остаётся выпуск №${release.version_no}`);
+          } else {
+            toast.success(`Выпуск №${release.version_no} создан`);
+          }
+          return release;
+        } catch (err) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Не удалось выпустить проект"));
+          return null;
+        }
+      },
+      makeProdRelease: async (projectId, versionNo) => {
+        try {
+          const info = await setProdRelease(projectId, versionNo);
+          set(state => ({
+            projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
+            projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
+          }));
+          toast.success(info.inOperation
+            ? `Выпуск №${versionNo} — prod: проект переключён, мониторы перечитают схемы`
+            : `Выпуск №${versionNo} — prod: заработает при вводе в эксплуатацию`);
+          return true;
+        } catch (err) {
+          console.error(err);
+          toast.error(getErrorMessage(err, "Не удалось сделать выпуск prod"));
+          return false;
         }
       },
       /**
@@ -3743,28 +3970,55 @@ export const useEditorStore = create<EditorState>()(temporal(
           // Попадание в кэш — показываем сразу, свежесть проверяем в фоне (см.
           // lib/editor/sceneCache.ts). Перечитывание после сохранения (keepHistory) в
           // кэш не смотрит: ему нужно именно состояние сервера после записи.
-          const cached = loadOpts?.keepHistory ? null : getCachedScene(projectId, id);
+          // Выпуск неизменяем: свежесть не проверяем (смену prod приносит TREE_CHANGED, и
+          // тогда кэш выпуска сбрасывается целиком), номер версии сцены не нужен.
+          const source = get().sceneSource;
+          const isRelease = source === "release";
+          const cached = loadOpts?.keepHistory ? null : getCachedScene(projectId, id, source);
           if (cached && cached.version !== undefined) {
             const applyAt = performance.now();
             if (!applyLoadedScene(cached.scene, cached.version)) return;
             logSceneTiming(id, "кэш", startedAt, applyAt);
-            void revalidateCachedScene(projectId, id, cached.version, documentGeneration);
+            if (isRelease) {
+              if (cached.releaseVersion != null) get().setReleaseVersionNo(cached.releaseVersion);
+            } else {
+              void revalidateCachedScene(projectId, id, cached.version, documentGeneration);
+            }
             return;
           }
 
-          const {scene, version} = await fetchSceneWithVersion(projectId, id, {fresh: loadOpts?.keepHistory});
-          if (seq !== sceneLoadSeq) return;
+          const {scene, version, releaseVersion} = await fetchSceneWithVersion(
+            projectId, id, {fresh: loadOpts?.keepHistory, source},
+          );
+          if (seq !== sceneLoadSeq || get().sceneSource !== source) return;
 
           const applyAt = performance.now();
           if (!applyLoadedScene(scene, version ?? null)) return;
           logSceneTiming(id, "сеть", startedAt, applyAt);
-          // Номер не получили — спросим ещё раз в фоне, как раньше: без него редактор
-          // работает, а based_on_version подставится к моменту первого сохранения.
-          if (version === undefined) void get().refreshSceneVersion();
+          if (isRelease) {
+            if (releaseVersion != null) get().setReleaseVersionNo(releaseVersion);
+            set({releaseError: null});
+          } else if (version === undefined) {
+            // Номер не получили — спросим ещё раз в фоне, как раньше: без него редактор
+            // работает, а based_on_version подставится к моменту первого сохранения.
+            void get().refreshSceneVersion();
+          }
 
         } catch (err: unknown) {
           if (seq !== sceneLoadSeq) return;
           console.error(err);
+          // Монитор: схемы нет в выпуске (например, закреплённая вкладка на схему, которую
+          // ещё не выпустили) — показанную схему не гасим, это не поломка экрана.
+          if (err instanceof SceneLoadError && get().sceneSource === "release") {
+            if (err.status === 404) {
+              toast.error("Этой схемы нет в текущем выпуске проекта");
+              return;
+            }
+            if (err.status === 409) {
+              set({releaseError: "Проект не в эксплуатации — выпуск не исполняется", scene: null, elements: []});
+              return;
+            }
+          }
           toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
           // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
           set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});

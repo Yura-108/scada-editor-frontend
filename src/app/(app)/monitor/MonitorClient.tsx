@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Cpu, History, Pin, PinOff, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Pin, PinOff, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
@@ -84,6 +84,8 @@ export default function MonitorClient() {
   const loadSceneList = useEditorStore(s => s.loadSceneList);
   const loadScene = useEditorStore(s => s.loadScene);
   const runtimeFlags = useEditorStore(s => s.projectRuntimeFlags);
+  const releaseVersionNo = useEditorStore(s => s.releaseVersionNo);
+  const releaseError = useEditorStore(s => s.releaseError);
   const loadProjectRuntimeFlag = useEditorStore(s => s.loadProjectRuntimeFlag);
 
   // Своя память вида: пан оператора не должен сбивать камеру в редакторе.
@@ -92,6 +94,10 @@ export default function MonitorClient() {
   // Монитор не редактирует, но стор общий с редактором: страхуемся от случайных
   // записей в историю undo на время жизни страницы.
   useEffect(() => {
+    // Монитор рисует prod-выпуск, не черновик редактора (контракт
+    // 2026-09-29-project-release-contract.md). Первым делом, до загрузки списка схем ниже:
+    // стор откладывает документ редактора и дальше читает схемы из выпуска.
+    useEditorStore.getState().setSceneSource("release");
     const temporal = useEditorStore.temporal.getState();
     temporal.pause();
     useEditorStore.getState().clearSelection();
@@ -101,6 +107,8 @@ export default function MonitorClient() {
     return () => {
       // Рантайм-карты чистит cleanup движка (clearRuntime).
       useEditorStore.setState({activeGroupKey: null});
+      // Возврат к черновику: стор кладёт на место документ редактора как был.
+      useEditorStore.getState().setSceneSource("draft");
       useEditorStore.temporal.getState().resume();
     };
   }, []);
@@ -290,6 +298,16 @@ export default function MonitorClient() {
           </span>
         )}
 
+        {releaseVersionNo != null && (
+          <span
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-500/10 text-neutral-600 dark:text-neutral-300"
+            title="Монитор показывает prod-выпуск проекта. Правки редактора появятся здесь после нового выпуска."
+          >
+            <Package size={14} />
+            Выпуск №{releaseVersionNo}
+          </span>
+        )}
+
         {!isArchive && (
           <span
             className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
@@ -340,6 +358,19 @@ export default function MonitorClient() {
       <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
         {showProcedures ? (
           <ProcedurePanel />
+        ) : releaseError && !scene ? (
+          /* Выпуск не отдаётся (проект не в эксплуатации): схем нет вовсе, и пустой холст
+             выглядел бы поломкой. */
+          <div className="h-full flex items-center justify-center p-6">
+            <div className="max-w-md space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+              <div className="font-medium">Нет выпуска для показа</div>
+              <p>{releaseError}</p>
+              <p className="text-xs opacity-80">
+                Монитор показывает prod-выпуск проекта, а его исполняет только проект в
+                эксплуатации. Ввести проект и выбрать выпуск можно в редакторе.
+              </p>
+            </div>
+          </div>
         ) : !isArchive && status === "rejected" ? (
           /* Состояние «проект выключен» должно быть видимым, а не выглядеть поломкой:
              текст причины приходит с бэкенда и называет её прямо. */

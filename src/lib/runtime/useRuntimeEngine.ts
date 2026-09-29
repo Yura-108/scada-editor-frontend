@@ -632,6 +632,18 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const conn = openRuntimeConnection(projectId, {
       onTasks: pushTaskStatuses,
       /**
+       * Выпуск, который крутит проект. Сменился (кадр TREE_CHANGED, либо prod переключили,
+       * пока не было связи, — тогда другой номер приходит с новой сессией) — стор перечитывает
+       * список и схему выпуска. Биндинги перезапустятся сами: смена `elements` пересобирает
+       * индекс, а следом за TREE_CHANGED приходит SNAPSHOT.
+       */
+      onRelease: (versionNo, changed) => {
+        const store = useEditorStore.getState();
+        const shown = store.releaseVersionNo;
+        if (changed || (shown !== null && shown !== versionNo)) void store.reloadRelease(versionNo);
+        else store.setReleaseVersionNo(versionNo);
+      },
+      /**
        * Снимок состояния проекта при подключении. Идёт тем же путём, что телеметрия и
        * запись оператором: значения в pendingRef, затем синхронный flush. Предзаписывать
        * valuesRef НЕЛЬЗЯ — no-op-страж во flush счёл бы изменение отсутствующим, и ни

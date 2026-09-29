@@ -4,7 +4,7 @@ import {useShallow} from "zustand/react/shallow";
 import {useEditorStore, SCENE_EXPORT_FORMAT} from "@/store/useEditorStore";
 import {
   Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
-  Undo2, Redo2, Loader2, History, RotateCcw,
+  Undo2, Redo2, Loader2, History, RotateCcw, Rocket,
   RotateCw, FlipHorizontal, FlipVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
@@ -20,6 +20,7 @@ import {
 import {openDeviceImportReportModal} from "@/components/editor/OpenDeviceImportReportModal";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
+import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {toast} from "sonner";
 import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPanel";
@@ -433,6 +434,14 @@ export default function ToolsPanel() {
           label="Вернуться к предыдущему сохранению"
           onClick={() => { void useEditorStore.getState().restorePreviousManualVersion(); }}
           disabled={!scene || !!versionPreview}
+        />
+        {/* Выпуски — уровень проекта, а не схемы: монитор показывает prod-выпуск, и правки
+            доходят до него только через «Выпустить» и «Сделать prod». */}
+        <TooltipBtn
+          icon={<Rocket size={16} />}
+          label="Выпуски проекта"
+          onClick={() => currentProject && openReleasesModal(currentProject.id, currentProject.name)}
+          disabled={!currentProject}
         />
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
