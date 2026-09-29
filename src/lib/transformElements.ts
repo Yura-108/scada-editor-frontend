@@ -176,9 +176,12 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
     // trend — оформление тренда (окно, шаг, перья), тоже базовое (BASE_ONLY_KEYS).
     // monitorView — вид для монитора в служебном элементе листа (setMonitorView пишет в
     // базу): останься он в overrides, на сохранении {...base, ...overrides} вернул бы старый.
+    // canvas — размер листа в служебном элементе (setSheet пишет в базу). Раньше его здесь
+    // не было, и сохранённая сцена не могла сменить лист: копия из overrides перекрывала
+    // новую базу в {...base, ...overrides} при сохранении, и лист молча откатывался.
     // optionsWindow — её предшественница (размер окна «Опции», 24–25.09.2026): только
     // вырезаем, чтобы не осела в overrides; для меню её значения не годятся.
-    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "trend", "monitorView", "optionsWindow"]);
+    const STRUCTURAL_KEYS = new Set(["composition", "isComponent", "zIndex", "monitorMenu", "trend", "monitorView", "canvas", "optionsWindow"]);
 
     // Сырые распарсенные image по каждому состоянию — источник для распаковки composition.
     const rawStateImages = (el.states ?? []).map(s => parseStateImage(s.image));
@@ -307,6 +310,10 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       ...monitorMenuOf(defaultRawImage.monitorMenu),
       ...trendOf(defaultRawImage.trend),
       ...monitorViewOf(defaultRawImage.monitorView),
+      // Блок листа (данные CONTUR: width/height/units/grid/…) — целиком, как пришёл.
+      ...(defaultRawImage.canvas && typeof defaultRawImage.canvas === "object"
+        ? {canvas: defaultRawImage.canvas}
+        : {}),
       composition: compositionKeys,
       isComponent: isComponentFlag,
       states: normalizedStates,
