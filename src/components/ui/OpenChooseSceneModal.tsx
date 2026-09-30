@@ -32,6 +32,8 @@ export function ChooseSceneContent({
   const pins = usePinnedScenesStore(s => s.pins);
   const togglePin = usePinnedScenesStore(s => s.togglePin);
   const unpin = usePinnedScenesStore(s => s.unpin);
+  // Закрепления общие для проекта, если бэкенд их хранит; иначе — только в этом браузере.
+  const pinsShared = usePinnedScenesStore(s => s.supported);
   const [localList, setLocalList] = useState(sceneList);
   const [selectedId, setSelectedId] = useState<number | null>(sceneList[0]?.id ?? null);
   const [newName, setNewName] = useState("");
@@ -119,7 +121,8 @@ export function ChooseSceneContent({
               >
                 {scene.name}
               </button>
-              {/* Закрепление — панель быстрого доступа в полосе вкладок редактора. */}
+              {/* Закрепление — вкладки быстрого доступа для всех пользователей проекта (в
+                  редакторе и мониторе). Менять их можно только здесь, в редакторе. */}
               <button
                 type="button"
                 aria-pressed={pins.some(p => p.id === scene.id)}
@@ -133,7 +136,9 @@ export function ChooseSceneContent({
                     ? "text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                     : "text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
                 )}
-                title={pins.some(p => p.id === scene.id) ? "Открепить схему" : "Закрепить схему"}
+                title={pins.some(p => p.id === scene.id)
+                  ? `Открепить схему${pinsShared ? " для всех пользователей проекта" : ""}`
+                  : `Закрепить схему${pinsShared ? " для всех пользователей проекта" : ""}`}
                 aria-label={pins.some(p => p.id === scene.id)
                   ? `Открепить схему «${scene.name}»`
                   : `Закрепить схему «${scene.name}»`}

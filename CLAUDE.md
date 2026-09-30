@@ -450,6 +450,26 @@ draw exactly it, not the editor's draft.
   operation without prod answers 409 `no_prod_release`; the store offers to release, make prod and
   retry. Project restore (`restore/{n}`) is not supported by the backend and never called.
 
+### Pinned scenes are a project setting
+
+Contract: `docs/contract/2026-09-30-project-image-contract.md`. Pinned tabs live in the project
+component's `image` as `pinnedScenes: {v: 1, ids, recipesIndex}`, shared by every user of the
+project. The image is **read from the project list** (`GET /api/editor/components/projects` returns
+`image` per project) and **written** with `PUT /api/editor/projects/{id}/image` — an opaque JSON,
+no document versions, no release (`src/lib/editor/projectSettingsApi.ts`).
+
+- **Only the editor changes them** (`usePinnedScenesStore` bails unless `sceneSource === "draft"`);
+  the monitor renders `SceneTabs editable={false}` and has no pin button.
+- **localStorage is a cache and a fallback**: `hydrate` shows the cache instantly, then adopts the
+  server list; a project list without the `image` field, or 404/405/501 on the write, means the
+  backend is not updated yet — `supported: false` and everything
+  stays local, as before. When the server has no `pinnedScenes` yet, the first engineer to open the
+  project in the editor uploads their local pins.
+- A write re-reads the image and merges only its own key (`saveProjectSetting`); a failed write
+  rolls the tabs back. `hydrate` also runs on `visibilitychange` so a colleague's change shows up
+  without a reload. A pinned id missing from `sceneList` (deleted, or not in the prod release) is
+  simply not shown.
+
 ### Scene cache (fast scene switching)
 
 `src/lib/editor/sceneCache.ts` keeps the **raw** `GET /api/editor/scene/{id}` response per

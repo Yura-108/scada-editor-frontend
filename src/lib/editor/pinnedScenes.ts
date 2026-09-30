@@ -1,10 +1,11 @@
 /**
- * Закреплённые схемы — в localStorage браузера.
+ * Закреплённые схемы: общая настройка проекта на сервере + кэш в localStorage браузера.
  *
- * Это личная настройка рабочего места, а не данные проекта: закрепление не должно ни
- * помечать что-либо несохранённым, ни ехать на сервер, ни навязываться остальным.
- * Конвенции те же, что у положения камеры (`sceneCamera.ts`): один ключ на всё,
- * `try/catch` на чтении и записи, валидация значений на чтении, ограниченный размер.
+ * Источник правды — настройки проекта (см. конец файла и `usePinnedScenesStore`): закрепляет
+ * инженер в редакторе, видят все. Закрепление по-прежнему НЕ правка схемы: не помечает сцену
+ * несохранённой и не попадает ни в историю, ни в выпуск. localStorage — кэш для мгновенной полосы
+ * вкладок и запасной путь, пока бэкенд настроек не знает. Конвенции кэша те же, что у положения
+ * камеры (`sceneCamera.ts`): один ключ на всё, `try/catch`, валидация на чтении, ограниченный размер.
  */
 
 const LS_PINS = "scada-editor:pinned-scenes";
@@ -118,4 +119,48 @@ export function writePinnedTabs(
   } catch {
     // Квота или приватный режим: закрепление не переживёт перезагрузку, но работать не мешает.
   }
+}
+
+// ── Общие закрепления: настройка проекта на сервере ──────────────────────────────────
+//
+// С 30.09.2026 закрепления — настройка ПРОЕКТА, в его `image`
+// (docs/contract/2026-09-30-project-image-contract.md), общая для всех пользователей: инженер закрепляет схемы в редакторе, коллеги и
+// операторы видят те же вкладки. localStorage выше остаётся кэшем (полоса вкладок сразу, до
+// ответа сервера) и запасным путём, пока бэкенд ручек не знает.
+
+/** Ключ в `image` проекта. */
+export const PINNED_SETTINGS_KEY = "pinnedScenes";
+
+/** То, что лежит на сервере: только id и порядок — имена берутся из списка схем. */
+export interface PinnedSettings {
+  v: 1;
+  ids: number[];
+  recipesIndex: number;
+}
+
+/** Есть ли в настройках закрепления вообще (пустой список — тоже «есть»: их сняли). */
+export const hasPinnedSettings = (settings: Record<string, unknown>): boolean =>
+  typeof settings[PINNED_SETTINGS_KEY] === "object" && settings[PINNED_SETTINGS_KEY] !== null;
+
+/**
+ * Закрепления из настроек проекта. Имя вкладки — из `nameOf` (список схем или кэш), иначе
+ * запасное «Схема N»: при отрисовке `SceneTabs` всё равно предпочитает свежее имя из списка.
+ */
+export function readPinsFromSettings(
+  settings: Record<string, unknown>,
+  nameOf: (id: number) => string | undefined,
+): PinnedTabs {
+  const raw = settings[PINNED_SETTINGS_KEY] as {ids?: unknown; recipesIndex?: unknown} | null | undefined;
+  const ids = Array.isArray(raw?.ids) ? raw.ids : [];
+  const pins = sanitize(ids.map(id => ({
+    id,
+    name: typeof id === "number" ? (nameOf(id) || `Схема ${id}`) : "",
+  })));
+  return {pins, recipesIndex: clampRecipesIndex(raw?.recipesIndex, pins.length)};
+}
+
+/** Закрепления → значение для настроек проекта. */
+export function pinsToSettings({pins, recipesIndex}: PinnedTabs): PinnedSettings {
+  const safe = sanitize(pins);
+  return {v: 1, ids: safe.map(p => p.id), recipesIndex: clampRecipesIndex(recipesIndex, safe.length)};
 }

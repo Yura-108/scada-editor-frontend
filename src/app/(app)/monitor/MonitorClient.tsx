@@ -1,10 +1,9 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Pin, PinOff, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio} from "lucide-react";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
-import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
 import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
@@ -31,41 +30,6 @@ const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   // холсте, иначе выключенный проект выглядел бы неисправностью экрана.
   rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
 };
-
-/**
- * Скрепка «закрепить текущую схему» — вход в ту же настройку, что и в модалке выбора
- * схемы редактора (см. OpenChooseSceneModal), поэтому подписи и вид те же.
- *
- * Отдельным компонентом ради его собственной подписки на `pins`: держи её в
- * `MonitorClient`, и каждое закрепление перерисовывало бы весь монитор вместе с холстом.
- */
-function ScenePinButton({scene}: {scene: {id: number; name: string} | null}) {
-  const pins = usePinnedScenesStore(s => s.pins);
-  const togglePin = usePinnedScenesStore(s => s.togglePin);
-
-  const isPinned = !!scene && pins.some(p => p.id === scene.id);
-  const label = isPinned ? "Открепить схему" : "Закрепить схему";
-
-  return (
-    <button
-      type="button"
-      disabled={!scene}
-      aria-pressed={isPinned}
-      // `togglePin` сам откажет без проекта и сам скажет про предел закреплённых.
-      onClick={() => scene && togglePin({id: scene.id, name: scene.name})}
-      title={scene ? `${label} «${scene.name}»` : "Сначала откройте схему"}
-      aria-label={scene ? `${label} «${scene.name}»` : label}
-      className={cn(
-        "shrink-0 rounded-lg p-1.5 transition-colors",
-        !scene && "text-neutral-300 dark:text-neutral-700 cursor-not-allowed",
-        scene && isPinned && "text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
-        scene && !isPinned && "text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
-      )}
-    >
-      {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
-    </button>
-  );
-}
 
 /**
  * Режим монитора: read-only просмотр сцены с живыми данными.
@@ -217,8 +181,6 @@ export default function MonitorClient() {
           ))}
         </select>
 
-        <ScenePinButton scene={scene ? {id: scene.id, name: scene.name} : null} />
-
         <div className="flex-1" />
 
         <div className="flex rounded-full border border-neutral-200 dark:border-neutral-700 p-0.5 text-xs font-medium">
@@ -349,6 +311,8 @@ export default function MonitorClient() {
         extraTab={isArchive ? undefined : PROCEDURES_TAB}
         contentId="monitor-canvas"
         ariaLabel="Закреплённые схемы"
+        // Закрепления — общая настройка проекта, их меняет инженер в редакторе.
+        editable={false}
       />
 
       {/* Холст: read-only, пан/зум доступны */}

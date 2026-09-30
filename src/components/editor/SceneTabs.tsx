@@ -63,6 +63,11 @@ interface SceneTabsProps {
   ariaLabel: string;
   className?: string;
   style?: React.CSSProperties;
+  /**
+   * Можно ли откреплять и перетаскивать вкладки. Закрепления — общая настройка проекта, и
+   * меняет её только редактор; монитор показывает те же вкладки только для чтения.
+   */
+  editable?: boolean;
 }
 
 /**
@@ -85,6 +90,7 @@ export function SceneTabs({
   ariaLabel,
   className,
   style,
+  editable = true,
 }: SceneTabsProps) {
   // Точечные селекторы: рядом с полосой на обоих экранах живёт тяжёлый Canvas.
   const scene = useEditorStore(s => s.scene);
@@ -99,6 +105,14 @@ export function SceneTabs({
   // Закреплённые схемы принадлежат проекту: при его смене список другой.
   useEffect(() => { hydratePins(); }, [currentProjectId, hydratePins]);
 
+  // Закрепления общие: коллега мог поменять их, пока вкладка браузера была в фоне — перечитываем
+  // при возвращении, чтобы не ждать перезагрузки.
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) hydratePins(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [hydratePins]);
+
   /**
    * Ряд вкладок: перетаскиваемые (закреплённые схемы + `extraTab`) в порядке из
    * localStorage, затем текущая незакреплённая схема.
@@ -112,18 +126,22 @@ export function SceneTabs({
 
     type Tab = {key: string; label: string; sceneId: number | null; draggable: boolean};
 
-    const list: Tab[] = pins.map(pin => ({
+    // Закреплённая схема, которой нет в списке, не показывается: её удалили, а в мониторе — её
+    // нет в prod-выпуске. Пока список не пришёл, показываем все (имена — из закрепления).
+    const visiblePins = sceneList.length ? pins.filter(pin => sceneList.some(s => s.id === pin.id)) : pins;
+
+    const list: Tab[] = visiblePins.map(pin => ({
       key: `scene:${pin.id}`,
       // Имя из списка схем свежее, чем запомненное при закреплении.
       label: nameOf(pin.id, pin.name),
       sceneId: pin.id,
-      draggable: true,
+      draggable: editable,
     }));
 
     // `extraTab` — такая же перетаскиваемая вкладка, её место хранится индексом вставки.
     if (extraTab) {
       list.splice(Math.min(recipesIndex, list.length), 0, {
-        ...extraTab, sceneId: null, draggable: true,
+        ...extraTab, sceneId: null, draggable: editable,
       });
     }
 
@@ -143,7 +161,7 @@ export function SceneTabs({
     }
 
     return list;
-  }, [pins, recipesIndex, scene, sceneList, extraTab, fallbackTab]);
+  }, [pins, recipesIndex, scene, sceneList, extraTab, fallbackTab, editable]);
 
   /** Ключи перетаскиваемых вкладок в текущем порядке — их и сортирует dnd-kit. */
   const sortableTabKeys = useMemo(
