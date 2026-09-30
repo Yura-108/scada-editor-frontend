@@ -2670,7 +2670,8 @@ export const useEditorStore = create<EditorState>()(temporal(
           const newElement: DiagramElement = {
             id: null, key: createUuid(), type, composition,
             x, y, w: 120, h: 40,
-            label: "Кнопка", color: "#3b82f6", textColor: "#ffffff", fontSize: 16,
+            // label — название элемента, text — надпись на кнопке: поля независимы.
+            label: "Кнопка", text: "Кнопка", color: "#3b82f6", textColor: "#ffffff", fontSize: 16,
             rx: 6, pressed: false, enabled: true, bg: "transparent",
             parentId: scene?.id || null, parentKey: String(scene?.id) || null,
             children: [], scripts: [], bindings: [], properties: [],

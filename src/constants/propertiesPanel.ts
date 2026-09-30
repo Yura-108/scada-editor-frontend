@@ -522,7 +522,9 @@ export const elementPropertyMap: Record<ElementType, PropertySchema[]> = {
   ],
   button: [
     { key: "color", label: "Цвет фона", type: "color", defaultValue: "#3b82f6" },
-    { key: "label", label: "Текст", type: "text", defaultValue: "Кнопка" },
+    // Подпись — `text`, а не `label`: `label` — название элемента (поле «Название» выше), и
+    // общий ключ связывал их — переименование кнопки меняло надпись и наоборот.
+    { key: "text", label: "Текст", type: "text", defaultValue: "Кнопка" },
     { key: "textColor", label: "Цвет текста", type: "color", defaultValue: "#ffffff" },
     { key: "fontSize", label: "Размер текста", type: "number", min: 8, max: 72, defaultValue: 16 },
     { key: "rx", label: "Скругление углов", type: "number", min: 0, max: 40, defaultValue: 6 },

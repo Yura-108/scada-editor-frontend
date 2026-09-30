@@ -8,9 +8,11 @@ type ButtonProps = {
 };
 
 export function Button({ element }: ButtonProps) {
+  // Надпись — `text` (название элемента `label` с ней больше не связано); без `text` —
+  // старая кнопка, у неё надписью было название.
   const {
     color = "#FF4D4F",
-    label = "Button",
+    label: name = "Button",
     textColor = "#ffffff",
     pressed = false,
     id,
@@ -94,7 +96,7 @@ export function Button({ element }: ButtonProps) {
         fontWeight="600"
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
-        {label}
+        {(element as {text?: string}).text ?? name}
       </text>
     </svg>
   );

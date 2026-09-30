@@ -116,6 +116,35 @@ export default function transformElements(
   }
 
   /**
+ * Отделяет подпись кнопки от её названия.
+ *
+ * До 30.09.2026 подписью кнопки было поле `label` — то же, что название элемента (дерево слоёв,
+ * `name` на сервере): поля «Название» и «Текст» в панели писали одно и то же, и переименовать
+ * кнопку, не изменив надпись, было нельзя. Теперь подпись — `text`. Старую кнопку приводим к
+ * этому один раз, сохраняя вид: подпись состояния по умолчанию (или название, если своей не
+ * было) уходит в базовый `text`, подписи прочих состояний — в их `text`, а `label` из
+ * overrides убирается — дальше это только название.
+ *
+ * Идемпотентна: кнопка, у которой `text` уже есть в базе или в каком-либо состоянии, не
+ * трогается.
+ */
+const splitButtonCaption = (el: DiagramElement): void => {
+  if (el.type !== "button") return;
+  const base = el as unknown as Record<string, unknown>;
+  const states = el.states ?? [];
+  if (base.text !== undefined || states.some(s => s.overrides && "text" in s.overrides)) return;
+
+  const defaultState = states.find(s => s.isDefault) ?? states[0];
+  const defaultCaption = defaultState?.overrides?.label;
+  base.text = String(defaultCaption ?? base.label ?? "");
+  for (const state of states) {
+    if (!state.overrides || !("label" in state.overrides)) continue;
+    const {label, ...rest} = state.overrides as Record<string, unknown>;
+    state.overrides = state === defaultState ? rest : {...rest, text: label};
+  }
+};
+
+/**
  * Переводит старую таблицу на привязки ячеек.
  *
  * До переработки строкой таблицы считалось свойство с числовым `position`, а рендер
@@ -293,6 +322,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
 
       compositionKeys.push(primKey);
     });
+    compositionElements.forEach(splitButtonCaption);
 
     const flattenedElement = {
       id: el.id,
@@ -363,6 +393,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
     flattenedElement.children = childKeys;
 
     migrateTableRowBindings(flattenedElement as unknown as DiagramElement);
+    splitButtonCaption(flattenedElement as unknown as DiagramElement);
 
     return [
       flattenedElement as DiagramElement,
