@@ -452,11 +452,14 @@ draw exactly it, not the editor's draft.
 
 ### Pinned scenes are a project setting
 
-Contract: `docs/contract/2026-09-30-project-image-contract.md`. Pinned tabs live in the project
-component's `image` as `pinnedScenes: {v: 1, ids, recipesIndex}`, shared by every user of the
-project. The image is **read from the project list** (`GET /api/editor/components/projects` returns
-`image` per project) and **written** with `PUT /api/editor/projects/{id}/image` — an opaque JSON,
-no document versions, no release (`src/lib/editor/projectSettingsApi.ts`).
+Contract: `docs/contract/2026-09-30-project-image-contract.md` (accepted by the backend as is).
+Pinned tabs live in the project's `image` as `pinnedScenes: {v: 1, ids, recipesIndex}`, shared by
+every user of the project. The image is **read from the project list only**
+(`GET /api/editor/components/projects` returns `image` per project, always present, `null` when
+empty) and **written** with `PUT /api/editor/projects/{id}/image` — an opaque JSON, no document
+versions, no release (`src/lib/editor/projectSettingsApi.ts`). The backend keeps it in its own
+column (`editor.project_runtime.image`), not in the project's states, so it is **not** in
+`GET /components/{projectId}` nor in a release tree. Limit: 16 KB serialized (400 above that).
 
 - **Only the editor changes them** (`usePinnedScenesStore` bails unless `sceneSource === "draft"`);
   the monitor renders `SceneTabs editable={false}` and has no pin button.
