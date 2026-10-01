@@ -6,3 +6,10 @@
  */
 export const isBooleanValueType = (valueType: string | undefined): boolean =>
   ["bool", "boolean"].includes((valueType ?? "").trim().toLowerCase());
+
+/**
+ * Числовой тип значения свойства: такое значение вводится числовым полем и проверяется перед
+ * записью. `number` — словарь выпуска (инспектор объектов), остальные — словарь свойств редактора.
+ */
+export const isNumericValueType = (valueType: string | null | undefined): boolean =>
+  ["integer", "float", "int", "double", "number"].includes((valueType ?? "").trim().toLowerCase());

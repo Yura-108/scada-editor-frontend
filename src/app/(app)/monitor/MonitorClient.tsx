@@ -3,6 +3,8 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
 import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
+import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
+import {closeFloatingWindows} from "@/store/useFloatingWindowsStore";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
@@ -102,6 +104,14 @@ export default function MonitorClient() {
   const mode: RuntimeMode = modeChoice.project === projectKey ? modeChoice.mode : "live";
   const setMode = (m: RuntimeMode) => setModeChoice({mode: m, project: projectKey});
   const isArchive = mode === "archive";
+
+  // Плавающие окна. «Опции» принадлежат компоненту открытой схемы — на другой схеме их
+  // компонента нет. Инспектор от схемы не зависит, но смена проекта, вход в архив (записи там
+  // невозможны) и уход со страницы закрывают всё.
+  const sceneIdForWindows = scene?.id ?? null;
+  useEffect(() => { closeFloatingWindows("options"); }, [sceneIdForWindows]);
+  useEffect(() => { closeFloatingWindows(); }, [projectKey, isArchive]);
+  useEffect(() => () => closeFloatingWindows(), []);
 
   const engineActive = Boolean(scene && currentProject);
   const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks, archive} =
@@ -372,6 +382,8 @@ export default function MonitorClient() {
 
         {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
         {!showProcedures && !isArchive && <ProcedureHud />}
+        {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
+        {!showProcedures && !isArchive && <FloatingWindowsLayer />}
         {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
     </div>

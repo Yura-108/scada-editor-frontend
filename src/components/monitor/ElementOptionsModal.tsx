@@ -1,14 +1,13 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
-import {useModalStore} from "@/store/modalStore";
+import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {shortTagPath} from "@/lib/editor/tagPath";
-import {isBooleanValueType} from "@/lib/editor/valueTypes";
+import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
@@ -25,13 +24,16 @@ interface Props {
   elementKey: string;
 }
 
+interface ContentProps extends Props {
+  /** Закрыть именно это плавающее окно. */
+  onClose: () => void;
+}
+
 /** Как часто перечитываем живые значения, пока окно открыто. */
 const VALUE_POLL_MS = 1000;
 
-const isNumericType = (valueType?: string) => {
-  const t = (valueType ?? "").toLowerCase();
-  return t === "integer" || t === "float" || t === "int" || t === "double";
-};
+/** Общая проверка с инспектором объектов — см. lib/editor/valueTypes.ts. */
+const isNumericType = isNumericValueType;
 
 /** Имя свойства для оператора: `label`, а без него — технический `name` из скриптов. */
 const propertyTitle = (p: PropertyCreateDto) => p.label?.trim() || p.name;
@@ -52,8 +54,7 @@ const plural = (n: number, one: string, few: string, many: string) => {
   return many;
 };
 
-function ElementOptionsContent({elementKey}: Props) {
-  const closeModal = useModalStore((s) => s.closeModal);
+function ElementOptionsContent({elementKey, onClose}: ContentProps) {
   const element = useEditorStore((s) => s.elements.find(el => el.key === elementKey));
   const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
 
@@ -287,16 +288,12 @@ function ElementOptionsContent({elementKey}: Props) {
   );
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
-      <div className="shrink-0 mb-4">
-        <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
-          Опции · {element?.label || element?.type || "компонент"}
-        </Dialog.Title>
-        <Dialog.Description className="text-gray-500 dark:text-gray-400 text-sm">
-          Значения привязанных тегов. Записанное показывается, пока контроллер не пришлёт
-          следующее.
-        </Dialog.Description>
-      </div>
+    // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
+    <div className="flex flex-col flex-1 min-h-0">
+      <p className="shrink-0 mb-4 text-gray-500 dark:text-gray-400 text-sm">
+        Значения привязанных тегов. Записанное показывается, пока контроллер не пришлёт
+        следующее.
+      </p>
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {tagProps.length === 0 ? (
@@ -402,14 +399,25 @@ function ElementOptionsContent({elementKey}: Props) {
               : `Применить для всех${filledRows.length ? ` (${filledRows.length})` : ""}`}
           </Button>
         )}
-        <Button onClick={closeModal}>Закрыть</Button>
+        <Button onClick={onClose}>Закрыть</Button>
       </ModalFooter>
     </div>
   );
 }
 
-/** Открывает «Опции» компонента из меню монитора. */
+/**
+ * Открывает «Опции» компонента из меню монитора — плавающим окном, а не модалкой: оператор
+ * держит его открытым и продолжает смотреть и нажимать схему. Окно на компонент одно —
+ * повторный вызов поднимает его наверх; «Опции» разных компонентов открываются рядом.
+ */
 export function openElementOptionsModal(props: Props) {
-  const {openModal} = useModalStore.getState();
-  openModal(<ElementOptionsContent {...props} />);
+  const id = `options:${props.elementKey}`;
+  const element = useEditorStore.getState().elements.find(el => el.key === props.elementKey);
+  openFloatingWindow({
+    id,
+    kind: "options",
+    title: `Опции · ${element?.label || element?.type || "компонент"}`,
+    width: 480,
+    content: <ElementOptionsContent {...props} onClose={() => closeFloatingWindow(id)} />,
+  });
 }

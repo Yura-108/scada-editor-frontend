@@ -78,3 +78,32 @@ export function clampHudPosition(
     y: Math.min(Math.max(y, margin), maxY),
   };
 }
+
+// ── Плавающие окна монитора («Опции», инспектор): где их держать ─────────────────────
+
+const LS_WINDOWS_KEY = "scada-editor:floating-windows";
+
+/** Последнее место окна этого вида (левый верхний угол в области схемы), если запоминали. */
+export function readFloatingWindowPos(kind: string): {x: number; y: number} | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LS_WINDOWS_KEY);
+    const all = raw ? JSON.parse(raw) as Record<string, {x?: unknown; y?: unknown}> : null;
+    const pos = all?.[kind];
+    return pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) ? {x: Number(pos.x), y: Number(pos.y)} : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeFloatingWindowPos(kind: string, pos: {x: number; y: number}): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(LS_WINDOWS_KEY);
+    const all = (raw ? JSON.parse(raw) : {}) as Record<string, {x: number; y: number}>;
+    all[kind] = pos;
+    window.localStorage.setItem(LS_WINDOWS_KEY, JSON.stringify(all));
+  } catch {
+    // Квота или приватный режим — место окна не критично.
+  }
+}

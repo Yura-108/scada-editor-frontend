@@ -1,13 +1,14 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import {Loader2, Waypoints} from "lucide-react";
+import {AlertTriangle, Loader2, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
-import {useModalStore} from "@/store/modalStore";
+import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/store/useEditorStore";
-import {isBooleanValueType} from "@/lib/editor/valueTypes";
+import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
+import {shortTagPath} from "@/lib/editor/tagPath";
+import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   getRuntimePropertyValue, getRuntimeSessionId, getRuntimeTagQuality, getRuntimeTagValue,
   notifyRuntimeTagsWritten,
@@ -40,8 +41,7 @@ const withoutDraft = (drafts: Record<number, string>, id: number) => {
  * локально не подставляем: UPDATE приходит за десятки миллисекунд, и только он гарантирует, что
  * окно показывает то, что на самом деле лежит в runtime.
  */
-function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
-  const closeModal = useModalStore((s) => s.closeModal);
+function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: number; onClose: () => void}) {
   const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
   const releaseVersionNo = useEditorStore((s) => s.releaseVersionNo);
 
@@ -115,9 +115,36 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
     return quality !== undefined && quality !== "GOOD";
   };
 
+  /**
+   * Значение строки к записи — как в «Опциях»: у булева свойства нетронутый чекбокс — это
+   * `false` (кнопка напротив строки именно его и просит), у прочих пустой ввод не пишется.
+   */
+  const valueToWrite = (p: InspectorPropertyDto): string | null => {
+    if (isBooleanValueType(p.value_type ?? "")) return drafts[p.id] === "true" ? "true" : "false";
+    const raw = drafts[p.id] ?? "";
+    return raw.trim() ? raw : null;
+  };
+
   const write = async (p: InspectorPropertyDto) => {
     if (projectId == null) return;
-    const value = drafts[p.id] ?? "";
+    const value = valueToWrite(p);
+    if (value === null) return;
+    if (isNumericValueType(p.value_type) && !Number.isFinite(Number(value))) {
+      toast.error(`«${title(p)}»: значение должно быть числом`);
+      return;
+    }
+    // Запись в ПЛК идёт на реальное оборудование и необратима — подтверждение, как в «Опциях».
+    // Локальное свойство живёт в runtime, его подтверждать не нужно.
+    if (p.tag_id) {
+      const confirmed = await confirmModal({
+        title: "Записать значение в ПЛК?",
+        description: `Будет записано, действие необратимо: «${title(p)}» = «${value}»`,
+        confirmLabel: "Записать",
+        danger: true,
+      });
+      if (!confirmed) return;
+    }
+
     setWriting(p.id);
     try {
       if (p.tag_id) {
@@ -134,12 +161,16 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
         const [result] = normalizeTagWriteResults(await res.json());
         const outcome = result ? tagWriteOutcome(result) : "failed";
         if (outcome === "failed") {
-          toast.error(`«${title(p)}»: ${result ? tagWriteStatusLabel(result) : "нет отчёта"}`);
+          toast.error(`«${title(p)}»: ${result ? tagWriteStatusLabel(result) : "нет отчёта"}${result?.message ? ` — ${result.message}` : ""}`);
           return;
         }
         // "unknown" (NO_CONFIRMATION): команда ушла, но ПЛК не подтвердил — как в «Опциях».
-        if (outcome === "unknown") toast.warning(`«${title(p)}»: результат неизвестен — сверьтесь с телеметрией`);
-        notifyRuntimeTagsWritten([{tagId: p.tag_id, value}]);
+        if (outcome === "unknown") {
+          toast.warning(`«${title(p)}»: результат неизвестен — сверьтесь с телеметрией`);
+        } else {
+          toast.success("Значение записано в ПЛК");
+          notifyRuntimeTagsWritten([{tagId: p.tag_id, value}]);
+        }
       } else {
         const res = await fetch(`/api/runtime/projects/${projectId}/properties/write`, {
           method: "POST", headers: {"Content-Type": "application/json"},
@@ -158,6 +189,7 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
           toast.error(result?.message || `«${title(p)}»: не записано`);
           return;
         }
+        toast.success("Значение задано");
       }
       setDrafts(prev => withoutDraft(prev, p.id));
     } catch (e) {
@@ -174,12 +206,12 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
   );
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(92vh-3rem)] sm:max-h-[calc(92vh-4rem)]">
+    // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
+    <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 mb-4 space-y-2">
-        <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
-          Инспектор объектов
-        </Dialog.Title>
-        <Dialog.Description className="sr-only">Свойства любого объекта проекта</Dialog.Description>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
+          Свойства любого объекта проекта. Теговые записываются в ПЛК, локальные — в runtime.
+        </p>
         <input value={query} onChange={e => setQuery(e.target.value)}
                placeholder="Поиск объекта или схемы" className={inputClass} />
         <select value={selectedId ?? ""} onChange={e => selectObject(Number(e.target.value) || null)}
@@ -213,36 +245,78 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
             {selected.properties.map(p => {
               const value = valueOf(p);
               const isBool = isBooleanValueType(p.value_type ?? "");
-              const draft = drafts[p.id];
+              const draft = drafts[p.id] ?? "";
+              const bad = isBad(p);
               return (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-2">
-                  {p.tag_id
-                    ? <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" aria-label="тег" />
-                    : <span className="h-4 w-4 shrink-0" />}
-                  <span className="w-40 shrink-0 truncate text-sm text-gray-900 dark:text-gray-100"
-                        title={p.tag_id ?? p.name}>
-                    {title(p)}
-                  </span>
-                  {isBool ? (
-                    <input type="checkbox" className="h-4 w-4"
-                           checked={(draft ?? value) === "true"}
-                           onChange={e => setDrafts({...drafts, [p.id]: e.target.checked ? "true" : "false"})} />
-                  ) : (
-                    <input value={draft ?? value ?? ""}
-                           onChange={e => setDrafts({...drafts, [p.id]: e.target.value})}
-                           onKeyDown={e => { if (e.key === "Enter" && draft !== undefined) void write(p); }}
-                           className={cn(inputClass, "flex-1", draft === undefined && isBad(p) && "text-gray-400 line-through")}
-                           title={isBad(p) ? "Значение недостоверно (качество тега не GOOD)" : undefined} />
-                  )}
-                  <button type="button" onClick={() => void write(p)}
-                          disabled={draft === undefined || writing !== null}
-                          className={cn(
-                            "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white",
-                            p.tag_id ? "bg-red-600 hover:bg-red-500" : "bg-indigo-600 hover:bg-indigo-500",
-                            "disabled:bg-gray-400 disabled:cursor-not-allowed",
-                          )}>
-                    {writing === p.id ? "Запись..." : p.tag_id ? "В ПЛК" : "Задать"}
-                  </button>
+                <div key={p.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    {p.tag_id
+                      ? <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" aria-label="тег" />
+                      : <SlidersHorizontal className="h-4 w-4 shrink-0 text-gray-400" aria-label="локальное свойство" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {title(p)}
+                      </span>
+                      {/* Как в «Опциях»: короткий путь тега, полный — в title; технический name
+                          рядом, если подпись его скрыла. */}
+                      <span
+                        className="block truncate text-xs text-gray-500 dark:text-gray-400"
+                        title={p.tag_id || undefined}
+                      >
+                        {p.label?.trim() ? `${p.name} · ` : ""}
+                        {p.tag_id ? shortTagPath(p.tag_id) : "локальное свойство"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span
+                        className={cn(
+                          "block text-sm font-medium",
+                          bad ? "text-gray-400 line-through" : "text-gray-900 dark:text-gray-100",
+                        )}
+                        title={bad ? "Значение недостоверно (качество тега не GOOD)" : undefined}
+                      >
+                        {value == null ? (p.tag_id ? "нет данных" : "не задано") : String(value)}
+                      </span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        текущее значение
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-7">
+                    {isBool ? (
+                      <label className="flex flex-1 items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={draft === "true"}
+                          onChange={e => setDrafts({...drafts, [p.id]: e.target.checked ? "true" : "false"})}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        {draft === "true" ? "true" : "false"}
+                      </label>
+                    ) : (
+                      <input
+                        type={isNumericValueType(p.value_type) ? "number" : "text"}
+                        value={draft}
+                        onChange={e => setDrafts({...drafts, [p.id]: e.target.value})}
+                        onKeyDown={e => { if (e.key === "Enter" && draft.trim()) void write(p); }}
+                        placeholder="Новое значение"
+                        className={cn(inputClass, "flex-1")}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void write(p)}
+                      disabled={writing !== null || (!isBool && !draft.trim())}
+                      className={cn(
+                        "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors",
+                        p.tag_id ? "bg-red-600 hover:bg-red-500" : "bg-indigo-600 hover:bg-indigo-500",
+                        "disabled:bg-gray-400 disabled:cursor-not-allowed",
+                      )}
+                    >
+                      {writing === p.id ? "Запись..." : p.tag_id ? "Записать в ПЛК" : "Задать"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -251,13 +325,28 @@ function ObjectInspectorContent({initialObjectId}: {initialObjectId?: number}) {
       </div>
 
       <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-        <Button onClick={closeModal}>Закрыть</Button>
+        <span className="mr-auto flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle size={14} />
+          Запись в ПЛК необратима
+        </span>
+        <Button onClick={onClose}>Закрыть</Button>
       </ModalFooter>
     </div>
   );
 }
 
-/** Открывает инспектор; `initialObjectId` — сразу выбрать объект (из меню компонента). */
+/**
+ * Открывает инспектор плавающим окном — схема рядом остаётся рабочей. Инспектор один: повторный
+ * вызов (например, из меню другого компонента) поднимает окно и выбирает новый объект.
+ * `initialObjectId` — сразу выбрать объект.
+ */
 export function openObjectInspectorModal(props: {initialObjectId?: number} = {}) {
-  useModalStore.getState().openModal(<ObjectInspectorContent {...props} />);
+  const id = "inspector";
+  openFloatingWindow({
+    id,
+    kind: "inspector",
+    title: "Инспектор объектов",
+    width: 560,
+    content: <ObjectInspectorContent {...props} onClose={() => closeFloatingWindow(id)} />,
+  });
 }
