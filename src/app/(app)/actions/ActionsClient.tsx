@@ -37,12 +37,13 @@ const inputClass = cn(
 
 /** Что именно сделали: имя скрипта, операция процедуры или записанные теги. */
 function ActionTarget({r}: {r: ActionLogRecord}) {
-  if (r.kind === "TAG_WRITE" && r.tags?.length) {
+  if ((r.kind === "TAG_WRITE" || r.kind === "PROPERTY_WRITE") && r.tags?.length) {
     return (
       <ul className="space-y-0.5">
         {r.tags.map((t, i) => (
-          <li key={i} className="font-mono text-xs" title={t.tag}>
-            {shortTagPath(t.tag)} = {String(t.value)}
+          <li key={i} className="font-mono text-xs" title={t.tag ?? `свойство #${t.property}`}>
+            {/* Запись свойства из инспектора несёт id свойства, а не тег. */}
+            {t.tag ? shortTagPath(t.tag) : `свойство #${t.property ?? "?"}`} = {String(t.value)}
           </li>
         ))}
       </ul>

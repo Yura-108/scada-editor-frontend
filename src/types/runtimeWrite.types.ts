@@ -138,3 +138,37 @@ export const normalizeTagWriteResults = (data: unknown): TagWriteResultDto[] => 
   }
   return [];
 };
+
+// ── Инспектор объектов монитора (docs/contract/2026-10-01-object-inspector-contract.md) ──
+
+/** Объект инспектора: компонент prod-выпуска со свойствами (GET …/objects). */
+export interface InspectorPropertyDto {
+  id: number;
+  name: string;
+  label: string | null;
+  tag_id: string | null;
+  value_type: string | null;
+  default_value: string | null;
+  position: number | null;
+}
+
+export interface InspectorObjectDto {
+  id: number;
+  name: string | null;
+  type: string | null;
+  sceneId: number | null;
+  sceneName: string | null;
+  properties: InspectorPropertyDto[];
+}
+
+export interface PropertyWriteItemDto { propertyId: number; value: string; }
+export interface PropertyWriteRequestDto { writes: PropertyWriteItemDto[]; }
+
+export type PropertyWriteStatus = "OK" | "UNKNOWN_PROPERTY" | "TAG_PROPERTY" | "INVALID_VALUE";
+
+export interface PropertyWriteResultDto {
+  propertyId: number;
+  success: boolean;
+  status: PropertyWriteStatus | string;
+  message: string | null;
+}

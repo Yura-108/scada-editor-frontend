@@ -2,7 +2,7 @@ import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/lib/protected";
 import {proxyProcedure} from "@/lib/procedureProxy";
 
-const KINDS = new Set(["ACTION", "PROCEDURE", "TAG_WRITE"]);
+const KINDS = new Set(["ACTION", "PROCEDURE", "TAG_WRITE", "PROPERTY_WRITE"]);
 const MAX_SIZE = 1000;
 
 const badRequest = (message: string) => NextResponse.json({message}, {status: 400});
@@ -32,7 +32,7 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
   if (username) query.set("username", username);
   const kind = sp.get("kind");
   if (kind) {
-    if (!KINDS.has(kind)) return badRequest("kind: ACTION, PROCEDURE или TAG_WRITE");
+    if (!KINDS.has(kind)) return badRequest("kind: ACTION, PROCEDURE, TAG_WRITE или PROPERTY_WRITE");
     query.set("kind", kind);
   }
   const page = Number(sp.get("page") ?? 0);

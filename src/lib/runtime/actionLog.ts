@@ -2,12 +2,14 @@
  * Журнал действий оператора (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 5).
  */
 
-export type ActionKind = "ACTION" | "PROCEDURE" | "TAG_WRITE";
+export type ActionKind = "ACTION" | "PROCEDURE" | "TAG_WRITE" | "PROPERTY_WRITE";
 
 export const ACTION_KIND_LABEL: Record<ActionKind, string> = {
   ACTION: "Действие",
   PROCEDURE: "Процедура",
   TAG_WRITE: "Запись тегов",
+  // Инспектор объектов: значение локального свойства (без тега), docs/contract/2026-10-01-object-inspector-contract.md.
+  PROPERTY_WRITE: "Запись свойства",
 };
 
 export interface ActionLogRecord {
@@ -20,8 +22,11 @@ export interface ActionLogRecord {
   component: string | null;
   /** Имя скрипта (ACTION), «операция рецепт» (PROCEDURE); null у TAG_WRITE. */
   target: string | null;
-  /** Что пытались записать — только у TAG_WRITE. */
-  tags: {tag: string; value: unknown}[] | null;
+  /**
+   * Что пытались записать: у TAG_WRITE — `{tag, value}`, у PROPERTY_WRITE — `{property, value}`
+   * (id свойства: имени в журнале нет).
+   */
+  tags: {tag?: string; property?: number; value: unknown}[] | null;
   outcome: "OK" | "ERROR" | string;
   /** Текст ошибки; у TAG_WRITE — теги, которые контроллер не подтвердил. */
   error: string | null;

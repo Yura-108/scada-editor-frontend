@@ -2,6 +2,7 @@ import { DiagramElement } from "@/types/editorElement.type";
 import { emitRuntimeScript } from "@/lib/runtime/runtimeEventBus";
 import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
+import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
 import { openTrendModal } from "@/components/monitor/TrendModal";
 import { trendPens } from "@/lib/editor/trendSettings";
 import type { CanvasMenuItem } from "./types";
@@ -72,6 +73,20 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
       onClick: () => {
         closeMenu();
         openElementOptionsModal({ elementKey: el.key });
+      },
+    });
+  }
+
+  // Инспектор — все свойства объекта, не только с тегом. Только при живой сессии: значения и
+  // запись идут через движок (в архиве сюда не доходим — меню возвращается выше).
+  // `el.id` — серверный id компонента, на схемах выпуска он есть всегда.
+  if (isLive && typeof el.id === "number") {
+    const objectId = el.id;
+    items.push({
+      label: "Инспектор",
+      onClick: () => {
+        closeMenu();
+        openObjectInspectorModal({ initialObjectId: objectId });
       },
     });
   }

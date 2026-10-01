@@ -72,6 +72,27 @@ export const getRuntimeTagValue = (tagId: string): string | null | undefined =>
   valueGetter?.(tagId);
 
 /**
+ * Значения локальных свойств (без тега) держит движок (`valuesByPropRef`, по id свойства) —
+ * инспектор объектов читает их геттером. `undefined` — значение не задано.
+ */
+type PropertyValueGetter = (propertyId: number) => string | undefined;
+let propertyValueGetter: PropertyValueGetter | null = null;
+export const setRuntimePropertyValueGetter = (g: PropertyValueGetter | null): void => {
+  propertyValueGetter = g;
+};
+export const getRuntimePropertyValue = (propertyId: number): string | undefined =>
+  propertyValueGetter?.(propertyId);
+
+/** Качество тега (`tagMetaRef`): достоверно только "GOOD" — с "BAD" не сравнивать, бывает "UNCERTAIN". */
+type TagQualityGetter = (tagId: string) => string | undefined;
+let tagQualityGetter: TagQualityGetter | null = null;
+export const setRuntimeTagQualityGetter = (g: TagQualityGetter | null): void => {
+  tagQualityGetter = g;
+};
+export const getRuntimeTagQuality = (tagId: string): string | undefined =>
+  tagQualityGetter?.(tagId);
+
+/**
  * «Значения записаны в ПЛК» — окно «Опции» сообщает движку, что команда ушла.
  *
  * Записанное значение вливается в общий поток значений ОДИН раз, наравне с телеметрией:

@@ -1,7 +1,8 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio} from "lucide-react";
+import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
+import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
 import Canvas from "@/components/editor/Canvas";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
@@ -217,6 +218,19 @@ export default function MonitorClient() {
           >
             <ClipboardList size={14} />
             Процедуры
+          </button>
+        )}
+
+        {/* Инспектор объектов: любой объект выпуска со всех схем, все его свойства с правкой.
+            Только при живой сессии — в архиве записи невозможны, а значения из прошлого. */}
+        {isLive && sessionId && (
+          <button
+            onClick={() => openObjectInspectorModal()}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
+            title="Инспектор объектов: свойства любого объекта проекта"
+          >
+            <SearchCode size={14} />
+            Инспектор
           </button>
         )}
 

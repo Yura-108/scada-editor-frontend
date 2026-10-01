@@ -377,6 +377,17 @@ clamps it on every read. The settings come from the element that **owns** the me
 `handleMonitorContextMenu` climbs to — and editor menus never get any. `optionsWindow` is a dead
 predecessor (sized the modal for a day): it is only stripped on load, never restored.
 
+**Object inspector** (`ObjectInspectorModal`, contract `docs/contract/2026-10-01-object-inspector-contract.md`):
+any object of the prod release, from every scene (`GET /api/runtime/projects/{id}/objects`, re-read
+on a new `releaseVersionNo`), with all its properties. Values need no new channel — SNAPSHOT/UPDATE
+already carry the whole project, and the engine exposes them through the bus
+(`getRuntimeTagValue`, `getRuntimeTagQuality`, `getRuntimePropertyValue`, read once a second like
+«Опции»). A tag property writes to the PLC via `tags/write`; a local one via
+`POST …/projects/{id}/properties/write` (journal kind `PROPERTY_WRITE`). Never show the written
+value locally — the UPDATE that follows is what proves runtime holds it. `UNKNOWN_PROPERTY` means
+the list is stale: re-read it. Opened from the monitor toolbar and the component menu, live only —
+never in the archive.
+
 **The monitor session is an observer, not the owner of the work.** A project runs while its
 «in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,
 mirrored in the store as `projectRuntimeFlags` — the flag is a separate table and does **not**

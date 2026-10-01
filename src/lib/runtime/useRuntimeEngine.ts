@@ -19,6 +19,8 @@ import {
   setRuntimeSessionGetter,
   setRuntimeTagWriteHandler,
   setRuntimeValueGetter,
+  setRuntimePropertyValueGetter,
+  setRuntimeTagQualityGetter,
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
@@ -557,12 +559,18 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
     setRuntimeValueGetter(tagId => valuesRef.current.get(tagId));
+    // Инспектор объектов: значения локальных свойств и качество тегов — всего проекта, не
+    // только открытой схемы (SNAPSHOT/UPDATE несут весь проект).
+    setRuntimePropertyValueGetter(id => valuesByPropRef.current.get(id));
+    setRuntimeTagQualityGetter(tagId => tagMetaRef.current.get(tagId)?.quality);
     setRuntimeTagWriteHandler(onTagsWritten);
     setRuntimeSessionGetter(() => connRef.current?.getSessionId() ?? null);
     return () => {
       setRuntimeEventHandler(null);
       setRuntimeScriptHandler(null);
       setRuntimeValueGetter(null);
+      setRuntimePropertyValueGetter(null);
+      setRuntimeTagQualityGetter(null);
       setRuntimeTagWriteHandler(null);
       setRuntimeSessionGetter(null);
     };
