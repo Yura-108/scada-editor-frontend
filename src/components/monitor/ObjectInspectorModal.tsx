@@ -1,7 +1,7 @@
 "use client";
 
-import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {AlertTriangle, Loader2, SlidersHorizontal, Waypoints} from "lucide-react";
+import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
+import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
@@ -30,6 +30,114 @@ const withoutDraft = (drafts: Record<number, string>, id: number) => {
   return next;
 };
 
+const objectLabel = (o: InspectorObjectDto) => o.name ?? `#${o.id}`;
+
+/** Совпадение по имени объекта или схемы, без учёта регистра. */
+const matches = (o: InspectorObjectDto, q: string) =>
+  (o.name ?? "").toLowerCase().includes(q) || (o.sceneName ?? "").toLowerCase().includes(q);
+
+/**
+ * Выбор объекта одним полем: пишешь — список под полем сразу фильтруется (по имени объекта и
+ * схемы), выбор мышью или стрелками + Enter, Esc — закрыть. Пока поле не в фокусе, в нём виден
+ * выбранный объект. Объектов в выпуске сотни, и пара «поле поиска + селект» заставляла сначала
+ * печатать, потом отдельно раскрывать список.
+ */
+function ObjectPicker({objects, selected, loading, onSelect, inputClass}: {
+  objects: InspectorObjectDto[];
+  selected: InspectorObjectDto | null;
+  loading: boolean;
+  onSelect: (id: number) => void;
+  inputClass: string;
+}) {
+  const listId = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? objects.filter(o => matches(o, q)) : objects;
+  }, [objects, query]);
+
+  // Подсвеченная строка всегда видна при листании стрелками.
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({block: "nearest"});
+  }, [active, open]);
+
+  const choose = (o: InspectorObjectDto | undefined) => {
+    if (!o) return;
+    onSelect(o.id);
+    setOpen(false);
+    setQuery("");
+  };
+
+  const shown = open
+    ? query
+    : selected ? `${objectLabel(selected)}${selected.sceneName ? ` · ${selected.sceneName}` : ""}` : "";
+
+  return (
+    <div className="relative">
+      <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <input
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={open && filtered[active] ? `${listId}-${filtered[active].id}` : undefined}
+        value={shown}
+        disabled={loading && !objects.length}
+        placeholder={loading && !objects.length ? "Загрузка…" : "Найти объект или схему"}
+        onFocus={() => { setOpen(true); setQuery(""); setActive(0); }}
+        onBlur={() => setOpen(false)}
+        onChange={e => { setQuery(e.target.value); setActive(0); setOpen(true); }}
+        onKeyDown={e => {
+          if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, filtered.length - 1)); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
+          else if (e.key === "Enter") { e.preventDefault(); choose(filtered[active]); }
+          else if (e.key === "Escape") { setOpen(false); setQuery(""); (e.target as HTMLInputElement).blur(); }
+        }}
+        className={cn(inputClass, "pl-8 pr-8")}
+      />
+      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+      {open && (
+        <ul
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-1 shadow-xl custom-scrollbar"
+        >
+          {filtered.length === 0 && (
+            <li className="px-3 py-2 text-sm text-gray-500 italic">Ничего не найдено</li>
+          )}
+          {filtered.map((o, i) => (
+            <li
+              key={o.id}
+              id={`${listId}-${o.id}`}
+              data-index={i}
+              role="option"
+              aria-selected={o.id === selected?.id}
+              // mousedown, а не click: иначе поле потеряет фокус и закроет список раньше выбора.
+              onMouseDown={e => { e.preventDefault(); choose(o); }}
+              onMouseEnter={() => setActive(i)}
+              className={cn(
+                "flex items-baseline gap-2 px-3 py-1.5 text-sm cursor-pointer",
+                i === active ? "bg-indigo-500/10" : "",
+                o.id === selected?.id ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-gray-900 dark:text-gray-100",
+              )}
+            >
+              <span className="min-w-0 truncate">{objectLabel(o)}</span>
+              {o.sceneName && <span className="ml-auto shrink-0 text-xs text-gray-500">{o.sceneName}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /**
  * Инспектор объектов монитора (docs/contract/2026-10-01-object-inspector-contract.md).
  *
@@ -49,7 +157,6 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(initialObjectId ?? null);
-  const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [writing, setWriting] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -93,12 +200,6 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
     return () => controller.abort();
   }, [load, releaseVersionNo, reloadKey]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return objects;
-    return objects.filter(o =>
-      (o.name ?? "").toLowerCase().includes(q) || (o.sceneName ?? "").toLowerCase().includes(q));
-  }, [objects, query]);
   const selected = objects.find(o => o.id === selectedId) ?? null;
 
   const selectObject = (id: number | null) => {
@@ -212,17 +313,13 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           Свойства любого объекта проекта. Теговые записываются в ПЛК, локальные — в runtime.
         </p>
-        <input value={query} onChange={e => setQuery(e.target.value)}
-               placeholder="Поиск объекта или схемы" className={inputClass} />
-        <select value={selectedId ?? ""} onChange={e => selectObject(Number(e.target.value) || null)}
-                className={inputClass} disabled={loading && !objects.length}>
-          <option value="">{loading && !objects.length ? "Загрузка…" : "— выберите объект —"}</option>
-          {filtered.map(o => (
-            <option key={o.id} value={o.id}>
-              {o.name ?? `#${o.id}`}{o.sceneName ? ` · ${o.sceneName}` : ""}
-            </option>
-          ))}
-        </select>
+        <ObjectPicker
+          objects={objects}
+          selected={selected}
+          loading={loading}
+          onSelect={id => selectObject(id)}
+          inputClass={inputClass}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
