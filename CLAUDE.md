@@ -361,10 +361,21 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   `preventDefault` a touch, so the browser's emulated `mousedown` would close the menu and its
   emulated `click` would pass for a second click (ignored via `lastTapAtRef`). A second click
   inside the window, or any dblclick, cancels the pending menu.
-- **Scene navigation skips the confirmation.** `isNavigationOnlyScript` (`lib/runtime/eventScript.ts`)
+- **Scene navigation skips the confirmation.** `isNonWritingScript` (`lib/runtime/eventScript.ts`)
   is a static check: `openScene(` present and no mention of `runScript`/`setProperty` anywhere,
   comments included — so any doubt keeps the dialog. `setProp`/`setState` only restyle the element
   and do not count. Menu actions (server scripts) always confirm.
+- **Action arguments and choice menus** (contract `docs/contract/2026-10-02-action-args-contract.md`).
+  `ACTION` may carry `args` — a JSON object the server script sees as `args`. In `onClick`,
+  `runScript("Имя", {recipe: 4})` sends them; `showMenu([{label, script, args}])` opens a menu at
+  the click point whose item runs `script` with its `args`. The backend silently drops a non-object
+  `args` and rejects one over 4096 chars with no reply, so `normalizeActionArgs` (`eventScript.ts`)
+  refuses both on our side and snapshots the object via JSON at call time. `showMenu` is a result
+  intent (`res.menu`, like `openScene`; `openScene` wins if both): the click point travels through
+  `emitRuntimeEvent(…, point)`, the engine passes the menu to the `showRuntimeMenu` bus slot, and
+  `Canvas` (readOnly, live only) draws it with `buildChoiceMenu`. Confirmation moves to the chosen
+  item («Выполнить «Скрипт»: пункт?») — `isNonWritingScript` lets a click whose script only does
+  `openScene`/`showMenu` through without a dialog, otherwise the operator would get two.
 
 **The right-click menu is sized per component.** `element.monitorMenu` (`{width, fontSize,
 itemHeight}` in px — the menu *plate* with «Опции» and the `displayed` actions, not the «Опции»

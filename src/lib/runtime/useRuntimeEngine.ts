@@ -10,7 +10,7 @@ import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
 import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
-import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
+import {compileEventScript, executeEventScript, type ActionArgs} from "@/lib/runtime/eventScript";
 import {openSceneFromScript} from "@/lib/runtime/openSceneFromScript";
 import {
   setRuntimeEventHandler,
@@ -21,6 +21,8 @@ import {
   setRuntimeValueGetter,
   setRuntimePropertyValueGetter,
   setRuntimeTagQualityGetter,
+  showRuntimeMenu,
+  type ScreenPoint,
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
@@ -446,8 +448,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   // сохранённого скрипта), команду не шлём.
   //
   // Вынесено из runEvent: тем же путём идут и пункты меню монитора (скрипты с
-  // displayed), у которых события-повода нет.
-  const runScriptOn = useCallback((el: DiagramElement, name: string) => {
+  // displayed), у которых события-повода нет, и пункты меню выбора `showMenu`.
+  //
+  // `args` уже проверены (normalizeActionArgs) — здесь только доставка.
+  const runScriptOn = useCallback((el: DiagramElement, name: string, args?: ActionArgs) => {
     const script = el.scripts?.find(s => s.name === name);
     if (!script) {
       console.warn(`[monitor:event] runScript: скрипт «${name}» не найден у «${el.label ?? el.key}»`);
@@ -458,20 +462,20 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       console.warn(`[monitor:event] runScript: у скрипта «${name}» нет числового серверного id (${script.id})`);
       return;
     }
-    connRef.current?.sendAction(scriptId);
+    connRef.current?.sendAction(scriptId, args);
   }, []);
 
   // Пункт меню монитора: запуск скрипта по ключу элемента и имени скрипта.
-  const runScriptByKey = useCallback((elementKey: string, scriptName: string) => {
+  const runScriptByKey = useCallback((elementKey: string, scriptName: string, args?: ActionArgs) => {
     const el = useEditorStore.getState().elements.find(e => e.key === elementKey);
     if (!el) return;
-    runScriptOn(el, scriptName);
+    runScriptOn(el, scriptName, args);
   }, [runScriptOn]);
 
   // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas):
   // компилирует и исполняет element.events[event], пишет свойства в общий буфер
   // и применяет self-интенты. Использует стабильные ref-ы — deps пустые.
-  const runEvent = useCallback((elementKey: string, event: ElementEventName) => {
+  const runEvent = useCallback((elementKey: string, event: ElementEventName, point?: ScreenPoint) => {
     const store = useEditorStore.getState();
     const el = store.elements.find(e => e.key === elementKey);
     const handler = el?.events?.find(e => e.event_type === event)?.handler;
@@ -483,8 +487,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       console.warn(`[monitor:event] ${event} «${el.label ?? el.key}» не скомпилирован: ${compiled.error}`);
       return;
     }
-    // onClick вызывает runScript("Имя") — тот же мост, что и у пунктов меню монитора.
-    const runScript = (name: string) => runScriptOn(el, name);
+    // onClick вызывает runScript("Имя", args?) — тот же мост, что и у пунктов меню монитора.
+    const runScript = (name: string, args?: ActionArgs) => runScriptOn(el, name, args);
 
     const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el), runScript);
     if ("error" in res) {
@@ -517,7 +521,15 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
     // Переход — последним: записи setProperty уже ушли во flush выше, а смена схемы
     // заменит elements, и применять интенты было бы уже не к чему.
-    if (res.openScene !== undefined) void openSceneFromScript(res.openScene, el.label ?? el.key);
+    if (res.openScene !== undefined) {
+      void openSceneFromScript(res.openScene, el.label ?? el.key);
+      // Меню выбора поверх схемы, которая сейчас сменится, было бы не к месту.
+      if (res.menu) console.warn(`[monitor:event] ${event} «${el.label ?? el.key}»: openScene и showMenu сразу — меню не показано`);
+      return;
+    }
+    // Меню выбора рисует холст: пункт подтверждается и уходит через emitRuntimeScript.
+    // Без точки клика (не из слоя интеракции) показывать его негде.
+    if (res.menu && point) showRuntimeMenu({elementKey: el.key, point, items: res.menu});
   }, [runScriptOn]);
 
   /**

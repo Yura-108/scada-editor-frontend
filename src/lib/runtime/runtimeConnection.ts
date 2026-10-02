@@ -72,8 +72,11 @@ export interface RuntimeConnectionHandlers {
 
 export interface RuntimeConnection {
   close: () => void;
-  /** Триггер серверного Java-скрипта: {"type":"ACTION","scriptId"} (задел Phase C). */
-  sendAction: (scriptId: number) => void;
+  /**
+   * Запуск серверного скрипта: {"type":"ACTION","scriptId","args"?}. `args` — уже
+   * проверенный объект (normalizeActionArgs); без него поле не отправляется.
+   */
+  sendAction: (scriptId: number, args?: Record<string, unknown>) => void;
   /** {"type":"SUBSCRIBE_TASKS"} — сервер пришлёт полный список статусов, дальше изменения. */
   subscribeTasks: () => void;
   unsubscribeTasks: () => void;
@@ -323,10 +326,10 @@ export function openRuntimeConnection(
       currentSessionId = null;
       setStatus("closed");
     },
-    sendAction: (scriptId: number) => {
+    sendAction: (scriptId: number, args?: Record<string, unknown>) => {
       if (ws?.readyState === WebSocket.OPEN) {
-        log(`ACTION → scriptId=${scriptId}`);
-        ws.send(JSON.stringify({type: "ACTION", scriptId}));
+        log(`ACTION → scriptId=${scriptId}${args ? ` args=${JSON.stringify(args)}` : ""}`);
+        ws.send(JSON.stringify(args ? {type: "ACTION", scriptId, args} : {type: "ACTION", scriptId}));
       } else {
         console.warn(`[monitor:ws] sendAction(${scriptId}) проигнорирован — соединение не открыто`);
       }

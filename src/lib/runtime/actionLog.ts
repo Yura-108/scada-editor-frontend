@@ -24,9 +24,10 @@ export interface ActionLogRecord {
   target: string | null;
   /**
    * Что пытались записать: у TAG_WRITE — `{tag, value}`, у PROPERTY_WRITE — `{property, value}`
-   * (id свойства: имени в журнале нет).
+   * (id свойства: имени в журнале нет). У ACTION — аргументы действия `{arg, value}`
+   * (docs/contract/2026-10-02-action-args-contract.md), null — запуск без аргументов.
    */
-  tags: {tag?: string; property?: number; value: unknown}[] | null;
+  tags: {tag?: string; property?: number; arg?: string; value: unknown}[] | null;
   outcome: "OK" | "ERROR" | string;
   /** Текст ошибки; у TAG_WRITE — теги, которые контроллер не подтвердил. */
   error: string | null;

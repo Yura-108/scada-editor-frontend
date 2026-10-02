@@ -7,9 +7,9 @@ import {DiagramElement} from "@/types/editorElement.type";
 import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/types/binding.types";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
-import {emitRuntimeEvent} from "@/lib/runtime/runtimeEventBus";
+import {emitRuntimeEvent, type ScreenPoint} from "@/lib/runtime/runtimeEventBus";
 import {confirmMonitorAction} from "@/lib/runtime/confirmMonitorAction";
-import {isNavigationOnlyScript} from "@/lib/runtime/eventScript";
+import {isNonWritingScript} from "@/lib/runtime/eventScript";
 
 const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h.code.trim());
 
@@ -17,15 +17,23 @@ const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h
  * Спрашиваем ДО запуска: скрипт события начинает писать теги с первой строки, и спросить
  * после — значит спросить о том, что уже сделано. Отказ оператора оставляет схему нетронутой.
  */
-const runConfirmed = async (el: DiagramElement, event: ElementEventName) => {
-  // Переход на другую схему ничего не пишет — спрашивать не о чем (см. isNavigationOnlyScript).
-  if (isNavigationOnlyScript(findHandler(el.events, event)?.code)) {
-    emitRuntimeEvent(el.key, event);
+const runConfirmed = async (el: DiagramElement, event: ElementEventName, point?: ScreenPoint) => {
+  // Переход на другую схему и меню выбора ничего не пишут — спрашивать не о чем
+  // (см. isNonWritingScript); пункт меню подтверждается, когда его выберут.
+  if (isNonWritingScript(findHandler(el.events, event)?.code)) {
+    emitRuntimeEvent(el.key, event, point);
     return;
   }
   if (await confirmMonitorAction({element: el, event})) {
-    emitRuntimeEvent(el.key, event);
+    emitRuntimeEvent(el.key, event, point);
   }
+};
+
+/** Точка клика/касания в координатах окна — у неё откроется меню `showMenu`. */
+const screenPoint = (e: Konva.KonvaEventObject<Event>): ScreenPoint | undefined => {
+  const evt = e.evt as MouseEvent | TouchEvent;
+  const p = "changedTouches" in evt ? evt.changedTouches[0] : evt;
+  return p ? {x: p.clientX, y: p.clientY} : undefined;
 };
 
 const findHandler = (events: ElementEvents | undefined, type: ElementEventName) =>
@@ -44,9 +52,9 @@ const isInteractive = (events?: ElementEvents): boolean =>
  *
  * Касания (`onTap`/`onDblTap`) идут мимо: у `TouchEvent` кнопки нет, а тап и так только один.
  */
-const leftButtonOnly = (run: () => void) => (e: Konva.KonvaEventObject<MouseEvent>) => {
+const leftButtonOnly = (run: (point?: ScreenPoint) => void) => (e: Konva.KonvaEventObject<MouseEvent>) => {
   if (e.evt.button !== 0) return;
-  run();
+  run(screenPoint(e));
   consumed(e);
 };
 
@@ -101,10 +109,10 @@ export function MonitorInteractionLayer({elements, elementsMap}: Props) {
             fill="transparent"
             onMouseEnter={e => setCursor(e, "pointer")}
             onMouseLeave={e => setCursor(e, "default")}
-            onClick={clickable ? leftButtonOnly(() => void runConfirmed(el, "onClick")) : undefined}
-            onTap={clickable ? (e) => { void runConfirmed(el, "onClick"); consumed(e); } : undefined}
-            onDblClick={dblClickable ? leftButtonOnly(() => void runConfirmed(el, "onDoubleClick")) : undefined}
-            onDblTap={dblClickable ? () => void runConfirmed(el, "onDoubleClick") : undefined}
+            onClick={clickable ? leftButtonOnly(p => void runConfirmed(el, "onClick", p)) : undefined}
+            onTap={clickable ? (e) => { void runConfirmed(el, "onClick", screenPoint(e)); consumed(e); } : undefined}
+            onDblClick={dblClickable ? leftButtonOnly(p => void runConfirmed(el, "onDoubleClick", p)) : undefined}
+            onDblTap={dblClickable ? (e) => void runConfirmed(el, "onDoubleClick", screenPoint(e)) : undefined}
           />
         );
       })}

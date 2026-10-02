@@ -49,6 +49,21 @@ function ActionTarget({r}: {r: ActionLogRecord}) {
       </ul>
     );
   }
+  // Действие с аргументами (выбор из меню `showMenu`): имя скрипта и что выбрали.
+  if (r.kind === "ACTION" && r.tags?.length) {
+    return (
+      <div>
+        <span>{r.target ?? "—"}</span>
+        <ul className="space-y-0.5">
+          {r.tags.map((t, i) => (
+            <li key={i} className="font-mono text-xs">
+              {t.arg ?? "?"} = {typeof t.value === "object" && t.value !== null ? JSON.stringify(t.value) : String(t.value)}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
   return <span>{r.target ?? "—"}</span>;
 }
 

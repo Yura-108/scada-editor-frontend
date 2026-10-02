@@ -10,8 +10,8 @@ import {confirmModal} from "@/components/ui/ConfirmModal";
  * побочные эффекты начинаются с первой же строки, а `runScript(...)` внутри него уходит на
  * сервер, так что подтверждение «по ходу» было бы только видимостью защиты.
  *
- * Вызывается из двух точек входа — слоя интеракции (клик по компоненту) и меню монитора
- * (пункт серверного скрипта), чтобы формулировка у обеих была одна.
+ * Вызывается из трёх точек входа — слоя интеракции (клик по компоненту), меню монитора
+ * (пункт серверного скрипта) и меню выбора `showMenu`, чтобы формулировка была одна.
  */
 
 /** Вид события вместо имени: у обработчика клика своего названия нет. */
@@ -37,16 +37,18 @@ interface ConfirmMonitorActionOptions {
   scriptName?: string;
   /** Вид события — когда действие висит на клике по компоненту. */
   event?: ElementEventName;
+  /** Выбранный пункт меню `showMenu` — оператор видит, ЧТО именно сейчас уйдёт в ПЛК. */
+  choice?: string;
 }
 
 export async function confirmMonitorAction(
-  {element, scriptName, event}: ConfirmMonitorActionOptions,
+  {element, scriptName, event, choice}: ConfirmMonitorActionOptions,
 ): Promise<boolean> {
   if (pending) return false;
 
   const label = element.label?.trim() || element.key;
   const title = scriptName
-    ? `Выполнить «${scriptName}»?`
+    ? choice ? `Выполнить «${scriptName}»: ${choice}?` : `Выполнить «${scriptName}»?`
     : `Выполнить ${event ? EVENT_LABELS[event] : "действие"}?`;
 
   pending = true;

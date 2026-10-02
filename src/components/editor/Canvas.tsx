@@ -40,10 +40,10 @@ import { useZoomControls } from "./canvas/hooks/useZoomControls";
 import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
-import { buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
+import { buildChoiceMenu, buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
 import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorView";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
-import { isRuntimeLive } from "@/lib/runtime/runtimeEventBus";
+import { isRuntimeLive, setRuntimeMenuHandler } from "@/lib/runtime/runtimeEventBus";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 import type { DiagramElement, MonitorMenuSettings } from "@/types/editorElement.type";
 import { readMonitorMenu } from "@/lib/editor/monitorMenu";
@@ -410,6 +410,41 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     const el = containerAtPointer();
     if (el) enterGroup(el.key);
   };
+
+  /**
+   * Монитор: меню выбора, которое построил `onClick` вызовом `showMenu(items)` (движок
+   * исполняет скрипт, рисуем мы). Вид — от элемента со скриптом, как у его обычного меню.
+   *
+   * У элемента с `onDoubleClick` меню откладывается на окно двойного клика: иначе второй
+   * клик попал бы в пункт. Konva шлёт `click` и на втором клике — второй запрос в окне
+   * означает двойной клик, и меню не показываем вовсе (как в handleMonitorClick).
+   */
+  useEffect(() => {
+    if (!readOnly || archive) return;
+    setRuntimeMenuHandler(({ elementKey, point, items }) => {
+      if (pendingMonitorMenuRef.current) {
+        cancelPendingMonitorMenu();
+        return;
+      }
+      const el = useEditorStore.getState().elements.find(e => e.key === elementKey);
+      if (!el) return;
+      const open = () => setContextMenu({
+        x: point.x,
+        y: point.y,
+        items: buildChoiceMenu(el, items, { closeMenu, isLive: isRuntimeLive() }),
+        settings: readMonitorMenu(el.monitorMenu),
+      });
+      const dblClickMatters = el.events?.some(ev => ev.event_type === "onDoubleClick" && ev.handler?.code?.trim());
+      if (!dblClickMatters) { open(); return; }
+      const sceneAt = useEditorStore.getState().scene?.id;
+      pendingMonitorMenuRef.current = setTimeout(() => {
+        pendingMonitorMenuRef.current = null;
+        if (useEditorStore.getState().scene?.id !== sceneAt) return;
+        open();
+      }, Konva.dblClickWindow);
+    });
+    return () => setRuntimeMenuHandler(null);
+  }, [readOnly, archive, closeMenu, cancelPendingMonitorMenu]);
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();

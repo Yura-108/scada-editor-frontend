@@ -1,4 +1,5 @@
 import type {ElementEventName} from "@/types/binding.types";
+import type {ActionArgs, MenuChoice} from "@/lib/runtime/eventScript";
 
 /**
  * Мост «клик по фигуре в мониторе → движок рантайма». Слой интеракции в Canvas
@@ -9,7 +10,13 @@ import type {ElementEventName} from "@/types/binding.types";
  * Активен только пока смонтирован движок монитора (в редакторе обработчика нет —
  * emit становится no-op).
  */
-type Handler = (elementKey: string, event: ElementEventName) => void;
+/** Точка клика в координатах окна (clientX/clientY) — у неё открывается меню `showMenu`. */
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+type Handler = (elementKey: string, event: ElementEventName, point?: ScreenPoint) => void;
 
 let handler: Handler | null = null;
 
@@ -17,8 +24,8 @@ export const setRuntimeEventHandler = (h: Handler | null): void => {
   handler = h;
 };
 
-export const emitRuntimeEvent = (elementKey: string, event: ElementEventName): void => {
-  handler?.(elementKey, event);
+export const emitRuntimeEvent = (elementKey: string, event: ElementEventName, point?: ScreenPoint): void => {
+  handler?.(elementKey, event, point);
 };
 
 /** Есть ли активный обработчик (мы в мониторе) — для курсора/подсветки интерактива. */
@@ -30,7 +37,7 @@ export const hasRuntimeEventHandler = (): boolean => handler !== null;
  * runScript("Имя") внутри обработчика события: движок ищет скрипт у элемента и шлёт
  * ACTION по WS. Отдельная шина, а не ElementEventName: у действия нет события-повода.
  */
-type ScriptHandler = (elementKey: string, scriptName: string) => void;
+type ScriptHandler = (elementKey: string, scriptName: string, args?: ActionArgs) => void;
 
 let scriptHandler: ScriptHandler | null = null;
 
@@ -38,8 +45,31 @@ export const setRuntimeScriptHandler = (h: ScriptHandler | null): void => {
   scriptHandler = h;
 };
 
-export const emitRuntimeScript = (elementKey: string, scriptName: string): void => {
-  scriptHandler?.(elementKey, scriptName);
+export const emitRuntimeScript = (elementKey: string, scriptName: string, args?: ActionArgs): void => {
+  scriptHandler?.(elementKey, scriptName, args);
+};
+
+/**
+ * Меню выбора, которое построил `onClick` вызовом `showMenu(items)`. Движок исполняет
+ * скрипт и знает пункты, а меню рисует холст монитора (Canvas) — он и регистрирует
+ * обработчик. Без холста (редактор, архив) показ — no-op.
+ */
+export interface RuntimeMenuRequest {
+  elementKey: string;
+  point: ScreenPoint;
+  items: MenuChoice[];
+}
+
+type MenuHandler = (req: RuntimeMenuRequest) => void;
+
+let menuHandler: MenuHandler | null = null;
+
+export const setRuntimeMenuHandler = (h: MenuHandler | null): void => {
+  menuHandler = h;
+};
+
+export const showRuntimeMenu = (req: RuntimeMenuRequest): void => {
+  menuHandler?.(req);
 };
 
 /**

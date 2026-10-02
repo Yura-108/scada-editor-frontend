@@ -122,7 +122,13 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
       if (varName in scope.tagIdByName) valuesByTagId.set(scope.tagIdByName[varName], raw);
       else valuesByPropertyId.set(scope.propertyIdByName[varName], raw);
     }
-    const res = executeEventScript(compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element));
+    // runScript в тест-прогоне ничего не отправляет — только показывает, что ушло бы.
+    const scriptCalls: string[] = [];
+    const recordRunScript = (name: string, args?: Record<string, unknown>) =>
+      scriptCalls.push(`runScript(${JSON.stringify(name)}${args ? `, ${JSON.stringify(args)}` : ""})`);
+    const res = executeEventScript(
+      compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element), recordRunScript,
+    );
     if ("error" in res) {
       setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
       return;
@@ -132,7 +138,15 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
       ...res.intents.map(i =>
         i.kind === "state" ? `setState("${i.stateName}")` : `setProp("${i.key}", ${JSON.stringify(i.value)})`,
       ),
+      ...scriptCalls,
     ];
+    if (res.menu) {
+      parts.push(`showMenu → пунктов: ${res.menu.length}`);
+      for (const item of res.menu) {
+        const known = element.scripts?.some(sc => sc.name === item.script);
+        parts.push(`  «${item.label}» → ${item.script}${item.args ? ` ${JSON.stringify(item.args)}` : ""}${known ? "" : " (нет такого скрипта)"}`);
+      }
+    }
     if (res.openScene !== undefined) {
       // Тот же разбор, что в мониторе, — иначе тест обещал бы переход, которого не будет.
       const target = resolveSceneTarget(res.openScene, sceneList);
@@ -183,7 +197,11 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
             само значение тега/свойства (исходная строка — <code>RAW.Имя</code>).
             Запись свойства объекта: <code>setProperty(&quot;Имя&quot;, значение)</code> — на неё
             реагируют привязки других элементов. Серверный скрипт (запись тега в ПЛК):{" "}
-            <code>runScript(&quot;Имя&quot;)</code>. Открыть другую схему проекта:{" "}
+            <code>runScript(&quot;Имя&quot;)</code>, с аргументами —{" "}
+            <code>runScript(&quot;Имя&quot;, {"{"} recipe: 4 {"}"})</code> (в серверном скрипте это объект{" "}
+            <code>args</code>). Меню выбора у точки клика:{" "}
+            <code>showMenu([{"{"} label, script, args {"}"}])</code> — выбранный пункт запустит{" "}
+            <code>script</code> с его <code>args</code>. Открыть другую схему проекта:{" "}
             <code>openScene(&quot;Имя схемы&quot;)</code> или <code>openScene(id)</code>.
             Также доступны <code>setProp</code>, <code>setState</code>, <code>self</code>.
           </>

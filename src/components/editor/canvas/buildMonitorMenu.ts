@@ -5,6 +5,7 @@ import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModa
 import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
 import { openTrendModal } from "@/components/monitor/TrendModal";
 import { trendPens } from "@/lib/editor/trendSettings";
+import type { MenuChoice } from "@/lib/runtime/eventScript";
 import type { CanvasMenuItem } from "./types";
 
 /**
@@ -92,15 +93,10 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
   }
 
   for (const script of monitorActions(el)) {
-    // sendAction адресует скрипт ЧИСЛОВЫМ серверным id; у скрипта, созданного и ещё
-    // не сохранённого в редакторе, там uuid — запускать нечего (см. runScriptOn).
-    const isSaved = Number.isFinite(Number(script.id));
-    const reason = !isSaved ? " — схема не сохранена"
-      : !isLive ? " — нет связи"
-      : "";
+    const reason = unavailableReason(el, script.name, isLive);
     items.push({
       label: `${script.name}${reason}`,
-      disabled: !isSaved || !isLive,
+      disabled: reason !== "",
       onClick: () => {
         // Меню закрываем ДО подтверждения: иначе оно осталось бы висеть под диалогом.
         // Пункт меню синхронный по типу, поэтому асинхронная часть уходит в `void (async…)()`.
@@ -115,4 +111,48 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
   }
 
   return items;
+}
+
+/**
+ * Почему серверный скрипт сейчас не запустить ("" — можно).
+ *
+ * sendAction адресует скрипт ЧИСЛОВЫМ серверным id; у скрипта, созданного и ещё
+ * не сохранённого в редакторе, там uuid — запускать нечего (см. runScriptOn).
+ */
+const unavailableReason = (el: DiagramElement, scriptName: string, isLive: boolean): string => {
+  const script = el.scripts?.find(s => s.name === scriptName);
+  if (!script) return " — нет скрипта";
+  if (!Number.isFinite(Number(script.id))) return " — схема не сохранена";
+  if (!isLive) return " — нет связи";
+  return "";
+};
+
+/**
+ * Меню выбора, построенное `onClick` вызовом `showMenu(items)`: каждый пункт запускает
+ * серверный скрипт элемента со своими `args`. Подтверждение — на выбранном пункте, с его
+ * подписью: сам клик, открывший меню, ничего не писал и не подтверждался
+ * (isNonWritingScript).
+ */
+export function buildChoiceMenu(
+  el: DiagramElement,
+  choices: MenuChoice[],
+  deps: Pick<BuildMonitorMenuDeps, "closeMenu" | "isLive">,
+): CanvasMenuItem[] {
+  const { closeMenu, isLive } = deps;
+  return choices.map(choice => {
+    const reason = unavailableReason(el, choice.script, isLive);
+    return {
+      label: `${choice.label}${reason}`,
+      disabled: reason !== "",
+      onClick: () => {
+        // Как у пунктов действий: меню закрываем ДО диалога.
+        closeMenu();
+        void (async () => {
+          if (await confirmMonitorAction({element: el, scriptName: choice.script, choice: choice.label})) {
+            emitRuntimeScript(el.key, choice.script, choice.args);
+          }
+        })();
+      },
+    };
+  });
 }

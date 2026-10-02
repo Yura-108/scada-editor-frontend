@@ -324,7 +324,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       // (script-core бэкенда), а не Java, как долго писали в подписях: монитор только
       // шлёт ACTION с их id (см. runScript в useRuntimeEngine). Обработчики событий и
       // привязки — тоже JavaScript, но в браузере.
-      description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
+      description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\", аргументы?) или пунктом showMenu. Аргументы клика — объект args ({} без аргументов); проверяйте их диапазон в скрипте.",
       onConfirm: (name, content, displayed) => {
         const newScript = { id: createUuid(), name, content, displayed };
         updateElement(element.key, {
@@ -1274,7 +1274,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                     onClick={() => {
                         openScriptEditorModal({
                           title: "Редактирование скрипта",
-                          description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\").",
+                          description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\", аргументы?) или пунктом showMenu. Аргументы клика — объект args ({} без аргументов); проверяйте их диапазон в скрипте.",
                           defaultName: script.name,
                           defaultContent: script.content,
                           defaultDisplayed: script.displayed,
