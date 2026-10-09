@@ -81,9 +81,11 @@ export interface RuntimeConnection {
   subscribeTasks: () => void;
   unsubscribeTasks: () => void;
   /**
-   * {"type":"SUBSCRIBE_SCENE","sceneId","tags"?} (контракт 2026-10-08-ws-scene-subscription-contract.md):
-   * дальше `UPDATE.tags` — только теги поддерева сцены плюс `tags`. Заменяет прежнюю подписку
-   * целиком. `SNAPSHOT`, свойства, процедуры и задачи не фильтруются.
+   * {"type":"SUBSCRIBE_SCENE","sceneId","tags"?} (контракты 2026-10-08-ws-scene-subscription-contract.md,
+   * 2026-10-09-ws-scene-subscription-tags-fix.md): дальше `UPDATE.tags` — только теги поддерева
+   * сцены плюс `tags`. `tags` — только теги ВНЕ сцены; пустой в кадр не попадает, чтобы сессия
+   * делила общий кадр сцены с остальными. Заменяет прежнюю подписку целиком. `SNAPSHOT`,
+   * свойства, процедуры и задачи не фильтруются.
    */
   subscribeScene: (sceneId: number, tags: readonly string[]) => void;
   /** {"type":"UNSUBSCRIBE_SCENE"} — снова все теги проекта. */

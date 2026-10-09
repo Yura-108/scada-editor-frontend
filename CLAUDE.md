@@ -407,9 +407,15 @@ scene's current values into the next `UPDATE` at once. `SNAPSHOT`, `properties`,
 tasks are not filtered. How the frontend drives it:
 
 - **The subscription effect in `useRuntimeEngine`** fires on `(sceneId, sceneTags, extraTags)` and
-  is declared *before* the "re-run bindings on scene change" effect on purpose. `tags` carries the
-  **whole** `sceneTags`, not just off-scene ones: direct tag bindings are not element properties,
-  and runtime's "scene subtree" may not see them. Duplicates are harmless.
+  is declared *before* the "re-run bindings on scene change" effect on purpose. **`tags` carries
+  only off-scene tags** — `runtimeTagInterest` minus `sceneTags`, and no field at all when that is
+  empty (`docs/contract/2026-10-09-ws-scene-subscription-tags-fix.md`). Runtime finds the scene's
+  tags itself, properties and direct bindings included (`composition` primitives too). Sessions of
+  one scene without `tags` share a single serialized `UPDATE`; a non-empty `tags` makes the
+  session's set unique and costs runtime a per-session frame. A scene tag that freezes or shows
+  «нет данных» without being in `tags` is a runtime index bug (report `sceneId` + tag path), not
+  something to fix by adding it to `tags`. The full set (scene + panels) is still what decides
+  locally whether the subscription changed and which values to drop.
 - **Values that fall out of the subscription are dropped**, not kept: only tags in *previous ∩ new*
   survive in `valuesRef`/`pendingRef`/`tagMetaRef` (intersection, because a straggler frame that
   arrived after leaving the scene is stale too). Returning to a scene therefore shows «нет данных»

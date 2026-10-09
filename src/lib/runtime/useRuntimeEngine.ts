@@ -343,14 +343,21 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   // Последняя подписка на сцену, о которой знает runtime; null — подписки нет, сервер шлёт
   // теги всего проекта (до первой подписки и после TREE_CHANGED).
-  const lastSubRef = useRef<{sceneId: number; tags: ReadonlySet<string>} | null>(null);
+  // `tags` — полный набор (схема + панели) для локального сравнения и сброса, `wire` — то, что
+  // ушло в сокет.
+  const lastSubRef = useRef<{sceneId: number; tags: ReadonlySet<string>; wire: string[]} | null>(null);
 
   /**
-   * Подписка WS на открытую сцену (контракт 2026-10-08-ws-scene-subscription-contract.md).
+   * Подписка WS на открытую сцену (контракты 2026-10-08-ws-scene-subscription-contract.md и
+   * 2026-10-09-ws-scene-subscription-tags-fix.md).
    *
-   * В `tags` уходит ВЕСЬ набор тегов схемы, а не только то, что лежит вне её: прямые привязки
-   * «элемент ← тег» не являются свойствами элемента, и «поддерево сцены» runtime может их не
-   * найти. Дубли со сценой безвредны. Плюс теги панелей вне сцены (runtimeTagInterest).
+   * В `tags` уходят ТОЛЬКО теги панелей вне сцены (runtimeTagInterest) за вычетом тегов схемы.
+   * Теги сцены runtime находит сам — свойства и прямые привязки, в т.ч. примитивов `composition`.
+   * Сессии одной сцены без `tags` делят один кадр UPDATE, сериализуемый один раз на всех; непустой
+   * `tags` делает набор сессии уникальным, и кадр собирается для неё отдельно. Поэтому тег сцены,
+   * замерший без `tags`, — ошибка индекса runtime, а не повод дописать его сюда.
+   *
+   * Локально же сравнение «изменилась ли подписка» и сброс значений идут по полному набору.
    *
    * Объявлен РАНЬШЕ повторного прогона при смене схемы: сброс значений обязан случиться до того,
    * как прогон прочитает valuesRef и посчитает «нет данных».
@@ -378,10 +385,12 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     }
     if (dropped) qualityDirtyRef.current = true;
 
-    lastSubRef.current = {sceneId, tags: next};
+    const onScene = new Set(sceneTags);
+    const wire = extraTags.filter(t => !onScene.has(t));
+    lastSubRef.current = {sceneId, tags: next, wire};
     // До открытия соединения connRef пуст — подписку отправит эффект соединения.
-    connRef.current?.subscribeScene(sceneId, [...next]);
-    log(`подписка на сцену ${sceneId}: тегов ${next.size} (доп. ${extraTags.length}), сброшено значений ${dropped}`);
+    connRef.current?.subscribeScene(sceneId, wire);
+    log(`подписка на сцену ${sceneId}: тегов схемы ${sceneTags.length}, вне схемы ${wire.length}, сброшено значений ${dropped}`);
   }, [active, mode, sceneId, sceneTags, extraTags]);
 
   /**
@@ -793,7 +802,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // Эффект подписки мог отработать раньше соединения (первый маунт, возврат из архива) —
     // соединение запомнит подписку и отправит её при открытии сокета.
     const sub = lastSubRef.current;
-    if (sub) conn.subscribeScene(sub.sceneId, [...sub.tags]);
+    if (sub) conn.subscribeScene(sub.sceneId, sub.wire);
 
     // Именно interval, а не rAF: rAF замерзает в фоновой вкладке, значения
     // копились бы без применения. Плюс мгновенный догон при возврате на вкладку.
