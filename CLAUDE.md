@@ -390,14 +390,39 @@ predecessor (sized the modal for a day): it is only stripped on load, never rest
 
 **Object inspector** (`ObjectInspectorModal`, contract `docs/contract/2026-10-01-object-inspector-contract.md`):
 any object of the prod release, from every scene (`GET /api/runtime/projects/{id}/objects`, re-read
-on a new `releaseVersionNo`), with all its properties. Values need no new channel — SNAPSHOT/UPDATE
-already carry the whole project, and the engine exposes them through the bus
-(`getRuntimeTagValue`, `getRuntimeTagQuality`, `getRuntimePropertyValue`, read once a second like
-«Опции»). A tag property writes to the PLC via `tags/write`; a local one via
+on a new `releaseVersionNo`), with all its properties. Values need no new channel — the engine
+exposes them through the bus (`getRuntimeTagValue`, `getRuntimeTagQuality`,
+`getRuntimePropertyValue`, read once a second like «Опции»). Properties arrive for the whole
+project, but tags only for the subscribed scene, so the inspector registers the selected object's
+tags in `runtimeTagInterest` (see the scene subscription below). A tag property writes to the PLC via `tags/write`; a local one via
 `POST …/projects/{id}/properties/write` (journal kind `PROPERTY_WRITE`). Never show the written
 value locally — the UPDATE that follows is what proves runtime holds it. `UNKNOWN_PROPERTY` means
 the list is stale: re-read it. Opened from the monitor toolbar and the component menu, live only —
 never in the archive.
+
+**The WS is subscribed to the open scene** (contract
+`docs/contract/2026-10-08-ws-scene-subscription-contract.md`). `{"type":"SUBSCRIBE_SCENE", sceneId,
+tags}` makes runtime send `UPDATE.tags` only for that scene's subtree plus `tags`, and put the
+scene's current values into the next `UPDATE` at once. `SNAPSHOT`, `properties`, procedures and
+tasks are not filtered. How the frontend drives it:
+
+- **The subscription effect in `useRuntimeEngine`** fires on `(sceneId, sceneTags, extraTags)` and
+  is declared *before* the "re-run bindings on scene change" effect on purpose. `tags` carries the
+  **whole** `sceneTags`, not just off-scene ones: direct tag bindings are not element properties,
+  and runtime's "scene subtree" may not see them. Duplicates are harmless.
+- **Values that fall out of the subscription are dropped**, not kept: only tags in *previous ∩ new*
+  survive in `valuesRef`/`pendingRef`/`tagMetaRef` (intersection, because a straggler frame that
+  arrived after leaving the scene is stale too). Returning to a scene therefore shows «нет данных»
+  for one frame instead of a confidently wrong mimic, and the immediate `UPDATE` runs the bindings
+  through `flush` (no value in `valuesRef` → not a no-op).
+- `runtimeConnection` remembers the subscription and resends it in `onopen` (a new session knows
+  nothing of it); `TREE_CHANGED` forgets it on both sides (`lastSubRef = null`), because runtime
+  drops it and the new release's scene ids may differ — the effect resubscribes once
+  `reloadRelease` redraws the scene. The archive mode never subscribes.
+- **Panels that show tags outside the scene must register them** in `runtimeTagInterest`
+  (`setRuntimeTagInterest(owner, tags)` / `clearRuntimeTagInterest(owner)`); the engine unions
+  them into `tags`. Today only the object inspector does (the selected object's tags). A new
+  consumer that skips this sees its values freeze, then reset to «нет данных».
 
 **The monitor session is an observer, not the owner of the work.** A project runs while its
 «in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,

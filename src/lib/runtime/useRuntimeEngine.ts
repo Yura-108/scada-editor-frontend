@@ -25,6 +25,7 @@ import {
   type ScreenPoint,
 } from "@/lib/runtime/runtimeEventBus";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
+import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
 import {fetchArchiveValues, toTrendValue} from "@/lib/runtime/archive";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
@@ -186,6 +187,19 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   const indexRef = useRef(index);
   indexRef.current = index;
 
+  // Все теги открытой схемы: их просит у архива воспроизведение, на них же подписывается
+  // живой WS. Перья трендов входят через elementKeysByTagId — это тег-свойства.
+  const sceneTags = useMemo(() => {
+    if (!index) return [] as string[];
+    const all = new Set<string>(index.tagIds);
+    for (const map of [index.elementKeysByTagId, index.tableCellsByTagId, index.directTagsByTagId]) {
+      for (const tag of map.keys()) all.add(tag);
+    }
+    return [...all].sort();
+  }, [index]);
+  const sceneId = useEditorStore(s => (s.scene?.id == null ? null : Number(s.scene.id)));
+  const extraTags = useRuntimeTagInterest();
+
   // Коалесинг-буфер тика (tag_id → последнее значение) и последние известные
   // значения всех тегов скоупа (аргументы для исполнения биндингов). value может
   // быть null — тег с quality != GOOD без последнего достоверного значения.
@@ -326,6 +340,49 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
+
+  // Последняя подписка на сцену, о которой знает runtime; null — подписки нет, сервер шлёт
+  // теги всего проекта (до первой подписки и после TREE_CHANGED).
+  const lastSubRef = useRef<{sceneId: number; tags: ReadonlySet<string>} | null>(null);
+
+  /**
+   * Подписка WS на открытую сцену (контракт 2026-10-08-ws-scene-subscription-contract.md).
+   *
+   * В `tags` уходит ВЕСЬ набор тегов схемы, а не только то, что лежит вне её: прямые привязки
+   * «элемент ← тег» не являются свойствами элемента, и «поддерево сцены» runtime может их не
+   * найти. Дубли со сценой безвредны. Плюс теги панелей вне сцены (runtimeTagInterest).
+   *
+   * Объявлен РАНЬШЕ повторного прогона при смене схемы: сброс значений обязан случиться до того,
+   * как прогон прочитает valuesRef и посчитает «нет данных».
+   */
+  useEffect(() => {
+    if (!active || mode !== "live" || sceneId == null || !Number.isFinite(sceneId)) return;
+    const next = new Set<string>(sceneTags);
+    for (const t of extraTags) next.add(t);
+    const prev = lastSubRef.current;
+    if (prev && prev.sceneId === sceneId && setsEqual(prev.tags, next)) return;
+
+    // Тег, выпавший из подписки, больше не обновляется — его значение устареет, а схема с ним
+    // уверенно показывала бы то, чего уже нет. Держим только теги, которые были в подписке И
+    // остаются в ней: значение, пришедшее «вдогонку» после ухода со сцены, тоже устарело бы.
+    // Новые теги ждут немедленного UPDATE от runtime (до него — оверлей «нет данных»), и flush
+    // прогонит их биндинги: значения в valuesRef нет, no-op-страж изменение не отсечёт.
+    const keep = (tag: string) => next.has(tag) && (!prev || prev.tags.has(tag));
+    let dropped = 0;
+    for (const map of [valuesRef.current, pendingRef.current, tagMetaRef.current]) {
+      for (const tag of [...map.keys()]) {
+        if (keep(tag)) continue;
+        map.delete(tag);
+        dropped++;
+      }
+    }
+    if (dropped) qualityDirtyRef.current = true;
+
+    lastSubRef.current = {sceneId, tags: next};
+    // До открытия соединения connRef пуст — подписку отправит эффект соединения.
+    connRef.current?.subscribeScene(sceneId, [...next]);
+    log(`подписка на сцену ${sceneId}: тегов ${next.size} (доп. ${extraTags.length}), сброшено значений ${dropped}`);
+  }, [active, mode, sceneId, sceneTags, extraTags]);
 
   /**
    * Открытие схемы: сид значений + ПОВТОРНЫЙ ПРОГОН биндингов по уже известным значениям.
@@ -571,8 +628,9 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
     setRuntimeValueGetter(tagId => valuesRef.current.get(tagId));
-    // Инспектор объектов: значения локальных свойств и качество тегов — всего проекта, не
-    // только открытой схемы (SNAPSHOT/UPDATE несут весь проект).
+    // Инспектор объектов: значения локальных свойств и качество тегов — не только открытой
+    // схемы. Свойства приходят по всему проекту; теги вне схемы — только те, что инспектор
+    // зарегистрировал в runtimeTagInterest (иначе подписка на сцену их не присылает).
     setRuntimePropertyValueGetter(id => valuesByPropRef.current.get(id));
     setRuntimeTagQualityGetter(tagId => tagMetaRef.current.get(tagId)?.quality);
     setRuntimeTagWriteHandler(onTagsWritten);
@@ -660,7 +718,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       onRelease: (versionNo, changed) => {
         const store = useEditorStore.getState();
         const shown = store.releaseVersionNo;
-        if (changed || (shown !== null && shown !== versionNo)) void store.reloadRelease(versionNo);
+        // TREE_CHANGED снял подписку на сервере: дальше снова идут все теги, а новую
+        // подписку эффект подписки пошлёт, когда схема выпуска перерисуется.
+        if (changed) lastSubRef.current = null;
+        if (changed ||(shown !== null && shown !== versionNo)) void store.reloadRelease(versionNo);
         else store.setReleaseVersionNo(versionNo);
       },
       /**
@@ -729,6 +790,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       },
     });
     connRef.current = conn;
+    // Эффект подписки мог отработать раньше соединения (первый маунт, возврат из архива) —
+    // соединение запомнит подписку и отправит её при открытии сокета.
+    const sub = lastSubRef.current;
+    if (sub) conn.subscribeScene(sub.sceneId, [...sub.tags]);
 
     // Именно interval, а не rAF: rAF замерзает в фоновой вкладке, значения
     // копились бы без применения. Плюс мгновенный догон при возврате на вкладку.
@@ -804,17 +869,6 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const controller = loadTrendHistory(Date.now());
     return () => controller.abort();
   }, [active, index, mode, loadTrendHistory]);
-
-  // Теги открытой схемы для запроса воспроизведения. Перья трендов входят через
-  // elementKeysByTagId — это тег-свойства.
-  const sceneTags = useMemo(() => {
-    if (!index) return [] as string[];
-    const all = new Set<string>(index.tagIds);
-    for (const map of [index.elementKeysByTagId, index.tableCellsByTagId, index.directTagsByTagId]) {
-      for (const tag of map.keys()) all.add(tag);
-    }
-    return [...all].sort();
-  }, [index]);
 
   // Дискретные теги схемы по типу свойства — на случай, если по WS тег в этой вкладке ещё
   // не приходил и его вид неизвестен.

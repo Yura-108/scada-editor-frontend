@@ -13,6 +13,7 @@ import {
   getRuntimePropertyValue, getRuntimeSessionId, getRuntimeTagQuality, getRuntimeTagValue,
   notifyRuntimeTagsWritten,
 } from "@/lib/runtime/runtimeEventBus";
+import {clearRuntimeTagInterest, setRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,
@@ -142,8 +143,9 @@ function ObjectPicker({objects, selected, loading, onSelect, inputClass}: {
  * Инспектор объектов монитора (docs/contract/2026-10-01-object-inspector-contract.md).
  *
  * Любой объект prod-выпуска со всех сцен и все его свойства: с тегом — живое значение из
- * телеметрии, локальные — значение, которое держит runtime (его пишут скрипты). Значения всего
- * проекта уже приходят по WS (SNAPSHOT/UPDATE), движок держит их в рефах и отдаёт геттерами шины.
+ * телеметрии, локальные — значение, которое держит runtime (его пишут скрипты). Значения приходят
+ * по WS, движок держит их в рефах и отдаёт геттерами шины; WS подписан на открытую сцену, поэтому
+ * теги выбранного объекта окно регистрирует в runtimeTagInterest.
  *
  * Запись: теговое — в ПЛК (`tags/write`), как «Опции»; локальное — `properties/write`. Записанное
  * локально не подставляем: UPDATE приходит за десятки миллисекунд, и только он гарантирует, что
@@ -201,6 +203,17 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
   }, [load, releaseVersionNo, reloadKey]);
 
   const selected = objects.find(o => o.id === selectedId) ?? null;
+
+  // Объект может быть с другой сцены, а WS подписан только на открытую: теги выбранного
+  // объекта просим явно (runtimeTagInterest), пока окно открыто. Весь список не просим —
+  // объектов сотни, а значения видны только у выбранного.
+  const interestOwner = useId();
+  const selectedTagKey = (selected?.properties ?? [])
+    .map(p => p.tag_id).filter((t): t is string => !!t).sort().join("\n");
+  useEffect(() => {
+    setRuntimeTagInterest(`inspector:${interestOwner}`, selectedTagKey ? selectedTagKey.split("\n") : []);
+  }, [interestOwner, selectedTagKey]);
+  useEffect(() => () => clearRuntimeTagInterest(`inspector:${interestOwner}`), [interestOwner]);
 
   const selectObject = (id: number | null) => {
     setSelectedId(id);

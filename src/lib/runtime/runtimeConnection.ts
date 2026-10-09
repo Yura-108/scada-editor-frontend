@@ -80,6 +80,14 @@ export interface RuntimeConnection {
   /** {"type":"SUBSCRIBE_TASKS"} — сервер пришлёт полный список статусов, дальше изменения. */
   subscribeTasks: () => void;
   unsubscribeTasks: () => void;
+  /**
+   * {"type":"SUBSCRIBE_SCENE","sceneId","tags"?} (контракт 2026-10-08-ws-scene-subscription-contract.md):
+   * дальше `UPDATE.tags` — только теги поддерева сцены плюс `tags`. Заменяет прежнюю подписку
+   * целиком. `SNAPSHOT`, свойства, процедуры и задачи не фильтруются.
+   */
+  subscribeScene: (sceneId: number, tags: readonly string[]) => void;
+  /** {"type":"UNSUBSCRIBE_SCENE"} — снова все теги проекта. */
+  unsubscribeScene: () => void;
   /** id текущей сессии (для GET /snapshot) — null, если сокет ещё не подключён/уже закрыт.
    *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
   getSessionId: () => string | null;
@@ -119,6 +127,13 @@ export function openRuntimeConnection(
   // Подписка живёт на соединении, а не на сессии runtime: после переподключения новая сессия
   // о ней не знает, поэтому onopen отправляет SUBSCRIBE_TASKS заново.
   let tasksWanted = false;
+  // Подписка на сцену — по той же причине повторяется в onopen. TREE_CHANGED её снимает на
+  // сервере, и мы забываем её тоже: у сцен нового выпуска могут быть другие id и теги, новую
+  // пришлёт движок, когда схема выпуска перерисуется.
+  let sceneWanted: {sceneId: number; tags: readonly string[]} | null = null;
+
+  const sceneFrame = ({sceneId, tags}: {sceneId: number; tags: readonly string[]}) =>
+    JSON.stringify(tags.length ? {type: "SUBSCRIBE_SCENE", sceneId, tags} : {type: "SUBSCRIBE_SCENE", sceneId});
 
   const setStatus = (s: RuntimeStatus, detail?: string) => onStatus?.(s, detail);
 
@@ -222,6 +237,10 @@ export function openRuntimeConnection(
         }
       }, PING_INTERVAL_MS);
       if (tasksWanted) socket.send(JSON.stringify({type: "SUBSCRIBE_TASKS"}));
+      if (sceneWanted) {
+        log(`SUBSCRIBE_SCENE → сцена ${sceneWanted.sceneId}, доп. тегов ${sceneWanted.tags.length} (повтор после подключения)`);
+        socket.send(sceneFrame(sceneWanted));
+      }
     };
 
     socket.onmessage = (e) => {
@@ -254,7 +273,8 @@ export function openRuntimeConnection(
         return;
       }
       if (msg?.type === "TREE_CHANGED") {
-        log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}`);
+        log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}, подписка на сцену снята сервером`);
+        sceneWanted = null;
         if (typeof msg.versionNo === "number") onRelease?.(msg.versionNo, true);
         return;
       }
@@ -342,6 +362,17 @@ export function openRuntimeConnection(
     unsubscribeTasks: () => {
       tasksWanted = false;
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "UNSUBSCRIBE_TASKS"}));
+    },
+    subscribeScene: (sceneId: number, tags: readonly string[]) => {
+      sceneWanted = {sceneId, tags: [...tags]};
+      if (ws?.readyState === WebSocket.OPEN) {
+        log(`SUBSCRIBE_SCENE → сцена ${sceneId}, доп. тегов ${tags.length}`);
+        ws.send(sceneFrame(sceneWanted));
+      }
+    },
+    unsubscribeScene: () => {
+      sceneWanted = null;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "UNSUBSCRIBE_SCENE"}));
     },
   };
 }
