@@ -1,6 +1,7 @@
 import {snap, GRID} from "@/lib/utils";
 import type {MonitorView} from "@/lib/editor/monitorView";
 import {create} from "zustand/react";
+import {errorTextFromBody} from "@/lib/access/accessErrors";
 import {GroupElement, ComponentState, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import {
@@ -957,18 +958,10 @@ const getErrorMessage = (err: unknown, fallback: string) =>
 
 /**
  * Бэкенд отдаёт ошибки JSON-телом `{status, message, error, timestamp}`
- * (Spring `ErrorResponse`). Достаём `message` — иначе тост показывает
- * пользователю сырой JSON-блоб, который легко принять за «ничего не произошло».
+ * (Spring `ErrorResponse`), а отказы в доступе — `{error: "FORBIDDEN", reason}`.
+ * Достаём человеческий текст — иначе тост показывает сырой JSON-блоб.
  */
-const parseBackendErrorMessage = (status: number, text: string): string => {
-  try {
-    const parsed = JSON.parse(text);
-    if (typeof parsed?.message === "string" && parsed.message) return parsed.message;
-  } catch {
-    // тело не JSON — покажем как есть (обрезано)
-  }
-  return `Ошибка ${status}${text ? `: ${text.slice(0, 200)}` : ""}`;
-};
+const parseBackendErrorMessage = errorTextFromBody;
 
 /**
  * Массовое удаление документов и компонентов — единственный оставшийся адрес удаления.
@@ -3696,7 +3689,7 @@ export const useEditorStore = create<EditorState>()(temporal(
           const res = await fetch("/api/editor/projects");
 
           if (!res.ok) {
-            throw new Error(await res.text().catch(() => "Ошибка загрузки списка проектов"));
+            throw new Error(parseBackendErrorMessage(res.status, await res.text().catch(() => "")));
           }
 
           const json = await res.json();

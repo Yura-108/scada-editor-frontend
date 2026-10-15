@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { Cpu, Settings } from 'lucide-react';
-import LogoutButton from '@/components/ui/LogoutButton';
+import { Cpu } from 'lucide-react';
+import UserMenu from '@/components/auth/UserMenu';
+import SessionUserBootstrap from '@/components/auth/SessionUserBootstrap';
 import { getUser } from '@/lib/getUser';
 import HeaderNav from '@/components/editor/HeaderNav';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -11,8 +12,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
  *
  * Шапка живёт именно здесь, а не в корневом layout: там она рендерилась
  * безусловно, и неавторизованный пользователь на /login видел полное меню,
- * каждая ссылка которого возвращала его обратно на /login. Страницы входа и
- * регистрации лежат в группе (auth) и этот layout не наследуют.
+ * каждая ссылка которого возвращала его обратно на /login. Страница входа
+ * лежит в группе (auth) и этот layout не наследует.
  *
  * Высота шапки задана переменной --app-header-h (globals.css): её же используют
  * утилиты min-h-app / h-app и `top-(--app-header-h)` в редакторе и мониторе.
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
+      {user && <SessionUserBootstrap login={user.login} admin={user.admin} />}
       <header className="sticky top-0 z-header w-full border-b border-gray-200 dark:border-gray-800/60 bg-white dark:bg-gray-900/70 backdrop-blur-md">
         {/* Во всю ширину, а не `container`: разделов стало 7, и в фиксированную ширину
             контейнера они не помещались. Навигация занимает место между логотипом и
@@ -43,22 +45,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
           </Link>
 
-          <HeaderNav />
+          <HeaderNav isAdmin={user?.admin ?? false} />
 
           {/* Правая часть: Кнопки действий */}
           <div className="flex shrink-0 items-center gap-2 lg:gap-4">
             <ThemeToggle />
-            {/*<button*/}
-            {/*  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"*/}
-            {/*  aria-label="Настройки"*/}
-            {/*  title="Настройки"*/}
-            {/*>*/}
-            {/*  <Settings className="w-5 h-5" />*/}
-            {/*</button>*/}
             {user && (
               <>
                 <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
-                <LogoutButton />
+                <UserMenu login={user.login} />
               </>
             )}
           </div>

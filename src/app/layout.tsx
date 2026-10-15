@@ -15,7 +15,7 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
  * Корневой layout: только оболочка документа, провайдеры и глобальные стеки окон.
  *
  * Шапка с навигацией переехала в layout группы (app) — здесь она рендерилась
- * безусловно и висела в том числе над /login и /register.
+ * безусловно и висела в том числе над /login.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

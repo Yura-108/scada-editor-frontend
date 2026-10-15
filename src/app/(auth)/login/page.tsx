@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { loginSchema } from '@/schemas/authSchema';
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -203,19 +202,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Ссылка на регистрацию */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-600 dark:text-gray-400">
-            Нет аккаунта?{' '}
-            {/* Link, а не <a>: обычная ссылка перезагружала весь документ. */}
-            <Link
-              href="/register"
-              className="text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
-            >
-              Зарегистрироваться
-            </Link>
-          </p>
-        </div>
+        {/* Регистрации нет: пользователей заводит администратор. */}
+        <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          Нет учётной записи — обратитесь к администратору.
+        </p>
       </div>
     </div>
   );

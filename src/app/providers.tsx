@@ -3,6 +3,10 @@
 import { CSSProperties, ReactNode } from 'react';
 import { useTheme } from 'next-themes';
 import { Toaster } from 'sonner';
+import { installAuthInterceptor } from '@/lib/access/authInterceptor';
+
+// На уровне модуля — до первых запросов страниц (см. installAuthInterceptor).
+installAuthInterceptor();
 
 /**
  * Клиентские провайдеры приложения.

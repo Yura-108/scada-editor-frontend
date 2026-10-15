@@ -3,10 +3,10 @@
 import React, {useState} from "react";
 import Link from "next/link";
 import {cn} from "@/lib/utils";
-import {Activity, ClipboardList, Cpu, Database, HashIcon, Layout, Menu, Scroll, X} from "lucide-react";
+import {Activity, ClipboardList, Cpu, Database, HashIcon, Layout, Menu, Scroll, ShieldCheck, X} from "lucide-react";
 import {usePathname} from "next/navigation";
 
-const navItems = [
+const baseNavItems = [
   {
     name: "Редактор схем",
     href: "/editor",
@@ -44,6 +44,13 @@ const navItems = [
   },
 ];
 
+/** Только администратору (claim `admin` из токена); сама страница проверяет это ещё раз. */
+const adminItem = {
+  name: "Администрирование",
+  href: "/admin",
+  icon: ShieldCheck,
+};
+
 /**
  * Раздел считается активным и на вложенных маршрутах: точное сравнение
  * `pathname === href` не подсвечивало ни `/channels/123`, ни любой другой
@@ -52,8 +59,9 @@ const navItems = [
 const isSectionActive = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
-export default function HeaderNav() {
+export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
   const pathname = usePathname();
+  const navItems = isAdmin ? [...baseNavItems, adminItem] : baseNavItems;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
