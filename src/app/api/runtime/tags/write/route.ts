@@ -34,6 +34,15 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     );
   }
 
+  // Проект обязателен: по нему бэкенд проверяет права и разрешённые теги (иначе 400).
+  const projectId = (body as {projectId?: unknown} | null)?.projectId;
+  if (typeof projectId !== "number" || !Number.isSafeInteger(projectId)) {
+    return NextResponse.json(
+        {error: "Параметр projectId обязателен и должен быть целым числом"},
+        {status: 400},
+    );
+  }
+
   const writes: TagWriteItemDto[] = [];
   for (const [i, raw] of rawWrites.entries()) {
     const item = raw as {tagId?: unknown; value?: unknown; valueType?: unknown} | null;
@@ -66,9 +75,9 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   // сопоставлять ответ по индексу, а не по `tagId`. Дубли отсеивает само окно «Опций»,
   // где значения ключуются по тегу и второй записи взяться неоткуда.
 
-  // sessionId и projectId нужны бэкенду только для контекста и логов: запись не привязана
-  // к состоянию сессии мониторинга. Таймаут больше клиентского (20с) — ответ ждёт
-  // подтверждения брокера, и обрывать запрос раньше бэкенда BFF не должен.
+  // projectId — проект, в чьих правах и выпуске идёт запись; sessionId — только подпись
+  // для журнала. Таймаут больше клиентского (20с) — ответ ждёт подтверждения брокера, и
+  // обрывать запрос раньше бэкенда BFF не должен.
   const response = await fetch(`${BACKEND_URL}/api/runtime/tags/write`, {
     method: "POST",
     headers: {
@@ -77,7 +86,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
     },
     body: JSON.stringify({
       sessionId: body?.sessionId,
-      projectId: body?.projectId,
+      projectId,
       writes,
     }),
     signal: AbortSignal.timeout(25_000),

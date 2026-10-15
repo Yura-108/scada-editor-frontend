@@ -1,5 +1,7 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { emitRuntimeScript } from "@/lib/runtime/runtimeEventBus";
+import { emitRuntimeScript, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
+import { getCurrentProjectGrant } from "@/lib/access/projectAccess";
+import { actionDenialText, canWriteDirectly } from "@/lib/runtime/actionAccess";
 import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
 import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
@@ -31,6 +33,8 @@ export interface BuildMonitorMenuDeps {
   isLive: boolean;
   /** Режим «Архив»: только просмотр — из пунктов остаётся «Открыть тренд». */
   archive?: boolean;
+  /** Где открыто меню: там же покажется отказ сервера, если нажатие отклонят. */
+  point?: ScreenPoint;
 }
 
 /**
@@ -47,11 +51,17 @@ export interface BuildMonitorMenuDeps {
  * подъёма до ближайшего предка с пунктами ПКМ по такому примитиву не открывал бы ничего.
  */
 export const hasMonitorMenu = (el: DiagramElement): boolean =>
-  tagProperties(el).length > 0 || monitorActions(el).length > 0 || isOpenableTrend(el);
+  // «Опции» пишут теги напрямую — уровень ≥ 9; ниже пункта нет, и меню ради них не открываем.
+  (tagProperties(el).length > 0 && canWriteDirectly(getCurrentProjectGrant()))
+  || monitorActions(el).length > 0
+  || isOpenableTrend(el);
 
 export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps): CanvasMenuItem[] {
-  const { closeMenu, isLive, archive } = deps;
+  const { closeMenu, isLive, archive, point } = deps;
   const items: CanvasMenuItem[] = [];
+  // «Опции» и инспектор пишут теги/свойства напрямую: «управление» и уровень ≥ 9, ниже —
+  // пунктов нет вовсе (контракт прав доступа).
+  const directWrite = canWriteDirectly(getCurrentProjectGrant());
 
   // Архив доступен и без живой сессии — пункт не зависит от isLive.
   if (isOpenableTrend(el)) {
@@ -66,7 +76,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
 
   if (archive) return items;
 
-  if (tagProperties(el).length) {
+  if (directWrite && tagProperties(el).length) {
     // Без живой сессии в «Опциях» нечего показывать (значений нет) и некуда писать.
     items.push({
       label: isLive ? "Опции" : "Опции — нет связи",
@@ -81,7 +91,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
   // Инспектор — все свойства объекта, не только с тегом. Только при живой сессии: значения и
   // запись идут через движок (в архиве сюда не доходим — меню возвращается выше).
   // `el.id` — серверный id компонента, на схемах выпуска он есть всегда.
-  if (isLive && typeof el.id === "number") {
+  if (directWrite && isLive && typeof el.id === "number") {
     const objectId = el.id;
     items.push({
       label: "Инспектор",
@@ -103,7 +113,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
         closeMenu();
         void (async () => {
           if (await confirmMonitorAction({element: el, scriptName: script.name})) {
-            emitRuntimeScript(el.key, script.name);
+            emitRuntimeScript(el.key, script.name, undefined, point);
           }
         })();
       },
@@ -123,6 +133,9 @@ const unavailableReason = (el: DiagramElement, scriptName: string, isLive: boole
   const script = el.scripts?.find(s => s.name === scriptName);
   if (!script) return " — нет скрипта";
   if (!Number.isFinite(Number(script.id))) return " — схема не сохранена";
+  // Права — раньше связи: «нет связи» у кнопки, которую всё равно нельзя нажать, путает.
+  const denial = actionDenialText(getCurrentProjectGrant(), script.accessLevel);
+  if (denial) return ` — ${denial.charAt(0).toLowerCase()}${denial.slice(1)}`;
   if (!isLive) return " — нет связи";
   return "";
 };
@@ -136,9 +149,9 @@ const unavailableReason = (el: DiagramElement, scriptName: string, isLive: boole
 export function buildChoiceMenu(
   el: DiagramElement,
   choices: MenuChoice[],
-  deps: Pick<BuildMonitorMenuDeps, "closeMenu" | "isLive">,
+  deps: Pick<BuildMonitorMenuDeps, "closeMenu" | "isLive" | "point">,
 ): CanvasMenuItem[] {
-  const { closeMenu, isLive } = deps;
+  const { closeMenu, isLive, point } = deps;
   return choices.map(choice => {
     const reason = unavailableReason(el, choice.script, isLive);
     return {
@@ -149,7 +162,7 @@ export function buildChoiceMenu(
         closeMenu();
         void (async () => {
           if (await confirmMonitorAction({element: el, scriptName: choice.script, choice: choice.label})) {
-            emitRuntimeScript(el.key, choice.script, choice.args);
+            emitRuntimeScript(el.key, choice.script, choice.args, point);
           }
         })();
       },

@@ -35,7 +35,7 @@ const SAVE_DELAY_MS = 300;
 export function ProcedureHud() {
   const {recipes, loaded, loadRecipes} = useRecipeStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, start, confirm, pause, resume, jump, abort} = useProcedureControls();
+  const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
   const hudRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<HudPrefs>(DEFAULT_HUD_PREFS);
@@ -214,9 +214,9 @@ export function ProcedureHud() {
         {recipeId && !isRunning && (
           <button
             className={cn(iconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
-            disabled={busy}
+            disabled={busy || !!denied.start}
             onClick={() => start(recipeId)}
-            title="Запустить процедуру"
+            title={denied.start ?? "Запустить процедуру"}
           >
             <Play size={13} />
             <span className="text-xs font-medium">Запустить</span>
@@ -227,9 +227,9 @@ export function ProcedureHud() {
           <>
             <button
               className={cn(iconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
-              disabled={busy}
+              disabled={busy || !!denied.confirm}
               onClick={() => confirm(recipeId)}
-              title="Подтвердить текущий шаг"
+              title={denied.confirm ?? "Подтвердить текущий шаг"}
             >
               <Check size={13} />
               <span className="text-xs font-medium">Подтвердить</span>
@@ -241,9 +241,9 @@ export function ProcedureHud() {
             {status?.paused ? (
               <button
                 className={cn(iconButton, "gap-1 px-2 bg-emerald-600 text-white hover:bg-emerald-500")}
-                disabled={busy}
+                disabled={busy || !!denied.resume}
                 onClick={() => resume(recipeId)}
-                title="Продолжить процедуру: теги безопасного состояния вернутся к значениям текущего шага"
+                title={denied.resume ?? "Продолжить процедуру: теги безопасного состояния вернутся к значениям текущего шага"}
               >
                 <Play size={13} />
                 <span className="text-xs font-medium">Продолжить</span>
@@ -251,9 +251,9 @@ export function ProcedureHud() {
             ) : (
               <button
                 className={cn(iconButton, "gap-1 px-2 bg-amber-600 text-white hover:bg-amber-500")}
-                disabled={busy}
+                disabled={busy || !!denied.pause}
                 onClick={() => pause(recipeId)}
-                title="Пауза: оборудование перейдёт в безопасное состояние рецепта"
+                title={denied.pause ?? "Пауза: оборудование перейдёт в безопасное состояние рецепта"}
               >
                 <Pause size={13} />
                 <span className="text-xs font-medium">Пауза</span>
@@ -261,9 +261,9 @@ export function ProcedureHud() {
             )}
             <button
               className={cn(iconButton, "bg-red-600 text-white hover:bg-red-500")}
-              disabled={busy}
+              disabled={busy || !!denied.abort}
               onClick={() => abort(recipeId)}
-              title="Прервать процедуру"
+              title={denied.abort ?? "Прервать процедуру"}
             >
               <CircleStop size={14} />
             </button>
@@ -302,8 +302,9 @@ export function ProcedureHud() {
                     </span>
                     <button
                       className="shrink-0 text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
-                      disabled={busy}
+                      disabled={busy || !!denied.jump}
                       onClick={() => jump(recipeId, index)}
+                      title={denied.jump ?? undefined}
                     >
                       перейти
                     </button>

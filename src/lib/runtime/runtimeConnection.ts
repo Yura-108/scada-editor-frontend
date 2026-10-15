@@ -1,6 +1,9 @@
 import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
 import type {AutomationTaskStatus} from "@/types/automation.types";
 import {devLog} from "@/lib/devLog";
+import {describeDenial, isAccessDenial, isAccessNotReady} from "@/lib/access/accessErrors";
+import type {AccessDenial} from "@/types/access.types";
+
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
  * PHASE4_RUNTIME_PLAN.md, WP4):
@@ -34,9 +37,27 @@ export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number
  *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
 export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
 /** rejected — окончательный отказ: код закрытия 1003 (сессия уже занята другим соединением
- *  либо неизвестна) или 409 на создание сессии (проект не в эксплуатации). Реконнект в
- *  этих случаях бессмысленен и лишь прятал бы причину за «Переподключение…». */
-export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected";
+ *  либо неизвестна), 1008 (чужая сессия), 409 на создание сессии (проект не в эксплуатации)
+ *  или 403 на него (нет доступа). Реконнект в этих случаях бессмысленен и лишь прятал бы
+ *  причину за «Переподключение…».
+ *  revoked — код закрытия 4403: права в проекте отозваны или учётка отключена. Тоже без
+ *  реконнекта, но монитор ещё и уводит к выбору проекта. */
+export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected" | "revoked";
+
+/** Сервер отказал в нажатии (контракт 2026-10-15-access-roles-contract.md); соединение живо. */
+export interface ActionDenied {
+  scriptId: number;
+  reason: string;
+  /** null — у NO_OPERATE / NO_PROJECT_ACCESS. */
+  requiredLevel: number | null;
+}
+
+/** Коды закрытия WS, введённые правами доступа. */
+const CLOSE_ACCESS_REVOKED = 4403;
+const CLOSE_POLICY_VIOLATION = 1008;
+/** Try Again Later: сервер после рестарта ещё не загрузил права — это не отказ. */
+const CLOSE_TRY_AGAIN_LATER = 1013;
+const ACCESS_NOT_READY_DELAY_MS = 4_000;
 
 export interface RuntimeConnectionHandlers {
   onUpdate: (
@@ -68,6 +89,8 @@ export interface RuntimeConnectionHandlers {
    * сервер шлёт `SNAPSHOT`, и он идёт обычным `onSnapshot`.
    */
   onRelease?: (versionNo: number, changed: boolean) => void;
+  /** `ACTION_DENIED`: нажатие отклонено по правам, состояние элементов не меняется. */
+  onActionDenied?: (denied: ActionDenied) => void;
 }
 
 export interface RuntimeConnection {
@@ -117,7 +140,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,
-  {onUpdate, onStatus, onTasks, onSnapshot, onRelease}: RuntimeConnectionHandlers,
+  {onUpdate, onStatus, onTasks, onSnapshot, onRelease, onActionDenied}: RuntimeConnectionHandlers,
 ): RuntimeConnection {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -147,14 +170,16 @@ export function openRuntimeConnection(
   };
 
   /** `detail` — причина паузы (например, недоступный экземпляр): её показывает монитор. */
-  const scheduleReconnect = (detail?: string) => {
+  /** `minDelay` — не раньше чем через столько (сервер ещё грузит права после рестарта). */
+  const scheduleReconnect = (detail?: string, minDelay = 0) => {
     if (closed || reconnectTimer) return;
     setStatus("reconnecting", detail);
+    const delay = Math.max(reconnectDelay, minDelay);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       void connect();
-    }, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_DELAY_MS);
+    }, delay);
+    reconnectDelay = Math.min(delay * 2, RECONNECT_MAX_DELAY_MS);
   };
 
   const connect = async () => {
@@ -196,6 +221,21 @@ export function openRuntimeConnection(
         const message = await messageOf(res, "Сервер исполнения недоступен");
         log(`экземпляр недоступен: ${message} — повторю с паузой`);
         scheduleReconnect(message);
+        return;
+      }
+
+      // 403 — права. ACCESS_NOT_READY — сервер ещё грузит их после рестарта: повторяем с
+      // паузой. Любая другая причина окончательна, как и 409: повтор её не изменит.
+      if (res.status === 403) {
+        const body = await res.json().catch(() => null);
+        if (isAccessNotReady(body)) {
+          log("права на сервере ещё не загружены — повторю с паузой");
+          scheduleReconnect(describeDenial(body as AccessDenial), ACCESS_NOT_READY_DELAY_MS);
+          return;
+        }
+        const message = isAccessDenial(body) ? describeDenial(body) : "Нет доступа к проекту";
+        log(`сессия отклонена по правам: ${message} — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", message);
         return;
       }
 
@@ -256,6 +296,10 @@ export function openRuntimeConnection(
         tasks?: AutomationTaskStatus[] | null;
         // TREE_CHANGED — номер нового prod-выпуска.
         versionNo?: number;
+        // ACTION_DENIED — какое нажатие отклонено и почему.
+        scriptId?: number;
+        reason?: string;
+        requiredLevel?: number | null;
       };
       try {
         msg = JSON.parse(String(e.data));
@@ -278,6 +322,17 @@ export function openRuntimeConnection(
         log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}, подписка на сцену снята сервером`);
         sceneWanted = null;
         if (typeof msg.versionNo === "number") onRelease?.(msg.versionNo, true);
+        return;
+      }
+      if (msg?.type === "ACTION_DENIED") {
+        log(`ACTION_DENIED — scriptId=${msg.scriptId}, причина ${msg.reason}${msg.requiredLevel != null ? `, нужен уровень ${msg.requiredLevel}` : ""}`);
+        if (typeof msg.scriptId === "number" && typeof msg.reason === "string") {
+          onActionDenied?.({
+            scriptId: msg.scriptId,
+            reason: msg.reason,
+            requiredLevel: typeof msg.requiredLevel === "number" ? msg.requiredLevel : null,
+          });
+        }
         return;
       }
       if (msg?.type !== "UPDATE") {
@@ -311,9 +366,25 @@ export function openRuntimeConnection(
 
       // 1003 — окончательный отказ (у сессии уже есть живое соединение, либо она
       // неизвестна/закрыта): реконнект-цикл тут будет крутиться вечно без толку.
-      if (e.code === 1003) {
-        log(`соединение отклонено (code=1003${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", e.reason);
+      // 1008 — подключение к чужой сессии: тоже окончательно.
+      if (e.code === 1003 || e.code === CLOSE_POLICY_VIOLATION) {
+        log(`соединение отклонено (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", e.code === CLOSE_POLICY_VIOLATION ? "Сессия принадлежит другому пользователю" : e.reason);
+        return;
+      }
+
+      // 4403 — права в проекте отозваны (или учётка отключена). Переподключение лишь
+      // получило бы тот же отказ; монитор сам уведёт к выбору проекта.
+      if (e.code === CLOSE_ACCESS_REVOKED) {
+        log(`доступ к проекту отозван (code=4403${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
+        if (!closed) setStatus("revoked", "Доступ к проекту отозван");
+        return;
+      }
+
+      // 1013 — сервер после рестарта ещё не загрузил права: обычный реконнект, но с паузой.
+      if (e.code === CLOSE_TRY_AGAIN_LATER) {
+        log("сервер ещё загружает права (code=1013) — переподключусь с паузой");
+        scheduleReconnect("Сервер запускается, переподключение…", ACCESS_NOT_READY_DELAY_MS);
         return;
       }
 

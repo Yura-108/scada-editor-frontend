@@ -37,7 +37,8 @@ export const hasRuntimeEventHandler = (): boolean => handler !== null;
  * runScript("Имя") внутри обработчика события: движок ищет скрипт у элемента и шлёт
  * ACTION по WS. Отдельная шина, а не ElementEventName: у действия нет события-повода.
  */
-type ScriptHandler = (elementKey: string, scriptName: string, args?: ActionArgs) => void;
+/** `point` — где нажали (пункт меню): там же покажется отказ сервера `ACTION_DENIED`. */
+type ScriptHandler = (elementKey: string, scriptName: string, args?: ActionArgs, point?: ScreenPoint) => void;
 
 let scriptHandler: ScriptHandler | null = null;
 
@@ -45,8 +46,38 @@ export const setRuntimeScriptHandler = (h: ScriptHandler | null): void => {
   scriptHandler = h;
 };
 
-export const emitRuntimeScript = (elementKey: string, scriptName: string, args?: ActionArgs): void => {
-  scriptHandler?.(elementKey, scriptName, args);
+export const emitRuntimeScript = (
+  elementKey: string,
+  scriptName: string,
+  args?: ActionArgs,
+  point?: ScreenPoint,
+): void => {
+  scriptHandler?.(elementKey, scriptName, args, point);
+};
+
+/**
+ * Короткое сообщение у точки нажатия — отказ в действии («Нужен уровень доступа 5»).
+ * Рисует холст монитора; без него (или без точки) сообщение уходит обычным тостом —
+ * это решает вызывающий через возвращаемое значение.
+ */
+export interface RuntimeNotice {
+  text: string;
+  point: ScreenPoint;
+}
+
+type NoticeHandler = (notice: RuntimeNotice) => void;
+
+let noticeHandler: NoticeHandler | null = null;
+
+export const setRuntimeNoticeHandler = (h: NoticeHandler | null): void => {
+  noticeHandler = h;
+};
+
+/** `false` — показать негде (нет холста или точки): вызывающий показывает тост. */
+export const showRuntimeNotice = (text: string, point?: ScreenPoint): boolean => {
+  if (!noticeHandler || !point) return false;
+  noticeHandler({text, point});
+  return true;
 };
 
 /**

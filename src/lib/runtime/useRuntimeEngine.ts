@@ -22,8 +22,13 @@ import {
   setRuntimePropertyValueGetter,
   setRuntimeTagQualityGetter,
   showRuntimeMenu,
+  showRuntimeNotice,
   type ScreenPoint,
 } from "@/lib/runtime/runtimeEventBus";
+import {toast} from "sonner";
+import {describeDenial} from "@/lib/access/accessErrors";
+import {getCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {actionDenialText} from "@/lib/runtime/actionAccess";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
@@ -224,6 +229,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   const disabledRef = useRef(new Set<string>());
   // Активное WS-соединение — чтобы обработчик клика (runScript) мог послать ACTION.
   const connRef = useRef<RuntimeConnection | null>(null);
+  /** Где оператор нажал скрипт (по серверному id) — туда же ляжет отказ ACTION_DENIED. */
+  const actionPointsRef = useRef(new Map<number, ScreenPoint | undefined>());
 
   const flush = useCallback(() => {
     const idx = indexRef.current;
@@ -517,10 +524,21 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   // displayed), у которых события-повода нет, и пункты меню выбора `showMenu`.
   //
   // `args` уже проверены (normalizeActionArgs) — здесь только доставка.
-  const runScriptOn = useCallback((el: DiagramElement, name: string, args?: ActionArgs) => {
+  //
+  // Это же — ЕДИНАЯ точка отказа по правам: кнопка с `onClick` вызывает runScript из JS, и
+  // имя скрипта известно только при выполнении, заранее такую кнопку не погасить. Поэтому
+  // без «управления» или с уровнем ниже `access_level` ACTION не уходит, а у точки нажатия
+  // появляется причина. Сервер проверяет то же самое (по prod) и ответит ACTION_DENIED.
+  const runScriptOn = useCallback((el: DiagramElement, name: string, args?: ActionArgs, point?: ScreenPoint) => {
     const script = el.scripts?.find(s => s.name === name);
     if (!script) {
       console.warn(`[monitor:event] runScript: скрипт «${name}» не найден у «${el.label ?? el.key}»`);
+      return;
+    }
+    const denial = actionDenialText(getCurrentProjectGrant(), script.accessLevel);
+    if (denial) {
+      log(`runScript «${name}» не отправлен: ${denial}`);
+      if (!showRuntimeNotice(denial, point)) toast.warning(denial);
       return;
     }
     const scriptId = Number(script.id);
@@ -528,14 +546,16 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       console.warn(`[monitor:event] runScript: у скрипта «${name}» нет числового серверного id (${script.id})`);
       return;
     }
+    // Запоминаем, где нажали: ACTION_DENIED несёт только scriptId.
+    actionPointsRef.current.set(scriptId, point);
     connRef.current?.sendAction(scriptId, args);
   }, []);
 
   // Пункт меню монитора: запуск скрипта по ключу элемента и имени скрипта.
-  const runScriptByKey = useCallback((elementKey: string, scriptName: string, args?: ActionArgs) => {
+  const runScriptByKey = useCallback((elementKey: string, scriptName: string, args?: ActionArgs, point?: ScreenPoint) => {
     const el = useEditorStore.getState().elements.find(e => e.key === elementKey);
     if (!el) return;
-    runScriptOn(el, scriptName, args);
+    runScriptOn(el, scriptName, args, point);
   }, [runScriptOn]);
 
   // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas):
@@ -554,7 +574,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       return;
     }
     // onClick вызывает runScript("Имя", args?) — тот же мост, что и у пунктов меню монитора.
-    const runScript = (name: string, args?: ActionArgs) => runScriptOn(el, name, args);
+    const runScript = (name: string, args?: ActionArgs) => runScriptOn(el, name, args, point);
 
     const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el), runScript);
     if ("error" in res) {
@@ -788,6 +808,13 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
           pendingPropsRef.current.set(p.propertyId, String(p.value));
           if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
         }
+      },
+      // Сервер отклонил нажатие (права или уровень): сообщение там, где нажимали;
+      // состояние элементов не трогаем — ACTION просто не выполнился.
+      onActionDenied: denied => {
+        const text = describeDenial(denied);
+        const point = actionPointsRef.current.get(denied.scriptId);
+        if (!showRuntimeNotice(text, point)) toast.warning(text);
       },
       onStatus: (s, detail) => {
         log(`статус соединения: ${s}${detail ? ` (${detail})` : ""}`);

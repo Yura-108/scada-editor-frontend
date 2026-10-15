@@ -1,3 +1,5 @@
+import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
+
 /**
  * Журнал действий оператора (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 5).
  */
@@ -61,6 +63,8 @@ export async function fetchActionLog(
   const res = await fetch(`/api/runtime/actions?${q}`, {signal});
   if (!res.ok) {
     const body = await res.json().catch(() => null) as {message?: string; error?: string} | null;
+    // Только доступные проекты: отказ — `{error: "FORBIDDEN", reason}`, его переводим.
+    if (isAccessDenial(body)) throw new Error(describeDenial(body));
     throw new Error(body?.message || body?.error || `Журнал недоступен (${res.status})`);
   }
   const data = await res.json().catch(() => []);

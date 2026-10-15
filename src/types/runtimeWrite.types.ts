@@ -58,12 +58,13 @@ export interface TagWriteItemDto {
  */
 export interface TagWriteRequestDto {
   writes: TagWriteItemDto[];
-  /**
-   * Сессия и проект нужны бэкенду только для контекста и логов: запись НЕ привязана к
-   * состоянию сессии мониторинга, тег адресуется напрямую по `tagId`.
-   */
+  /** Сессия — только подпись для журнала: запись НЕ привязана к состоянию сессии. */
   sessionId?: string;
-  projectId: number | null;
+  /**
+   * Обязателен (без него 400): бэкенд проверяет права в этом проекте («управление» и
+   * уровень ≥ 9) и пишет только теги его prod-выпуска — чужой тег даёт 403 PATH_NOT_ALLOWED.
+   */
+  projectId: number;
 }
 
 export interface TagWriteResultDto {

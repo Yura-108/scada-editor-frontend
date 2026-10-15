@@ -19,6 +19,7 @@ import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,
   normalizeTagWriteResults, tagWriteOutcome, tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
+import {errorTextFromJson} from "@/lib/access/accessErrors";
 
 /** Как часто перечитываем значения: они лежат в рефах движка, а не в сторе (как в «Опциях»). */
 const VALUE_POLL_MS = 1000;
@@ -271,7 +272,7 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
         const res = await fetch("/api/runtime/tags/write", {
           method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error(`запись в ПЛК не прошла (${res.status})`);
+        if (!res.ok) throw new Error(errorTextFromJson(res.status, await res.json().catch(() => null), `запись в ПЛК не прошла (${res.status})`));
         const [result] = normalizeTagWriteResults(await res.json());
         const outcome = result ? tagWriteOutcome(result) : "failed";
         if (outcome === "failed") {
@@ -291,7 +292,7 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
           body: JSON.stringify({writes: [{propertyId: p.id, value}]}),
         });
         if (res.status === 409) throw new Error("проект не в эксплуатации");
-        if (!res.ok) throw new Error(`не записано (${res.status})`);
+        if (!res.ok) throw new Error(errorTextFromJson(res.status, await res.json().catch(() => null), `не записано (${res.status})`));
         const [result] = await res.json() as PropertyWriteResultDto[];
         if (!result?.success) {
           if (result?.status === "UNKNOWN_PROPERTY") {

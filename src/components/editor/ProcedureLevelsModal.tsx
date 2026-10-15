@@ -7,7 +7,8 @@ import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {readBackendError} from "@/lib/access/accessErrors";
-import {EMPTY_PROCEDURE_LEVELS, PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
+import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
+import {parseProcedureLevels} from "@/lib/access/procedureLevels";
 
 export const PROCEDURE_OPERATION_LABELS: Record<ProcedureOperation, string> = {
   start: "Запуск",
@@ -16,17 +17,6 @@ export const PROCEDURE_OPERATION_LABELS: Record<ProcedureOperation, string> = {
   resume: "Продолжение",
   jump: "Переход к шагу",
   abort: "Прерывание",
-};
-
-/** Ответ бэкенда как есть, но без лишних ключей и с `null` на месте отсутствующих. */
-export const parseProcedureLevels = (raw: unknown): ProcedureLevels => {
-  const src = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const out = {...EMPTY_PROCEDURE_LEVELS};
-  for (const op of PROCEDURE_OPERATIONS) {
-    const v = src[op];
-    out[op] = typeof v === "number" ? v : null;
-  }
-  return out;
 };
 
 /**

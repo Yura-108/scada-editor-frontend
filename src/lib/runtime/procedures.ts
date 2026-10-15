@@ -1,4 +1,5 @@
 import type {ProcedureStatus} from "@/types/recipe.types";
+import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
 
 /**
  * Клиент семи ручек управления процедурой.
@@ -40,6 +41,8 @@ export class ProcedureConflictError extends Error {
 
 const messageOf = async (res: Response, fallback: string): Promise<string> => {
   const body = await res.json().catch(() => null);
+  // Отказ по правам — `{error: "FORBIDDEN", reason}`: без перевода тост сказал бы «FORBIDDEN».
+  if (isAccessDenial(body)) return describeDenial(body);
   const raw = body as {message?: unknown; error?: unknown} | null;
   const message = raw?.message ?? raw?.error;
   return typeof message === "string" && message ? message : fallback;

@@ -1,3 +1,5 @@
+import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
+
 /**
  * Клиент архива тегов (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 3).
  *
@@ -72,6 +74,8 @@ async function fetchChunk(
   const res = await fetch(`/api/runtime/archive/values?${q}`, {signal});
   if (!res.ok) {
     const body = await res.json().catch(() => null) as {message?: string; error?: string} | null;
+    // Только доступные проекты: отказ — `{error: "FORBIDDEN", reason}`, его переводим.
+    if (isAccessDenial(body)) throw new Error(describeDenial(body));
     throw new Error(body?.message || body?.error || `Архив недоступен (${res.status})`);
   }
   const data = await res.json() as {series?: RawSeries[]};
@@ -156,6 +160,8 @@ export async function fetchReplayPage(args: {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null) as {message?: string; error?: string} | null;
+    // Только доступные проекты: отказ — `{error: "FORBIDDEN", reason}`, его переводим.
+    if (isAccessDenial(body)) throw new Error(describeDenial(body));
     throw new Error(body?.message || body?.error || `Архив недоступен (${res.status})`);
   }
   const data = await res.json() as {

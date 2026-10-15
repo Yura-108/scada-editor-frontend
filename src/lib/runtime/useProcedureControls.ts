@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback, useState} from "react";
+import {useCallback, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useEditorStore} from "@/store/useEditorStore";
@@ -15,6 +15,10 @@ import {
   resumeProcedure,
   startProcedure,
 } from "@/lib/runtime/procedures";
+import {useProcedureLevelsStore} from "@/store/useProcedureLevelsStore";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {actionDenialText} from "@/lib/runtime/actionAccess";
+import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.types";
 
 /**
  * Действия над процедурой: запустить, подтвердить шаг, перейти на шаг, прервать.
@@ -27,6 +31,19 @@ import {
 export function useProcedureControls() {
   const [busy, setBusy] = useState(false);
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const grant = useCurrentProjectGrant();
+  const levels = useProcedureLevelsStore(s => s.levels);
+
+  /**
+   * Почему операция недоступна (null — доступна): нет «управления» или уровень ниже
+   * уровня операции из prod-выпуска. Кнопки гаснут с этой подписью; сервер проверяет то же
+   * и при расхождении ответит 403 с нужным уровнем.
+   */
+  const denied = useMemo(() => {
+    const out = {} as Record<ProcedureOperation, string | null>;
+    for (const op of PROCEDURE_OPERATIONS) out[op] = actionDenialText(grant, levels[op]);
+    return out;
+  }, [grant, levels]);
 
   /**
    * Ключ процедуры — проект: мойка идёт и без открытого монитора, поэтому сессия для
@@ -106,5 +123,5 @@ export function useProcedureControls() {
       useProcedureStore.getState().watch(recipeId);
     }), [withProject]);
 
-  return {busy, start, confirm, pause, resume, jump, abort};
+  return {busy, denied, start, confirm, pause, resume, jump, abort};
 }

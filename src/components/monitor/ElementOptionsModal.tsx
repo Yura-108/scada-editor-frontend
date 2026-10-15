@@ -10,6 +10,7 @@ import {shortTagPath} from "@/lib/editor/tagPath";
 import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
+import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
 import {Button, ModalFooter} from "@/components/ui/Button";
 import {PropertyCreateDto} from "@/types/tags.types";
 import {
@@ -142,6 +143,12 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
       return;
     }
 
+    // Без проекта бэкенд не знает, в чьих правах писать (projectId обязателен).
+    if (projectId == null) {
+      toast.error("Проект не выбран");
+      return;
+    }
+
     // Запись идёт на реальное оборудование и необратима — подтверждение обязательно
     // (тот же порядок, что у применения рецепта). Перечисляем ВСЕ строки поимённо:
     // «применить для всех» вслепую — это способ записать в ПЛК то, о чём уже забыли.
@@ -196,6 +203,8 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
         // 409 «проект не назначен экземпляру» и 503 «экземпляр недоступен», у которых
         // поля `error` нет вовсе). Читать только `error` значило бы показать оператору
         // «Ошибка записи (409)» без единого слова о причине.
+        // Отказ по правам (`{error: "FORBIDDEN", reason}`) — переводим, иначе вышло бы «FORBIDDEN».
+        if (isAccessDenial(data)) throw new Error(describeDenial(data));
         const body = data as {message?: unknown; error?: unknown} | null;
         const raw = body?.message ?? body?.error;
         const message = typeof raw === "string" && raw ? raw : "";

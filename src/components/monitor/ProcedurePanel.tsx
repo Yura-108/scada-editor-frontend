@@ -22,7 +22,7 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
 export function ProcedurePanel() {
   const {recipes, loaded, isLoading, loadRecipes} = useRecipeStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, start, confirm, pause, resume, jump, abort} = useProcedureControls();
+  const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
   /**
    * Секундомер шага. Держим готовое число, а не считаем `Date.now()` в теле рендера:
@@ -70,28 +70,28 @@ export function ProcedurePanel() {
           </div>
 
           {!isRunning ? (
-            <Button variant="primary" onClick={() => recipeId && start(recipeId)} disabled={!recipeId || busy}>
+            <Button variant="primary" onClick={() => recipeId && start(recipeId)} disabled={!recipeId || busy || !!denied.start} title={denied.start ?? undefined}>
               <Play size={16} />
               Запустить
             </Button>
           ) : (
             <>
-              <Button variant="primary" onClick={() => recipeId && confirm(recipeId)} disabled={busy}>
+              <Button variant="primary" onClick={() => recipeId && confirm(recipeId)} disabled={busy || !!denied.confirm} title={denied.confirm ?? undefined}>
                 <ChevronRight size={16} />
                 Подтвердить
               </Button>
               {status?.paused ? (
-                <Button onClick={() => recipeId && resume(recipeId)} disabled={busy}>
+                <Button onClick={() => recipeId && resume(recipeId)} disabled={busy || !!denied.resume} title={denied.resume ?? undefined}>
                   <Play size={16} />
                   Продолжить
                 </Button>
               ) : (
-                <Button onClick={() => recipeId && pause(recipeId)} disabled={busy}>
+                <Button onClick={() => recipeId && pause(recipeId)} disabled={busy || !!denied.pause} title={denied.pause ?? undefined}>
                   <Pause size={16} />
                   Пауза
                 </Button>
               )}
-              <Button variant="danger" onClick={() => recipeId && abort(recipeId)} disabled={busy}>
+              <Button variant="danger" onClick={() => recipeId && abort(recipeId)} disabled={busy || !!denied.abort} title={denied.abort ?? undefined}>
                 <CircleStop size={16} />
                 Прервать
               </Button>
@@ -160,7 +160,8 @@ export function ProcedurePanel() {
                       <td className="px-4 py-2 text-right">
                         <button
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
-                          disabled={busy || !recipeId}
+                          disabled={busy || !recipeId || !!denied.jump}
+                          title={denied.jump ?? undefined}
                           onClick={() => recipeId && jump(recipeId, index)}
                         >
                           перейти

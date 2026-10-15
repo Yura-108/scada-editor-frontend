@@ -19,6 +19,9 @@ import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
 import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 import {SceneTabs} from "@/components/editor/SceneTabs";
+import {toast} from "sonner";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {canWriteDirectly} from "@/lib/runtime/actionAccess";
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
@@ -32,6 +35,8 @@ const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
   // в эксплуатацию). Реконнект не запускается — причина показывается оператору прямо на
   // холсте, иначе выключенный проект выглядел бы неисправностью экрана.
   rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
+  // Код закрытия 4403: права в проекте отозваны. Монитор сам уходит к выбору проекта.
+  revoked: {label: "Доступ отозван", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
 };
 
 /**
@@ -118,6 +123,19 @@ export default function MonitorClient() {
     useRuntimeEngine(engineActive, mode);
   // Плеер — ровно один, здесь же: два применяли бы ленту дважды.
   const replayControls = useArchiveReplay(archive, engineActive && isArchive);
+
+  // 4403: права отозваны (или учётка отключена). Переподключаться бессмысленно — уводим к
+  // выбору проекта и перечитываем список: отозванный проект из него пропадёт.
+  useEffect(() => {
+    if (status !== "revoked") return;
+    const name = useEditorStore.getState().currentProject?.name;
+    toast.error(name ? `Доступ к проекту «${name}» отозван` : "Доступ к проекту отозван");
+    setCurrentProject(null);
+    void loadProjectList();
+  }, [status, setCurrentProject, loadProjectList]);
+
+  // «Опции» и инспектор пишут теги/свойства напрямую: «управление» и уровень ≥ 9.
+  const directWrite = canWriteDirectly(useCurrentProjectGrant());
 
   // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
   // и смене проекта: повторная подписка безвредна, сервер просто пришлёт полный список ещё раз.
@@ -233,7 +251,7 @@ export default function MonitorClient() {
 
         {/* Инспектор объектов: любой объект выпуска со всех схем, все его свойства с правкой.
             Только при живой сессии — в архиве записи невозможны, а значения из прошлого. */}
-        {isLive && sessionId && (
+        {isLive && sessionId && directWrite && (
           <button
             onClick={() => openObjectInspectorModal()}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
@@ -367,8 +385,9 @@ export default function MonitorClient() {
               <div className="font-medium">Монитор не подключён</div>
               <p>{statusDetail || "Рантайм отклонил подключение."}</p>
               <p className="text-xs opacity-80">
-                Проект исполняется, только когда он введён в эксплуатацию. Включить его можно
-                в списке проектов; после этого выберите схему заново.
+                Проект исполняется, только когда он введён в эксплуатацию — включить его можно
+                в списке проектов, после этого выберите схему заново. Если причина в правах
+                доступа, их выдаёт администратор.
               </p>
             </div>
           </div>

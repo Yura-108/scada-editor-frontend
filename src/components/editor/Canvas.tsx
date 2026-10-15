@@ -43,7 +43,8 @@ import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
 import { buildChoiceMenu, buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
 import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorView";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
-import { isRuntimeLive, setRuntimeMenuHandler } from "@/lib/runtime/runtimeEventBus";
+import { isRuntimeLive, setRuntimeMenuHandler, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
+import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
 import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
 import type { DiagramElement, MonitorMenuSettings } from "@/types/editorElement.type";
 import { readMonitorMenu } from "@/lib/editor/monitorMenu";
@@ -287,7 +288,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
    *
    * Ничего не нашли по всей цепочке — null, меню не открываем вовсе.
    */
-  const resolveMonitorMenu = (): { items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null => {
+  const resolveMonitorMenu = (point?: ScreenPoint): { items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null => {
     const picked = pickMonitorAtPointer();
     if (!picked) return null;
 
@@ -301,7 +302,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     }
     if (!el) return null;
 
-    const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive(), archive: archiveRef.current });
+    const items = buildMonitorMenu(el, { closeMenu, isLive: isRuntimeLive(), archive: archiveRef.current, point });
     if (!items.length) return null;
 
     // Вид меню задаётся тому компоненту, чьё это меню (см. подъём по parentKey выше).
@@ -323,7 +324,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
 
   const handleMonitorContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     cancelPendingMonitorMenu();
-    const menu = resolveMonitorMenu();
+    const menu = resolveMonitorMenu({ x: e.evt.clientX, y: e.evt.clientY });
     if (menu) setContextMenu({ x: e.evt.clientX, y: e.evt.clientY, ...menu });
   };
 
@@ -373,12 +374,12 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
       return;
     }
 
-    const menu = resolveMonitorMenu();
-    if (!menu) return;
     const point = "changedTouches" in e.evt
       ? e.evt.changedTouches[0]
       : e.evt;
     if (!point) return;
+    const menu = resolveMonitorMenu({ x: point.clientX, y: point.clientY });
+    if (!menu) return;
     const open = () => setContextMenu({ x: point.clientX, y: point.clientY, ...menu });
 
     const dblClickMatters = isTouch
@@ -431,7 +432,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
       const open = () => setContextMenu({
         x: point.x,
         y: point.y,
-        items: buildChoiceMenu(el, items, { closeMenu, isLive: isRuntimeLive() }),
+        items: buildChoiceMenu(el, items, { closeMenu, isLive: isRuntimeLive(), point }),
         settings: readMonitorMenu(el.monitorMenu),
       });
       const dblClickMatters = el.events?.some(ev => ev.event_type === "onDoubleClick" && ev.handler?.code?.trim());
@@ -734,6 +735,9 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
           {readOnly && !archive && <MonitorInteractionLayer elements={elements} elementsMap={elementsMap} />}
         </Stage>
       </div>
+
+      {/* Монитор: отказ в действии — у точки нажатия. */}
+      {readOnly && !archive && <RuntimeNoticeLayer />}
 
       {editingTextKey && (
         <TextEditorOverlay
