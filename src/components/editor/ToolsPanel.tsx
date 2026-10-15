@@ -28,6 +28,7 @@ import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog"
 import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBanner";
 import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner";
 import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 
 function TooltipBtn({
   icon,
@@ -118,6 +119,11 @@ export default function ToolsPanel() {
   // в текущую сцену как чужое прошлое. Одна проверка гасит разом импорт, undo/redo,
   // группировку, выравнивание и сохранение — все они уже завязаны на canEdit.
   const canEdit = sceneBelongsToProject && !versionPreview;
+  // Право правки проекта — отдельно от canEdit: с одним «просмотром» схему можно
+  // «потыкать» локально (undo, группировка, импорт), но не записать на сервер.
+  // Скрываем всё, что пишет: сохранение, новую схему, откат и выпуски.
+  const canWrite = useCurrentProjectGrant().edit;
+  const canSave = canEdit && canWrite;
 
   const handleOpenProject = () => {
     openProjectModal();
@@ -369,7 +375,15 @@ export default function ToolsPanel() {
                 этой подписи пользователь не знал, в безопасности ли его работа.
                 В режиме просмотра версии статус не показываем — там говорит плашка,
                 а «сохранено в …» рядом со старой версией только запутает. */}
-            {scene && !versionPreview && (
+            {currentProject && !canWrite && (
+              <span
+                className="shrink-0 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400"
+                title="У вас право просмотра проекта: правки остаются локальными и не сохраняются"
+              >
+                только просмотр
+              </span>
+            )}
+            {scene && !versionPreview && canWrite && (
               <span className="shrink-0 whitespace-nowrap">
                 {isSaving
                   ? <span className="text-neutral-500 dark:text-neutral-400">сохранение…</span>
@@ -392,7 +406,7 @@ export default function ToolsPanel() {
       <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto justify-self-center">
 
         <TooltipBtn icon={<Briefcase size={16} />} label="Проект" onClick={handleOpenProject} />
-        <TooltipBtn icon={<FilePlus size={16} />} label="Создать схему" onClick={handleCreateSchema} />
+        {canWrite && <TooltipBtn icon={<FilePlus size={16} />} label="Создать схему" onClick={handleCreateSchema} />}
         <TooltipBtn icon={<FolderOpen size={16} />} label="Загрузить схему" onClick={handleLoadSchema} />
         <TooltipBtn
           icon={<Upload size={16} />} label="Импорт" onClick={handleImport}
@@ -429,20 +443,20 @@ export default function ToolsPanel() {
           onClick={() => setHistoryOpen(v => !v)}
           disabled={!scene}
         />
-        <TooltipBtn
+        {canWrite && <TooltipBtn
           icon={<RotateCcw size={16} />}
           label="Вернуться к предыдущему сохранению"
           onClick={() => { void useEditorStore.getState().restorePreviousManualVersion(); }}
           disabled={!scene || !!versionPreview}
-        />
+        />}
         {/* Выпуски — уровень проекта, а не схемы: монитор показывает prod-выпуск, и правки
             доходят до него только через «Выпустить» и «Сделать prod». */}
-        <TooltipBtn
+        {canWrite && <TooltipBtn
           icon={<Rocket size={16} />}
           label="Выпуски проекта"
           onClick={() => currentProject && openReleasesModal(currentProject.id, currentProject.name)}
           disabled={!currentProject}
-        />
+        />}
 
         <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
 
@@ -539,20 +553,20 @@ export default function ToolsPanel() {
             ожидался и не было никакого признака работы, поэтому нетерпеливые
             клики выстраивали очередь из полных циклов «сохранение + перезагрузка».
             Точка-индикатор показывает несохранённые изменения. */}
-        <TooltipBtn
+        {canWrite && <TooltipBtn
           icon={isSaving
             ? <Loader2 size={16} strokeWidth={2.5} className="animate-spin" />
             : <Save size={16} strokeWidth={2.5} />}
           label={isSaving ? "Сохранение…" : isDirty ? "Сохранить (есть изменения)" : "Сохранить"}
           onClick={() => { void exportScene(); }}
-          disabled={!canEdit || isSaving}
+          disabled={!canSave || isSaving}
           className="relative flex items-center justify-center w-9 h-9 rounded-xl
             bg-primary/10 border border-primary/30 text-primary
             hover:bg-primary/20 hover:border-primary/40
             active:translate-y-0.5 transition-all
             disabled:opacity-20 disabled:cursor-not-allowed"
           badge={isDirty && !isSaving}
-        />
+        />}
       </div>
 
       <div className="min-w-0 flex justify-end">

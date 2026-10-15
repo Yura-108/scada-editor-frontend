@@ -4,6 +4,7 @@ import {useEffect} from "react";
 import {History, RotateCcw, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {shouldIgnoreEditorHotkey} from "@/components/editor/canvas/hooks/useEditorHotkeys";
 import {
   formatVersionTime,
@@ -18,6 +19,8 @@ import {
  * смотрит прошлое, поэтому плашка обязательна и намеренно заметна.
  */
 export default function VersionPreviewBanner() {
+  // Восстановление пишет новую версию — только с правом правки проекта.
+  const canWrite = useCurrentProjectGrant().edit;
   const {versionPreview, exitVersionPreview, restoreVersion} = useEditorStore(
     useShallow(s => ({
       versionPreview: s.versionPreview,
@@ -73,7 +76,7 @@ export default function VersionPreviewBanner() {
         {/* Без известного номера восстанавливать нечего: `at` возвращает содержимое,
             но не говорит, какая это версия. Показывать кнопку, которая не знает, что
             восстановит, хуже, чем не показывать её вовсе. */}
-        {versionNo != null && (
+        {versionNo != null && canWrite && (
           <button
             type="button"
             onClick={() => { void restoreVersion(versionNo); }}

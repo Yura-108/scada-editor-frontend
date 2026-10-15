@@ -4,7 +4,7 @@ import {
   readPinnedTabs, readPinsFromSettings, writePinnedTabs,
 } from "@/lib/editor/pinnedScenes";
 import {fetchProjectSettings, ProjectSettingsUnsupported, saveProjectSetting} from "@/lib/editor/projectSettingsApi";
-import {useEditorStore} from "@/store/useEditorStore";
+import {canWriteCurrentProject, useEditorStore} from "@/store/useEditorStore";
 import {toast} from "sonner";
 
 /**
@@ -51,9 +51,11 @@ const currentProjectId = (): number | null => useEditorStore.getState().currentP
 
 /**
  * Менять закрепления можно только в редакторе: в мониторе (он рисует выпуск, `sceneSource =
- * "release"`) это общая настройка, которую оператор лишь видит.
+ * "release"`) это общая настройка, которую оператор лишь видит. Без права правки проекта
+ * (PUT image — edit) закрепления тоже только видны.
  */
-const canEditPins = (): boolean => useEditorStore.getState().sceneSource === "draft";
+const canEditPins = (): boolean =>
+  useEditorStore.getState().sceneSource === "draft" && canWriteCurrentProject();
 
 /** Номер последнего `hydrate`: ответ сервера на прошлый проект не должен лечь поверх нового. */
 let hydrateSeq = 0;

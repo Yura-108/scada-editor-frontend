@@ -4,6 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Clock, Eye, Loader2, RotateCcw, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   formatVersionTime,
@@ -25,6 +26,8 @@ const ALL_KINDS: VersionKind[] = ["MANUAL", "AUTOSAVE", "RESTORE"];
  * только мешают.
  */
 export default function VersionHistoryPanel({open, onClose}: {open: boolean; onClose: () => void}) {
+  // Восстановление пишет новую версию — только с правом правки проекта.
+  const canWrite = useCurrentProjectGrant().edit;
   const {
     scene, versions, isVersionsLoading, versionsExhausted, sceneVersion,
     loadVersions, previewVersion, restoreVersion, previewVersionAt,
@@ -190,7 +193,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                   <Eye size={12} />
                   Посмотреть
                 </button>
-                <button
+                {canWrite && <button
                   type="button"
                   onClick={() => { void handleRestore(v.version_no); }}
                   className="flex items-center gap-1 rounded-md border border-neutral-300 dark:border-neutral-700
@@ -198,7 +201,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                 >
                   <RotateCcw size={12} />
                   Восстановить
-                </button>
+                </button>}
               </div>
             </li>
           ))}

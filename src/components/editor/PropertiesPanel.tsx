@@ -325,8 +325,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       // шлёт ACTION с их id (см. runScript в useRuntimeEngine). Обработчики событий и
       // привязки — тоже JavaScript, но в браузере.
       description: "JavaScript-код, который выполнится на сервере. Вызывается из обработчика события через runScript(\"Имя\", аргументы?) или пунктом showMenu. Аргументы клика — объект args ({} без аргументов); проверяйте их диапазон в скрипте.",
-      onConfirm: (name, content, displayed) => {
-        const newScript = { id: createUuid(), name, content, displayed };
+      onConfirm: (name, content, displayed, accessLevel) => {
+        const newScript = { id: createUuid(), name, content, displayed, accessLevel };
         updateElement(element.key, {
           scripts: [...(element.scripts || []), newScript]
         });
@@ -1261,9 +1261,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                   <button
                     key={script.id}
                     type="button"
-                    title={script.displayed
-                      ? `Редактировать скрипт «${script.name}» (показывается в меню монитора)`
-                      : `Редактировать скрипт «${script.name}»`}
+                    title={`Редактировать скрипт «${script.name}»`
+                      + (script.displayed ? " (показывается в меню монитора)" : "")
+                      + (script.accessLevel ? `, уровень доступа ${script.accessLevel}` : "")}
                     className={`
                       inline-flex items-center px-2.5 py-1.5
                       text-xs font-medium rounded-full
@@ -1278,9 +1278,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                           defaultName: script.name,
                           defaultContent: script.content,
                           defaultDisplayed: script.displayed,
-                          onConfirm: (name, content, displayed) => {
+                          defaultAccessLevel: script.accessLevel ?? null,
+                          onConfirm: (name, content, displayed, accessLevel) => {
                             const updatedScripts = elementScripts.map(s =>
-                              s.id === script.id ? { ...s, name, content, displayed } : s
+                              s.id === script.id ? { ...s, name, content, displayed, accessLevel } : s
                             );
                             updateElement(element.key, { scripts: updatedScripts });
                           }
@@ -1293,6 +1294,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
                       <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     )}
                     {script.name}
+                    {script.accessLevel != null && (
+                      <span className="ml-1.5 rounded bg-blue-800/60 px-1 text-[10px]">ур. {script.accessLevel}</span>
+                    )}
                   </button>
                 ))}
               </div>

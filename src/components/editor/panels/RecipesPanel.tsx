@@ -11,6 +11,7 @@ import {setStepValueAt, stepValueText, stepsChanged} from "@/lib/editor/recipeSt
 import {validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {confirmModal} from "@/components/ui/ConfirmModal";
+import {useCanEditAnyProject} from "@/lib/access/projectAccess";
 
 /**
  * Процедурные рецепты. Список плоский: рецепт не принадлежит ни компоненту, ни сцене —
@@ -47,6 +48,9 @@ export function RecipesPanel() {
   /** Незасохранённые правки шагов по рецептам. Черновик не теряется при сворачивании. */
   const [drafts, setDrafts] = useState<Record<string, RecipeStep[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Рецепты пока глобальные: читать может любой вошедший, менять — администратор или тот, у
+  // кого есть «правка» хотя бы в одном проекте (иначе бэкенд ответит 403 NO_EDIT).
+  const canEditRecipes = useCanEditAnyProject();
 
   // Флага загрузки в компоненте нет намеренно: он в сторе, иначе это был бы `setState`
   // прямо в эффекте (`loaded` ставится до запроса и гасит повторный вызов).
@@ -123,7 +127,7 @@ export function RecipesPanel() {
           Рецепты
         </h3>
 
-        <button
+        {canEditRecipes && <button
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
             "bg-blue-600 text-white hover:bg-blue-500",
@@ -132,7 +136,7 @@ export function RecipesPanel() {
         >
           <Plus size={16} />
           Создать рецепт
-        </button>
+        </button>}
       </div>
 
       {isLoading ? (
@@ -194,7 +198,7 @@ export function RecipesPanel() {
                       </td>
                       {/* Клик по кнопкам не должен заодно сворачивать строку. */}
                       <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-3">
+                        {canEditRecipes && <div className="flex items-center justify-center gap-3">
                           <button
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors"
                             title="Редактировать"
@@ -209,7 +213,7 @@ export function RecipesPanel() {
                           >
                             <Trash2 size={16} />
                           </button>
-                        </div>
+                        </div>}
                       </td>
                     </tr>
 
@@ -249,7 +253,7 @@ export function RecipesPanel() {
                                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                     Теги и значения на шаге {index + 1}
                                   </span>
-                                  <div className="flex items-center gap-2">
+                                  {canEditRecipes && <div className="flex items-center gap-2">
                                     {dirty && (
                                       <button
                                         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
@@ -272,7 +276,7 @@ export function RecipesPanel() {
                                       <Save size={14} />
                                       {savingId === recipe.id ? "Сохранение…" : "Сохранить"}
                                     </button>
-                                  </div>
+                                  </div>}
                                 </div>
 
                                 {tags.length === 0 ? (

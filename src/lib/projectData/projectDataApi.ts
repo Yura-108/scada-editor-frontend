@@ -5,6 +5,7 @@ import type {
 } from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {fetchVersions} from "@/lib/editor/versionsApi";
+import {errorTextFromJson} from "@/lib/access/accessErrors";
 
 /** Ошибка сохранения таблиц: список нарушений проверки или конфликт версий. */
 export class ProjectDataSaveError extends Error {
@@ -22,7 +23,7 @@ const readJson = async (res: Response) => res.json().catch(() => null);
 
 export const fetchProjectData = async (projectId: number): Promise<ProjectDataSet> => {
   const res = await fetch(`/api/editor/data/${projectId}`);
-  if (!res.ok) throw new Error(`Не удалось загрузить данные проекта (${res.status})`);
+  if (!res.ok) throw new Error(errorTextFromJson(res.status, await res.json().catch(() => null), `Не удалось загрузить данные проекта (${res.status})`));
   return res.json();
 };
 
@@ -49,7 +50,7 @@ export const saveProjectData = async (
   if (res.status === 409) {
     throw new ProjectDataSaveError("Таблицы уже изменил кто-то другой — перечитайте их", [], true);
   }
-  throw new ProjectDataSaveError(data?.message ?? `Не удалось сохранить таблицы (${res.status})`);
+  throw new ProjectDataSaveError(errorTextFromJson(res.status, data, `Не удалось сохранить таблицы (${res.status})`));
 };
 
 /**
@@ -61,7 +62,7 @@ export const reloadProjectData = async (projectId: number): Promise<"applied" | 
   if (res.ok) return "applied";
   if (res.status === 404) return "not_running";
   const data = await readJson(res);
-  throw new Error(data?.message ?? `Не удалось применить данные (${res.status})`);
+  throw new Error(errorTextFromJson(res.status, data, `Не удалось применить данные (${res.status})`));
 };
 
 export const fetchProjectDataVersions = (projectId: number): Promise<VersionSummary[]> =>
@@ -80,5 +81,5 @@ export const restoreProjectDataVersion = async (projectId: number, versionNo: nu
       .join("; ");
     throw new Error(`Версия ${versionNo} не проходит проверку: ${details}`);
   }
-  throw new Error(data?.message ?? `Не удалось восстановить версию (${res.status})`);
+  throw new Error(errorTextFromJson(res.status, data, `Не удалось восстановить версию (${res.status})`));
 };

@@ -6,6 +6,7 @@ import type {
 } from "@/types/automation.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {fetchVersions} from "@/lib/editor/versionsApi";
+import {errorTextFromJson} from "@/lib/access/accessErrors";
 
 /** Ошибка сохранения набора: список нарушений проверки или конфликт версий. */
 export class AutomationSaveError extends Error {
@@ -23,7 +24,7 @@ const readJson = async (res: Response) => res.json().catch(() => null);
 
 export const fetchAutomation = async (projectId: number): Promise<AutomationSet> => {
   const res = await fetch(`/api/editor/automation/${projectId}`);
-  if (!res.ok) throw new Error(`Не удалось загрузить автоматизацию проекта (${res.status})`);
+  if (!res.ok) throw new Error(errorTextFromJson(res.status, await res.json().catch(() => null), `Не удалось загрузить автоматизацию проекта (${res.status})`));
   return res.json();
 };
 
@@ -41,12 +42,12 @@ export const saveAutomation = async (projectId: number, body: AutomationSaveRequ
   if (res.status === 409) {
     throw new AutomationSaveError("Набор уже изменил кто-то другой — перечитайте его", [], true);
   }
-  throw new AutomationSaveError(data?.message ?? `Не удалось сохранить набор (${res.status})`);
+  throw new AutomationSaveError(errorTextFromJson(res.status, data, `Не удалось сохранить набор (${res.status})`));
 };
 
 export const republishAutomation = async (projectId: number): Promise<void> => {
   const res = await fetch(`/api/editor/automation/${projectId}/republish`, {method: "POST"});
-  if (!res.ok) throw new Error(`Не удалось переопубликовать набор (${res.status})`);
+  if (!res.ok) throw new Error(errorTextFromJson(res.status, await res.json().catch(() => null), `Не удалось переопубликовать набор (${res.status})`));
 };
 
 export const fetchAutomationVersions = (projectId: number): Promise<VersionSummary[]> =>
@@ -66,7 +67,7 @@ export const restoreAutomationVersion = async (projectId: number, versionNo: num
         .join("; ");
       throw new Error(`Версия ${versionNo} не проходит проверку: ${details}`);
     }
-    throw new Error(data?.message ?? `Не удалось восстановить версию (${res.status})`);
+    throw new Error(errorTextFromJson(res.status, data, `Не удалось восстановить версию (${res.status})`));
   }
 };
 

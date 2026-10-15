@@ -2,15 +2,18 @@
 
 import {useModalStore} from "@/store/modalStore";
 import {cn} from "@/lib/utils";
-import {Link2, Power, PowerOff, Rocket, X} from "lucide-react";
+import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import {useState, useEffect} from "react";
+import {useState, useEffect, useMemo} from "react";
 import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
 import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
 import {Button, ModalFooter} from "@/components/ui/Button";
+import {openProcedureLevelsModal} from "@/components/editor/ProcedureLevelsModal";
+import {canOpenInEditor, grantOf} from "@/lib/access/projectAccess";
+import {useSessionUserStore} from "@/store/useSessionUserStore";
 
 async function selectProjectAndOpenScenes(
   projectId: number,
@@ -34,7 +37,15 @@ async function selectProjectAndOpenScenes(
 
 export function ProjectContent() {
   const {closeModal} = useModalStore();
-  const projectList = useEditorStore(state => state.projectList);
+  const allProjects = useEditorStore(state => state.projectList);
+  const admin = useSessionUserStore(state => state.admin);
+  // С одним «управлением» проект в редакторе не открывается (бэкенд ответит 403) — не
+  // показываем его вовсе. Список стора остаётся полным: он же кормит монитор.
+  // useMemo: от списка зависят эффекты ниже, новый массив на каждый рендер их зациклил бы.
+  const projectList = useMemo(
+    () => allProjects.filter(p => canOpenInEditor(grantOf(p, admin))),
+    [allProjects, admin],
+  );
   const loadProjectList = useEditorStore(state => state.loadProjectList);
   const createProject = useEditorStore(state => state.createProject);
   const deleteProject = useEditorStore(state => state.deleteProject);
@@ -129,11 +140,15 @@ export function ProjectContent() {
     <>
       <Dialog.Title className="text-xl font-semibold mb-1">Выберите проект</Dialog.Title>
       <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Выберите существующий проект или создайте новый. После выбора откроется список схем проекта.
+        {admin
+          ? "Выберите существующий проект или создайте новый. После выбора откроется список схем проекта."
+          : "Выберите проект. После выбора откроется список схем проекта."}
       </Dialog.Description>
       {projectList.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Проектов пока нет. Создайте первый проект ниже.
+          {admin
+            ? "Проектов пока нет. Создайте первый проект ниже."
+            : "Нет проектов, доступных для просмотра или правки. Права выдаёт администратор."}
         </p>
       ) : (
         <ul className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -167,6 +182,20 @@ export function ProjectContent() {
                   prod №{prodVersions[proj.id]}
                 </span>
               )}
+              {(() => {
+                const grant = grantOf(proj, admin);
+                return (<>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); openProcedureLevelsModal(proj.id, proj.name, grant.edit); }}
+                className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                title="Уровни доступа операций процедур"
+                aria-label={`Уровни процедур проекта «${proj.name}»`}
+              >
+                <Gauge size={14} />
+              </button>
+              {/* Выпуски, эксплуатация и автопривязка — только с правом правки (бэкенд: 403 NO_EDIT). */}
+              {grant.edit && <>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); openReleasesModal(proj.id, proj.name); }}
@@ -204,7 +233,9 @@ export function ProjectContent() {
               >
                 <Link2 size={14} />
               </button>
-              <button
+              </>}
+              {/* Удалять проект может только администратор. */}
+              {admin && <button
                 type="button"
                 onClick={(e) => void handleDelete(e, proj)}
                 className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
@@ -212,13 +243,16 @@ export function ProjectContent() {
                 aria-label={`Удалить проект «${proj.name}»`}
               >
                 <X size={14} />
-              </button>
+              </button>}
+                </>);
+              })()}
             </li>
           ))}
         </ul>
       )}
 
-      <div className="mt-4 flex items-center gap-2">
+      {/* Создавать проект может только администратор (иначе 403 NOT_ADMIN). */}
+      {admin && <div className="mt-4 flex items-center gap-2">
         <input
           type="text"
           placeholder="Имя нового проекта"
@@ -240,7 +274,7 @@ export function ProjectContent() {
         >
           {isCreating ? "Создание..." : "Создать"}
         </button>
-      </div>
+      </div>}
 
       <ModalFooter>
         <Button onClick={closeModal}>Отмена</Button>

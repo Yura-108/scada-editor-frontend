@@ -42,6 +42,11 @@ type BackendPropertyDto = {
  * сценах `description` там останется навсегда. Сам `description` выбрасываем: свойства
  * уезжают на сервер целиком, и без этого поле ушло бы двумя именами сразу.
  */
+
+/** `access_level` скрипта: 1…10, иначе `null` (= уровень 1). */
+const parseAccessLevel = (raw: unknown): number | null =>
+  typeof raw === "number" && Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : null;
+
 export const normalizeProperty = (raw: unknown): PropertyCreateDto => {
   const {description, ...rest} = (raw ?? {}) as BackendPropertyDto;
   return {
@@ -311,6 +316,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
           name: String(s.name ?? ""),
           content: String(s.content ?? s.script ?? ""),
           displayed: Boolean(s.displayed),
+          accessLevel: parseAccessLevel(s.accessLevel ?? s.access_level),
         })),
         // Composition-дескриптор хранит TagBinding[] сырыми объектами; parseBindings
         // заодно отсеивает легаси-мусор (симметрия с buildShapeDescriptor).
@@ -360,6 +366,8 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         // Пункт меню монитора. Список полей здесь — белый: чего нет в нём, то
         // теряется при загрузке, поэтому новое поле контракта добавляется тут.
         displayed: Boolean(s.displayed),
+        // Уровень доступа скрипта: без него в мониторе кнопка считалась бы уровнем 1.
+        accessLevel: parseAccessLevel(s.access_level),
       })),
       // Top-level биндинги едут через DTO-обёртку {name, script: JSON} — распаковываем.
       bindings: parseBindings(el.bindings),

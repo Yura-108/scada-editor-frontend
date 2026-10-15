@@ -260,6 +260,8 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
           // снятая галочка «действие в мониторе» обязана дойти так же, как
           // поставленная — иначе флаг снимается только локально.
           displayed: Boolean(s.displayed),
+          // Тоже всегда: null снимает уровень, а не «оставляет как было».
+          access_level: s.accessLevel ?? null,
         }))
       : [],
     bindings: encodeBindings(element),
@@ -356,7 +358,13 @@ export const buildPaletteComponentTree = (
       parent_key: element.parentKey,
       parent_id: element.parentId,
       scripts: Array.isArray(element.scripts)
-        ? element.scripts.map((s: any) => ({ name: s.name, script: s.content, displayed: Boolean(s.displayed) }))
+        ? element.scripts.map((s: any) => ({
+            name: s.name,
+            script: s.content,
+            displayed: Boolean(s.displayed),
+            // Без уровня вставленный из палитры скрипт молча стал бы уровня 1.
+            access_level: s.accessLevel ?? null,
+          }))
         : [],
       bindings: encodeBindings(element, {withServerIds: false}),
       events: encodeEvents(element, {withServerIds: false}),

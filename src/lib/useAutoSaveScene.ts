@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { hasUnsavedWork, useEditorStore } from "@/store/useEditorStore";
+import { canWriteCurrentProject, hasUnsavedWork, useEditorStore } from "@/store/useEditorStore";
 
 const AUTOSAVE_INTERVAL_MS = 10 * 60_000;
 
@@ -24,6 +24,8 @@ export function useAutoSaveScene(intervalMs: number = AUTOSAVE_INTERVAL_MS) {
 
       if (!isDirty || isSaving) return;
       if (!scene || !currentProject) return;
+      // Только просмотр: писать некуда, правки остаются локальными.
+      if (!canWriteCurrentProject()) return;
       // В режиме просмотра на холсте лежит СТАРАЯ версия. Автосейв сработал бы без
       // участия человека и записал бы её поверх текущей сцены — молча потеряв работу.
       // В exportScene стоит такая же проверка; здесь она экономит лишний вызов.
@@ -52,6 +54,8 @@ export function useWarnOnUnsavedChanges() {
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (!hasUnsavedWork()) return;
+      // В режиме просмотра правки и не могли сохраниться — предупреждать не о чем.
+      if (!canWriteCurrentProject()) return;
       // Современные браузеры показывают собственный текст; важен сам факт
       // preventDefault + установки returnValue.
       e.preventDefault();

@@ -11,7 +11,8 @@ interface Props {
   currentVersion: number | null;
   /** Несохранённые правки блокируют восстановление — иначе они молча пропадут. */
   dirty: boolean;
-  onRestore: (versionNo: number) => void;
+  /** Нет — восстанавливать нельзя (нет права правки): кнопка не показывается. */
+  onRestore?: (versionNo: number) => void;
 }
 
 /** История версий документа проекта (набор automation, таблицы данных): список и «Восстановить». */
@@ -26,7 +27,7 @@ export function VersionHistoryList({versions, currentVersion, dirty, onRestore}:
           <span className="text-neutral-500">{v.kind}{v.restored_from ? ` из v${v.restored_from}` : ""}</span>
           <span className="text-neutral-500">{v.user_name}</span>
           <span className="flex-1 text-neutral-500">{new Date(v.created_at).toLocaleString("ru")}</span>
-          {v.version_no !== currentVersion && (
+          {v.version_no !== currentVersion && onRestore && (
             <Button onClick={() => onRestore(v.version_no)} disabled={dirty} title={dirty ? "Сначала сохраните или перечитайте набор" : undefined}>
               Восстановить
             </Button>

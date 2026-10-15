@@ -1,5 +1,6 @@
 import {AutomationSaveError} from "@/lib/automation/automationApi";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import {errorTextFromJson} from "@/lib/access/accessErrors";
 
 /**
  * Палитра шаблонов задач. Ошибки приходят в той же форме, что у набора задач
@@ -20,7 +21,7 @@ const parse = async <T>(res: Response, fallback: string): Promise<T> => {
     throw new AutomationSaveError("Шаблон не прошёл проверку", data.errors ?? []);
   }
   // 404 приходит в общей форме editor (timestamp/status/error/message), не automation_invalid.
-  throw new AutomationSaveError(data?.message ?? `${fallback} (${res.status})`);
+  throw new AutomationSaveError(errorTextFromJson(res.status, data, `${fallback} (${res.status})`));
 };
 
 /** Список приходит целиком и уже отсортирован сервером по имени. */
@@ -60,5 +61,5 @@ export const deleteTemplate = async (id: number): Promise<void> => {
   // а «кто-то удалил раньше», и список всё равно надо перечитать.
   if (res.status === 404) throw new AutomationSaveError("Шаблон уже удалён");
   const data = await readJson(res);
-  throw new AutomationSaveError(data?.message ?? `Не удалось удалить шаблон (${res.status})`);
+  throw new AutomationSaveError(errorTextFromJson(res.status, data, `Не удалось удалить шаблон (${res.status})`));
 };

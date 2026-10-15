@@ -6,6 +6,7 @@ import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "@/store/useEditorStore";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {SceneTabs} from "@/components/editor/SceneTabs";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {handleTabListKey} from "@/lib/editor/tabListKeys";
 import React, {useMemo, useRef, useState, useEffect} from "react";
 import Palette from "./Palette";
@@ -66,6 +67,8 @@ const readLayout = (): Partial<PersistedLayout> => {
 };
 
 export default function WorkSpace() {
+  // Закрепления — настройка проекта: без права правки вкладки только видны.
+  const canWrite = useCurrentProjectGrant().edit;
   // Точечные селекторы вместо подписки на весь стор: иначе каждый тик пана/зума
   // ре-рендерил WorkSpace и каскадом весь Canvas со всеми фигурами.
   const selectedIds = useEditorStore(s => s.selectedIds);
@@ -324,6 +327,7 @@ export default function WorkSpace() {
           fallbackTab={EDITOR_TAB}
           contentId="workspace-tab-content"
           ariaLabel="Разделы редактора"
+          editable={canWrite}
           className="transition-[margin] duration-300 ease-in-out"
           style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
         />

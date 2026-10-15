@@ -5,7 +5,7 @@ import {cn} from "@/lib/utils";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Pin, PinOff, X} from "lucide-react";
 import {useState} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {canWriteCurrentProject, useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {toast} from "sonner";
@@ -18,6 +18,8 @@ interface Props {
   onCreateAction?: (name: string) => Promise<{id: number; name: string} | null>;
   sceneList: {id: number; name: string}[];
   projectName?: string;
+  /** Только просмотр проекта: без удаления и закрепления схем (создание — через onCreateAction). */
+  readOnly?: boolean;
 }
 
 export function ChooseSceneContent({
@@ -26,6 +28,7 @@ export function ChooseSceneContent({
   onCreateAction,
   sceneList,
   projectName,
+  readOnly = false,
 }: Props) {
   const {closeModal} = useModalStore.getState();
   // Подписка, а не getState(): иконка скрепки обязана переключаться сразу по клику.
@@ -123,6 +126,7 @@ export function ChooseSceneContent({
               </button>
               {/* Закрепление — вкладки быстрого доступа для всех пользователей проекта (в
                   редакторе и мониторе). Менять их можно только здесь, в редакторе. */}
+              {!readOnly && <>
               <button
                 type="button"
                 aria-pressed={pins.some(p => p.id === scene.id)}
@@ -154,6 +158,7 @@ export function ChooseSceneContent({
               >
                 <X size={14} />
               </button>
+              </>}
             </li>
           ))}
         </ul>
@@ -229,11 +234,14 @@ export function openChooseSceneModal() {
     return;
   }
 
+  // Без права правки схемы только открываются: создать, удалить и закрепить нельзя.
+  const canWrite = canWriteCurrentProject();
   openModal(
     <ChooseSceneContent
       onLoadAction={handleLoadScene}
       onDeleteAction={deleteScene}
-      onCreateAction={handleCreateScene}
+      onCreateAction={canWrite ? handleCreateScene : undefined}
+      readOnly={!canWrite}
       sceneList={sceneList}
       projectName={currentProject?.name}
     />

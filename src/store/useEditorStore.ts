@@ -2,6 +2,8 @@ import {snap, GRID} from "@/lib/utils";
 import type {MonitorView} from "@/lib/editor/monitorView";
 import {create} from "zustand/react";
 import {errorTextFromBody} from "@/lib/access/accessErrors";
+import {grantOf} from "@/lib/access/grants";
+import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {GroupElement, ComponentState, DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
 import {temporal} from "zundo";
 import {
@@ -962,6 +964,25 @@ const getErrorMessage = (err: unknown, fallback: string) =>
  * Достаём человеческий текст — иначе тост показывает сырой JSON-блоб.
  */
 const parseBackendErrorMessage = errorTextFromBody;
+
+/**
+ * Есть ли у пользователя право правки текущего проекта (`access.edit` из списка проектов,
+ * администратору — всегда). С одним «просмотром» редактор открывается и правится
+ * локально, но всё, что пишет на сервер, должно молча (автосейв) или с пояснением
+ * (ручные действия) остановиться здесь — бэкенд ответил бы 403 NO_EDIT.
+ */
+export const canWriteCurrentProject = (): boolean => {
+  const {currentProject, projectList} = useEditorStore.getState();
+  if (!currentProject) return false;
+  const fromList = projectList.find(p => p.id === currentProject.id);
+  return grantOf(fromList ?? currentProject, useSessionUserStore.getState().admin).edit;
+};
+
+/** Ручное действие в режиме просмотра: объяснить, почему ничего не произошло. */
+const refuseViewOnly = (): false => {
+  toast.info("Только просмотр — сохранение недоступно");
+  return false;
+};
 
 /**
  * Массовое удаление документов и компонентов — единственный оставшийся адрес удаления.
@@ -2854,7 +2875,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         // над ТЕГАМИ, о свойствах компонента он не знает вовсе, и той причины не осталось.
         // Вызов сохранён: что ещё делает `PUT /api/editor/properties/{id}` на бэкенде,
         // отсюда не видно, и убирать его надо отдельно и осознанно.
-        if (target.id != null && target.name.trim() !== name) {
+        // Без права правки переименование остаётся локальным, как и любая правка в режиме
+        // просмотра: серверный PUT ответил бы 403 и не дал бы «потыкать» схему.
+        if (target.id != null && target.name.trim() !== name && canWriteCurrentProject()) {
           const {currentProject, scene} = get();
           const generation = documentGeneration;
           const renamed = await renamePropertyOnServer(target.id, {...payload, name});
@@ -3085,6 +3108,8 @@ export const useEditorStore = create<EditorState>()(temporal(
         }));
       },
       exportScene: async (opts) => {
+        // Без права правки на сервер не пишем: автосейв просто пропускает тик.
+        if (!canWriteCurrentProject()) return opts?.silent ? false : refuseViewOnly();
         // Сериализуем все сохранения через общий замок (см. `saveInFlight`),
         // иначе два параллельных POST с id=null создадут дубли на сервере.
         // Автосейв не встаёт в очередь — просто пропускает тик (поймает
@@ -3485,6 +3510,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       },
       restoreVersion: async (versionNo) => {
         if (!get().scene?.id) return false;
+        if (!canWriteCurrentProject()) return refuseViewOnly();
 
         // Восстановление берёт ТОТ ЖЕ замок, что и сохранение. Без этого летящее
         // сохранение (ручное или автосейв) ложится на сервер уже ПОСЛЕ восстановления и
@@ -3596,6 +3622,7 @@ export const useEditorStore = create<EditorState>()(temporal(
       restorePreviousManualVersion: async () => {
         const sceneId = get().scene?.id;
         if (sceneId == null) return false;
+        if (!canWriteCurrentProject()) return refuseViewOnly();
 
         try {
           // Тянем ВСЕ виды, а не только MANUAL: чтобы понять, «предыдущее» относительно
@@ -4037,6 +4064,10 @@ export const useEditorStore = create<EditorState>()(temporal(
             toast.error("Сначала выберите проект");
             return;
           }
+          if (!canWriteCurrentProject()) {
+            refuseViewOnly();
+            return;
+          }
 
           // Если имя не передано из UI (например, нажата кнопка «Создать сцену»
           // в ToolsPanel), спрашиваем модалкой.
@@ -4101,6 +4132,10 @@ export const useEditorStore = create<EditorState>()(temporal(
           const {currentProject} = get();
           if (!currentProject) {
             toast.error("Сначала выберите проект");
+            return;
+          }
+          if (!canWriteCurrentProject()) {
+            refuseViewOnly();
             return;
           }
 

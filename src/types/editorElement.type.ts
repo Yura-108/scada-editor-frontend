@@ -66,6 +66,13 @@ export interface ElementScript {
    * так что «прокатить» признак мимо контракта не получится.
    */
   displayed?: boolean;
+  /**
+   * Минимальный уровень оператора, которому монитор разрешает этот скрипт (1…10);
+   * `null`/нет — уровень 1. Едет полем `access_level` DTO. Проверяет сервер (по prod-выпуску),
+   * монитор лишь гасит кнопку заранее. Копии (палитра, вставка) обязаны его сохранить —
+   * иначе уровень молча станет 1, а бэкенд этого не заметит.
+   */
+  accessLevel?: number | null;
 }
 
 /**
@@ -113,7 +120,7 @@ export type ComponentCreateDto = {
    * `displayed` шлём всегда: бэкенд считает список скриптов полным, и снятая
    * галочка обязана дойти так же, как поставленная.
    */
-  scripts: { id?: number | string; name: string; script: string; displayed?: boolean }[];
+  scripts: { id?: number | string; name: string; script: string; displayed?: boolean; access_level?: number | null }[];
   bindings: BindingDto[];
   /** `id` — только у событий, пришедших с сервера. */
   events: { id?: number | string; event_type: string; script: string }[];

@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useState} from "react";
+import React, {useCallback, useEffect, useState, useMemo} from "react";
 import Link from "next/link";
 import {RefreshCw, Save, Upload} from "lucide-react";
 import {toast} from "sonner";
@@ -8,6 +8,8 @@ import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useSessionUserStore} from "@/store/useSessionUserStore";
+import {canOpenInEditor, grantOf, useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/lib/automation/automationApi";
 import {
   fetchProjectData,
@@ -36,7 +38,16 @@ const TAB_LABELS: Record<Tab, string> = {tables: "Таблицы", variables: "�
  * «Сохранить» сохраняет документ активной вкладки. Логики здесь нет — только правка и сохранение.
  */
 export default function DataClient() {
-  const projectList = useEditorStore(s => s.projectList);
+  const allProjects = useEditorStore(s => s.projectList);
+  const admin = useSessionUserStore(s => s.admin);
+  // Страница читает черновик проекта — нужен «просмотр» или «правка»; с одним
+  // «управлением» бэкенд ответит 403, такие проекты в списке не показываем.
+  const projectList = useMemo(
+    () => allProjects.filter(p => canOpenInEditor(grantOf(p, admin))),
+    [allProjects, admin],
+  );
+  // Сохранять и отправлять на исполнение — только с правом правки (403 NO_EDIT).
+  const canWrite = useCurrentProjectGrant().edit;
   const currentProject = useEditorStore(s => s.currentProject);
   const loadProjectList = useEditorStore(s => s.loadProjectList);
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
@@ -248,6 +259,7 @@ export default function DataClient() {
         >
           <RefreshCw size={14} />
         </Button>
+        {canWrite ? <>
         <Button
           onClick={() => void handleApply()}
           disabled={!data || dataDirty}
@@ -263,6 +275,7 @@ export default function DataClient() {
         >
           <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
         </Button>
+        </> : loaded && <span className="text-xs text-amber-600 dark:text-amber-400">только просмотр</span>}
       </div>
 
       {banner.length > 0 && (
@@ -296,7 +309,7 @@ export default function DataClient() {
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <VersionHistoryList versions={versions} currentVersion={data!.version} dirty={dataDirty} onRestore={v => void handleRestore(v)} />
+          <VersionHistoryList versions={versions} currentVersion={data!.version} dirty={dataDirty} onRestore={canWrite ? v => void handleRestore(v) : undefined} />
         </div>
       )}
     </div>
