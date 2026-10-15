@@ -12,6 +12,7 @@ import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenC
 import {openGatewayExportModal} from "@/components/channels/OpenGatewayExportModal";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
+import {describeDenial, errorTextFromJson, isAccessDenial} from "@/lib/access/accessErrors";
 
 /**
  * Разбирает ответ и бросает ошибку с сообщением бэкенда при не-2xx.
@@ -30,6 +31,8 @@ const parseOk = async <T>(res: Response, fallback: string): Promise<T> => {
   }
 
   if (!res.ok) {
+    // Отказ по веткам каталога — `{error: "FORBIDDEN", reason: "PATH_NOT_ALLOWED"}`.
+    if (isAccessDenial(body)) throw new Error(describeDenial(body));
     const message =
       (body && typeof body === "object" && typeof (body as {message?: unknown}).message === "string"
         ? (body as {message: string}).message
@@ -351,8 +354,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
             // 409 — проект создан не импортом, 404 — его уже нет. Текст бэкенда объясняет
             // причину точнее любого нашего.
             const body = await res.json().catch(() => null);
-            const message = (body as {message?: string} | null)?.message;
-            throw new Error(message || `Не удалось удалить проект (${res.status})`);
+            throw new Error(errorTextFromJson(res.status, body, `Не удалось удалить проект (${res.status})`));
           }
         } catch (err) {
           console.error('Ошибка при удалении импортированного проекта:', err);
@@ -433,7 +435,7 @@ export const useDeviceStore = create<DeviceStoreState>()(
 
         if (!res.ok) {
           const error = await res.json().catch(() => ({}));
-          throw new Error(error.message || 'Ошибка сохранения параметров');
+          throw new Error(errorTextFromJson(res.status, error, 'Ошибка сохранения параметров'));
         }
 
         const updated = await res.json(); // ожидаем { value: [ { key, value }, ... ] }

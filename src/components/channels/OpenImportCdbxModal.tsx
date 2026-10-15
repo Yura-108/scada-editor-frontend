@@ -11,6 +11,7 @@ import {Button, ModalFooter} from "@/components/ui/Button";
 import {pickFile} from "@/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 import {openImportReportModal} from "@/components/channels/OpenImportReportModal";
+import {errorTextFromJson} from "@/lib/access/accessErrors";
 
 const inputClass = cn(
   "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",
@@ -109,8 +110,8 @@ function ImportCdbxContent() {
       if (!res.ok) {
         // 409 «проект уже есть» и 400 «битый файл» — объяснимые отказы, текст бэкенда
         // точнее любого нашего: показываем его как есть.
-        const message = (data as {message?: string} | null)?.message;
-        throw new Error(message || `Не удалось импортировать файл (${res.status})`);
+        // 403 PATH_NOT_ALLOWED — проект вне веток каталога пользователя.
+        throw new Error(errorTextFromJson(res.status, data, `Не удалось импортировать файл (${res.status})`));
       }
 
       const report = data as CdbxImportReport;
