@@ -1,6 +1,5 @@
 import {useEffect, useId, useState} from "react";
 import {useDeviceStore} from "@/store/useDeviceStore";
-import {unsubscribeDeviceTree} from "@/shared/websocket/wsSubscriptions";
 import {
   Search, Building2, FolderOpen, AlertCircle,
   RefreshCw, Check, FileUp,
@@ -26,19 +25,9 @@ export default function StartMenu() {
   const projectsLabelId = useId();
 
   const [error, setError] = useState<string | null>(null);
-  const [activeSubscriptions, setActiveSubscriptions] = useState<{ site: string; project: string }[]>([]);
 
   const { loadNodes, nodes, getParamsTypes } = useDeviceStore();
   const hasData = nodes.length > 0;
-
-  // Отписка при размонтировании
-  useEffect(() => {
-    return () => {
-      activeSubscriptions.forEach(sub => {
-        unsubscribeDeviceTree(sub.site, sub.project);
-      });
-    };
-  }, [activeSubscriptions]);
 
   // 1. Загрузка списка площадок
   useEffect(() => {
@@ -147,24 +136,8 @@ export default function StartMenu() {
     setError(null);
 
     try {
-      // Отписываемся от старых подписок
-      activeSubscriptions.forEach(sub => {
-        unsubscribeDeviceTree(sub.site, sub.project);
-      });
-
-      // ВАЖНО: Тебе нужно будет обновить метод loadNodes в useDeviceStore, 
-      // чтобы он принимал массивы string[], а не просто string.
-      // @ts-ignore (пока loadNodes не обновлен в сторе)
       await loadNodes(selectedProjects);
       await getParamsTypes();
-
-      // Сохраняем новые подписки (упрощенная логика формирования пар site-project)
-      const newSubscriptions = selectedProjects.map(p => ({
-        site: selectedSites[0], // ВНИМАНИЕ: Здесь нужно правильно сопоставить проект и его площадку
-        project: p
-      }));
-
-      setActiveSubscriptions(newSubscriptions);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
       setError(

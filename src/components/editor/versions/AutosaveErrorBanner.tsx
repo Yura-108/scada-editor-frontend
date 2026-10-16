@@ -4,6 +4,7 @@ import {useState} from "react";
 import {AlertTriangle, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
 
 /**
  * Плашка «автосохранение отклонено» — с причиной от бэкенда.
@@ -13,13 +14,16 @@ import {useEditorStore} from "@/store/useEditorStore";
  * пока его не исправят, правки не сохраняются, и забыть об этом нельзя. Уходит сама
  * после любого успешного сохранения.
  *
- * Стоит под плашкой «сцену изменил кто-то другой», если та тоже видна: обе про
- * автосохранение, и перекрывать друг друга им нельзя.
+ * Стоит под плашками «сцену сохранил …» и «сцену изменил кто-то другой», если они тоже
+ * видны: перекрывать друг друга им нельзя.
  *
  * «Скрыть» запоминает скрытый текст здесь, а не стирает причину в сторе: иначе на
  * следующем такте та же ошибка сочлась бы новой и снова пришла тостом. Другая причина —
  * плашка появится опять.
  */
+/** Места плашек сверху вниз; классы целиком, чтобы Tailwind их нашёл. */
+const TOP_SLOTS = ["top-14", "top-28", "top-42"];
+
 export default function AutosaveErrorBanner() {
   const {autosaveError, staleBaseVersion, versionPreview} = useEditorStore(
     useShallow(s => ({
@@ -28,6 +32,7 @@ export default function AutosaveErrorBanner() {
       versionPreview: s.versionPreview,
     })),
   );
+  const sceneChanged = useVisibleSceneChange();
   const [dismissed, setDismissed] = useState<string | null>(null);
 
   if (!autosaveError || autosaveError === dismissed || versionPreview) return null;
@@ -36,7 +41,7 @@ export default function AutosaveErrorBanner() {
     <div
       role="alert"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
-      className={`fixed ${staleBaseVersion != null ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
+      className={`fixed ${TOP_SLOTS[(sceneChanged ? 1 : 0) + (staleBaseVersion != null ? 1 : 0)]} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
       <div
         className="pointer-events-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-red-500/40

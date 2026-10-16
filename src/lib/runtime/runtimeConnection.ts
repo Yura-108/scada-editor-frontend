@@ -1,6 +1,7 @@
 import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
 import type {AutomationTaskStatus} from "@/types/automation.types";
 import {devLog} from "@/lib/devLog";
+import {gatewayWsOrigin} from "@/lib/gatewayOrigin";
 import {describeDenial, isAccessDenial, isAccessNotReady} from "@/lib/access/accessErrors";
 import type {AccessDenial} from "@/types/access.types";
 
@@ -117,14 +118,6 @@ export interface RuntimeConnection {
    *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
   getSessionId: () => string | null;
 }
-
-/**
- * Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
- * и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
- * закроется кодом 1003 «Session belongs to instance …».
- */
-const RUNTIME_WS_ORIGIN =
-  process.env.NEXT_PUBLIC_RUNTIME_WS_URL ?? "ws://localhost:8080";
 
 /** Причина отказа из тела ответа рантайма: у него это всегда поле `message`. */
 const messageOf = async (res: Response, fallback: string): Promise<string> => {
@@ -251,7 +244,7 @@ export function openRuntimeConnection(
       currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
       if (typeof data?.versionNo === "number" && !closed) onRelease?.(data.versionNo, false);
 
-      log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${RUNTIME_WS_ORIGIN}${wsPath}`);
+      log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
       scheduleReconnect();
@@ -262,7 +255,10 @@ export function openRuntimeConnection(
 
     // Браузерный WebSocket не умеет слать заголовок Authorization — JWT идёт query-параметром.
     const separator = wsPath.includes("?") ? "&" : "?";
-    const socket = new WebSocket(`${RUNTIME_WS_ORIGIN}${wsPath}${separator}token=${encodeURIComponent(wsToken)}`);
+    // Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
+    // и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
+    // закроется кодом 1003 «Session belongs to instance …».
+    const socket = new WebSocket(`${gatewayWsOrigin()}${wsPath}${separator}token=${encodeURIComponent(wsToken)}`);
     ws = socket;
 
     socket.onopen = () => {

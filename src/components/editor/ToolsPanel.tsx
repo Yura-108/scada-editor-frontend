@@ -27,6 +27,7 @@ import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPane
 import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
 import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBanner";
 import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner";
+import SceneChangedBanner from "@/components/editor/versions/SceneChangedBanner";
 import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 
@@ -590,6 +591,7 @@ export default function ToolsPanel() {
           вкладке «Редактор». Сама <nav> не ловит указатель (pointer-events-none),
           поэтому потомки включают его себе сами. */}
       <VersionPreviewBanner />
+      <SceneChangedBanner />
       <StaleVersionBanner />
       <AutosaveErrorBanner />
       <div className="pointer-events-auto">

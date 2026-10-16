@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {ChevronDown, ChevronRight, ListOrdered, Pencil, Plus, Save, Tags, Trash2, Undo2} from "lucide-react";
+import {ChevronDown, ChevronRight, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -41,7 +41,7 @@ const inputClass = cn(
 );
 
 export function RecipesPanel() {
-  const {recipes, loaded, isLoading, loadRecipes, updateRecipe, deleteRecipe} = useRecipeStore();
+  const {recipes, loaded, isLoading, loadError, loadRecipes, updateRecipe, deleteRecipe} = useRecipeStore();
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -145,6 +145,17 @@ export function RecipesPanel() {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
             Загрузка рецептов...
           </div>
+        </div>
+      ) : loadError ? (
+        <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-400">
+          <p>Не удалось загрузить рецепты: {loadError}</p>
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={() => void loadRecipes()}
+          >
+            <RefreshCw size={16} />
+            Повторить
+          </button>
         </div>
       ) : recipes.length === 0 ? (
         <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">

@@ -16,6 +16,13 @@ type RecipeState = {
    * проекте так не делают (правило `react-hooks/set-state-in-effect` это ловит).
    */
   isLoading: boolean;
+  /**
+   * Причина последней неудачной загрузки, `null` — ошибки нет. Хранится отдельно от
+   * `loaded`: сброс `loaded` при ошибке заставлял эффекты `if (!loaded) loadRecipes()`
+   * тут же звать загрузку снова — бесконечный цикл запросов и тостов на 5xx и обрыве сети.
+   * Повтор — только явный, кнопкой «Повторить».
+   */
+  loadError: string | null;
   loadRecipes: () => Promise<void>;
   createRecipe: (payload: RecipeCreatePayload) => Promise<Recipe | null>;
   updateRecipe: (id: string, payload: RecipeCreatePayload) => Promise<Recipe | null>;
@@ -43,17 +50,18 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   recipes: [],
   loaded: false,
   isLoading: false,
+  loadError: null,
 
   loadRecipes: async () => {
-    set({isLoading: true, loaded: true});
+    set({isLoading: true, loaded: true, loadError: null});
     try {
       const res = await fetch("/api/editor/recipes");
       if (!res.ok) throw new Error(await errorMessage(res, "Ошибка загрузки рецептов"));
       set({recipes: await res.json()});
     } catch (err: unknown) {
       report(err, "Ошибка загрузки рецептов");
-      // Отпускаем флаг обратно, иначе повторить загрузку было бы нечем.
-      set({recipes: [], loaded: false});
+      // `loaded` не сбрасываем — см. `loadError`.
+      set({recipes: [], loadError: err instanceof Error ? err.message : "Ошибка загрузки рецептов"});
     } finally {
       set({isLoading: false});
     }

@@ -23,6 +23,13 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
 - `BACKEND_URL` — device/channel APIs.
 - Auth: `protectedRoute` (`src/lib/protected.ts`) reads the `access_token` httpOnly cookie and forwards it as `Authorization: Bearer …`. Wrap every backend-touching route with it.
 
+**Browser-side connections** (monitor WebSocket, editor STOMP) go to the gateway directly, not through
+the BFF: `src/lib/gatewayOrigin.ts` builds the origin from the **page's hostname** + port 8080
+(`NEXT_PUBLIC_GATEWAY_PORT` / `_GATEWAY_URL` / `_RUNTIME_WS_URL` only override — they are baked in at
+build time and the Docker image is shared by all installs). Never hard-code `localhost` there: from
+another machine it is the client itself, and the `access_token` cookie is shared by host, not port.
+Call it at connect time, never at module level (SSR has no `window`).
+
 Three product areas share the app: **editor** (`/editor`, the SCADA scheme editor — the core of this repo), **channels/devices** (`/channels`, device hierarchy + tags), **logs** (`/log`). Stores live in `src/store/` (one Zustand store per area).
 
 ## Editor architecture (the important part)
@@ -560,6 +567,15 @@ Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026).
 - **409 is not an error path.** For a *manual* save it fills `saveConflict` and opens `SaveConflictDialog`; the canvas is untouched and `isDirty` stays true. One code path covers both `version_mismatch` (no `conflicts` list) and `merge_conflict` (with one); only the wording differs. **Merging only ever happens for `PUT` + `MANUAL`**, so an *autosave* 409 is routine and must not raise a modal: it sets `staleBaseVersion` (rendered by `StaleVersionBanner`) and deliberately leaves `sceneVersion` alone — advancing it would send the next manual save with someone else's base and overwrite their work without the merge dialog ever appearing. A `merged` block on a *successful* save must be surfaced (`reportMergedChanges`) **even when `changes` is empty** — the empty case still means the save landed on top of a newer version. In conflict rows, `path === "Сцена"` is a reserved address for a top-level ordering conflict, not a component of that name (`formatConflictPath`).
 - **A script that does not parse fails the whole save** (400, backend since 25.09.2026; `scripts[].script`, `events[].script`, binding `code`, `properties[].onChange`, all parsed as a *function body*). The editors check first with `checkScriptSyntax` (`lib/runtime/scriptSyntax.ts`, `new Function` — parses, never runs) and disable «Сохранить»; `OnCanChange` only warns, the backend does not check it. Component scripts are **JavaScript** (GraalJS on the server), not Java, whatever old labels said. A failed *autosave* keeps its reason in `autosaveError`: toast only when the reason changes, then `AutosaveErrorBanner` — otherwise the same 400 would toast every 10 minutes. Any successful save or document switch clears it; «Скрыть» is local to the banner so the next tick does not re-toast.
 - **Document shape differs between endpoints.** The save response puts an *array* in `components`; the restore response puts the *whole document* there, and a plain document GET uses `children`. `rootComponentsOf` (`src/lib/editor/documentComponents.ts`) is the single place that resolves all three — reading `components` with `Array.isArray` on a restore response silently yields `[]` and wipes the canvas.
+- **Someone else's save is announced over STOMP** (`useSceneChangedNotifications`, mounted once in
+  `EditorClient`): SockJS `/ws/editor` via the gateway, topic `/topic/scenes/{sceneId}` for the open
+  draft scene, body `{type: "SCENE_CHANGED", scene_id, version_no, user_name}`. It is a notice, not
+  sync. Whether to show it is *derived* (`visibleSceneChange`): only for the open scene, only when
+  `version_no > sceneVersion` (that is how our own save is filtered — `PUT` writes its version there),
+  and never while `isSaving` (our own message can beat the `PUT` response). `SceneChangedBanner`'s
+  «Перезагрузить» drops the scene-cache entry and reloads, asking first about unsaved work; in
+  `versionPreview` there is no button. The old catalog STOMP (`/ws`, `/topic/device-tree/…`) was dead
+  on both sides and has been removed.
 - **History endpoints** are proxied under `/api/editor/history/{scenes|templates}/{id}/…` (`src/lib/editorHistoryProxy.ts`). `docType` is whitelisted because it is interpolated into the backend URL; `kind` may repeat, so use `getAll`. Paging uses a `to = created_at` cursor, never an offset.
 - **Version preview** reuses `Canvas readOnly` (the monitor's path). Entering stashes live state in a module var, pauses `temporal`, and marks the scene saved so the dirty flag describes the version, not the user's work; exiting restores everything including `savedElementsSnapshot`. **Anything that can mutate or persist must bail on `versionPreview`** — `exportScene`, the autosave tick, the properties panel, and the unload warning (`hasUnsavedWork`, which reads the stash) all do. Crossing a document boundary (`loadScene`, `createScene`, `deleteScene`, `setCurrentProject`) calls `discardVersionPreview`, which drops the stash rather than restoring it into a different scene.
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play} from "lucide-react";
+import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, RefreshCw} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {useRecipeStore} from "@/store/useRecipeStore";
@@ -20,7 +20,7 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
  * Вести уже идущий процесс удобнее из HUD поверх схемы: он не закрывает мнемосхему.
  */
 export function ProcedurePanel() {
-  const {recipes, loaded, isLoading, loadRecipes} = useRecipeStore();
+  const {recipes, loaded, isLoading, loadError, loadRecipes} = useRecipeStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
@@ -98,6 +98,16 @@ export function ProcedurePanel() {
             </>
           )}
         </div>
+
+        {loadError && (
+          <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            <span className="flex-1">Не удалось загрузить рецепты: {loadError}</span>
+            <Button onClick={() => void loadRecipes()} disabled={isLoading}>
+              <RefreshCw size={16} />
+              Повторить
+            </Button>
+          </div>
+        )}
 
         {status && (
           <div className={cn(

@@ -4,6 +4,7 @@ import {useEffect} from "react";
 import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
+import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifications";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {canOpenInEditor, grantOf} from "@/lib/access/grants";
@@ -18,6 +19,8 @@ export default function EditorPage() {
   // + предупреждение при закрытии вкладки с несохранённой схемой.
   useAutoSaveScene();
   useWarnOnUnsavedChanges();
+  // «Сцену сохранил другой инженер» — STOMP /ws/editor, подписка на открытую сцену.
+  useSceneChangedNotifications();
 
   // Ctrl+Z / Ctrl+Y / Ctrl+G раньше жили здесь отдельным реестром без проверки
   // contentEditable, поэтому срабатывали внутри редактора скриптов (CodeMirror).

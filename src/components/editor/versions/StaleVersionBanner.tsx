@@ -3,6 +3,7 @@
 import {Users, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
 
 /**
  * Плашка «сцену изменил кто-то другой», поднятая автосохранением.
@@ -25,6 +26,8 @@ export default function StaleVersionBanner() {
       dismissStaleBaseVersion: s.dismissStaleBaseVersion,
     })),
   );
+  // Плашка «сцену сохранил …» стоит выше — эта опускается под неё.
+  const sceneChanged = useVisibleSceneChange();
 
   // В режиме просмотра версии уже висит своя плашка, и вторая рядом только путала бы:
   // там на холсте вообще не текущая сцена.
@@ -34,7 +37,7 @@ export default function StaleVersionBanner() {
     <div
       role="status"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
-      className="fixed top-14 z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none"
+      className={`fixed ${sceneChanged ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
       <div
         className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-sky-500/40
