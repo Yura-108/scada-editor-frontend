@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/lib/protected";
-import {proxyProcedure} from "@/lib/procedureProxy";
+import {parsePositiveProjectId, proxyProcedure} from "@/lib/procedureProxy";
 
 /** Предел тегов на запрос у бэкенда. */
 const MAX_TAGS = 5000;
@@ -31,7 +31,17 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
   const after = body?.after;
   if (after != null && typeof after !== "string") return badRequest("after должен быть строкой или null");
 
-  return proxyProcedure("/api/runtime/archive/replay", token, {
+  // Проект — только в query, не в теле: права на владельце читаются из query (scada-kjdf).
+  // Пока необязателен (контракт 2026-10-19-archive-project-id-contract.md).
+  const rawProjectId = req.nextUrl.searchParams.get("projectId");
+  let path = "/api/runtime/archive/replay";
+  if (rawProjectId !== null) {
+    const id = parsePositiveProjectId(rawProjectId);
+    if (id === null) return badRequest("projectId должен быть целым положительным числом");
+    path += `?projectId=${id}`;
+  }
+
+  return proxyProcedure(path, token, {
     method: "POST",
     body: {tags, from: body.from, to: body.to, after: after ?? null},
   });

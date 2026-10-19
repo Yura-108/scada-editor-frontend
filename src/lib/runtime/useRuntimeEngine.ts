@@ -99,6 +99,8 @@ export interface RuntimeArchiveInput {
   sceneTags: string[];
   /** Дискретный ли тег (для обратного приведения 1/0 → "true"/"false"). */
   isBoolTag: (tag: string) => boolean;
+  /** Проект монитора: ленту архива runtime проверяет по его prod-выпуску. */
+  projectId: number | null;
 }
 
 /** Источник значений: живой WS или воспроизведение архива. */
@@ -691,7 +693,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const controller = new AbortController();
     trendHistoryAbortRef.current = controller;
     const {watched, retentionMs} = useTrendStore.getState();
-    fetchArchiveValues([...watched], at - retentionMs, at, {signal: controller.signal})
+    // Проект — из стора, а не из замыкания: колбэк общий для эффектов и не должен пересоздаваться.
+    const projectId = useEditorStore.getState().currentProject?.id;
+    if (projectId == null) return controller;
+    fetchArchiveValues([...watched], at - retentionMs, at, {projectId, signal: controller.signal})
       .then(series => {
         if (!controller.signal.aborted) mergeTrendHistory(series, at);
       })
@@ -960,8 +965,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   }, []);
 
   const archive = useMemo<RuntimeArchiveInput>(
-    () => ({reset: archiveReset, apply: archiveApply, sceneTags, isBoolTag}),
-    [archiveReset, archiveApply, sceneTags, isBoolTag],
+    () => ({reset: archiveReset, apply: archiveApply, sceneTags, isBoolTag, projectId}),
+    [archiveReset, archiveApply, sceneTags, isBoolTag, projectId],
   );
 
   const subscribeTasks = useCallback(() => connRef.current?.subscribeTasks(), []);

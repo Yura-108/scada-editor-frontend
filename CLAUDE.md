@@ -250,6 +250,13 @@ returns a bare array with no total, so "more" means "the last page was full").
   state and issues its own archive requests. Nothing is saved.
 - `fetchArchiveValues` (`lib/runtime/archive.ts`) splits tags into batches of 20 and clamps `from`
   to the 30-day archive depth — the backend answers 400 to the whole request otherwise.
+- **Every archive request carries the monitor's `projectId` in the query** (contract
+  `docs/contract/2026-10-19-archive-project-id-contract.md`) — `values` and `replay` alike, and for
+  `replay` **only** in the query, never the body (the owner's access check reads the query). Runtime
+  forwards it to the instance that owns the project and checks tags against *that* prod release;
+  without it a project on another runtime instance gets 403. The BFF routes re-validate it (digits,
+  > 0) and pass it on. A 409 from the archive is retried once (`fetchArchive`): the project's
+  assignment changed mid-request.
 - The `logging` checkbox is gone from the property form (the archive records every tag), but the
   field still travels with the property: the backend has not dropped it yet.
 

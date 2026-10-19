@@ -56,6 +56,7 @@ const formatDateTime = (ts: number) => {
 function TrendModalContent({elementKey}: Props) {
   const closeModal = useModalStore(s => s.closeModal);
   const element = useEditorStore(s => s.elements.find(e => e.key === elementKey));
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
 
   const pens = useMemo(() => (element ? trendPens(element) : []), [element]);
   const timing = trendTiming(element?.trend);
@@ -106,13 +107,14 @@ function TrendModalContent({elementKey}: Props) {
   // Запрос истории: на смену окна или конца периода. В режиме «Сейчас» — один раз на окно,
   // дальше живые точки; секундный тик часов запрос не повторяет.
   useEffect(() => {
-    if (!tags.length) return;
+    if (!tags.length || projectId == null) return;
     const controller = new AbortController();
     const to = endTs ?? clockNow();
     const from = to - windowSec * 1000;
     setLoading(true);
     setError(null);
-    fetchArchiveValues(tags, from, to, {maxPoints: Math.min(5000, Math.max(500, size.w * 2)), signal: controller.signal})
+    const maxPoints = Math.min(5000, Math.max(500, size.w * 2));
+    fetchArchiveValues(tags, from, to, {projectId, maxPoints, signal: controller.signal})
       .then(result => {
         if (controller.signal.aborted) return;
         const series: Record<string, TrendPoint[]> = {};
@@ -135,7 +137,7 @@ function TrendModalContent({elementKey}: Props) {
     // size.w — только для maxPoints; перезапрашивать на каждый ресайз окна незачем.
     // generation — перемотка архива: живой хвост стора начался заново, история устарела.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tagsKey, windowSec, endTs, follow ? generation : 0]);
+  }, [tagsKey, projectId, windowSec, endTs, follow ? generation : 0]);
 
   const live = useTrendStore(s => s.seriesByTag);
 

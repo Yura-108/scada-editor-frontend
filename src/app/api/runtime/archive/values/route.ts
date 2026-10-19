@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/lib/protected";
-import {proxyProcedure} from "@/lib/procedureProxy";
+import {parsePositiveProjectId, proxyProcedure} from "@/lib/procedureProxy";
 
 /** `runtime.archive.max-tags-per-request` — больше бэкенд отвергнет 400. */
 const MAX_TAGS = 20;
@@ -37,6 +37,15 @@ export const GET = protectedRoute(async (req: NextRequest, {token}) => {
     const n = Number(maxPoints);
     if (!Number.isSafeInteger(n) || n < 1) return badRequest("maxPoints должен быть целым положительным числом");
     query.set("maxPoints", String(Math.min(n, MAX_POINTS)));
+  }
+
+  // Проект монитора — по нему runtime выбирает экземпляр-владельца и проверяет теги
+  // (контракт 2026-10-19-archive-project-id-contract.md). Пока необязателен.
+  const projectId = sp.get("projectId");
+  if (projectId !== null) {
+    const id = parsePositiveProjectId(projectId);
+    if (id === null) return badRequest("projectId должен быть целым положительным числом");
+    query.set("projectId", String(id));
   }
 
   return proxyProcedure(`/api/runtime/archive/values?${query}`, token);

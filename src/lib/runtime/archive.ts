@@ -62,22 +62,41 @@ const toPoint = (p: RawPoint | null | undefined): TrendPoint | null => {
   return {ts, value};
 };
 
+/**
+ * Запрос к архиву с разбором ошибки.
+ *
+ * `projectId` в query уводит запрос к экземпляру runtime — владельцу проекта (контракт
+ * 2026-10-19-archive-project-id-contract.md). 409 — назначение проекта сменили прямо во время
+ * запроса: повторяем ровно один раз. Если проект не назначен никому, второй ответ — тот же 409,
+ * и его `message` уходит оператору как есть.
+ */
+async function fetchArchive(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  if (res.status === 409) res = await fetch(url, init);
+  if (res.ok) return res;
+
+  const body = await res.json().catch(() => null) as {message?: string; error?: string; reason?: string} | null;
+  // Отказ — `{error: "FORBIDDEN", reason}`, его переводим. PATH_NOT_ALLOWED здесь — тег не из
+  // prod-выпуска проекта, а не ветка базы каналов, как в общем переводе.
+  if (isAccessDenial(body)) {
+    throw new Error(body?.reason === "PATH_NOT_ALLOWED"
+      ? "Тег не входит в выпуск проекта, открытого в мониторе"
+      : describeDenial(body));
+  }
+  throw new Error(body?.message || body?.error || `Архив недоступен (${res.status})`);
+}
+
 async function fetchChunk(
-  tags: string[], from: number, to: number, maxPoints: number, signal?: AbortSignal,
+  tags: string[], from: number, to: number, maxPoints: number, projectId: number, signal?: AbortSignal,
 ): Promise<ArchiveSeries[]> {
   const q = new URLSearchParams();
   for (const t of tags) q.append("tag", t);
   q.set("from", new Date(from).toISOString());
   q.set("to", new Date(to).toISOString());
   q.set("maxPoints", String(maxPoints));
+  q.set("projectId", String(projectId));
 
-  const res = await fetch(`/api/runtime/archive/values?${q}`, {signal});
-  if (!res.ok) {
-    const body = await res.json().catch(() => null) as {message?: string; error?: string} | null;
-    // Только доступные проекты: отказ — `{error: "FORBIDDEN", reason}`, его переводим.
-    if (isAccessDenial(body)) throw new Error(describeDenial(body));
-    throw new Error(body?.message || body?.error || `Архив недоступен (${res.status})`);
-  }
+  const res = await fetchArchive(`/api/runtime/archive/values?${q}`, {signal});
   const data = await res.json() as {series?: RawSeries[]};
   return (data.series ?? []).map(s => ({
     tag: s.tag,
@@ -90,12 +109,13 @@ async function fetchChunk(
 /**
  * История тегов за `[from, to]` (мс). Тегов больше 20 — несколько запросов параллельно.
  * `from` зажимается к глубине архива: старше бэкенд отвечает 400 на весь запрос.
+ * `projectId` — проект монитора: по его prod-выпуску runtime проверяет теги.
  */
 export async function fetchArchiveValues(
   tags: string[],
   from: number,
   to: number,
-  opts: {maxPoints?: number; signal?: AbortSignal} = {},
+  opts: {projectId: number; maxPoints?: number; signal?: AbortSignal},
 ): Promise<Map<string, ArchiveSeries>> {
   const unique = [...new Set(tags.filter(Boolean))];
   const result = new Map<string, ArchiveSeries>();
@@ -108,7 +128,7 @@ export async function fetchArchiveValues(
   const chunks: string[][] = [];
   for (let i = 0; i < unique.length; i += TAGS_PER_REQUEST) chunks.push(unique.slice(i, i + TAGS_PER_REQUEST));
 
-  const parts = await Promise.all(chunks.map(c => fetchChunk(c, clampedFrom, to, maxPoints, opts.signal)));
+  const parts = await Promise.all(chunks.map(c => fetchChunk(c, clampedFrom, to, maxPoints, opts.projectId, opts.signal)));
   for (const part of parts) for (const s of part) result.set(s.tag, s);
   return result;
 }
@@ -139,15 +159,19 @@ type RawReplayValue = {ts: string; value: unknown; good: boolean};
 const rawValueOf = (v: unknown): ArchiveRawValue =>
   typeof v === "number" || typeof v === "string" ? v : typeof v === "boolean" ? (v ? 1 : 0) : null;
 
-/** Одна страница ленты воспроизведения. */
+/**
+ * Одна страница ленты воспроизведения. `projectId` — только в query: права на владельце
+ * проверяются по query, из тела он запустил бы лишь пересылку (scada-kjdf).
+ */
 export async function fetchReplayPage(args: {
   tags: string[];
   from: number;
   to: number;
   after: string | null;
+  projectId: number;
   signal?: AbortSignal;
 }): Promise<ReplayPage> {
-  const res = await fetch("/api/runtime/archive/replay", {
+  const res = await fetchArchive(`/api/runtime/archive/replay?projectId=${args.projectId}`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -158,12 +182,6 @@ export async function fetchReplayPage(args: {
     }),
     signal: args.signal,
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null) as {message?: string; error?: string} | null;
-    // Только доступные проекты: отказ — `{error: "FORBIDDEN", reason}`, его переводим.
-    if (isAccessDenial(body)) throw new Error(describeDenial(body));
-    throw new Error(body?.message || body?.error || `Архив недоступен (${res.status})`);
-  }
   const data = await res.json() as {
     initial?: Record<string, RawReplayValue | null> | null;
     changes?: {ts: string; tag: string; value: unknown; good: boolean}[];

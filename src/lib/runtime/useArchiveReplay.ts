@@ -48,6 +48,8 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
   const bufferRef = useRef<ReplayBuffer>(emptyBuffer(0));
   /** `from` запроса, к которому относятся страницы буфера (для `after` нужен тот же запрос). */
   const requestFromRef = useRef(0);
+  /** Проект того же запроса: страницы с `after` идут с тем же `projectId`, что и первая. */
+  const requestProjectRef = useRef<number | null>(null);
   const startCtrlRef = useRef<AbortController | null>(null);
   const pageCtrlRef = useRef<AbortController | null>(null);
   const lastTickAtRef = useRef(0);
@@ -72,11 +74,15 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
     const {to} = useArchiveReplayStore.getState();
     // `from < to` — требование бэкенда; перемотка в самый конец встаёт за секунду до него.
     const at = Math.min(Math.max(rawAt, Date.now() - ARCHIVE_DEPTH_MS), to - 1000);
-    const tags = archiveRef.current.sceneTags;
+    const {sceneTags: tags, projectId} = archiveRef.current;
     const set = useArchiveReplayStore.setState;
     set({loading: true, buffering: false, ended: false, error: null});
 
-    if (!tags.length) {
+    if (tags.length && projectId == null) {
+      set({loading: false, playing: false, error: "Проект монитора не выбран"});
+      return;
+    }
+    if (!tags.length || projectId == null) {
       // На схеме нет тегов — проигрывать нечего, но курсор и тренды должны встать на место.
       archiveRef.current.reset(at);
       archiveRef.current.apply([]);
@@ -88,7 +94,7 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
     const ctrl = new AbortController();
     startCtrlRef.current = ctrl;
     log(`лента с ${new Date(at).toISOString()}, тегов ${tags.length}`);
-    fetchReplayPage({tags, from: at, to, after: null, signal: ctrl.signal})
+    fetchReplayPage({tags, from: at, to, after: null, projectId, signal: ctrl.signal})
       .then(page => {
         if (ctrl.signal.aborted) return;
         startCtrlRef.current = null;
@@ -98,6 +104,7 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
         for (const v of page.initial?.values() ?? []) if (v) initial.push(toWire(v));
         archiveRef.current.apply(initial);
         requestFromRef.current = at;
+        requestProjectRef.current = projectId;
         bufferRef.current = {changes: page.changes, applied: 0, next: page.next, periodTo: to};
         lastTickAtRef.current = Date.now();
         set({cursor: at, loading: false});
@@ -113,11 +120,12 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
   /** Следующая страница того же запроса — пока играет текущая. */
   const prefetch = useCallback(() => {
     const b = bufferRef.current;
-    if (pageCtrlRef.current || startCtrlRef.current || b.next === null) return;
+    const projectId = requestProjectRef.current;
+    if (pageCtrlRef.current || startCtrlRef.current || b.next === null || projectId == null) return;
     const tags = archiveRef.current.sceneTags;
     const ctrl = new AbortController();
     pageCtrlRef.current = ctrl;
-    fetchReplayPage({tags, from: requestFromRef.current, to: b.periodTo, after: b.next, signal: ctrl.signal})
+    fetchReplayPage({tags, from: requestFromRef.current, to: b.periodTo, after: b.next, projectId, signal: ctrl.signal})
       .then(page => {
         if (ctrl.signal.aborted) return;
         pageCtrlRef.current = null;

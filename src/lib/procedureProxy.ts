@@ -33,6 +33,16 @@ export const parseProjectId = (raw: unknown): number | null => {
   return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
 };
 
+/**
+ * `projectId` архива: только цифры и больше нуля. Другое значение runtime не примет за проект
+ * (`OwnerForwardingFilter` ждёт `\d+`) и молча проверит запрос по своим проектам.
+ */
+export const parsePositiveProjectId = (raw: string): number | null => {
+  if (!/^\d+$/.test(raw)) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+};
+
 export const missingProjectId = () =>
   NextResponse.json(
     {message: "Параметр projectId обязателен и должен быть целым числом"},
