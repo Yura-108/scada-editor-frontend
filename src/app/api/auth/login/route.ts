@@ -14,5 +14,5 @@ export async function POST(request: Request) {
     return Response.json({ message: 'Бэкенд не вернул токен' }, { status: 502 });
   }
 
-  return setTokenCookie(token);
+  return setTokenCookie(token, request);
 }
