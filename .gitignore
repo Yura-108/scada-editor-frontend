@@ -44,3 +44,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# рабочие материалы — живут только локально, в репозиторий не попадают
+/docs/*
+!/docs/editor-user-manual.md
+/REPORT.md
+/ВОПРОС-*.md
+/ОТВЕТ-*.md
+*.sql
+hs_err_pid*.log
+
+# IDE и анализаторы
+/.idea/
+/qodana.yaml
