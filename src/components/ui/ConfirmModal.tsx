@@ -55,6 +55,7 @@ function ConfirmDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "confirm
     confirmLabel = "Подтвердить",
     cancelLabel = "Отмена",
     danger = false,
+    wide = false,
   } = entry.options;
 
   // Любое закрытие без нажатия «подтвердить» — отказ. Иначе `await confirmModal()`
@@ -71,6 +72,7 @@ function ConfirmDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "confirm
         <Dialog.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-confirm w-[95vw] max-w-md -translate-x-1/2 -translate-y-1/2",
+            wide && "max-w-2xl",
             "rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-2xl",
             "dark:border-gray-800/70 dark:bg-[#0f0f1a] dark:text-white",
             "focus:outline-none",
@@ -88,7 +90,7 @@ function ConfirmDialog({ entry }: { entry: Extract<ConfirmEntry, {kind: "confirm
               {danger ? <AlertTriangle className="h-5 w-5" /> : <HelpCircle className="h-5 w-5" />}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
               {/* `asChild` + `div`, а не абзац по умолчанию: описание у нас бывает с разметкой —
                   список записываемых в ПЛК тегов, перечень мест в коде. `<ul>`/`<div>` внутри

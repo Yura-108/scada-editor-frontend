@@ -8,6 +8,8 @@ export interface ConfirmModalOptions {
   cancelLabel?: string;
   /** true — деструктивное действие (красная кнопка, иконка предупреждения). */
   danger?: boolean;
+  /** true — окно шире: в описании таблица или список изменений. */
+  wide?: boolean;
 }
 
 /** Один вариант в диалоге выбора. `id` возвращается вызывающему. */

@@ -22,6 +22,8 @@ import {
 import {TablesEditor} from "@/components/projectData/TablesEditor";
 import {VariablesEditor} from "@/components/automation/VariablesEditor";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
+import {DataDiffView, DataVersionChanges, loadDataVersion} from "@/components/projectData/DataVersionChanges";
+import {diffDataVersions} from "@/lib/projectData/dataVersionDiff";
 import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";
 import type {ProjectDataSet, ProjectDataValidationError} from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
@@ -198,13 +200,32 @@ export default function DataClient() {
   };
 
   const handleRestore = async (versionNo: number) => {
-    if (projectId == null) return;
+    if (projectId == null || !data) return;
+    // Что именно поменяется — до подтверждения: номер версии сам по себе ничего не говорит.
+    let preview: React.ReactNode;
+    try {
+      const target = await loadDataVersion(projectId, versionNo);
+      preview = target
+        ? <DataDiffView diff={diffDataVersions(data.tables, target)} wording="restore" />
+        : <p className="text-xs text-neutral-500">Содержимое версии не удалось разобрать.</p>;
+    } catch (err) {
+      preview = <p className="text-xs text-red-600">{(err as Error).message}</p>;
+    }
     const ok = await confirmModal({
       title: `Восстановить версию таблиц ${versionNo}?`,
-      description: "Таблицы заменятся содержимым этой версии; восстановление запишется новой версией. "
-        + "Чтобы задачи automation увидели откат, нажмите «Применить данные».",
+      description: <div className="space-y-3">
+        <p>
+          Таблицы заменятся содержимым v{versionNo}; восстановление запишется новой версией.
+          Чтобы задачи automation увидели откат, нажмите «Применить данные».
+        </p>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">Что изменится по сравнению с текущей v{data.version}</p>
+          <div className="max-h-[40vh] overflow-y-auto">{preview}</div>
+        </div>
+      </div>,
       confirmLabel: "Восстановить",
       danger: true,
+      wide: true,
     });
     if (!ok) return;
     try {
@@ -309,7 +330,19 @@ export default function DataClient() {
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <VersionHistoryList versions={versions} currentVersion={data!.version} dirty={dataDirty} onRestore={canWrite ? v => void handleRestore(v) : undefined} />
+          <VersionHistoryList
+            versions={versions}
+            currentVersion={data!.version}
+            dirty={dataDirty}
+            onRestore={canWrite ? v => void handleRestore(v) : undefined}
+            renderDetails={(v, previous) => projectId != null && (
+              <DataVersionChanges
+                projectId={projectId}
+                versionNo={v.version_no}
+                previousNo={previous?.version_no ?? (v.version_no > 1 ? v.version_no - 1 : null)}
+              />
+            )}
+          />
         </div>
       )}
     </div>

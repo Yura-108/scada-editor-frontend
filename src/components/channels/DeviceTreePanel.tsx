@@ -16,7 +16,12 @@ import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "@/lib/editor
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
 
-const DeviceTreePanel = () => {
+interface DeviceTreePanelProps {
+  /** Занять всю высоту родителя вместо собственной (встроенная панель, а не отдельная страница). */
+  fill?: boolean;
+}
+
+const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const {
     nodes,
@@ -174,7 +179,7 @@ const DeviceTreePanel = () => {
   const searchActive = appliedQuery.trim() !== '';
 
   return (
-    <div className="h-[60vh] md:h-app bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl flex flex-col overflow-hidden`}>
       <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200 dark:from-purple-950/60 dark:to-indigo-950/60">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
           <Router className={'w-6 h-6 text-purple-600 dark:text-purple-400'}/>

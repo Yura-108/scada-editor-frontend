@@ -5,7 +5,7 @@ import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/Button";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
-import {cellInput} from "@/components/automation/formStyles";
+import {cellInput, compactButton, iconButton} from "@/components/automation/formStyles";
 
 interface Props {
   title: string;
@@ -31,7 +31,7 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">{title}</span>
-        <Button onClick={() => onChange([...rows, {alias: "", tag: "", value_type: "float"}])}>
+        <Button className={compactButton} onClick={() => onChange([...rows, {alias: "", tag: "", value_type: "float"}])}>
           <Plus size={14} />Добавить
         </Button>
       </div>
@@ -47,6 +47,7 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
             title={row.tag || (row.example_tag ? `Пример из шаблона: ${row.example_tag}` : undefined)}
           />
           <Button
+            className={iconButton}
             onClick={() => selectedDevice && patch(i, {tag: selectedDevice})}
             disabled={!selectedDevice}
             title={selectedDevice ? `Подставить ${selectedDevice}` : "Выберите тег в дереве справа"}
@@ -56,7 +57,7 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
           <select className={cellInput} value={row.value_type} onChange={e => patch(i, {value_type: e.target.value as AutomationValueType})}>
             {AUTOMATION_VALUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <Button onClick={() => onChange(rows.filter((_, j) => j !== i))} title="Удалить"><Trash2 size={14} /></Button>
+          <Button className={iconButton} onClick={() => onChange(rows.filter((_, j) => j !== i))} title="Удалить строку"><Trash2 size={14} /></Button>
         </div>
       ))}
     </div>

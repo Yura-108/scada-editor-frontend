@@ -14,3 +14,12 @@ export const fieldLabel =
 /** Поле внутри плотной таблицы (входы/выходы, переменные) — отступы меньше. */
 export const cellInput =
   "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm";
+
+/**
+ * Кнопка-спутник формы. Размер `Button` по умолчанию рассчитан на подвал модалки: в строке
+ * формы он выше полей и забирает ширину у названия.
+ */
+export const compactButton = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+
+/** Кнопка-иконка в строке таблицы. */
+export const iconButton = "p-1.5 shadow-none";

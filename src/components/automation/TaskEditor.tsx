@@ -3,11 +3,13 @@
 import React from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
-import {BookmarkPlus, Trash2} from "lucide-react";
+import {BookmarkPlus, Save, Undo2} from "lucide-react";
+import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
-import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import {IoTable} from "@/components/automation/IoTable";
-import {fieldInput as input, fieldLabel as label} from "@/components/automation/formStyles";
+import {TagTreeSidebar} from "@/components/automation/TagTreeSidebar";
+import {compactButton, fieldInput as input, fieldLabel as label} from "@/components/automation/formStyles";
+import type {TaskDraftState} from "@/lib/automation/automationDraft";
 import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/types/automation.types";
 
 interface Props {
@@ -15,7 +17,13 @@ interface Props {
   variables: AutomationVariable[];
   errors: AutomationValidationError[];
   onChange: (task: AutomationTask) => void;
-  onDelete: () => void;
+  /** Состояние задачи относительно сервера: от него зависят «Сохранить задачу» и «Отменить правки». */
+  draftState: TaskDraftState;
+  /** Нет — нет права правки, кнопок сохранения не показываем. */
+  onSave?: () => void;
+  /** Вернуть задачу к сохранённой на сервере. Нет — задача новая, возвращать не к чему. */
+  onRevert?: () => void;
+  saving: boolean;
   /** «В шаблоны» — задача становится заготовкой в общей палитре. */
   onSaveAsTemplate?: () => void;
 }
@@ -24,7 +32,17 @@ type NumberField = "period_ms" | "timeout_ms" | "stale_after_ms";
 
 const toInt = (raw: string): number => (raw === "" ? 0 : Math.trunc(Number(raw)));
 
-export function TaskEditor({task, variables, errors, onChange, onDelete, onSaveAsTemplate}: Props) {
+const DRAFT_STATE_LABEL: Record<TaskDraftState, string> = {
+  new: "Новая задача — ещё не сохранена",
+  changed: "Есть несохранённые правки",
+  saved: "Сохранена",
+};
+
+/**
+ * Удаление живёт в списке задач (крестик с подтверждением), а не здесь: большая красная кнопка
+ * рядом с полями ловила промахи.
+ */
+export function TaskEditor({task, variables, errors, onChange, draftState, onSave, onRevert, saving, onSaveAsTemplate}: Props) {
   const set = (patch: Partial<AutomationTask>) => onChange({...task, ...patch});
   const errorOf = (field: string) => errors.filter(e => e.field === field).map(e => e.message).join("; ");
 
@@ -47,29 +65,52 @@ export function TaskEditor({task, variables, errors, onChange, onDelete, onSaveA
     set({writes_variables: on ? [...task.writes_variables, name] : task.writes_variables.filter(v => v !== name)});
 
   return (
-    <div className="flex gap-4 p-4">
-      <div className="flex-1 min-w-0 space-y-4">
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
+    <div className="h-full flex">
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-56">
             <label className={label}>Название</label>
             <input className={input} value={task.name} onChange={e => set({name: e.target.value})} />
             {errorOf("name") && <p className="text-xs text-red-600 mt-1">{errorOf("name")}</p>}
           </div>
-          <label className="flex items-center gap-2 text-sm pb-2">
-            <input type="checkbox" checked={task.enabled} onChange={e => set({enabled: e.target.checked})} />Включена
-          </label>
-          <label className="flex items-center gap-2 text-sm pb-2" title="Выполнять такт, даже если входы устарели (скрипт сам проверяет input(alias).stale)">
-            <input type="checkbox" checked={task.run_on_stale} onChange={e => set({run_on_stale: e.target.checked})} />Работать на устаревших входах
-          </label>
-          {onSaveAsTemplate && (
-            <Button onClick={onSaveAsTemplate} title="Сохранить задачу заготовкой в палитру шаблонов">
-              <BookmarkPlus size={14} />В шаблоны
-            </Button>
-          )}
-          <Button variant="danger" onClick={onDelete}><Trash2 size={14} />Удалить</Button>
+          <div className="flex items-center gap-2">
+            {onSaveAsTemplate && (
+              <Button className={compactButton} onClick={onSaveAsTemplate} title="Сохранить задачу заготовкой в палитру шаблонов">
+                <BookmarkPlus size={14} />В шаблоны
+              </Button>
+            )}
+            {onRevert && draftState === "changed" && (
+              <Button className={compactButton} onClick={onRevert} disabled={saving} title="Вернуть задачу к сохранённой на сервере">
+                <Undo2 size={14} />Отменить правки
+              </Button>
+            )}
+            {onSave && (
+              <Button
+                variant="primary"
+                className={compactButton}
+                onClick={onSave}
+                disabled={draftState === "saved" || saving}
+                title="Сохранить только эту задачу — правки остальных задач останутся черновиком"
+              >
+                <Save size={14} />{saving ? "Сохранение…" : "Сохранить задачу"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={task.enabled} onChange={e => set({enabled: e.target.checked})} />Включена
+          </label>
+          <label className="flex items-center gap-2" title="Выполнять такт, даже если входы устарели (скрипт сам проверяет input(alias).stale)">
+            <input type="checkbox" checked={task.run_on_stale} onChange={e => set({run_on_stale: e.target.checked})} />Работать на устаревших входах
+          </label>
+          <span className={cn("ml-auto text-xs", draftState === "saved" ? "text-neutral-500" : "text-amber-600 dark:text-amber-400")}>
+            {DRAFT_STATE_LABEL[draftState]}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {numberField("period_ms", "Период, мс", "100 … 3 600 000")}
           {numberField("timeout_ms", "Таймаут скрипта, мс", `1 … ${Math.max(1, Math.floor(task.period_ms / 2))}, пусто — 100`)}
           {numberField("stale_after_ms", "Вход устарел через, мс", "100 … 86 400 000")}
@@ -107,12 +148,7 @@ export function TaskEditor({task, variables, errors, onChange, onDelete, onSaveA
         </div>
       </div>
 
-      <div className="w-80 shrink-0">
-        <span className={label}>Дерево тегов</span>
-        <div className="h-[600px] overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800">
-          <DeviceTreePanel />
-        </div>
-      </div>
+      <TagTreeSidebar />
     </div>
   );
 }
