@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, RefreshCw} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
-import {useRecipeStore} from "@/store/useRecipeStore";
+import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
@@ -18,9 +18,12 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
  * рядом с HUD вышло бы два опроса и по два тоста на событие.
  *
  * Вести уже идущий процесс удобнее из HUD поверх схемы: он не закрывает мнемосхему.
+ *
+ * Список рецептов — из prod-выпуска (`useMonitorRecipesStore`, грузит `useProcedureSync`):
+ * сохранённый в редакторе, но не выпущенный рецепт мойка не знает, и показывать его нельзя.
  */
 export function ProcedurePanel() {
-  const {recipes, loaded, isLoading, loadError, loadRecipes} = useRecipeStore();
+  const {projectId, recipes, isLoading, loadError, load} = useMonitorRecipesStore();
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
@@ -32,10 +35,6 @@ export function ProcedurePanel() {
 
   const recipe = recipes.find(r => r.id === recipeId) ?? null;
   const steps = recipe?.steps ?? [];
-
-  useEffect(() => {
-    if (!loaded) void loadRecipes();
-  }, [loaded, loadRecipes]);
 
   useEffect(() => {
     const tick = () => setElapsed(stepStartedAt != null ? Date.now() - stepStartedAt : 0);
@@ -99,13 +98,19 @@ export function ProcedurePanel() {
           )}
         </div>
 
-        {loadError && (
+        {loadError ? (
           <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
             <span className="flex-1">Не удалось загрузить рецепты: {loadError}</span>
-            <Button onClick={() => void loadRecipes()} disabled={isLoading}>
+            <Button onClick={() => void load(projectId)} disabled={isLoading}>
               <RefreshCw size={16} />
               Повторить
             </Button>
+          </div>
+        ) : !isLoading && projectId != null && recipes.length === 0 && (
+          // Выпуски, сделанные до переноса рецептов в проект, их не содержат — это шаг выката.
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            В prod-выпуске проекта нет рецептов. Создайте их в редакторе, выпустите проект
+            и назначьте выпуск prod.
           </div>
         )}
 

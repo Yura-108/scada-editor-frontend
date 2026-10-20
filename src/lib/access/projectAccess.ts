@@ -21,10 +21,3 @@ export const getCurrentProjectGrant = (): ProjectGrant => {
   const fromList = currentProject ? projectList.find(p => p.id === currentProject.id) : undefined;
   return grantOf(fromList ?? currentProject, useSessionUserStore.getState().admin);
 };
-
-/** Можно ли править хоть что-то глобальное (рецепты): админ или `edit` хотя бы в одном проекте. */
-export const useCanEditAnyProject = (): boolean => {
-  const admin = useSessionUserStore(s => s.admin);
-  const anyEdit = useEditorStore(s => s.projectList.some(p => p.access?.edit));
-  return admin || anyEdit;
-};

@@ -8,6 +8,10 @@
  * ПРОЦЕДУРУ, которую рантайм проходит по шагам — на входе в шаг пишет теги, потом ждёт
  * выполнения условия перехода. Прежние `component_id`/`type`/`values` и разовое применение
  * (`POST /api/runtime/recipes/apply`) удалены с обеих сторон.
+ *
+ * Рецепт принадлежит ПРОЕКТУ (`docs/contract/2026-10-19-recipes-in-project-contract.md`):
+ * редактор правит черновик (`/api/editor/projects/{id}/recipes`), а мойка исполняет рецепт
+ * prod-выпуска — монитор берёт список из runtime (`/api/runtime/projects/{id}/recipes`).
  */
 
 /**
@@ -87,10 +91,15 @@ export interface Recipe {
    * безопасное состояние (`RecipesPanel` именно так и делает).
    */
   pause_action?: RecipeStepAction[] | null;
+  /**
+   * Ключ истории версий рецепта (`/api/editor/recipes/{document_id}/versions`, как у сцен).
+   * Есть только в ответах редактора; рецепты prod-выпуска из runtime приходят без него.
+   */
+  document_id?: number;
 }
 
-/** Тело POST/PUT — то же, что рецепт, без выданного сервером `id`. */
-export type RecipeCreatePayload = Omit<Recipe, "id">;
+/** Тело POST/PUT — то же, что рецепт, без выданных сервером `id` и `document_id`. */
+export type RecipeCreatePayload = Omit<Recipe, "id" | "document_id">;
 
 /* ─────────────────────────── выполнение (runtime) ─────────────────────────── */
 

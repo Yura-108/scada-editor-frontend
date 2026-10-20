@@ -143,11 +143,22 @@ Consequences worth knowing:
 Contract: `docs/contract/2026-09-09-recipe-steps-contract.md` (verified against the backend
 code, not just the doc). A recipe is a **procedure**, not a set of values: a manifest of tags
 (`tags[]`) plus ordered `steps[]`, where a step writes tags on entry and then waits for its
-condition to become true. It belongs to nothing — no component, no scene, no project; the list
-is flat. An earlier design keyed values to a table's `ComponentProperty` and applied them in one
+condition to become true. It belongs to no component and no scene, but **to a project**
+(contract `docs/contract/2026-10-19-recipes-in-project-contract.md`). An earlier design keyed values to a table's `ComponentProperty` and applied them in one
 shot; `component_id`, `type`, `values`, `/resolved` and `POST /api/runtime/recipes/apply` are all
 gone from both sides.
 
+- **Two lists, two sources.** The editor's `useRecipeStore` holds the *draft* of the open project
+  (`/api/editor/projects/{id}/recipes[/{id}]`, read `view`/`edit`, write `edit`; `id` is a
+  per-project slug — URL-encode it, Cyrillic). The monitor never reads it: `useMonitorRecipesStore`
+  loads the **prod release's** recipes from `GET /api/runtime/projects/{id}/recipes`, reloaded by
+  `useProcedureSync` on `(projectId, releaseVersionNo)` like `procedure-levels`. A saved but
+  unreleased recipe does not exist for the wash, and an operator with only `operate` gets 403 on the
+  editor paths. Starting a recipe missing from prod answers 409 with a `message` (shown as is). A
+  running procedure keeps the recipe it started with; a new prod changes only the list.
+  `document_id` is the history key: `recipes` is a `docType` of the history proxy, and
+  `RecipeHistoryModal` (button in `RecipesPanel`) lists versions and restores — restore changes the
+  draft only, then the list is re-read.
 - **`action[].tag` is the short `tags[].name`, not the tag path.** The path lives in
   `RecipeTag.tag`. Getting this wrong is a 400 listing the undeclared names, so the steps editor
   offers a dropdown over the manifest rather than free text.

@@ -5,7 +5,7 @@ import {
   AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play,
 } from "lucide-react";
 import {cn} from "@/lib/utils";
-import {useRecipeStore} from "@/store/useRecipeStore";
+import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
@@ -22,8 +22,8 @@ import {
  * управляет. HUD снимает этот выбор — вести и наблюдать можно одновременно.
  *
  * Своего поведения у него нет: действия берутся из `useProcedureControls`, состояние — из
- * `useProcedureStore`, а опрос и уведомления живут в `useProcedureSync`, смонтированном
- * один раз в `MonitorClient`.
+ * `useProcedureStore`, а опрос, уведомления и список рецептов prod-выпуска — в
+ * `useProcedureSync`, смонтированном один раз в `MonitorClient`.
  */
 
 /** Отступ от краёв области схемы. */
@@ -33,7 +33,7 @@ const MARGIN = 8;
 const SAVE_DELAY_MS = 300;
 
 export function ProcedureHud() {
-  const {recipes, loaded, loadRecipes} = useRecipeStore();
+  const recipes = useMonitorRecipesStore(s => s.recipes);
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
@@ -48,10 +48,6 @@ export function ProcedureHud() {
 
   const recipe = recipes.find(r => r.id === recipeId) ?? null;
   const steps = recipe?.steps ?? [];
-
-  useEffect(() => {
-    if (!loaded) void loadRecipes();
-  }, [loaded, loadRecipes]);
 
   useEffect(() => {
     const tick = () => setElapsed(stepStartedAt != null ? Date.now() - stepStartedAt : 0);

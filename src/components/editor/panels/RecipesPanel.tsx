@@ -1,21 +1,24 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {ChevronDown, ChevronRight, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
+import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
 import openRecipeEditorModal from "@/components/editor/recipes/RecipeEditorModal";
+import {openRecipeHistoryModal} from "@/components/editor/recipes/RecipeHistoryModal";
 import {setStepValueAt, stepValueText, stepsChanged} from "@/lib/editor/recipeSteps";
 import {validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useCanEditAnyProject} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useEditorStore} from "@/store/useEditorStore";
 
 /**
- * Процедурные рецепты. Список плоский: рецепт не принадлежит ни компоненту, ни сцене —
- * он описывает процедуру над тегами.
+ * Процедурные рецепты открытого проекта. Рецепт не принадлежит ни компоненту, ни сцене —
+ * он описывает процедуру над тегами, — но принадлежит ПРОЕКТУ и до мойки доезжает только
+ * с выпуском (`docs/contract/2026-10-19-recipes-in-project-contract.md`).
  *
  * Состав показывается ЗДЕСЬ ЖЕ, разворотом строки: рецепт не содержимое схемы, и выносить
  * его на холст незачем. Значения уставок правятся прямо в таблице тегов — но всегда
@@ -41,22 +44,32 @@ const inputClass = cn(
 );
 
 export function RecipesPanel() {
-  const {recipes, loaded, isLoading, loadError, loadRecipes, updateRecipe, deleteRecipe} = useRecipeStore();
+  const {projectId: loadedFor, recipes, isLoading, loadError, loadRecipes, updateRecipe, deleteRecipe} = useRecipeStore();
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   /** Незасохранённые правки шагов по рецептам. Черновик не теряется при сворачивании. */
   const [drafts, setDrafts] = useState<Record<string, RecipeStep[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  // Рецепты пока глобальные: читать может любой вошедший, менять — администратор или тот, у
-  // кого есть «правка» хотя бы в одном проекте (иначе бэкенд ответит 403 NO_EDIT).
-  const canEditRecipes = useCanEditAnyProject();
+  // Смотреть — `view`/`edit`, менять — `edit` в этом проекте (иначе бэкенд ответит 403 NO_EDIT).
+  const canEditRecipes = useCurrentProjectGrant().edit;
 
   // Флага загрузки в компоненте нет намеренно: он в сторе, иначе это был бы `setState`
-  // прямо в эффекте (`loaded` ставится до запроса и гасит повторный вызов).
+  // прямо в эффекте (`projectId` ставится до запроса и гасит повторный вызов).
   useEffect(() => {
-    if (!loaded) void loadRecipes();
-  }, [loaded, loadRecipes]);
+    if (projectId != null && loadedFor !== projectId) void loadRecipes(projectId);
+  }, [projectId, loadedFor, loadRecipes]);
+
+  // Черновики шагов и раскрытая строка принадлежат рецептам прежнего проекта: id-слаги
+  // в разных проектах совпадают («дезинфекция»), и черновик молча уехал бы в чужой рецепт.
+  // Сброс — по смене проекта во время рендера, а не в эффекте (`set-state-in-effect`).
+  const [draftsFor, setDraftsFor] = useState(projectId);
+  if (draftsFor !== projectId) {
+    setDraftsFor(projectId);
+    setDrafts({});
+    setExpanded(null);
+  }
 
   const stepsOf = (recipe: Recipe): RecipeStep[] => drafts[recipe.id] ?? recipe.steps ?? [];
   const isDirty = (recipe: Recipe) => drafts[recipe.id] !== undefined;
@@ -139,7 +152,11 @@ export function RecipesPanel() {
         </button>}
       </div>
 
-      {isLoading ? (
+      {projectId == null ? (
+        <div className="flex min-h-[180px] items-center justify-center text-gray-500 dark:text-gray-400">
+          Выберите проект — рецепты принадлежат проекту.
+        </div>
+      ) : isLoading ? (
         <div className="flex min-h-[180px] items-center justify-center text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-3">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -151,7 +168,7 @@ export function RecipesPanel() {
           <p>Не удалось загрузить рецепты: {loadError}</p>
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => void loadRecipes()}
+            onClick={() => void loadRecipes(projectId)}
           >
             <RefreshCw size={16} />
             Повторить
@@ -209,22 +226,37 @@ export function RecipesPanel() {
                       </td>
                       {/* Клик по кнопкам не должен заодно сворачивать строку. */}
                       <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        {canEditRecipes && <div className="flex items-center justify-center gap-3">
-                          <button
+                        <div className="flex items-center justify-center gap-3">
+                          {/* История доступна и на чтение: смотреть версии может и `view`. */}
+                          {recipe.document_id != null && (
+                            <button
+                              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                              title="История версий"
+                              onClick={() => openRecipeHistoryModal({
+                                recipe,
+                                documentId: recipe.document_id!,
+                                editable: canEditRecipes,
+                                dirty,
+                              })}
+                            >
+                              <History size={16} />
+                            </button>
+                          )}
+                          {canEditRecipes && <button
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors"
                             title="Редактировать"
                             onClick={() => openRecipeEditorModal({recipe})}
                           >
                             <Pencil size={16} />
-                          </button>
-                          <button
+                          </button>}
+                          {canEditRecipes && <button
                             className="text-red-600 dark:text-red-400 hover:text-red-500 transition-colors"
                             title="Удалить"
                             onClick={() => void handleDelete(recipe)}
                           >
                             <Trash2 size={16} />
-                          </button>
-                        </div>}
+                          </button>}
+                        </div>
                       </td>
                     </tr>
 
@@ -374,7 +406,8 @@ export function RecipesPanel() {
       )}
 
       <p className="text-xs text-gray-500 dark:text-gray-500">
-        Выполняется процедура в мониторе — вкладка «Процедуры».
+        Выполняется процедура в мониторе — вкладка «Процедуры». До мойки рецепт доходит только
+        с выпуском: после сохранения выпустите проект и назначьте выпуск prod.
       </p>
     </div>
   );
