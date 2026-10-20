@@ -1,10 +1,11 @@
 "use client";
 
-import React, {useState} from "react";
+import {useState} from "react";
 import Link from "next/link";
 import {cn} from "@/lib/utils";
 import {Activity, ClipboardList, Cpu, Database, HashIcon, Layout, Menu, Scroll, ShieldCheck, X} from "lucide-react";
 import {usePathname} from "next/navigation";
+import {Tooltip} from "radix-ui";
 
 const baseNavItems = [
   {
@@ -66,50 +67,57 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
 
   return (
     <>
-    {/* Ширина по ступеням: с 1400px — все подписи, уже — иконки с подсказкой, а подпись
-        остаётся только у активного раздела (где ты находишься, видно всегда). Разделители —
-        лишь на самых широких экранах: на 7 разделах именно они съедали место. Ниже md —
-        гамбургер (ниже). */}
-    <nav
-      className="hidden md:flex min-w-0 flex-1 items-center justify-center gap-0.5 2xl:gap-1"
-      aria-label="Основная навигация"
-    >
-      {navItems.map((item, index) => {
-        const isActive = isSectionActive(pathname, item.href);
+    {/* Только иконки: разделов уже 8, и с подписями они не помещались даже на широком
+        экране. Название — во всплывающей подсказке (наведение и фокус с клавиатуры), активный
+        раздел выделен фоном и цветом иконки. Ниже md — гамбургер (ниже). */}
+    <Tooltip.Provider delayDuration={150} skipDelayDuration={300}>
+      <nav
+        className="hidden md:flex min-w-0 flex-1 items-center justify-center gap-1"
+        aria-label="Основная навигация"
+      >
+        {navItems.map(item => {
+          const isActive = isSectionActive(pathname, item.href);
 
-        return (
-          <React.Fragment key={item.href + index}>
-            <Link
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              // Подпись бывает скрыта (display: none) — имя ссылки и подсказку даём явно.
-              aria-label={item.name}
-              title={item.name}
-              className={cn(
-                "flex shrink-0 items-center gap-2 px-2.5 min-[1400px]:px-3 2xl:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
-                "active:scale-95",
-                isActive
-                  ? "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
-                  // Было "hover:text-gray-900 dark:text-white": tailwind-merge оставлял
-                  // последний dark:text-*, поэтому в тёмной теме неактивный пункт всегда
-                  // был белым и не отличался от активного.
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5"
-              )}
-            >
-              <item.icon className={cn(
-                "w-4 h-4 shrink-0 transition-colors",
-                isActive ? "text-indigo-400" : "text-current"
-              )} />
-              <span className={isActive ? "inline" : "hidden min-[1400px]:inline"}>{item.name}</span>
-            </Link>
-
-            {index < navItems.length - 1 && (
-              <div className="hidden 2xl:block w-px h-4 shrink-0 bg-gray-100 dark:bg-gray-800 mx-1" />
-            )}
-          </React.Fragment>
-        )
-      })}
-    </nav>
+          return (
+            <Tooltip.Root key={item.href}>
+              <Tooltip.Trigger asChild>
+                <Link
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  // Подписи нет — имя ссылки для скринридеров даём явно.
+                  aria-label={item.name}
+                  className={cn(
+                    "flex shrink-0 items-center justify-center p-2.5 rounded-xl transition-all duration-200",
+                    "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50",
+                    isActive
+                      ? "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
+                      // Было "hover:text-gray-900 dark:text-white": tailwind-merge оставлял
+                      // последний dark:text-*, поэтому в тёмной теме неактивный пункт всегда
+                      // был белым и не отличался от активного.
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5"
+                  )}
+                >
+                  <item.icon className={cn(
+                    "w-5 h-5 shrink-0 transition-colors",
+                    isActive ? "text-indigo-400" : "text-current"
+                  )} />
+                </Link>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content
+                  side="bottom"
+                  sideOffset={6}
+                  className="z-dropdown rounded-md bg-gray-900 dark:bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-white dark:text-gray-900 shadow-lg select-none"
+                >
+                  {item.name}
+                  <Tooltip.Arrow className="fill-gray-900 dark:fill-gray-100" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          );
+        })}
+      </nav>
+    </Tooltip.Provider>
 
     {/* Мобильная навигация: раньше меню было просто `hidden md:flex`, то есть на
         узком экране разделы приложения оказывались недостижимы вовсе. */}
