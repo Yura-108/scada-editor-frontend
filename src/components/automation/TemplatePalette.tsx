@@ -12,7 +12,8 @@ import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 
 interface Props {
   /** Вставка кладёт в набор черновик задачи; сохраняет его обычное сохранение набора. */
-  onInsert: (template: AutomationTaskTemplate) => void;
+  /** Нет — нет права правки в проекте: шаблоны видны, но вставить их некуда. */
+  onInsert?: (template: AutomationTaskTemplate) => void;
 }
 
 /**
@@ -129,9 +130,10 @@ export function TemplatePalette({onInsert}: Props) {
                     className="group/tpl flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   >
                     <button
-                      onClick={() => onInsert(template)}
-                      className="flex-1 min-w-0 text-left px-2 py-1.5"
-                      title={template.description || `Вставить «${template.name}» в набор`}
+                      onClick={() => onInsert?.(template)}
+                      disabled={!onInsert}
+                      className="flex-1 min-w-0 text-left px-2 py-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+                      title={!onInsert ? "Нет права правки в проекте — вставить задачу нельзя" : template.description || `Вставить «${template.name}» в набор`}
                     >
                       <div className="truncate text-sm">{template.name}</div>
                       {template.description && (

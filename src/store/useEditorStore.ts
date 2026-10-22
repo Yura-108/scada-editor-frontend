@@ -74,6 +74,7 @@ import {
   type VersionPreview,
   type VersionSummary,
 } from "@/types/editorVersion.types";
+import {rememberProject} from "@/lib/editor/projectMemory";
 
 export type {EditorProject};
 
@@ -3937,6 +3938,9 @@ export const useEditorStore = create<EditorState>()(temporal(
         }
       },
       setCurrentProject: (project) => {
+        // Сброс (null) память не трогает: его делают и гарды прав, а проект остаётся «последним»
+        // для разделов, где он доступен.
+        if (project) rememberProject(project.id);
         set(() => ({
           currentProject: project,
           // Иерархия Проект -> Схема -> Элементы: при смене/снятии проекта

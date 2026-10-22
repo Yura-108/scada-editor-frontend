@@ -11,6 +11,7 @@ interface Props {
   watchdog: AutomationWatchdog | null;
   errors: AutomationValidationError[];
   onChange: (watchdog: AutomationWatchdog | null) => void;
+  readOnly?: boolean;
 }
 
 /** Границы периода — как у бэкенда (AutomationSetValidator). */
@@ -21,7 +22,7 @@ const PERIOD_MAX = 60_000;
  * Watchdog проекта: счётчик, который automation пишет в тег ПЛК (runtime `WatchdogRunner`).
  * Счётчик растёт, пока проект исполняется и шлюз отвечает на команды не дольше трёх периодов.
  */
-export function WatchdogEditor({watchdog, errors, onChange}: Props) {
+export function WatchdogEditor({watchdog, errors, onChange, readOnly = false}: Props) {
   const errorOf = (field: string) => errors.filter(e => e.field === field).map(e => e.message).join("; ");
   const otherErrors = errors.filter(e => e.field.startsWith("watchdog") && e.field !== "watchdog.tag" && e.field !== "watchdog.period_ms");
 
@@ -39,7 +40,7 @@ export function WatchdogEditor({watchdog, errors, onChange}: Props) {
     : "";
 
   return (
-    <div className="p-4 max-w-3xl space-y-4">
+    <fieldset disabled={readOnly} className="m-0 border-0 min-w-0 p-4 max-w-3xl space-y-4">
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Сторожевой таймер (watchdog)</h3>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -107,8 +108,8 @@ export function WatchdogEditor({watchdog, errors, onChange}: Props) {
       {otherErrors.map((e, i) => <p key={i} className="text-xs text-red-600">{e.message}</p>)}
 
       <p className="text-xs text-neutral-500">
-        Изменения уходят на сервер кнопкой «Сохранить всё» вверху.
+        {readOnly ? "Нет права правки — настройки только для просмотра." : "Изменения уходят на сервер кнопкой «Сохранить всё» вверху."}
       </p>
-    </div>
+    </fieldset>
   );
 }

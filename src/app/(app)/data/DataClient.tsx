@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useState, useMemo} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import Link from "next/link";
 import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
 import {toast} from "sonner";
@@ -8,8 +8,10 @@ import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useEditorStore} from "@/store/useEditorStore";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-import {canOpenInEditor, grantOf, useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useEditableProject} from "@/lib/editor/lastProject";
+import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
+import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/lib/automation/automationApi";
 import {
   fetchProjectData,
@@ -23,6 +25,7 @@ import {confirmRemoveTable, TablesEditor} from "@/components/projectData/TablesE
 import {compactButton} from "@/components/projectData/ColumnsEditor";
 import {UnsavedNotice} from "@/components/ui/UnsavedNotice";
 import {FloatingHelp} from "@/components/ui/FloatingHelp";
+import {useUnsavedGuard} from "@/lib/unsavedGuard";
 import {VariablesEditor} from "@/components/automation/VariablesEditor";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {DataDiffView, DataVersionChanges, loadDataVersion} from "@/components/projectData/DataVersionChanges";
@@ -94,18 +97,11 @@ const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
  * «Сохранить» сохраняет документ активной вкладки. Логики здесь нет — только правка и сохранение.
  */
 export default function DataClient() {
-  const allProjects = useEditorStore(s => s.projectList);
-  const admin = useSessionUserStore(s => s.admin);
-  // Страница читает черновик проекта — нужен «просмотр» или «правка»; с одним
-  // «управлением» бэкенд ответит 403, такие проекты в списке не показываем.
-  const projectList = useMemo(
-    () => allProjects.filter(p => canOpenInEditor(grantOf(p, admin))),
-    [allProjects, admin],
-  );
+  // Страница читает черновик проекта — нужен «просмотр» или «правка». Проект, выбранный в
+  // мониторе только с «управлением», сюда не попадает: его данных раздел не показывает.
+  const {projectList, project, unavailable, listLoaded} = useEditableProject();
   // Сохранять и отправлять на исполнение — только с правом правки (403 NO_EDIT).
   const canWrite = useCurrentProjectGrant().edit;
-  const currentProject = useEditorStore(s => s.currentProject);
-  const loadProjectList = useEditorStore(s => s.loadProjectList);
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
 
   const [tab, setTab] = useState<Tab>("tables");
@@ -122,9 +118,7 @@ export default function DataClient() {
   const [automationDirty, setAutomationDirty] = useState(false);
   const [automationErrors, setAutomationErrors] = useState<AutomationValidationError[]>([]);
 
-  useEffect(() => { void loadProjectList(); }, [loadProjectList]);
-
-  const projectId = currentProject?.id ?? null;
+  const projectId = project?.id ?? null;
 
   const reloadData = useCallback(async () => {
     setData(null);
@@ -186,14 +180,16 @@ export default function DataClient() {
     if (ok) await reload();
   };
 
-  const saveTables = async () => {
-    if (!data || projectId == null) return;
+  /** `true` — сохранилось: охране ухода надо знать, можно ли уходить. */
+  const saveTables = async (): Promise<boolean> => {
+    if (!data || projectId == null) return false;
     try {
       const saved = await saveProjectData(projectId, data.version, data.tables);
       setData(saved);
       setDataDirty(false);
       setDataErrors([]);
       toast.success(`Таблицы сохранены, версия ${saved.version}. Чтобы задачи увидели правку, нажмите «Применить данные»`);
+      return true;
     } catch (err) {
       if (err instanceof ProjectDataSaveError && err.errors.length) {
         setDataErrors(err.errors);
@@ -204,11 +200,12 @@ export default function DataClient() {
       } else {
         toast.error((err as Error).message);
       }
+      return false;
     }
   };
 
-  const saveVariables = async () => {
-    if (!automation || projectId == null) return;
+  const saveVariables = async (): Promise<boolean> => {
+    if (!automation || projectId == null) return false;
     try {
       // Задачи и watchdog уходят как пришли (плюс writes_variables, правленные здесь): PUT — весь набор.
       const saved = await saveAutomation(projectId, {
@@ -221,6 +218,7 @@ export default function DataClient() {
       setAutomationDirty(false);
       setAutomationErrors([]);
       toast.success(`Переменные сохранены, версия набора ${saved.version}`);
+      return true;
     } catch (err) {
       if (err instanceof AutomationSaveError && err.errors.length) {
         setAutomationErrors(err.errors);
@@ -231,19 +229,32 @@ export default function DataClient() {
       } else {
         toast.error((err as Error).message);
       }
+      return false;
     }
   };
 
   /** Плашка внизу сохраняет всё несохранённое, а не только документ открытой вкладки. */
-  const handleSaveAll = async () => {
+  const handleSaveAll = async (): Promise<boolean> => {
+    // Неверные ячейки сохранить нельзя — это не «сохранилось».
+    if (dataDirty && invalidCells > 0) {
+      toast.error(`Есть ячейки с неверным значением: ${invalidCells}`);
+      return false;
+    }
     setSaving(true);
     try {
-      if (dataDirty && invalidCells === 0) await saveTables();
-      if (automationDirty) await saveVariables();
+      const tablesOk = dataDirty ? await saveTables() : true;
+      const variablesOk = automationDirty ? await saveVariables() : true;
+      return tablesOk && variablesOk;
     } finally {
       setSaving(false);
     }
   };
+
+  useUnsavedGuard("data", {
+    label: () => [dataDirty && "таблицы", automationDirty && "переменные проекта"].filter(Boolean).join(", "),
+    isDirty: () => canWrite && (dataDirty || automationDirty),
+    save: handleSaveAll,
+  });
 
   const handleDiscardAll = async () => {
     const ok = await confirmModal({
@@ -345,10 +356,11 @@ export default function DataClient() {
 
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
-      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80">
-        <span className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Данные проекта</span>
+      {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
+      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
+        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Данные проекта</span>
         <select
-          className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
+          className="min-w-0 max-w-48 shrink bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
           value={projectId ?? ""}
           onChange={e => void switchProject(Number(e.target.value))}
         >
@@ -377,7 +389,7 @@ export default function DataClient() {
         >
           <RefreshCw size={14} />
         </Button>
-        {tab === "tables" && data && data.tables.length > 0 && (
+        {canWrite && tab === "tables" && data && data.tables.length > 0 && (
           <Button
             className={cn(compactButton, "text-red-600 dark:text-red-400 hover:text-red-700")}
             onClick={() => void handleRemoveTable()}
@@ -404,8 +416,10 @@ export default function DataClient() {
         >
           <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
         </Button>
-        </> : loaded && <span className="text-xs text-amber-600 dark:text-amber-400">только просмотр</span>}
+        </> : null}
       </div>
+
+      {project && loaded && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
       {banner.length > 0 && (
         <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300 space-y-0.5">
@@ -417,7 +431,7 @@ export default function DataClient() {
       )}
 
       {projectId == null ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">Выберите проект</div>
+        <ProjectPlaceholder listLoaded={listLoaded} projectCount={projectList.length} unavailable={unavailable} />
       ) : !loaded ? (
         <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">Загрузка…</div>
       ) : tab === "tables" ? (
@@ -428,16 +442,17 @@ export default function DataClient() {
           onInvalidCountChange={setInvalidCells}
           selected={selectedTable}
           onSelect={setSelectedTable}
+          readOnly={!canWrite}
         />
       ) : tab === "variables" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-24">
+        <fieldset disabled={!canWrite} className="flex-1 min-h-0 min-w-0 m-0 p-0 border-0 overflow-y-auto pb-24">
           <VariablesEditor
             variables={automation!.variables}
             tasks={automation!.tasks}
             errors={automationErrors.filter(e => e.field.startsWith("variables"))}
             onChange={(variables, tasks) => { setAutomation(a => (a ? {...a, variables, tasks} : a)); setAutomationDirty(true); }}
           />
-        </div>
+        </fieldset>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pb-24">
           <VersionHistoryList

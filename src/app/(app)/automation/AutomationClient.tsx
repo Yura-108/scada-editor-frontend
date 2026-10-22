@@ -8,8 +8,10 @@ import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useEditorStore} from "@/store/useEditorStore";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-import {canOpenInEditor, grantOf, useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useEditableProject} from "@/lib/editor/lastProject";
+import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
+import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
 import {
   AutomationSaveError,
   fetchAutomation,
@@ -33,6 +35,7 @@ import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
 import {compactButton} from "@/components/automation/formStyles";
 import {FloatingHelp} from "@/components/ui/FloatingHelp";
 import {UnsavedNotice} from "@/components/ui/UnsavedNotice";
+import {confirmLeave, useUnsavedGuard} from "@/lib/unsavedGuard";
 import {
   missingVariables,
   stripIoHints,
@@ -137,18 +140,11 @@ const UNDO_TOAST_MS = 10_000;
  * Исполняет задачи сервис automation — страница нужна только для правки определений.
  */
 export default function AutomationClient() {
-  const allProjects = useEditorStore(s => s.projectList);
-  const admin = useSessionUserStore(s => s.admin);
-  // Страница читает черновик проекта — нужен «просмотр» или «правка»; с одним
-  // «управлением» бэкенд ответит 403, такие проекты в списке не показываем.
-  const projectList = useMemo(
-    () => allProjects.filter(p => canOpenInEditor(grantOf(p, admin))),
-    [allProjects, admin],
-  );
+  // Страница читает черновик проекта — нужен «просмотр» или «правка». Проект, выбранный в
+  // мониторе только с «управлением», сюда не попадает: его данных раздел не показывает.
+  const {projectList, project, unavailable, listLoaded} = useEditableProject();
   // Сохранять и отправлять на исполнение — только с правом правки (403 NO_EDIT).
   const canWrite = useCurrentProjectGrant().edit;
-  const currentProject = useEditorStore(s => s.currentProject);
-  const loadProjectList = useEditorStore(s => s.loadProjectList);
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
 
   /** Набор, как он лежит на сервере, — основа для сохранения одной задачи и для «изменена». */
@@ -167,9 +163,7 @@ export default function AutomationClient() {
   const latest = useRef({saved, draft});
   useEffect(() => { latest.current = {saved, draft}; });
 
-  useEffect(() => { void loadProjectList(); }, [loadProjectList]);
-
-  const projectId = currentProject?.id ?? null;
+  const projectId = project?.id ?? null;
 
   const refreshStatuses = useCallback(async () => {
     if (projectId == null) return;
@@ -258,8 +252,9 @@ export default function AutomationClient() {
     }
   };
 
-  const handleSaveAll = async () => {
-    if (!draft || !saved || projectId == null) return;
+  /** `true` — сохранилось: охране ухода надо знать, можно ли уходить. */
+  const handleSaveAll = async (): Promise<boolean> => {
+    if (!draft || !saved || projectId == null) return false;
     setSaving(true);
     try {
       const result = await put(saved, draft.tasks, draft.variables, draft.watchdog);
@@ -268,12 +263,20 @@ export default function AutomationClient() {
       setErrors([]);
       toast.success(`Сохранено, версия ${result.version}`);
       void refreshStatuses();
+      return true;
     } catch (err) {
       reportSaveError(err);
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  useUnsavedGuard("automation", {
+    label: () => "задачи автоматизации",
+    isDirty: () => canWrite && dirty,
+    save: handleSaveAll,
+  });
 
   /** Сохранить одну задачу: остальные задачи и watchdog уходят такими, какие они на сервере. */
   const handleSaveTask = async (index: number) => {
@@ -484,12 +487,17 @@ export default function AutomationClient() {
 
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
-      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80">
-        <span className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Автоматизация</span>
+      {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
+      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
+        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Автоматизация</span>
         <select
-          className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
+          className="min-w-0 max-w-48 shrink bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
           value={projectId ?? ""}
-          onChange={e => setCurrentProject(projectList.find(p => p.id === Number(e.target.value)) ?? null)}
+          onChange={async e => {
+            const next = projectList.find(p => p.id === Number(e.target.value)) ?? null;
+            // Черновик набора принадлежит проекту: смена проекта его выбрасывает.
+            if (await confirmLeave()) setCurrentProject(next);
+          }}
         >
           <option value="" disabled>Проект…</option>
           {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -517,8 +525,10 @@ export default function AutomationClient() {
         >
           <Save size={14} />{saving ? "Сохранение…" : unsavedCount > 1 ? `Сохранить всё (${unsavedCount})` : "Сохранить всё"}
         </Button>
-        </> : draft && <span className="text-xs text-amber-600 dark:text-amber-400">только просмотр</span>}
+        </> : null}
       </div>
+
+      {project && draft && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
       {projectErrors.length > 0 && (
         <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300 space-y-0.5">
@@ -533,9 +543,9 @@ export default function AutomationClient() {
       )}
 
       {!draft || !saved ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">
-          {projectId == null ? "Выберите проект" : "Загрузка…"}
-        </div>
+        projectId == null
+          ? <ProjectPlaceholder listLoaded={listLoaded} projectCount={projectList.length} unavailable={unavailable} />
+          : <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">Загрузка…</div>
       ) : tab === "tasks" ? (
         <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex-1 min-h-0 flex">
@@ -575,9 +585,11 @@ export default function AutomationClient() {
                 </div>
               );
             })}
-            <Button className={cn(compactButton, "w-full")} onClick={() => { update({tasks: [...draft.tasks, newTask(draft.tasks.length + 1)]}); setSelected(draft.tasks.length); }}>
-              <Plus size={14} />Задача
-            </Button>
+            {canWrite && (
+              <Button className={cn(compactButton, "w-full")} onClick={() => { update({tasks: [...draft.tasks, newTask(draft.tasks.length + 1)]}); setSelected(draft.tasks.length); }}>
+                <Plus size={14} />Задача
+              </Button>
+            )}
           </div>
           <div className="flex-1 min-w-0 min-h-0">
             {task ? (
@@ -588,20 +600,21 @@ export default function AutomationClient() {
                 onChange={t => updateTask(selected, t)}
                 draftState={taskDraftState(task, saved)}
                 onSave={canWrite ? () => void handleSaveTask(selected) : undefined}
-                onRevert={() => handleRevertTask(selected)}
+                onRevert={canWrite ? () => handleRevertTask(selected) : undefined}
                 saving={saving}
                 onSaveAsTemplate={handleSaveAsTemplate}
+                readOnly={!canWrite}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-neutral-500">Задач нет</div>
             )}
           </div>
-          <TemplatePalette onInsert={handleInsertTemplate} />
+          <TemplatePalette onInsert={canWrite ? handleInsertTemplate : undefined} />
         </div>
         </div>
       ) : tab === "watchdog" ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-24">
-          <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => update({watchdog})} />
+          <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => update({watchdog})} readOnly={!canWrite} />
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pb-24">

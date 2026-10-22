@@ -8,6 +8,7 @@ import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifica
 import {useEditorStore} from "@/store/useEditorStore";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {canOpenInEditor, grantOf} from "@/lib/access/grants";
+import {restoreLastProject} from "@/lib/editor/lastProject";
 import {toast} from "sonner";
 
 export default function EditorPage() {
@@ -34,8 +35,15 @@ export default function EditorPage() {
     void useEditorStore.getState().loadProjectList().then(projects => {
       if (cancelled || !projects) return;
       const {currentProject, setCurrentProject} = useEditorStore.getState();
-      if (!currentProject) return;
       const admin = useSessionUserStore.getState().admin;
+      if (!currentProject) {
+        // После перезагрузки — последний проект, если он открывается в редакторе. Схему не
+        // открываем: выбор схемы остаётся за инженером, вкладки закреплённых схем видны и так.
+        restoreLastProject(projects.filter(p => canOpenInEditor(grantOf(p, admin))));
+        const restored = useEditorStore.getState().currentProject;
+        if (restored) void useEditorStore.getState().loadSceneList(restored.id);
+        return;
+      }
       const project = projects.find(p => p.id === currentProject.id);
       if (!canOpenInEditor(grantOf(project, admin))) {
         setCurrentProject(null);

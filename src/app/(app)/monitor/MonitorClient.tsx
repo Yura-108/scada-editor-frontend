@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
 import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
 import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
@@ -22,6 +22,8 @@ import {SceneTabs} from "@/components/editor/SceneTabs";
 import {toast} from "sonner";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {canWriteDirectly} from "@/lib/runtime/actionAccess";
+import {restoreLastProject} from "@/lib/editor/lastProject";
+import {lastMonitorScene, rememberMonitorScene} from "@/lib/editor/projectMemory";
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
@@ -85,13 +87,33 @@ export default function MonitorClient() {
     };
   }, []);
 
+  // Проект и схему монитор помнит: оператор возвращается к тому же экрану после перезагрузки
+  // и после похода в другие разделы, а не выбирает их каждый раз заново.
   useEffect(() => {
-    void loadProjectList();
+    void loadProjectList().then(projects => { if (projects) restoreLastProject(projects); });
   }, [loadProjectList]);
 
   useEffect(() => {
     if (currentProject) void loadSceneList(currentProject.id);
   }, [currentProject, loadSceneList]);
+
+  // Последняя схема — один раз на проект, когда список схем выпуска уже есть, а схема не открыта.
+  // Схемы, которой нет в выпуске, не открываем: её удалили или не выпустили.
+  const restoredSceneFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!currentProject || scene || sceneList.length === 0) return;
+    if (restoredSceneFor.current === currentProject.id) return;
+    restoredSceneFor.current = currentProject.id;
+    const last = lastMonitorScene(currentProject.id);
+    if (last != null && sceneList.some(s => s.id === last)) void loadScene(last);
+  }, [currentProject, scene, sceneList, loadScene]);
+
+  const openSceneId = scene?.id != null ? Number(scene.id) : null;
+  useEffect(() => {
+    if (currentProject && openSceneId != null && Number.isSafeInteger(openSceneId)) {
+      rememberMonitorScene(currentProject.id, openSceneId);
+    }
+  }, [currentProject, openSceneId]);
 
   // Флаг эксплуатации приходит отдельным эндпоинтом. Без него выключенный проект в списке
   // неотличим от рабочего, и оператор узнавал бы о причине, только не дождавшись данных.
@@ -172,13 +194,15 @@ export default function MonitorClient() {
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
       {/* Тонкий тулбар: проект / сцена / индикатор соединения */}
-      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md">
-        <span className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+      {/* В одну строку на любой ширине: второстепенные подписи ниже xl сворачиваются до иконок
+          (полный текст — в подсказке), а не переносят панель на вторую строку. */}
+      <div className="h-12 shrink-0 flex items-center gap-2 xl:gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md whitespace-nowrap overflow-x-auto">
+        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
           Монитор
         </span>
 
         <select
-          className={selectClasses}
+          className={cn(selectClasses, "min-w-0 max-w-48 shrink")}
           value={currentProject?.id ?? ""}
           onChange={(e) => {
             const project = projectList.find(p => p.id === Number(e.target.value)) ?? null;
@@ -196,7 +220,7 @@ export default function MonitorClient() {
         </select>
 
         <select
-          className={selectClasses}
+          className={cn(selectClasses, "min-w-0 max-w-56 shrink")}
           value={scene?.id ?? ""}
           disabled={!currentProject}
           onChange={(e) => {
@@ -212,7 +236,7 @@ export default function MonitorClient() {
 
         <div className="flex-1" />
 
-        <div className="flex rounded-full border border-neutral-200 dark:border-neutral-700 p-0.5 text-xs font-medium">
+        <div className="flex shrink-0 rounded-full border border-neutral-200 dark:border-neutral-700 p-0.5 text-xs font-medium">
           {([["live", "Живые данные"], ["archive", "Архив"]] as const).map(([m, label]) => (
             <button
               key={m}
@@ -242,10 +266,11 @@ export default function MonitorClient() {
         {isLive && sessionId && !showProcedures && (
           <button
             onClick={() => setShowProcedures(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
+            title="Процедуры"
+            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
           >
             <ClipboardList size={14} />
-            Процедуры
+            <span className="hidden xl:inline">Процедуры</span>
           </button>
         )}
 
@@ -254,11 +279,11 @@ export default function MonitorClient() {
         {isLive && sessionId && directWrite && (
           <button
             onClick={() => openObjectInspectorModal()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
+            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
             title="Инспектор объектов: свойства любого объекта проекта"
           >
             <SearchCode size={14} />
-            Инспектор
+            <span className="hidden xl:inline">Инспектор</span>
           </button>
         )}
 
@@ -267,7 +292,7 @@ export default function MonitorClient() {
             onClick={() => setShowTasks(v => !v)}
             aria-pressed={showTasks}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+              "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
               taskProblems > 0
                 ? "bg-red-500/15 text-red-600 dark:text-red-400 hover:bg-red-500/25"
                 : "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
@@ -275,50 +300,51 @@ export default function MonitorClient() {
             title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : "Фоновые задачи проекта"}
           >
             <Cpu size={14} />
-            Задачи{taskProblems > 0 ? `: ${taskProblems}` : ""}
+            <span className="hidden xl:inline">Задачи</span>
+            {taskProblems > 0 && <span><span className="hidden xl:inline">: </span>{taskProblems}</span>}
           </button>
         )}
 
         {problemCount > 0 && (
           <span
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-600 dark:text-red-400"
-            title={[
+            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-600 dark:text-red-400"
+            title={[`Проблемы с привязками: ${problemCount}`,
               ...[...compileErrors.values()].map(e => `Компиляция: ${e}`),
               ...[...runtimeErrors.values()].map(e => `Исполнение: ${e}`),
             ].join("\n")}
           >
             <AlertTriangle size={14} />
-            Проблемы с привязками: {problemCount}
+            <span className="hidden xl:inline">Проблемы с привязками: </span>{problemCount}
           </span>
         )}
 
         {!isArchive && isStale && (
           <span
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
             title="Соединение живое, но новых значений давно не приходило — данные на экране могут быть устаревшими"
           >
             <Clock size={14} />
-            Данные могут устареть
+            <span className="hidden xl:inline">Данные могут устареть</span>
           </span>
         )}
 
         {releaseVersionNo != null && (
           <span
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-500/10 text-neutral-600 dark:text-neutral-300"
-            title="Монитор показывает prod-выпуск проекта. Правки редактора появятся здесь после нового выпуска."
+            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-500/10 text-neutral-600 dark:text-neutral-300"
+            title={`Выпуск №${releaseVersionNo}. Монитор показывает prod-выпуск проекта. Правки редактора появятся здесь после нового выпуска.`}
           >
             <Package size={14} />
-            Выпуск №{releaseVersionNo}
+            <span className="hidden xl:inline">Выпуск </span>№{releaseVersionNo}
           </span>
         )}
 
         {!isArchive && (
           <span
-            className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
-            title={statusDetail || undefined}
+            className={cn("flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
+            title={statusDetail || statusView.label}
           >
             <Radio size={14} />
-            {statusView.label}
+            <span className="hidden xl:inline">{statusView.label}</span>
           </span>
         )}
 

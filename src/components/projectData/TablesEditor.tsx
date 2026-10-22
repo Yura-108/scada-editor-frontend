@@ -17,6 +17,8 @@ interface Props {
   /** Выбранная таблица живёт у страницы: «Удалить таблицу» стоит в её верхней панели. */
   selected: number;
   onSelect: (index: number) => void;
+  /** Нет права правки: таблицы видны, поля заблокированы, добавлять нечего. */
+  readOnly?: boolean;
 }
 
 /** Удаление выбранной таблицы с подтверждением; применится при сохранении. */
@@ -37,7 +39,7 @@ export async function confirmRemoveTable(tables: ProjectDataTable[], index: numb
  * Таблицы данных проекта. Порядок списка задаёт сервер (по алфавиту `title`); новая таблица
  * встаёт в конец и займёт своё место после сохранения.
  */
-export function TablesEditor({tables, errors, onChange, onInvalidCountChange, selected, onSelect: setSelected}: Props) {
+export function TablesEditor({tables, errors, onChange, onInvalidCountChange, selected, onSelect: setSelected, readOnly = false}: Props) {
   // Набор перечитали или таблицу удалили — выбор не должен указывать за конец списка.
   useEffect(() => {
     if (selected >= tables.length) setSelected(Math.max(0, tables.length - 1));
@@ -73,10 +75,11 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange, se
             <div className="text-[11px] text-neutral-500 font-mono truncate">{t.name} · {t.rows.length} стр.</div>
           </button>
         ))}
-        <Button className={cn(compactButton, "w-full")} onClick={add}><Plus size={14} />Таблица</Button>
+        {!readOnly && <Button className={cn(compactButton, "w-full")} onClick={add}><Plus size={14} />Таблица</Button>}
       </div>
 
-      <div className="flex-1 min-w-0 overflow-y-auto">
+      {/* Список слева — вне fieldset: таблицы можно листать и в режиме просмотра. */}
+      <fieldset disabled={readOnly} className="flex-1 min-w-0 m-0 p-0 border-0 overflow-y-auto">
         {!table ? (
           <div className="h-full flex items-center justify-center text-sm text-neutral-500">Таблиц нет</div>
         ) : (
@@ -139,7 +142,7 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange, se
             />
           </div>
         )}
-      </div>
+      </fieldset>
     </div>
   );
 }

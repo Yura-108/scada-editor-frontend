@@ -26,6 +26,8 @@ interface Props {
   saving: boolean;
   /** «В шаблоны» — задача становится заготовкой в общей палитре. */
   onSaveAsTemplate?: () => void;
+  /** Нет права правки: поля заблокированы, а не просто «не сохранятся». */
+  readOnly?: boolean;
 }
 
 type NumberField = "period_ms" | "timeout_ms" | "stale_after_ms";
@@ -42,7 +44,7 @@ const DRAFT_STATE_LABEL: Record<TaskDraftState, string> = {
  * Удаление живёт в списке задач (крестик с подтверждением), а не здесь: большая красная кнопка
  * рядом с полями ловила промахи.
  */
-export function TaskEditor({task, variables, errors, onChange, draftState, onSave, onRevert, saving, onSaveAsTemplate}: Props) {
+export function TaskEditor({task, variables, errors, onChange, draftState, onSave, onRevert, saving, onSaveAsTemplate, readOnly = false}: Props) {
   const set = (patch: Partial<AutomationTask>) => onChange({...task, ...patch});
   const errorOf = (field: string) => errors.filter(e => e.field === field).map(e => e.message).join("; ");
 
@@ -66,7 +68,9 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
 
   return (
     <div className="h-full flex">
-      <div className="flex-1 min-w-0 overflow-y-auto p-4 pb-28 space-y-4">
+      {/* fieldset disabled блокирует разом все поля и кнопки формы; дерево тегов справа — вне
+          него, по нему можно искать и в режиме просмотра. */}
+      <fieldset disabled={readOnly} className="flex-1 min-w-0 m-0 border-0 overflow-y-auto p-4 pb-28 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-56">
             <label className={label}>Название</label>
@@ -142,11 +146,11 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
             state (объект, до 64 КБ) · dt · firstRun · log.info(...) / log.warn(...)
           </p>
           <div className="border border-neutral-300 dark:border-neutral-700 rounded-xl overflow-hidden">
-            <CodeMirror value={task.script} height="360px" extensions={[javascript()]} theme="dark" onChange={script => set({script})} />
+            <CodeMirror value={task.script} height="360px" extensions={[javascript()]} theme="dark" readOnly={readOnly} editable={!readOnly} onChange={script => set({script})} />
           </div>
           {errorOf("script") && <p className="text-xs text-red-600 mt-1">{errorOf("script")}</p>}
         </div>
-      </div>
+      </fieldset>
 
       <TagTreeSidebar />
     </div>
