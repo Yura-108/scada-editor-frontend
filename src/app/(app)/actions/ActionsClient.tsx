@@ -2,7 +2,11 @@
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Loader2, RefreshCw} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {Button} from "@/components/ui/Button";
+import {
+  formatTs, journalBadge, journalFilterBar, journalInput as inputClass, journalPage, journalTableBox, journalTbody,
+  journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,
+} from "@/components/journal/journalUi";
 import {useEditorStore} from "@/store/useEditorStore";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {
@@ -10,30 +14,6 @@ import {
 } from "@/lib/runtime/actionLog";
 
 const PAGE_SIZE = 100;
-
-const PRESETS: {label: string; ms: number}[] = [
-  {label: "1 ч", ms: 3600_000},
-  {label: "24 ч", ms: 24 * 3600_000},
-  {label: "7 дней", ms: 7 * 24 * 3600_000},
-  {label: "30 дней", ms: 30 * 24 * 3600_000},
-];
-
-/** `datetime-local` работает в местном времени без пояса. */
-const toLocalInput = (ts: number) =>
-  new Date(ts - new Date(ts).getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-
-const formatTs = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU")}`;
-};
-
-const inputClass = cn(
-  "rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900",
-  "px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100",
-  "focus:outline-none focus:ring-2 focus:ring-indigo-500/40",
-);
 
 /** Что именно сделали: имя скрипта, операция процедуры или записанные теги. */
 function ActionTarget({r}: {r: ActionLogRecord}) {
@@ -162,24 +142,23 @@ export default function ActionsClient() {
   }, [apply]);
 
   return (
-    <div className="min-h-app bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8">
-      <div className="max-w-6xl mx-auto space-y-5">
-        <h1 className="text-2xl font-bold text-black dark:text-white">Журнал действий оператора</h1>
-
+    <div className={journalPage}>
+      {/* Каркас — как у остальных разделов: заголовок и фильтры под шапкой, список прокручивается. */}
+        <JournalTitle
+          title="Журнал действий"
+          description="Нажатия операторов в мониторе, управление процедурами и ручные записи тегов"
+        />
         <form
-          className="flex flex-wrap items-end gap-3"
+          className={journalFilterBar}
           onSubmit={e => { e.preventDefault(); apply(); }}
         >
-          <label className="space-y-1 text-xs text-gray-500">
-            <span className="block">С</span>
+          <JournalField label="С">
             <input type="datetime-local" className={inputClass} value={draftFrom} onChange={e => setDraftFrom(e.target.value)} />
-          </label>
-          <label className="space-y-1 text-xs text-gray-500">
-            <span className="block">По</span>
+          </JournalField>
+          <JournalField label="По">
             <input type="datetime-local" className={inputClass} value={draftTo} onChange={e => setDraftTo(e.target.value)} />
-          </label>
-          <label className="space-y-1 text-xs text-gray-500">
-            <span className="block">Проект</span>
+          </JournalField>
+          <JournalField label="Проект">
             <select
               className={inputClass}
               value={projectId ?? ""}
@@ -188,79 +167,65 @@ export default function ActionsClient() {
               <option value="">Все проекты</option>
               {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-          </label>
-          <label className="space-y-1 text-xs text-gray-500">
-            <span className="block">Вид</span>
+          </JournalField>
+          <JournalField label="Вид">
             <select className={inputClass} value={kind} onChange={e => setKind(e.target.value as ActionKind | "")}>
               <option value="">Все</option>
               {(Object.keys(ACTION_KIND_LABEL) as ActionKind[]).map(k => (
                 <option key={k} value={k}>{ACTION_KIND_LABEL[k]}</option>
               ))}
             </select>
-          </label>
-          <label className="space-y-1 text-xs text-gray-500">
-            <span className="block">Пользователь</span>
+          </JournalField>
+          <JournalField label="Пользователь">
             <input
               className={inputClass}
               value={username}
               onChange={e => setUsername(e.target.value)}
               placeholder="точное имя"
             />
-          </label>
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-            disabled={loading}
-          >
+          </JournalField>
+          <Button type="submit" variant="primary" className="px-3 py-1.5 text-sm shadow-none" disabled={loading}>
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Показать
-          </button>
-          <div className="flex gap-1">
-            {PRESETS.map(p => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => applyPreset(p.ms)}
-                className="rounded-lg px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          </Button>
+          <JournalPresets onPick={applyPreset} />
         </form>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded">{error}</div>
+          <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300">{error}</div>
         )}
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+        <div className="max-w-6xl mx-auto space-y-4">
+
+        <div className={journalTableBox}>
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs uppercase tracking-wide text-gray-500">
+            <thead className={journalThead}>
               <tr>
-                <th className="px-3 py-2">Время</th>
-                <th className="px-3 py-2">Пользователь</th>
-                <th className="px-3 py-2">Проект</th>
-                <th className="px-3 py-2">Вид</th>
-                <th className="px-3 py-2">Компонент</th>
-                <th className="px-3 py-2">Что сделано</th>
-                <th className="px-3 py-2">Результат</th>
+                <th className={journalTh}>Время</th>
+                <th className={journalTh}>Пользователь</th>
+                <th className={journalTh}>Проект</th>
+                <th className={journalTh}>Вид</th>
+                <th className={journalTh}>Компонент</th>
+                <th className={journalTh}>Что сделано</th>
+                <th className={journalTh}>Результат</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className={journalTbody}>
               {rows.map((r, i) => (
                 <tr key={`${r.ts}-${i}`} className="align-top">
-                  <td className="px-3 py-2 whitespace-nowrap tabular-nums">{formatTs(r.ts)}</td>
-                  <td className="px-3 py-2">{r.username ?? "—"}</td>
-                  <td className="px-3 py-2">{projectName(r.projectId)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{ACTION_KIND_LABEL[r.kind as ActionKind] ?? r.kind}</td>
-                  <td className="px-3 py-2">{r.component ?? "—"}</td>
-                  <td className="px-3 py-2"><ActionTarget r={r} /></td>
-                  <td className="px-3 py-2">
+                  <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{formatTs(r.ts)}</td>
+                  <td className={journalTd}>{r.username ?? "—"}</td>
+                  <td className={journalTd}>{projectName(r.projectId)}</td>
+                  <td className={`${journalTd} whitespace-nowrap`}>{ACTION_KIND_LABEL[r.kind as ActionKind] ?? r.kind}</td>
+                  <td className={journalTd}>{r.component ?? "—"}</td>
+                  <td className={journalTd}><ActionTarget r={r} /></td>
+                  <td className={journalTd}>
                     {r.outcome === "OK" ? (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">OK</span>
+                      <span className={journalBadge("ok")}>OK</span>
                     ) : (
                       <div className="space-y-1">
-                        <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
+                        <span className={journalBadge("error")}>
                           {r.outcome === "ERROR" ? "Ошибка" : r.outcome}
                         </span>
                         {r.error && <div className="text-xs text-red-600 dark:text-red-400 break-words">{r.error}</div>}
@@ -269,13 +234,7 @@ export default function ActionsClient() {
                   </td>
                 </tr>
               ))}
-              {!rows.length && !loading && (
-                <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
-                    За выбранный период действий нет
-                  </td>
-                </tr>
-              )}
+              {!rows.length && !loading && <JournalEmptyRow colSpan={7}>За выбранный период действий нет</JournalEmptyRow>}
             </tbody>
           </table>
         </div>
@@ -293,7 +252,8 @@ export default function ActionsClient() {
             </button>
           </div>
         )}
-      </div>
+        </div>
+        </div>
     </div>
   );
 }
