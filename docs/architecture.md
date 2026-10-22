@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
-| 6 | Разрезать `useEditorStore` на слайсы по зонам | — |
+| 6 | Разрезать `useEditorStore` на слайсы по зонам | в работе: 1 из 6 зон (камера и холст), см. таблицу зон ниже |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
 
@@ -267,12 +267,26 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 
 ### Зоны `useEditorStore` (для шага 6)
 
-| Зона | Поля / экшены | Куда |
-|---|---|---|
-| Проекты и выпуски | `projectList`, `currentProject`, `createProject`, `releaseProject`, `projectRuntimeFlags` | `core/project` (+ Query) |
-| Сцены | `scene`, `sceneList`, `loadScene`, `createScene`, `sceneSource`, `draftStash` | `core/project` |
-| Документ | `elements`, группы, компоненты, свойства, привязки, состояния | `core/scene` или `editor/model/document.slice` |
-| Выделение и буфер | `selectedIds`, `clipboard`, align/distribute, `activeGroupKey` | `editor/model/selection.slice` |
-| Камера и холст | `camera`, `canvasRect`, `pendingPlacement`, `monitorView` | `editor/model/camera.slice` |
-| Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview` | `editor/model/versions.slice` |
+**Стор остаётся один — режется файл.** Зоны меняют друг друга одним `set()` (загрузка сцены
+сбрасывает и элементы, и выделение), а undo (zundo) завязан на `elements` этого стора;
+несколько сторов сломали бы атомарность. Каждая зона — файл-слайс в
+`src/modules/editor/model/slices/<зона>.slice.ts`:
+
+- интерфейс зоны (`CameraSlice`) с комментариями к полям — `EditorState = CameraSlice & …`;
+- `createXxxSlice(set, get)` с **узкими** типами: слайс объявляет, что ему нужно от остального
+  стора (`CameraDeps = CameraSlice & {elements}`), а не берёт весь `EditorState`;
+- стор подмешивает слайс: `...createCameraSlice(set, get)`; 69 импортёров не меняются;
+- код переносится без изменений; другие зоны могут писать поля слайса своим `set()`.
+
+Образец — `camera.slice.ts`. Сборка стора пока в `src/store/useEditorStore.ts`; её перенос
+и правка импортов — отдельным коммитом, когда зоны разъедутся.
+
+| Зона | Поля / экшены | Куда | Статус |
+|---|---|---|---|
+| Камера и холст | `camera`, `canvasRect`, `pendingPlacement`, `ensureElementVisible` | `camera.slice` | сделано (`setMonitorView`, `setSheet` пишут `elements` — остались в документе) |
+| Выделение и буфер | `selectedIds`, `clipboard`, align/distribute, `activeGroupKey` | `selection.slice` | — |
+| Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview` | `versions.slice` | — |
+| Проекты и выпуски | `projectList`, `currentProject`, `createProject`, `releaseProject`, `projectRuntimeFlags` | `projects.slice` (позже `core/project`) | — |
+| Сцены | `scene`, `sceneList`, `loadScene`, `createScene`, `sceneSource`, `draftStash` | `scenes.slice` (позже `core/project`) | — |
+| Документ | `elements`, группы, компоненты, свойства, привязки, состояния | `document.slice` | — |
 | Runtime монитора | ~~`runtimeOverridesByElementKey`, `noDataElementKeys`~~ → `core/scene/runtimeOverlayStore` (шаг 4); `applyRuntimeBatch` пока координирует оба стора | сделано |

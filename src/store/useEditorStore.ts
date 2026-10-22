@@ -52,7 +52,7 @@ import {createUuid} from "@/shared/lib/createUuid";
 import {useRuntimeOverlayStore} from "@/core/scene";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
-import {cameraToReveal} from "@/lib/editor/revealCamera";
+import {createCameraSlice, type CameraSlice} from "@/modules/editor";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
@@ -79,7 +79,8 @@ import {rememberProject} from "@/lib/editor/projectMemory";
 
 export type {EditorProject};
 
-type EditorState = {
+// Стор режется на слайсы по зонам (docs/architecture.md, шаг 6); поля слайса описаны в его файле.
+type EditorState = CameraSlice & {
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
   currentProject: EditorProject | null;
@@ -184,7 +185,6 @@ type EditorState = {
   /** Сброс всех рантайм-карт (выход из монитора). */
   clearRuntime: () => void;
   clipboard: DiagramElement[] | null;
-  canvasRect: DOMRect | null;
   /** Размер листа сцены. Читается из elements (`resolveSheet`), тут только запись. */
   setSheet: (w: number, h: number) => void;
   connecting: {
@@ -194,10 +194,6 @@ type EditorState = {
     mouseY: number;
   } | null;
 
-  camera: {x: number, y: number, zoom: number};
-  setCameraPan: (dx: number, dy: number) => void;
-  setCameraZoom: (newZoom: number) => void;
-  setCamera: (x: number, y: number, zoom: number) => void;
   /**
    * Зафиксировать вид сцены для монитора (замок в панели зума редактора) или снять его
    * (`null`). Это данные сцены, а не состояние просмотра: вид пишется в служебный элемент
@@ -205,21 +201,6 @@ type EditorState = {
    * сервер с сохранением. См. lib/editor/monitorView.ts.
    */
   setMonitorView: (view: MonitorView | null) => void;
-  /**
-   * Подвести камеру к элементу, если он вне видимой области (иначе ничего не делает).
-   * Для панели «Слои»: выделение само по себе холст не двигает, и выбранный элемент
-   * мог оказаться далеко за краем экрана.
-   */
-  ensureElementVisible: (key: string) => void;
-
-  /**
-   * «Вооружённый» инструмент палитры: клик по элементу палитры сохраняет сюда его
-   * тип/шаблон, следующий клик по холсту ставит элемент в эту точку и сбрасывает
-   * pendingPlacement в null (постановка по одному). id — id элемента палитры (для
-   * подсветки именно его и toggle). Не попадает в историю undo (не меняет elements).
-   */
-  pendingPlacement: { id: number; type: ElementType; template?: DiagramElement[] } | null;
-  setPendingPlacement: (p: { id: number; type: ElementType; template?: DiagramElement[] } | null) => void;
 
   /** Сдвиг всех верхнеуровневых выделенных на dx/dy (стрелки, мульти-drag). excludeKey — уже сдвинут сам. */
   moveSelectedBy: (dx: number, dy: number, excludeKey?: string) => void;
@@ -239,7 +220,6 @@ type EditorState = {
   /** Распределение верхнеуровневых выделенных (≥3) с равными зазорами по оси. */
   distributeSelected: (axis: 'h' | 'v') => void;
 
-  setCanvasRect: (rect: DOMRect) => void;
   updateElement: (id: string, data: Partial<DiagramElement>) => void;
   updateElementVisual: (id: string, data: Partial<DiagramElement>) => void;
   /** Мульти-версия updateElementVisual: один шаг undo для всех ключей. */
@@ -1533,6 +1513,8 @@ const rebaseHistoryIds = (current: DiagramElement[]) => {
 
 export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
+      ...createCameraSlice(set, get),
+
       scene: null,
       sceneList: [],
       currentProject: null,
@@ -1638,7 +1620,6 @@ export const useEditorStore = create<EditorState>()(temporal(
       editingTextKey: null,
       currentComponentStateByElementKey: {},
       clipboard: null,
-      canvasRect: null,
       connecting: null,
       isSaving: false,
       isDirty: false,
@@ -1653,19 +1634,6 @@ export const useEditorStore = create<EditorState>()(temporal(
       staleBaseVersion: null,
       autosaveError: null,
       versionPreview: null,
-
-      camera: {x: 0, y: 0, zoom: 1},
-      setCameraPan: (dx, dy) => {
-        set(state => ({
-          camera: {...state.camera, x: state.camera.x + dx, y: state.camera.y + dy}
-        }))
-      },
-      setCameraZoom: (newZoom) => {
-        set(state => ({
-          camera: {...state.camera, zoom: newZoom}
-        }))
-      },
-      setCamera: (x, y, zoom) => set({camera: {x, y, zoom}}),
 
       setMonitorView: (view) => {
         const {scene, currentProject, versionPreview} = get();
@@ -1705,19 +1673,6 @@ export const useEditorStore = create<EditorState>()(temporal(
         });
       },
 
-      ensureElementVisible: (key) => {
-        const {elements, canvasRect, camera} = get();
-        if (!canvasRect) return;
-        const el = getElementIndex(elements).byKey[key];
-        if (!el) return;
-        const next = cameraToReveal(getElementBoundsRendered(el, elements), camera, canvasRect);
-        // null — элемент уже виден. Пишем только реальное движение: лишний set()
-        // перерисовал бы холст на ровном месте.
-        if (next) set({camera: next});
-      },
-
-      pendingPlacement: null,
-      setPendingPlacement: (p) => set({pendingPlacement: p}),
       moveSelectedBy: (dx, dy, excludeKey) => {
         if (!dx && !dy) return;
         const {selectedIds, elements, scene} = get();
@@ -1843,7 +1798,6 @@ export const useEditorStore = create<EditorState>()(temporal(
         get().updateElementVisual(key, {zIndex: bottom - 1});
       },
 
-      setCanvasRect: (rect) => set({canvasRect: rect}),
       /**
        * Размер листа сцены.
        *
