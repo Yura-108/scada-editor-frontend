@@ -1,6 +1,6 @@
 'use client';
 
-import { useLogsStore } from '@/store/useLogsStore';
+import { useLogsSearch } from '@/modules/logs';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
@@ -26,9 +26,7 @@ const COMMAND_TONE: Record<LogEntry['commandType'], 'ok' | 'warn' | 'error'> = {
 
 /** Таблица логов — тот же вид, что у «Журнала действий». */
 export default function LogsList() {
-  const { logs, isLoading, hasSearched, searchQuery, getFilteredLogs, fetchLogs } = useLogsStore();
-
-  const filteredLogs = getFilteredLogs();
+  const { logs, filteredLogs, isLoading, hasSearched, searchQuery, refresh } = useLogsSearch();
 
   const handleCancel = async (log: LogEntry) => {
     try {
@@ -49,7 +47,7 @@ export default function LogsList() {
       }
 
       toast.success(`Действие #${log.id} успешно отменено!`);
-      await fetchLogs();
+      await refresh();
       // Помечаем базу каналов устаревшей — при следующем входе в /channels она пере-синхронизируется.
       useDeviceStore.getState().markStale();
 
