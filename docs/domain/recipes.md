@@ -12,7 +12,7 @@ condition to become true. It belongs to no component and no scene, but **to a pr
 shot; `component_id`, `type`, `values`, `/resolved` and `POST /api/runtime/recipes/apply` are all
 gone from both sides.
 
-- **Two lists, two sources.** The editor's `useRecipeStore` holds the *draft* of the open project
+- **Two lists, two sources.** The editor's `useRecipes` (TanStack Query, `src/modules/editor/api/recipes.ts`) holds the *draft* of the open project
   (`/api/editor/projects/{id}/recipes[/{id}]`, read `view`/`edit`, write `edit`; `id` is a
   per-project slug — URL-encode it, Cyrillic). The monitor never reads it: `useMonitorRecipesStore`
   loads the **prod release's** recipes from `GET /api/runtime/projects/{id}/recipes`, reloaded by

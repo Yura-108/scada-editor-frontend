@@ -4,7 +4,8 @@ import React, {useEffect, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
-import {useRecipeStore} from "@/store/useRecipeStore";
+import {useEditorStore} from "@/store/useEditorStore";
+import {useInvalidateRecipes} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {fetchVersions} from "@/lib/editor/versionsApi";
@@ -30,6 +31,8 @@ interface Props {
 
 function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
   const closeModal = useModalStore(s => s.closeModal);
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const invalidateRecipes = useInvalidateRecipes();
   const [versions, setVersions] = useState<VersionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
@@ -52,8 +55,7 @@ function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
       }
       toast.success(`Рецепт «${recipe.name}» восстановлен из v${versionNo}. До мойки он дойдёт с новым выпуском`);
       // Ответ восстановления — документ, а не `Recipe`: проще и надёжнее перечитать список.
-      const {projectId, loadRecipes} = useRecipeStore.getState();
-      if (projectId != null) void loadRecipes(projectId);
+      if (projectId != null) void invalidateRecipes(projectId);
       closeModal();
     } finally {
       setRestoring(false);
