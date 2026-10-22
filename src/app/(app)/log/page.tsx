@@ -2,7 +2,8 @@
 
 import {useEffect} from "react";
 import {Loader2, RefreshCw} from "lucide-react";
-import {useLogsStore} from "@/store/useLogsStore";
+import {useShallow} from "zustand/react/shallow";
+import {useLogsFilterStore, useLogsSearch} from "@/modules/logs";
 import LogsList from "@/components/logs/LogsList";
 import {Button} from "@/shared/ui/Button";
 import {
@@ -18,25 +19,28 @@ const DAY_MS = 24 * 3600_000;
  * (без запроса) и отмена записи.
  */
 export default function LogsPage() {
-  const {fromDate, toDate, searchQuery, isLoading, error, setFromDate, setToDate, setSearchQuery, fetchLogs} =
-    useLogsStore();
+  const {fromDate, toDate, searchQuery, setFromDate, setToDate, setSearchQuery} = useLogsFilterStore(useShallow(s => ({
+    fromDate: s.fromDate, toDate: s.toDate, searchQuery: s.searchQuery,
+    setFromDate: s.setFromDate, setToDate: s.setToDate, setSearchQuery: s.setSearchQuery,
+  })));
+  const {isLoading, error, search} = useLogsSearch();
 
   // Первый показ — последние сутки, как в журнале действий: раньше страница открывалась пустой
   // и ждала, пока выберут даты.
   useEffect(() => {
-    const {hasSearched: searched, fromDate: from} = useLogsStore.getState();
-    if (searched || from) return;
+    const store = useLogsFilterStore.getState();
+    if (store.submitted || store.fromDate) return;
     const now = Date.now();
-    setFromDate(toLocalInput(now - DAY_MS));
-    setToDate(toLocalInput(now));
-    void fetchLogs();
-  }, [setFromDate, setToDate, fetchLogs]);
+    store.setFromDate(toLocalInput(now - DAY_MS));
+    store.setToDate(toLocalInput(now));
+    store.submit();
+  }, []);
 
   const applyPreset = (ms: number) => {
     const now = Date.now();
     setFromDate(toLocalInput(now - ms));
     setToDate(toLocalInput(now));
-    void fetchLogs();
+    search();
   };
 
   return (
@@ -45,7 +49,7 @@ export default function LogsPage() {
         title="Логирование"
         description="Изменения устройств и параметров в базе каналов — с возможностью отмены"
       />
-      <form className={journalFilterBar} onSubmit={e => { e.preventDefault(); void fetchLogs(); }}>
+      <form className={journalFilterBar} onSubmit={e => { e.preventDefault(); search(); }}>
         <JournalField label="С">
           <input type="datetime-local" className={journalInput} value={fromDate} onChange={e => setFromDate(e.target.value)} />
         </JournalField>
