@@ -4,7 +4,8 @@ import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, RefreshCw} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
+import {useMonitorRecipes} from "@/modules/monitor";
+import {useEditorStore} from "@/store/useEditorStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
@@ -19,11 +20,12 @@ import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
  *
  * Вести уже идущий процесс удобнее из HUD поверх схемы: он не закрывает мнемосхему.
  *
- * Список рецептов — из prod-выпуска (`useMonitorRecipesStore`, грузит `useProcedureSync`):
- * сохранённый в редакторе, но не выпущенный рецепт мойка не знает, и показывать его нельзя.
+ * Список рецептов — из prod-выпуска (`useMonitorRecipes`, TanStack Query): сохранённый
+ * в редакторе, но не выпущенный рецепт мойка не знает, и показывать его нельзя.
  */
 export function ProcedurePanel() {
-  const {projectId, recipes, isLoading, loadError, load} = useMonitorRecipesStore();
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const {recipes, isLoading, loadError, reload} = useMonitorRecipes(projectId, useEditorStore(s => s.releaseVersionNo));
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 
@@ -101,7 +103,7 @@ export function ProcedurePanel() {
         {loadError ? (
           <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
             <span className="flex-1">Не удалось загрузить рецепты: {loadError}</span>
-            <Button onClick={() => void load(projectId)} disabled={isLoading}>
+            <Button onClick={reload} disabled={isLoading}>
               <RefreshCw size={16} />
               Повторить
             </Button>

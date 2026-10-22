@@ -15,7 +15,7 @@ import {
   resumeProcedure,
   startProcedure,
 } from "@/lib/runtime/procedures";
-import {useProcedureLevelsStore} from "@/store/useProcedureLevelsStore";
+import {useProcedureLevels} from "@/modules/monitor";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {actionDenialText} from "@/lib/runtime/actionAccess";
 import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.types";
@@ -32,7 +32,8 @@ export function useProcedureControls() {
   const [busy, setBusy] = useState(false);
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
   const grant = useCurrentProjectGrant();
-  const levels = useProcedureLevelsStore(s => s.levels);
+  // Подписка, а не эффект: запрос на ключ один, сколько бы мест ни звали хук.
+  const levels = useProcedureLevels(projectId, useEditorStore(s => s.releaseVersionNo));
 
   /**
    * Почему операция недоступна (null — доступна): нет «управления» или уровень ниже

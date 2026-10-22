@@ -42,8 +42,8 @@ here is convenience, never protection.
   `1008` → `rejected`, `1013` → reconnect after 4 s; `POST /sessions` 403 is terminal except
   `ACCESS_NOT_READY`.
 - **Procedure levels** come from prod via `GET /api/runtime/projects/{id}/procedure-levels`
-  (`useProcedureLevelsStore`, loaded by `useProcedureSync` on project and `releaseVersionNo`
-  change); `useProcedureControls().denied[op]` disables the buttons. The editor's
+  (`useProcedureLevels` in `src/modules/monitor`, TanStack Query keyed by project and
+  `releaseVersionNo`, so a new release re-reads them; any failure means empty levels = 1); `useProcedureControls().denied[op]` disables the buttons. The editor's
   `/api/editor/projects/{id}/procedure-levels` is the *draft* — it reaches the monitor only with a
   new prod release, like script levels.
 - `tags/write` always carries `projectId` (400 without it); the backend writes only tags of that

@@ -14,9 +14,10 @@ gone from both sides.
 
 - **Two lists, two sources.** The editor's `useRecipes` (TanStack Query, `src/modules/editor/api/recipes.ts`) holds the *draft* of the open project
   (`/api/editor/projects/{id}/recipes[/{id}]`, read `view`/`edit`, write `edit`; `id` is a
-  per-project slug — URL-encode it, Cyrillic). The monitor never reads it: `useMonitorRecipesStore`
-  loads the **prod release's** recipes from `GET /api/runtime/projects/{id}/recipes`, reloaded by
-  `useProcedureSync` on `(projectId, releaseVersionNo)` like `procedure-levels`. A saved but
+  per-project slug — URL-encode it, Cyrillic). The monitor never reads it: `useMonitorRecipes`
+  (`src/modules/monitor`) loads the **prod release's** recipes from `GET /api/runtime/projects/{id}/recipes`,
+  TanStack Query keyed by `(projectId, releaseVersionNo)` like `procedure-levels`; a new release of the
+  same project keeps the old list on screen until the answer (`placeholderData`). A saved but
   unreleased recipe does not exist for the wash, and an operator with only `operate` gets 403 on the
   editor paths. Starting a recipe missing from prod answers 409 with a `message` (shown as is). A
   running procedure keeps the recipe it started with; a new prod changes only the list.
