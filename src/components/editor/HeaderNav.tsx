@@ -1,108 +1,97 @@
 "use client";
 
-import {useState} from "react";
+import {useLayoutEffect, useRef, useState} from "react";
 import Link from "next/link";
+import {useRouter, usePathname} from "next/navigation";
 import {cn} from "@/lib/utils";
-import {Activity, ClipboardList, Cpu, Database, HashIcon, Layout, Menu, Scroll, ShieldCheck, X} from "lucide-react";
-import {usePathname} from "next/navigation";
+import {Menu, X} from "lucide-react";
 import {Tooltip} from "radix-ui";
+import {adminItem, baseNavItems, isSectionActive, type NavItem} from "@/components/editor/navItems";
+import {guardedClick} from "@/lib/unsavedGuard";
 
-const baseNavItems = [
-  {
-    name: "Редактор схем",
-    href: "/editor",
-    icon: Layout,
-  },
-  {
-    name: "Монитор",
-    href: "/monitor",
-    icon: Activity,
-  },
-  {
-    name: "Автоматизация",
-    href: "/automation",
-    icon: Cpu,
-  },
-  {
-    name: "Данные проекта",
-    href: "/data",
-    icon: Database,
-  },
-  {
-    name: "База каналов",
-    href: "/channels",
-    icon: HashIcon,
-  },
-  {
-    name: "Логирование",
-    href: "/log",
-    icon: Scroll,
-  },
-  {
-    name: "Журнал действий",
-    href: "/actions",
-    icon: ClipboardList,
-  },
-];
+const linkBase = cn(
+  "flex shrink-0 items-center justify-center gap-2 rounded-xl transition-all duration-200 whitespace-nowrap",
+  "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50",
+);
+const linkActive = "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]";
+// Было "hover:text-gray-900 dark:text-white": tailwind-merge оставлял последний dark:text-*,
+// поэтому в тёмной теме неактивный пункт всегда был белым и не отличался от активного.
+const linkIdle = "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5";
 
-/** Только администратору (claim `admin` из токена); сама страница проверяет это ещё раз. */
-const adminItem = {
-  name: "Администрирование",
-  href: "/admin",
-  icon: ShieldCheck,
-};
+/** Пункт с подписью: им же меряется, помещаются ли подписи. */
+const labeledClass = "px-3 py-2 text-sm font-medium";
+const iconOnlyClass = "p-2.5";
 
-/**
- * Раздел считается активным и на вложенных маршрутах: точное сравнение
- * `pathname === href` не подсвечивало ни `/channels/123`, ни любой другой
- * вложенный путь.
- */
-const isSectionActive = (pathname: string, href: string) =>
-  pathname === href || pathname.startsWith(`${href}/`);
+function ItemContent({item, isActive, labeled}: {item: NavItem; isActive: boolean; labeled: boolean}) {
+  return (
+    <>
+      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-indigo-400" : "text-current")} />
+      {labeled && <span>{item.name}</span>}
+    </>
+  );
+}
 
 export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
   const pathname = usePathname();
+  const router = useRouter();
   const navItems = isAdmin ? [...baseNavItems, adminItem] : baseNavItems;
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Подписи показываются, когда помещаются целиком; иначе — только иконки с подсказкой.
+  // Меряем невидимую копию с подписями: по самой навигации не понять, влезут ли подписи,
+  // пока она показана без них. Стартуем с иконок, чтобы шапка не мигала переполнением.
+  const navRef = useRef<HTMLElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [labeled, setLabeled] = useState(false);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const measure = measureRef.current;
+    if (!nav || !measure) return;
+    const update = () => setLabeled(measure.scrollWidth <= nav.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(nav);
+    observer.observe(measure);
+    return () => observer.disconnect();
+  }, [navItems.length]);
+
   return (
     <>
-    {/* Только иконки: разделов уже 8, и с подписями они не помещались даже на широком
-        экране. Название — во всплывающей подсказке (наведение и фокус с клавиатуры), активный
-        раздел выделен фоном и цветом иконки. Ниже md — гамбургер (ниже). */}
     <Tooltip.Provider delayDuration={150} skipDelayDuration={300}>
       <nav
-        className="hidden md:flex min-w-0 flex-1 items-center justify-center gap-1"
+        ref={navRef}
+        className="relative hidden md:flex min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden"
         aria-label="Основная навигация"
       >
+        {/* Мерка: та же разметка с подписями, невидимая и вне потока. */}
+        <div ref={measureRef} aria-hidden className="pointer-events-none invisible absolute left-0 top-0 flex w-max gap-1">
+          {navItems.map(item => (
+            <span key={item.href} className={cn(linkBase, labeledClass)}>
+              <ItemContent item={item} isActive={false} labeled />
+            </span>
+          ))}
+        </div>
+
         {navItems.map(item => {
           const isActive = isSectionActive(pathname, item.href);
-
+          const link = (
+            <Link
+              href={item.href}
+              aria-current={isActive ? "page" : undefined}
+              // Без подписи имя ссылки для скринридеров даём явно.
+              aria-label={labeled ? undefined : item.name}
+              onClick={guardedClick(() => router.push(item.href))}
+              className={cn(linkBase, labeled ? labeledClass : iconOnlyClass, isActive ? linkActive : linkIdle)}
+            >
+              <ItemContent item={item} isActive={isActive} labeled={labeled} />
+            </Link>
+          );
+          // Подсказка нужна только иконке: у пункта с подписью она повторяла бы текст.
+          if (labeled) return <span key={item.href} className="contents">{link}</span>;
           return (
             <Tooltip.Root key={item.href}>
-              <Tooltip.Trigger asChild>
-                <Link
-                  href={item.href}
-                  aria-current={isActive ? "page" : undefined}
-                  // Подписи нет — имя ссылки для скринридеров даём явно.
-                  aria-label={item.name}
-                  className={cn(
-                    "flex shrink-0 items-center justify-center p-2.5 rounded-xl transition-all duration-200",
-                    "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50",
-                    isActive
-                      ? "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
-                      // Было "hover:text-gray-900 dark:text-white": tailwind-merge оставлял
-                      // последний dark:text-*, поэтому в тёмной теме неактивный пункт всегда
-                      // был белым и не отличался от активного.
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5"
-                  )}
-                >
-                  <item.icon className={cn(
-                    "w-5 h-5 shrink-0 transition-colors",
-                    isActive ? "text-indigo-400" : "text-current"
-                  )} />
-                </Link>
-              </Tooltip.Trigger>
+              <Tooltip.Trigger asChild>{link}</Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content
                   side="bottom"
@@ -147,8 +136,11 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                // Переход по ссылке закрывает меню.
-                onClick={() => setMobileOpen(false)}
+                onClick={e => {
+                  // Переход по ссылке закрывает меню.
+                  setMobileOpen(false);
+                  guardedClick(() => router.push(item.href))(e);
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive
@@ -167,4 +159,3 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
     </>
   )
 }
-

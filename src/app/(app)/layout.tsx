@@ -1,10 +1,11 @@
 import React from 'react';
-import Link from 'next/link';
 import { Cpu } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import SessionUserBootstrap from '@/components/auth/SessionUserBootstrap';
 import { getUser } from '@/lib/getUser';
 import HeaderNav from '@/components/editor/HeaderNav';
+import LogoLink from '@/components/editor/LogoLink';
+import DocumentTitle from '@/components/DocumentTitle';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 /**
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       {user && <SessionUserBootstrap login={user.login} admin={user.admin} />}
+      <DocumentTitle />
       <header className="sticky top-0 z-header w-full border-b border-gray-200 dark:border-gray-800/60 bg-white dark:bg-gray-900/70 backdrop-blur-md">
         {/* Во всю ширину, а не `container`: разделов стало 7, и в фиксированную ширину
             контейнера они не помещались. Навигация занимает место между логотипом и
@@ -32,10 +34,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* Логотип — ссылка на главную (обычное ожидание от шапки) и заодно
               единственное место, где написано название продукта: раньше это был
               немой div, а подпись рядом была закомментирована. */}
-          <Link
+          <LogoLink
             href="/channels"
             className="flex shrink-0 items-center gap-3 rounded-lg"
-            aria-label="СКАДА — на главную"
+            label="SCADA — на главную"
           >
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Cpu className="w-5 h-5 text-white" />
@@ -43,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="hidden sm:inline md:hidden lg:inline font-bold text-lg tracking-tight text-gray-900 dark:text-white">
               SCADA
             </span>
-          </Link>
+          </LogoLink>
 
           <HeaderNav isAdmin={user?.admin ?? false} />
 

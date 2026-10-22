@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useDeviceStore } from "@/store/useDeviceStore";
+import { confirmLeave } from "@/lib/unsavedGuard";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function LogoutButton() {
   const editingDevices = useDeviceStore(s => s.editingDevices);
 
   const handleLogout = async () => {
+    // Выход уводит со страницы так же, как переход по шапке: черновик раздела пропал бы молча.
+    if (!(await confirmLeave())) return;
     setIsLoading(true);
     await stopEditing(editingDevices);
 
