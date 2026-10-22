@@ -41,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Cpu className="w-5 h-5 text-white" />
             </div>
             <span className="hidden sm:inline md:hidden lg:inline font-bold text-lg tracking-tight text-gray-900 dark:text-white">
-              СКАДА
+              SCADA
             </span>
           </Link>
 
