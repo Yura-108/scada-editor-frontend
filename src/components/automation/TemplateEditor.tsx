@@ -7,7 +7,7 @@ import {javascript} from "@codemirror/lang-javascript";
 import {X} from "lucide-react";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
-import {useAutomationTemplateStore} from "@/store/useAutomationTemplateStore";
+import {useCreateTemplate, useUpdateTemplate} from "@/modules/automation";
 import {AutomationSaveError} from "@/lib/automation/automationApi";
 import {templateBody} from "@/lib/automation/automationTemplates";
 import {fieldInput, fieldLabel} from "@/components/automation/formStyles";
@@ -42,8 +42,8 @@ const fromIoRows = (rows: AutomationIo[]): AutomationTemplateIo[] =>
  */
 export function TemplateEditor({mode, initial, onSaved}: Props) {
   const closeModal = useModalStore(s => s.closeModal);
-  const createTemplate = useAutomationTemplateStore(s => s.createTemplate);
-  const updateTemplate = useAutomationTemplateStore(s => s.updateTemplate);
+  const {mutateAsync: createTemplate} = useCreateTemplate();
+  const {mutateAsync: updateTemplate} = useUpdateTemplate();
 
   const [draft, setDraft] = useState<AutomationTaskTemplate>(initial);
   const [errors, setErrors] = useState<AutomationValidationError[]>([]);
@@ -89,7 +89,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
       const body = templateBody(draft);
       const saved =
         mode === "edit" && draft.id != null
-          ? await updateTemplate(draft.id, body)
+          ? await updateTemplate({id: draft.id, template: body})
           : await createTemplate(body);
       setErrors([]);
       onSaved?.(saved);
