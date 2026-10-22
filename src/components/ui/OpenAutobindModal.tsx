@@ -121,7 +121,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
   }, []);
 
   // Список баз перезапрашивается на каждую смену площадки. `cancelled` — защита от гонки:
-  // ответ по прежней площадке не должен перетереть свежий (тот же приём в StartMenu).
+  // ответ по прежней площадке не должен перетереть свежий (тот же приём в ChannelsToolbar).
   useEffect(() => {
     if (!site) {
       setRoots([]);

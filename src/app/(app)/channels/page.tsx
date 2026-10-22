@@ -1,13 +1,39 @@
 'use client';
 
 import { useEffect } from 'react';
-import StartMenu from '@/components/channels/StartMenu';
+import { Building2, FolderOpen } from 'lucide-react';
+import ChannelsToolbar from '@/components/channels/ChannelsToolbar';
 import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import DeviceParams from '@/components/channels/DeviceParams';
 
+/** Пусто, пока ничего не загружено: подсказываем, где выбрать, вместо пустых панелей. */
+function EmptyState() {
+  return (
+    <div className="flex-1 flex items-center justify-center p-6">
+      <div className="max-w-md text-center text-neutral-600 dark:text-neutral-400">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+          <FolderOpen className="h-7 w-7" />
+        </div>
+        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Проект не загружен</h2>
+        <p className="mt-2 text-sm">
+          На панели сверху выберите <Building2 className="inline h-4 w-4 align-text-bottom" /> площадку,
+          затем один или несколько проектов и нажмите «Загрузить» — слева появится дерево устройств.
+        </p>
+        <p className="mt-2 text-xs">
+          Нет нужного проекта — импортируйте базу из файла кнопкой «Импорт .cdbx» справа сверху.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Workspace() {
-  const { nodes } = useDeviceStore();
+  const nodes = useDeviceStore(s => s.nodes);
+  const isLoadingNodes = useDeviceStore(s => s.isLoadingNodes);
+  const nodesError = useDeviceStore(s => s.nodesError);
+  const loadedRootPath = useDeviceStore(s => s.loadedRootPath);
+  const loaded = nodes.length > 0 || isLoadingNodes || nodesError != null || (loadedRootPath?.length ?? 0) > 0;
 
   // При входе в базу каналов подхватываем изменения (например, отмену действия в логах),
   // если данные были помечены устаревшими.
@@ -16,19 +42,21 @@ export default function Workspace() {
   }, []);
 
   return (
-    <div className="min-h-app bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
-      <main className="container mx-auto flex flex-col md:flex-row justify-around pt-8 pb-20 gap-6 px-8">
-        {nodes && (
-          <aside className="transition-all duration-300 ease-in-out basis-full md:basis-[25%] lg:basis-[20%] md:sticky md:top-8 md:self-start">
-            <DeviceTreePanel />
-          </aside>
-        )}
-        <section className="transition-all duration-300 ease-in-out flex-1">
-          <DeviceParams />
-        </section>
-      </main>
+    <div className="fixed inset-0 top-(--app-header-h) flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
+      <ChannelsToolbar />
 
-      <StartMenu />
+      {loaded ? (
+        <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 p-4 overflow-y-auto md:overflow-hidden">
+          <aside className="shrink-0 h-[60vh] md:h-full md:w-80 lg:w-96">
+            <DeviceTreePanel fill />
+          </aside>
+          <section className="flex-1 min-w-0 md:overflow-y-auto">
+            <DeviceParams />
+          </section>
+        </main>
+      ) : (
+        <EmptyState />
+      )}
     </div>
   );
 }

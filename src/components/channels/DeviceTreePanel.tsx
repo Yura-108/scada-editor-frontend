@@ -179,17 +179,17 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const searchActive = appliedQuery.trim() !== '';
 
   return (
-    <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl flex flex-col overflow-hidden`}>
-      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200 dark:from-purple-950/60 dark:to-indigo-950/60">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-          <Router className={'w-6 h-6 text-purple-600 dark:text-purple-400'}/>
+    <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm flex flex-col overflow-hidden`}>
+      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <Router className={'w-5 h-5 text-indigo-600 dark:text-indigo-400'}/>
           Дерево устройств
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}
         </p>
 
-        <div className="mt-3 flex items-center gap-1 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2">
+        <div className="mt-2 flex items-center gap-1 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 focus-within:border-indigo-500">
           <Search className="w-4 h-4 shrink-0 text-gray-400"/>
           <input
             type="search"
@@ -270,7 +270,9 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
           </div>
         ) : treeData.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            Дерево пусто — выберите площадку и проект ниже.
+            {fill
+              ? 'Дерево пусто — загрузите площадку и проект в разделе «База каналов».'
+              : 'Дерево пусто — выберите площадку и проект на панели сверху.'}
             {/* Чтение фильтруется по веткам каталога: без веток бэкенд отдаёт пустое
                 дерево, а не 403 — иначе пользователь не узнал бы причину. */}
             <p className="mt-2 text-xs">

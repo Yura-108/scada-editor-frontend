@@ -229,14 +229,14 @@ const DeviceParams = () => {
     );
   }
   return (
-    <div className="min-h-app flex flex-col bg-linear-to-b from-gray-50 to-white dark:from-neutral-900 dark:to-neutral-900 border border-transparent dark:border-neutral-800 rounded-2xl shadow-xl">
+    <div className="min-h-full flex flex-col bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm">
       {/* Заголовок */}
-      <div className="px-6 py-4 bg-linear-to-r from-purple-100 to-indigo-200 dark:from-purple-950/60 dark:to-indigo-950/60 rounded-2xl">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-          <Settings className="w-6 h-6 text-purple-600 dark:text-purple-400"/>
+      <div className="px-4 py-3">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/>
           Параметры
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           {currentDevice?.title || 'Device'} • {rawParams.length} параметров
         </p>
       </div>
