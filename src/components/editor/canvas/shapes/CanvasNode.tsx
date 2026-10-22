@@ -163,7 +163,9 @@ function GroupNode({ group, ctx, state }: GroupNodeProps) {
         <GroupFrame
           w={rendered.w}
           h={rendered.h}
-          color={themeColors.selection}
+          // Открытая (вошли двойным кликом) — оранжевая, выделенная — синяя: иначе не понять,
+          // внутри мы группы или просто её выбрали.
+          color={isActiveGroup ? themeColors.activeGroup : themeColors.selection}
           haloColor={themeColors.handleFill}
         />
       )}

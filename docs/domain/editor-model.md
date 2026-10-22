@@ -50,7 +50,8 @@ its background `Rect` in `GroupNode` — the group's only hit area — has no fi
 The selection / active-group frame is **not** drawn by that background `Rect` (it sits under
 the members, so an edge shape would hide it): `GroupFrame` in `CanvasNode.tsx` draws it
 *after* the members as two non-listening `Rect`s — a `handleFill` halo under a solid
-`selection`-blue line (same look for a selected and an entered group), both with
+solid line — `selection` blue for a selected group, `activeGroup` orange for an entered one (the
+only way to tell "inside the group" from "group selected"), both with
 `strokeScaleEnabled={false}` so the width is in screen pixels. The line stands **2 screen
 pixels** outside the content (`FRAME_GAP_PX`) — a purely visual offset, the group's
 `x/y/w/h` stay on the content. Converting screen px to world units needs `zoom`, which
