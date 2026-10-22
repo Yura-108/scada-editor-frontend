@@ -5,7 +5,8 @@ import {
   AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play,
 } from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
+import {useMonitorRecipes} from "@/modules/monitor";
+import {useEditorStore} from "@/store/useEditorStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
@@ -21,9 +22,8 @@ import {
  * чтобы подтвердить шаг, оператор уходил со схемы и переставал видеть процесс, которым
  * управляет. HUD снимает этот выбор — вести и наблюдать можно одновременно.
  *
- * Своего поведения у него нет: действия берутся из `useProcedureControls`, состояние — из
- * `useProcedureStore`, а опрос, уведомления и список рецептов prod-выпуска — в
- * `useProcedureSync`, смонтированном один раз в `MonitorClient`.
+ * Своего поведения у него нет: действия — `useProcedureControls`, состояние — `useProcedureStore`,
+ * рецепты prod-выпуска — `useMonitorRecipes`, опрос и уведомления — `useProcedureSync` (MonitorClient).
  */
 
 /** Отступ от краёв области схемы. */
@@ -33,7 +33,7 @@ const MARGIN = 8;
 const SAVE_DELAY_MS = 300;
 
 export function ProcedureHud() {
-  const recipes = useMonitorRecipesStore(s => s.recipes);
+  const {recipes} = useMonitorRecipes(useEditorStore(s => s.currentProject?.id ?? null), useEditorStore(s => s.releaseVersionNo));
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 

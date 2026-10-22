@@ -10,7 +10,7 @@ import type {Recipe, RecipeCreatePayload} from "@/types/recipe.types";
  * Контракт `docs/contract/2026-10-19-recipes-in-project-contract.md`: рецепт принадлежит
  * проекту, смотреть — `view`/`edit`, менять — `edit`. До мойки он доезжает только с новым
  * prod-выпуском, поэтому монитор этот список НЕ читает — у него свой из runtime
- * (`useMonitorRecipesStore`), ровно тот, что исполнит процедура.
+ * (`useMonitorRecipes` в модуле monitor), ровно тот, что исполнит процедура.
  */
 export const recipeKeys = {
   list: (projectId: number) => ["recipes", projectId] as const,

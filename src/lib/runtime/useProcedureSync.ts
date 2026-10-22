@@ -5,8 +5,6 @@ import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {fetchProcedureStatus, NoActiveProcedureError} from "@/lib/runtime/procedures";
-import {useProcedureLevelsStore} from "@/store/useProcedureLevelsStore";
-import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
 
 /**
  * Фоновая часть процедуры: сверка состояния и уведомления об отказах.
@@ -27,14 +25,8 @@ export function useProcedureSync(): void {
   const recipeId = useProcedureStore(s => s.recipeId);
   const lastAlert = useProcedureStore(s => s.lastAlert);
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
-  const releaseVersionNo = useEditorStore(s => s.releaseVersionNo);
-
-  // Уровни операций и сами рецепты — из prod-выпуска: другой проект или другой выпуск
-  // (TREE_CHANGED меняет releaseVersionNo) — другие уровни и другой список.
-  useEffect(() => {
-    void useProcedureLevelsStore.getState().load(projectId);
-    void useMonitorRecipesStore.getState().load(projectId);
-  }, [projectId, releaseVersionNo]);
+  // Уровни операций и рецепты prod-выпуска грузит TanStack Query (src/modules/monitor):
+  // номер выпуска в ключе, TREE_CHANGED перечитывает их сам — эффект здесь не нужен.
 
   /**
    * Отказ записи внутри шага виден ТОЛЬКО этим каналом: запись из `action` идёт
