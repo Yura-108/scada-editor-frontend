@@ -1,10 +1,10 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {useRecipeStore} from "@/store/useRecipeStore";
+import {useRecipeMutations, useRecipes} from "@/modules/editor";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
 import openRecipeEditorModal from "@/components/editor/recipes/RecipeEditorModal";
 import {openRecipeHistoryModal} from "@/components/editor/recipes/RecipeHistoryModal";
@@ -31,6 +31,8 @@ const VALUE_TYPE_LABELS: Record<string, string> = {
   string: "строка",
 };
 
+const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []` давал бы новый массив на каждый рендер
+
 const cellClass = "px-4 py-2 align-top";
 const headClass = "px-4 py-2 font-medium";
 
@@ -44,8 +46,12 @@ const inputClass = cn(
 );
 
 export function RecipesPanel() {
-  const {projectId: loadedFor, recipes, isLoading, loadError, loadRecipes, updateRecipe, deleteRecipe} = useRecipeStore();
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const recipesQuery = useRecipes(projectId);
+  const recipes = recipesQuery.data ?? NO_RECIPES;
+  const isLoading = recipesQuery.status !== "success" && recipesQuery.isFetching; // перечитка со списком — фоном
+  const loadError = recipesQuery.status === "error" ? recipesQuery.error.message || "Ошибка загрузки рецептов" : null;
+  const {updateRecipe, deleteRecipe} = useRecipeMutations(projectId);
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -54,12 +60,6 @@ export function RecipesPanel() {
   const [savingId, setSavingId] = useState<string | null>(null);
   // Смотреть — `view`/`edit`, менять — `edit` в этом проекте (иначе бэкенд ответит 403 NO_EDIT).
   const canEditRecipes = useCurrentProjectGrant().edit;
-
-  // Флага загрузки в компоненте нет намеренно: он в сторе, иначе это был бы `setState`
-  // прямо в эффекте (`projectId` ставится до запроса и гасит повторный вызов).
-  useEffect(() => {
-    if (projectId != null && loadedFor !== projectId) void loadRecipes(projectId);
-  }, [projectId, loadedFor, loadRecipes]);
 
   // Черновики шагов и раскрытая строка принадлежат рецептам прежнего проекта: id-слаги
   // в разных проектах совпадают («дезинфекция»), и черновик молча уехал бы в чужой рецепт.
@@ -168,7 +168,7 @@ export function RecipesPanel() {
           <p>Не удалось загрузить рецепты: {loadError}</p>
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => void loadRecipes(projectId)}
+            onClick={() => void recipesQuery.refetch()}
           >
             <RefreshCw size={16} />
             Повторить

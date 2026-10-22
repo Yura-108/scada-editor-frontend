@@ -5,7 +5,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, ChevronDown, ChevronUp, Plus, Tags, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useRecipeStore} from "@/store/useRecipeStore";
+import {useEditorStore} from "@/store/useEditorStore";
+import {useRecipeMutations} from "@/modules/editor";
 import {ChooseManifestTagsModal} from "@/components/editor/recipes/ChooseManifestTagsModal";
 import {actionValueText, coerceActionValue, validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
@@ -48,8 +49,7 @@ const sectionTitle = "text-xs font-semibold uppercase tracking-wider text-gray-5
 
 function RecipeEditorContent({recipe}: Props) {
   const closeModal = useModalStore((s) => s.closeModal);
-  const createRecipe = useRecipeStore((s) => s.createRecipe);
-  const updateRecipe = useRecipeStore((s) => s.updateRecipe);
+  const {createRecipe, updateRecipe} = useRecipeMutations(useEditorStore((s) => s.currentProject?.id ?? null));
 
   // Модалка пересоздаётся при каждом открытии (ModalRoot держит content под key={openKey}),
   // поэтому начальные значения всегда актуальны — сбрасывать их эффектом не нужно.
