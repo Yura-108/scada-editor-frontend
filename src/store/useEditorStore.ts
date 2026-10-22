@@ -49,6 +49,7 @@ import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
 import type {AutobindReport} from "@/types/autobind.types";
 import {createUuid} from "@/shared/lib/createUuid";
+import {useRuntimeOverlayStore} from "@/core/scene";
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {elementBoundsRendered, getElementBoundsRendered} from "@/lib/getElementBounds";
 import {cameraToReveal} from "@/lib/editor/revealCamera";
@@ -170,22 +171,10 @@ type EditorState = {
   clearCurrentComponentStateId: (elementKey: string) => void;
 
   /**
-   * Рантайм-оверрайды визуальных свойств (setProp из биндингов монитора).
-   * Живут ПОВЕРХ state.overrides в getRenderedElement и никогда не пишутся
-   * в elements — не попадают ни в undo, ни в автосейв.
-   */
-  runtimeOverridesByElementKey: Record<string, Record<string, unknown>>;
-  /**
-   * Ключи элементов, привязанных к тегу с quality != GOOD (или ещё не получавших
-   * ни одного сообщения — холодный старт). Рисуется оверлеем «нет данных» поверх
-   * готовой сцены (NoDataOverlay), не завязано на elements/undo/автосейв —
-   * docs/contract/TAG_CONTRACT_CHANGES.md B2/B4.
-   */
-  noDataElementKeys: Set<string>;
-  /**
-   * Применяет батч рантайм-изменений одним set(): переключения состояний
-   * (по ИМЕНИ, с каскадом на поддерево) + патчи визуальных свойств + набор
-   * элементов «нет данных». Если фактических изменений нет — set() не вызывается вовсе.
+   * Применяет батч рантайм-изменений: переключения состояний (по ИМЕНИ, с каскадом
+   * на поддерево) — здесь, патчи визуальных свойств и набор «нет данных» — в
+   * `useRuntimeOverlayStore` (core/scene). Оба set() идут подряд синхронно, React
+   * сводит их в одну перерисовку. Без фактических изменений set() не вызывается.
    */
   applyRuntimeBatch: (batch: {
     stateNameByKey?: Record<string, string>;
@@ -1144,6 +1133,20 @@ const applyServerComponents = (
 
   documentGeneration += 1;
 
+  // Рантайм-оверрайды принадлежат ПРЕДЫДУЩЕМУ документу и обнуляются по той же причине,
+  // что и состояния ниже. Ключи элементов переживают серверный круг (см.
+  // transformElements), поэтому `setProp` прошлого визита на схему иначе лёг бы поверх
+  // заново загруженной (в getRenderedElement рантайм применяется последним), а записи по
+  // ключам других схем копились бы в карте всю сессию.
+  //
+  // Не через `clearRuntime()`: тот сбрасывает ещё и ручные значения оператора, а они
+  // привязаны к сессии, а не к схеме, и от переключения слетать не должны. Актуальные
+  // значения движок пересчитает сразу после смены elements — он прогоняет биндинги по
+  // уже известным значениям (см. useRuntimeEngine, эффект на index).
+  //
+  // Сбрасываем ДО смены elements: новый документ не должен ни на кадр получить чужие оверрайды.
+  useRuntimeOverlayStore.getState().resetOverrides();
+
   useEditorStore.setState({
     elements,
     selectedIds: [],
@@ -1151,17 +1154,6 @@ const applyServerComponents = (
     selectedTableCell: null,
     editAllStates: false,
     currentComponentStateByElementKey: {},
-    // Рантайм-оверрайды принадлежат ПРЕДЫДУЩЕМУ документу и обнуляются по той же причине,
-    // что и состояния строкой выше. Ключи элементов переживают серверный круг (см.
-    // transformElements), поэтому `setProp` прошлого визита на схему иначе лёг бы поверх
-    // заново загруженной (в getRenderedElement рантайм применяется последним), а записи по
-    // ключам других схем копились бы в карте всю сессию.
-    //
-    // Не через `clearRuntime()`: тот сбрасывает ещё и ручные значения оператора, а они
-    // привязаны к сессии, а не к схеме, и от переключения слетать не должны. Актуальные
-    // значения движок пересчитает сразу после смены elements — он прогоняет биндинги по
-    // уже известным значениям (см. useRuntimeEngine, эффект на index).
-    runtimeOverridesByElementKey: {},
   });
 
   return elements;
@@ -1645,8 +1637,6 @@ export const useEditorStore = create<EditorState>()(temporal(
       editAllStates: false,
       editingTextKey: null,
       currentComponentStateByElementKey: {},
-      runtimeOverridesByElementKey: {},
-      noDataElementKeys: new Set(),
       clipboard: null,
       canvasRect: null,
       connecting: null,
@@ -2119,33 +2109,17 @@ export const useEditorStore = create<EditorState>()(temporal(
           if (changed) patch.currentComponentStateByElementKey = nextMap;
         }
 
-        // 2) Патчи визуальных свойств — только в рантайм-карту, elements не трогаем.
-        if (propsByKey && Object.keys(propsByKey).length) {
-          let changed = false;
-          const nextOverrides = {...state.runtimeOverridesByElementKey};
-          for (const [elementKey, props] of Object.entries(propsByKey)) {
-            const prev = nextOverrides[elementKey] ?? {};
-            const merged = {...prev, ...props};
-            if (Object.keys(props).some(k => !Object.is(prev[k], props[k]))) {
-              nextOverrides[elementKey] = merged;
-              changed = true;
-            }
-          }
-          if (changed) patch.runtimeOverridesByElementKey = nextOverrides;
-        }
-
-        // 3) Набор «нет данных» (B2/B4) — движок уже присылает только изменившийся
-        // набор (diff внутри useRuntimeEngine), здесь достаточно просто заменить.
-        if (noDataKeys) patch.noDataElementKeys = noDataKeys;
-
         // Ничего фактически не изменилось — не дёргаем ни стор, ни рендер.
         if (Object.keys(patch).length) set(patch);
+
+        // 2) Патчи визуальных свойств и 3) набор «нет данных» (B2/B4) — в рантайм-слой,
+        // elements не трогаем. Пустой патч там тоже не вызывает set().
+        useRuntimeOverlayStore.getState().applyPatch({propsByKey, noDataKeys});
       },
-      clearRuntime: () => set({
-        runtimeOverridesByElementKey: {},
-        currentComponentStateByElementKey: {},
-        noDataElementKeys: new Set(),
-      }),
+      clearRuntime: () => {
+        set({currentComponentStateByElementKey: {}});
+        useRuntimeOverlayStore.getState().clear();
+      },
       updateElementVisual: (key, updates) => get().updateElementsVisual([key], updates),
       // Мульти-версия: один set() (= один шаг undo) для всех ключей.
       updateElementsVisual: (keys, updates) => {

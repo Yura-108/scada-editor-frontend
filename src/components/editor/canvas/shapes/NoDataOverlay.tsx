@@ -5,6 +5,7 @@ import { Group, Rect, Circle, Text } from "react-konva";
 import { DiagramElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
 import { useEditorStore } from "@/store/useEditorStore";
+import { useRuntimeOverlayStore } from "@/core/scene";
 import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";
 
@@ -28,7 +29,7 @@ export function NoDataOverlay({ noDataElementKeys, elements, elementsMap }: NoDa
   // не трогая `elements`. Без подписки бейдж «нет данных» остался бы от прошлого
   // состояния — там, где компонент стоял до переключения.
   const stateByKey = useEditorStore(s => s.currentComponentStateByElementKey);
-  const runtimeByKey = useEditorStore(s => s.runtimeOverridesByElementKey);
+  const runtimeByKey = useRuntimeOverlayStore(s => s.overridesByKey);
 
   if (!noDataElementKeys.size) return null;
 

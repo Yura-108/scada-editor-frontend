@@ -190,8 +190,9 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 Значения тегов приходят часто. Они **не должны** лежать в сторе документа редактора (там zundo и
 флаг `isDirty`). Правила:
 
-- Runtime-состояние монитора (`runtimeOverridesByElementKey`, `noDataElementKeys`,
-  `applyRuntimeBatch`) живёт в отдельном сторе модуля `monitor`.
+- Рантайм-слой (оверрайды свойств, набор «нет данных») живёт в `useRuntimeOverlayStore`
+  (`core/scene`): пишет его монитор, а читает холст, общий для редактора и монитора, поэтому
+  стор лежит в `core`, а не в модуле `monitor`.
 - Обновления из WS собираются пачкой и применяются одним `set` (так уже делает `flush`).
 - Компонент подписывается на свой элемент/тег: `useElementRuntime(key)`, а не на весь объект.
 - Особые правила `pendingRef` / `flush` / `SNAPSHOT` — в `docs/domain/monitor.md`, их нельзя ломать.
@@ -237,7 +238,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 1 | Документация: этот файл, `docs/domain/`, короткий `CLAUDE.md` | готово |
 | 2 | ESLint: `max-lines`, границы слоёв — в режиме `warn` (`eslint.config.mjs`) | готово: 22 длинных файла, 28 длинных функций, 44 импорта против слоёв |
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
-| 4 | Вынести runtime-состояние монитора из `useEditorStore` | — |
+| 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | — |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | — |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
@@ -264,4 +265,4 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | Выделение и буфер | `selectedIds`, `clipboard`, align/distribute, `activeGroupKey` | `editor/model/selection.slice` |
 | Камера и холст | `camera`, `canvasRect`, `pendingPlacement`, `monitorView` | `editor/model/camera.slice` |
 | Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview` | `editor/model/versions.slice` |
-| Runtime монитора | `runtimeOverridesByElementKey`, `noDataElementKeys`, `applyRuntimeBatch` | `monitor/model` |
+| Runtime монитора | ~~`runtimeOverridesByElementKey`, `noDataElementKeys`~~ → `core/scene/runtimeOverlayStore` (шаг 4); `applyRuntimeBatch` пока координирует оба стора | сделано |

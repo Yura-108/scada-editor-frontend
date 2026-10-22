@@ -7,6 +7,7 @@ import { Stage, Layer, Rect, Line, Circle } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "@/store/useEditorStore";
+import { useRuntimeOverlayStore } from "@/core/scene";
 import { snap, GRID } from "@/lib/utils";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
 import {
@@ -81,7 +82,7 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
     camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
-    canvasRect, noDataElementKeys,
+    canvasRect,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
     pendingPlacement, setEditingTextKey, editingTextKey,
     groupSelected, ungroupSelected,
@@ -96,7 +97,6 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     activeGroupKey: s.activeGroupKey, enterGroup: s.enterGroup, exitGroup: s.exitGroup,
     clearSelection: s.clearSelection,
     canvasRect: s.canvasRect,
-    noDataElementKeys: s.noDataElementKeys,
     moveSelectedBy: s.moveSelectedBy, duplicateSelected: s.duplicateSelected,
     selectAllInScope: s.selectAllInScope, setCamera: s.setCamera,
     pendingPlacement: s.pendingPlacement,
@@ -104,6 +104,8 @@ export default function Canvas({ readOnly = false, archive = false }: CanvasProp
     groupSelected: s.groupSelected, ungroupSelected: s.ungroupSelected,
     setMonitorView: s.setMonitorView,
   })));
+  // «Нет данных» — рантайм-слой монитора (core/scene), не стор редактора.
+  const noDataElementKeys = useRuntimeOverlayStore(s => s.noDataKeys);
 
   const { resolvedTheme, themeColors } = useThemeColors();
 
