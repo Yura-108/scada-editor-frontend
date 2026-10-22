@@ -233,7 +233,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | # | Шаг | Статус |
 |---|---|---|
 | 1 | Документация: этот файл, `docs/domain/`, короткий `CLAUDE.md` | готово |
-| 2 | ESLint: `max-lines`, границы слоёв — в режиме `warn` | — |
+| 2 | ESLint: `max-lines`, границы слоёв — в режиме `warn` (`eslint.config.mjs`) | готово: 22 длинных файла, 28 длинных функций, 44 импорта против слоёв |
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | — |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | — |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | — |
