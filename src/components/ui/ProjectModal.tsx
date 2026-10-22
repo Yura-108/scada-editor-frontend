@@ -1,7 +1,7 @@
 "use client";
 
 import {useModalStore} from "@/store/modalStore";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect, useMemo} from "react";
@@ -10,7 +10,7 @@ import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
 import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {openProcedureLevelsModal} from "@/components/editor/ProcedureLevelsModal";
 import {canOpenInEditor, grantOf} from "@/lib/access/projectAccess";
 import {useSessionUserStore} from "@/store/useSessionUserStore";

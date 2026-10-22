@@ -4,7 +4,7 @@ import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { useEditorStore } from "@/store/useEditorStore";
 import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
-import isIntersecting from "@/lib/isIntersecting";
+import isIntersecting from "@/shared/lib/isIntersecting";
 import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/editor/zoomLimits";
 import { getElementIndex } from "@/lib/editor/elementIndex";

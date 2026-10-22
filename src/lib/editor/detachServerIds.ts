@@ -1,6 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {PropertyRef} from "@/types/binding.types";
-import {createUuid} from "@/lib/createUuid";
+import {createUuid} from "@/shared/lib/createUuid";
 
 /**
  * Снимает серверные id вложенных сущностей с копии элемента.

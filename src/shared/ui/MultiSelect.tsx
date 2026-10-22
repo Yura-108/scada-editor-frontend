@@ -1,7 +1,7 @@
 import React, {useMemo, useState} from "react";
 import * as Popover from '@radix-ui/react-popover';
 import {Check, ChevronDown, Search, X} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 
 interface MultiSelectProps {
   options: { value: string; label: string }[];

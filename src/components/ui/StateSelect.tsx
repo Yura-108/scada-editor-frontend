@@ -2,14 +2,14 @@ import * as Select from "@radix-ui/react-select";
 import {ChevronDown} from "lucide-react";
 import React, {useEffect} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
-import SelectItem from "@/components/ui/SelectItem";
+import SelectItem from "@/shared/ui/SelectItem";
 import {
   selectContentClassName,
   selectIconClassName,
   selectScrollButtonClassName,
   selectTriggerClassName,
-} from "@/components/ui/selectStyles";
-import {cn} from "@/lib/utils";
+} from "@/shared/ui/selectStyles";
+import {cn} from "@/shared/lib/cn";
 
 interface Props {
   elementKey: string;

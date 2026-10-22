@@ -3,18 +3,18 @@
 import React, {useEffect, useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
-import {Collapsible} from "@/components/ui/codeModalParts";
+import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Collapsible} from "@/shared/ui/codeModalParts";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/ui/select";
 import type {AutobindMiss, AutobindReport} from "@/types/autobind.types";
 
 const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider";

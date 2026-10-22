@@ -5,7 +5,7 @@ import {PinOff} from "lucide-react";
 import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
 import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useEditorStore} from "@/store/useEditorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {handleTabListKey} from "@/lib/editor/tabListKeys";

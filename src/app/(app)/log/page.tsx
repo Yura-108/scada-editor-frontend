@@ -4,7 +4,7 @@ import {useEffect} from "react";
 import {Loader2, RefreshCw} from "lucide-react";
 import {useLogsStore} from "@/store/useLogsStore";
 import LogsList from "@/components/logs/LogsList";
-import {Button} from "@/components/ui/Button";
+import {Button} from "@/shared/ui/Button";
 import {
   journalFilterBar, journalInput, journalPage, JournalField, JournalPresets, JournalTitle, toLocalInput,
 } from "@/components/journal/journalUi";

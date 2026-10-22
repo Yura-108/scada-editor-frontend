@@ -3,7 +3,7 @@
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
@@ -14,7 +14,7 @@ import {
   notifyRuntimeTagsWritten,
 } from "@/lib/runtime/runtimeEventBus";
 import {clearRuntimeTagInterest, setRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,
   normalizeTagWriteResults, tagWriteOutcome, tagWriteStatusLabel,

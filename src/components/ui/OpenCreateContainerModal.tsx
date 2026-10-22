@@ -1,10 +1,10 @@
 import { useModalStore } from "@/store/modalStore";
 import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 import { Type } from "lucide-react";
 import { useDeviceStore } from "@/store/useDeviceStore";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface Props {
   title: string;

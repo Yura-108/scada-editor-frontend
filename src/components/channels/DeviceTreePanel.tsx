@@ -7,7 +7,7 @@ import {ChevronDown, ChevronUp, Router, Search, X} from 'lucide-react';
 import {useDeviceStore} from '@/store/useDeviceStore';
 import TitleRenderer from '@/components/ui/TitleRenderer';
 import {DeviceNodeType} from '@/types/nodeTypes';
-import SwitcherIcon from '@/components/ui/SwitcherIcon';
+import SwitcherIcon from '@/shared/ui/SwitcherIcon';
 import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";

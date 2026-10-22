@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {MAX_ACCESS_LEVEL, MIN_ACCESS_LEVEL} from "@/types/access.types";
 
 const LEVELS = Array.from({length: MAX_ACCESS_LEVEL - MIN_ACCESS_LEVEL + 1}, (_, i) => MIN_ACCESS_LEVEL + i);

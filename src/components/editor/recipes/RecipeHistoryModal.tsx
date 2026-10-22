@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {fetchVersions} from "@/lib/editor/versionsApi";
 import {readBackendError} from "@/lib/access/accessErrors";

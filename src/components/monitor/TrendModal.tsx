@@ -3,11 +3,11 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useTrendStore} from "@/store/useTrendStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming} from "@/lib/editor/trendSettings";
 import {buildTrendGeometry, formatTrendTime, formatTrendValue} from "@/lib/editor/trendGeometry";

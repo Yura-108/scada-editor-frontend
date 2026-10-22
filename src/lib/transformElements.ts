@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {createUuid} from "@/lib/createUuid";
+import {createUuid} from "@/shared/lib/createUuid";
 import {parseBindings} from "@/lib/parseBindings";
 import {parseEvents} from "@/lib/parseEvents";
 import type {PropertyCreateDto} from "@/types/tags.types";

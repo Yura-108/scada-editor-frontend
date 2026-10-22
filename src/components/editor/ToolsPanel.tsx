@@ -10,7 +10,7 @@ import {
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
 } from "lucide-react";
-import {downloadJson, safeFileName} from "@/lib/downloadJson";
+import {downloadJson, safeFileName} from "@/shared/lib/downloadJson";
 import {choiceModal} from "@/components/ui/ConfirmModal";
 import {
   buildDeviceLayout,

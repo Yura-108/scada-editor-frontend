@@ -1,7 +1,7 @@
 import {useEffect} from "react";
 import {Client, type StompSubscription} from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import {devLog} from "@/lib/devLog";
+import {devLog} from "@/shared/lib/devLog";
 import {gatewayHttpOrigin} from "@/lib/gatewayOrigin";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useSceneChangeStore} from "@/store/useSceneChangeStore";

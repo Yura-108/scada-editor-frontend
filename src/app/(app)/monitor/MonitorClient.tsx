@@ -11,7 +11,7 @@ import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine
 import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
 import {ProcedureHud} from "@/components/monitor/ProcedureHud";
 import {AutomationTaskPanel, countTaskProblems} from "@/components/monitor/AutomationTaskPanel";

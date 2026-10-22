@@ -1,5 +1,5 @@
 import React from "react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 
 /**
  * Общий вид журналов — «Журнал действий» и «Логирование». Страницы показывают разные записи,

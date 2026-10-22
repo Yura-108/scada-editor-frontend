@@ -1,5 +1,5 @@
 import {create} from "zustand/react";
-import {formatLocalDateTime} from "@/lib/formatLocalDateTime";
+import {formatLocalDateTime} from "@/shared/lib/formatLocalDateTime";
 import {LogEntry} from "@/types/logs.type";
 
 interface LogsState {

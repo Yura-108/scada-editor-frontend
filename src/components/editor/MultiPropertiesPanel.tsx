@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useMemo} from "react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {elementPropertyMap, Z_INDEX_FIELD} from "@/constants/propertiesPanel";
 import {useEditorStore} from "@/store/useEditorStore";

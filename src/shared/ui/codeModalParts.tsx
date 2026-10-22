@@ -3,7 +3,7 @@
 import React, {ReactNode, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronRight, HelpCircle} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 
 /**
  * Заголовок модалки с описанием, спрятанным под значок «?».

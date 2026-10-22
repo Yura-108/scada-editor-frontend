@@ -3,8 +3,8 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {GitBranch, KeyRound, Loader2, Plus, RefreshCw, Save, ShieldCheck, Trash2, Users} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {passwordProblem} from "@/components/auth/ChangePasswordModal";

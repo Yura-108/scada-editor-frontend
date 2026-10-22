@@ -4,7 +4,7 @@ import { useLogsStore } from '@/store/useLogsStore';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 import { toast } from "sonner";
 import {
   formatTs, journalBadge, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,

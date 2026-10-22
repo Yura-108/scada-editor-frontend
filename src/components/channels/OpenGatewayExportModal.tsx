@@ -4,11 +4,11 @@ import React, {useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Check, Copy, Download, FileDown} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
-import {copyText, downloadText} from "@/lib/downloadText";
-import {safeFileName} from "@/lib/downloadJson";
+import {Button, ModalFooter} from "@/shared/ui/Button";
+import {copyText, downloadText} from "@/shared/lib/downloadText";
+import {safeFileName} from "@/shared/lib/downloadJson";
 
 const inputClass = cn(
   "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",

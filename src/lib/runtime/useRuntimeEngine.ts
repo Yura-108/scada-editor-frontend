@@ -1,6 +1,6 @@
 "use client";
 
-import {devLog} from "@/lib/devLog";
+import {devLog} from "@/shared/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";

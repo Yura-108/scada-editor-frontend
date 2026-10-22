@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Loader2, RefreshCw} from "lucide-react";
-import {Button} from "@/components/ui/Button";
+import {Button} from "@/shared/ui/Button";
 import {
   formatTs, journalBadge, journalFilterBar, journalInput as inputClass, journalPage, journalTableBox, journalTbody,
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,

@@ -1,8 +1,8 @@
 import * as Select from "@radix-ui/react-select";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {Check} from "lucide-react";
 import React from "react";
-import {selectItemClassName} from "@/components/ui/selectStyles";
+import {selectItemClassName} from "@/shared/ui/selectStyles";
 
 export default function SelectItem({
   children,

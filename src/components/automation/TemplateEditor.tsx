@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import CodeMirror from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {X} from "lucide-react";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
 import {useAutomationTemplateStore} from "@/store/useAutomationTemplateStore";
 import {AutomationSaveError} from "@/lib/automation/automationApi";

@@ -1,9 +1,9 @@
 import {useModalStore} from "@/store/modalStore";
 import * as Dialog from "@radix-ui/react-dialog";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {Type} from "lucide-react";
 import React, {useId, useState} from "react";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface InputModalProps {
   title: string;

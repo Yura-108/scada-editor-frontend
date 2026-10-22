@@ -3,13 +3,13 @@ import { usePaletteStore } from "@/store/usePaletteStore";
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 import { Type, ChevronDown } from "lucide-react";
 import { DiagramElement } from "@/types/editorElement.type";
 import { PaletteItemType } from "@/types/palette.types";
-import SelectItem from "./SelectItem";
-import {selectTriggerClassName} from "@/components/ui/selectStyles";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import SelectItem from "@/shared/ui/SelectItem";
+import {selectTriggerClassName} from "@/shared/ui/selectStyles";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface Props {
   onLoadAction: (paletteItem: Omit<PaletteItemType, "id">) => void;

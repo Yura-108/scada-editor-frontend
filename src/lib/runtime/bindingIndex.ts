@@ -1,4 +1,4 @@
-import {devLog, isDev} from "@/lib/devLog";
+import {devLog, isDev} from "@/shared/lib/devLog";
 import type {DiagramElement} from "@/types/editorElement.type";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";

@@ -2,7 +2,7 @@
 
 import React from "react";
 import {MousePointerClick, Pencil, Plus, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import {ElementEventName, ElementEvents} from "@/types/binding.types";
 import {useEditorStore} from "@/store/useEditorStore";

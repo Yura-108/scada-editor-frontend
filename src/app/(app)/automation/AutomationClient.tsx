@@ -4,8 +4,8 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import Link from "next/link";
 import {Plus, RefreshCw, Save, Send, X} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useEditorStore} from "@/store/useEditorStore";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
@@ -33,8 +33,8 @@ import {
 import {TemplatePalette} from "@/components/automation/TemplatePalette";
 import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
 import {compactButton} from "@/components/automation/formStyles";
-import {FloatingHelp} from "@/components/ui/FloatingHelp";
-import {UnsavedNotice} from "@/components/ui/UnsavedNotice";
+import {FloatingHelp} from "@/shared/ui/FloatingHelp";
+import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {confirmLeave, useUnsavedGuard} from "@/lib/unsavedGuard";
 import {
   missingVariables,

@@ -2,8 +2,8 @@
 
 import React, {useEffect} from "react";
 import {Plus} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "@/components/projectData/ColumnsEditor";
 import {RowsGrid} from "@/components/projectData/RowsGrid";

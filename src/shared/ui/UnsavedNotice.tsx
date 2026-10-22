@@ -2,7 +2,7 @@
 
 import React from "react";
 import {AlertTriangle, RotateCcw, Save} from "lucide-react";
-import {Button} from "@/components/ui/Button";
+import {Button} from "@/shared/ui/Button";
 
 interface Props {
   /** Что именно не сохранено: «таблицы», «задачи: 2, watchdog». */

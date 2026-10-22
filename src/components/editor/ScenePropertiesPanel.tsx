@@ -4,7 +4,7 @@ import React, {useMemo} from "react";
 import {useEditorStore} from "@/store/useEditorStore";
 import {NumberInput} from "@/components/ui/NumberInput";
 import {resolveSheet, SHEET_PRESETS, SHEET_MIN, SHEET_MAX, isSameSheet} from "@/lib/editor/sheet";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 
 const inputClasses = cn(
   "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",

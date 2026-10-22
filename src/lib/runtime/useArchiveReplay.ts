@@ -8,7 +8,7 @@ import {
 import type {ArchiveTagChange, RuntimeArchiveInput} from "@/lib/runtime/useRuntimeEngine";
 import {setTrendClock} from "@/store/useTrendStore";
 import {initialReplayState, useArchiveReplayStore} from "@/store/useArchiveReplayStore";
-import {devLog} from "@/lib/devLog";
+import {devLog} from "@/shared/lib/devLog";
 
 /** Тик плеера. interval, а не rAF: в фоновой вкладке rAF замерзает. */
 const TICK_MS = 200;

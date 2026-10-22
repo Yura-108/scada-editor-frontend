@@ -2,7 +2,7 @@
 
 import React, {useEffect, useMemo, useState} from "react";
 import {X} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
 import type {AutomationTaskState, AutomationTaskStatus} from "@/types/automation.types";
 

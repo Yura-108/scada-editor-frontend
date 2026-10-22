@@ -5,7 +5,7 @@ import { useEditorStore } from "@/store/useEditorStore";
 import { toast } from "sonner";
 import { MoveRight } from "lucide-react";
 
-import Modal from "@/components/ui/Modal";
+import Modal from "@/shared/ui/Modal";
 
 import {
   Select,
@@ -13,7 +13,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/shared/ui/select";
 
 interface MoveToGroupModalProps {
   isOpen: boolean;

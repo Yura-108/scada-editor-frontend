@@ -2,7 +2,7 @@
 
 import React, {useEffect, useState} from "react";
 import {Undo2} from "lucide-react";
-import {Button} from "@/components/ui/Button";
+import {Button} from "@/shared/ui/Button";
 import {loadVersionContent} from "@/lib/editor/versionContentCache";
 import {compactButton} from "@/components/automation/formStyles";
 import {
