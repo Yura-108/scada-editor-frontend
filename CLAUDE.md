@@ -1,651 +1,82 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Руководство для Claude Code по этому репозиторию: SCADA-редактор и монитор (Next.js + React + zustand).
 
-## Commands
+## Команды
 
 ```bash
-npm run dev      # Next.js dev server (Turbopack) on http://localhost:3000
+npm run dev      # Next.js dev server (Turbopack) на http://localhost:3000
 npm run lint     # eslint
-npm run build    # next build — NOTE: currently fails on pre-existing type errors (see below)
+npm run build    # next build — сейчас красный из-за старых ошибок типов (см. ниже)
+npx tsc --noEmit # проверка типов
 ```
 
-- **No test runner** is configured (no jest/vitest). There are no unit tests to run.
-- **Husky + lint-staged** run `eslint --fix` + `prettier --write` on staged `*.{js,ts,tsx}` at commit.
-- Path alias: `@/*` → `src/*`.
-- `tsc --noEmit` reports a **stable baseline of pre-existing type errors** (the `ElementType` union omits `button`/`rectangle`/`checkbox`/`progress_bar`/`path` even though they are used everywhere). The app runs because `next dev` tolerates type errors. When editing, verify you don't *add new* errors beyond this baseline rather than expecting a clean `tsc`. `next build` is currently red for the same reason.
-
-## Backend & data flow
-
-This is a **frontend + BFF**, not a standalone app. Everything under `src/app/api/**/route.ts` is a thin proxy to a separate (Java/Spring) backend:
-
-- `BACKEND_URL_EDITOR` (default `http://localhost:8080`) — editor/scene/component APIs.
-- `BACKEND_URL` — device/channel APIs.
-- Auth: `protectedRoute` (`src/lib/protected.ts`) reads the `access_token` httpOnly cookie and forwards it as `Authorization: Bearer …`. Wrap every backend-touching route with it.
-- The cookie's `Secure` flag follows the **request's protocol** (`isHttpsRequest` in `src/lib/setTokenCookies.ts`, honours `x-forwarded-proto`), never `NODE_ENV`: the stand and the Docker package are production builds served over http, where a `Secure` cookie is silently dropped for anything but `localhost`. Login and logout must set the same attributes, or the logout cannot overwrite it.
-
-**Browser-side connections** (monitor WebSocket, editor STOMP) go to the gateway directly, not through
-the BFF: `src/lib/gatewayOrigin.ts` builds the origin from the **page's hostname** + port 8080
-(`NEXT_PUBLIC_GATEWAY_PORT` / `_GATEWAY_URL` / `_RUNTIME_WS_URL` only override — they are baked in at
-build time and the Docker image is shared by all installs). Never hard-code `localhost` there: from
-another machine it is the client itself, and the `access_token` cookie is shared by host, not port.
-Call it at connect time, never at module level (SSR has no `window`).
-
-Three product areas share the app: **editor** (`/editor`, the SCADA scheme editor — the core of this repo), **channels/devices** (`/channels`, device hierarchy + tags), **logs** (`/log`). Stores live in `src/store/` (one Zustand store per area).
-
-## Editor architecture (the important part)
-
-The editor state lives in `src/store/useEditorStore.ts` (Zustand wrapped in **zundo** `temporal` for undo/redo; only `elements` is persisted to history via `partialize`). Understanding these cross-cutting concepts requires reading several files together.
-
-### Flat element array + two kinds of membership
-
-`elements: DiagramElement[]` is a **flat** array. Hierarchy is expressed by keys, not nesting:
-
-- `parentKey` — every element points at its container (or the scene id at the root).
-- `children: string[]` — **only logical components** (the tree the user cares about).
-- `composition: string[]` — **primitive members** (lines/circles/rects/... that form a component's drawing). Hidden from the logical tree; baked into the component's image on save.
-
-Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===true`, or a `complex` type from `elementRegistry`) vs `isLeafPrimitive`. A plain `group` is a "dumb" visual grouping; it becomes a logical **component** only via the explicit **"Создать компонент"** action (`createComponentFromGroup`), which moves primitive descendants into `composition` and sets `isComponent`. `disassembleComponent` reverses it. `groupSelected` itself stays "dumb" (puts everything in `children`).
-
-**Traversal rule of thumb — get this right when touching the store:**
-- Geometry (`getElementBounds*`, `getDescendants`, `getAbsoluteRenderedPosition`) walks by **`parentKey`** → already sees composition primitives, no change needed.
-- Lifecycle / state-propagation / copy (`getDescendantKeys`, cascade delete, `recomputeAncestorBounds`, paste/import/template key-remap) must use **`[...children, ...composition]`**.
-- Logical tree + serialization children walk **`children` only**.
-
-### Coordinates, states, and rendering
-
-- Child coordinates are **local to the parent container**. Absolute position = sum of rendered `x/y` up the `parentKey` chain (`getAbsoluteRenderedPosition`).
-- **Groups store x/y/w/h in the base element; leaf elements store visual props in per-state `overrides`.** `getRenderedElement(el)` returns `{...el, ...currentState.overrides}` — always render/measure via it, never raw `el`. Never write a group's position into overrides (it desyncs `recomputeAncestorBounds`).
-- Each element has `states` (`ComponentState[]`, e.g. "Нормальное"/"Авария"). State changes propagate across a component's subtree **by state name**. `currentComponentStateByElementKey` tracks the active state per element.
-- Canvas rendering is **Konva** (`react-konva`). `src/components/editor/Canvas.tsx` is a thin orchestrator (~200 lines); the actual rendering lives in `src/components/editor/canvas/` — `shapes/ShapeElement.tsx` (leaf shapes) and `shapes/GroupNode.tsx` (recursive group/component, renders `[...composition, ...children]`), wired via an `EditorRenderContext` object (`canvas/types.ts`). Stage interaction/pan/zoom/marquee is `canvas/hooks/useStageInteractions.ts`; pure geometry helpers are in `src/lib/editor/`.
-
-### Snapping (grid = 20)
-
-`snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/lib/utils.ts`). **Snapping must happen in world coordinates.** Konva's `e.target.x()` is already parent-local/world (independent of camera pan/zoom), so `snap(e.target.x())` on drag is correct. Drops convert screen→world *before* snapping in `EditorClient.tsx` (`(localX - camera.x)/camera.zoom`). All group paddings are multiples of `GRID`, so grouping/move preserve alignment. When adding a new interaction that sets position/size, snap it.
-
-**The circle is the one type with two anchor points.** The model stores the bbox top-left in `x/y` (plus `radius` and `w = h = 2·radius` — keep all three in sync), but every interaction speaks in terms of the **centre**: the dragged Konva node's position *is* the centre, so `useMultiDragAndGuides` snaps it absolutely (`snapAbsolute`, unlike line/polygon whose inner node carries an offset), `CircleResizeHandle` snaps the radius to `GRID` live and keeps the centre fixed by committing `x = cx − r`, and the properties panel shows «X/Y центра». Centre on a node + radius a multiple of 20 puts the bbox on the grid too. Break the pairing and the shape jumps at drop — the preview grows around the centre while the commit grows around the corner.
-
-### Monitor view lock (the lock in the zoom panel)
-
-The lock is **set in the editor and acts in the monitor**. Pressing it stores what the engineer
-currently sees — `monitorView = {x, y, w, h}` in world units — in the sheet's meta element
-(`isMetaElement`, next to `canvas`), so it is scene data: undo, dirty flag, saved with the
-scene, visible on any machine. The editor camera is never restricted; the editor only draws a
-dashed frame of the locked area. `src/lib/editor/monitorView.ts` holds all the math.
-
-- **Width-fit, not the same camera**: the monitor canvas is a different size from the editor's,
-  so the monitor zooms to fit `w` into its full width and aligns the left and top edges
-  (`cameraForMonitorView`). `h` is only for the editor frame.
-- **Monitor with a locked view**: no zoom (Ctrl+wheel, pinch, buttons — the zoom panel is replaced
-  by a badge), no middle-button pan, no horizontal wheel; the wheel scrolls vertically, clamped to
-  the sheet (`lockedTopRange`; the locked top itself is always allowed even if it sits outside
-  the sheet). `useSceneCameraMemory("monitor")` applies it over the browser's remembered camera
-  and re-fits on resize, keeping the operator's scroll for the same scene.
-- `monitorView` is in `STRUCTURAL_KEYS` of `transformElements` and restored from the default
-  image: `setMonitorView` writes the base, and a copy left in overrides would win on the next save.
-
-### Serialization round-trip (bake ↔ unbake)
-
-The backend stores each component's visual state as an **opaque JSON string** in `states[].image`, so the frontend can enrich it without a contract change.
-
-- **Save** (`src/lib/buildComponentTree.ts`, called from `exportScene`): builds a nested `ComponentCreateDto` tree from the flat array. For a component, `composition` primitives are **baked** into each state's `image` as a `composition: [descriptor]` array (per-state, matched by state name); only `children` (components) become nested nodes. Plain groups serialize primitives as nodes (unchanged legacy behavior).
-- **Load** (`src/lib/transformElements.ts`, called from `loadScene`): flattens the nested tree back, **unbakes** `image.composition` descriptors into flat primitive elements re-parented into the component, restoring `isComponent`/`composition`. Base `x/y/w/h` come from the *unstripped* default image.
-
-When changing one side, keep the round-trip symmetric. There is a headless way to check it: transpile these two modules + `createUuid` with `npx tsc … --module commonjs` and exercise `buildComponentTree`→`transformElements` in a Node script (they have almost no runtime deps).
-
-**Server ids of nested entities must round-trip.** Every nested entity that the backend numbers carries a `serverId` next to its local `id`: `ComponentState.serverId`, `ElementScript.serverId`, `TagBinding.serverId`, `ElementEventEntry.serverId`. The local `id` is a uuid used as a React key and must never be sent. `transformElements` / `parseBindings` / `parseEvents` set `serverId` only when the backend actually sent one, and `buildComponentTree` emits `id` only when `serverId` exists. A missing id on an *existing* entity reads as "deleted and recreated" — history is lost and merging reports a phantom conflict; renaming without an id is the case that actually breaks. Bindings additionally echo the pair the server assigned (`componentPropertyId` + `componentPropertyName` → `component_property_id` + `component_property_name`): the name is what lets version restore survive a property being deleted and recreated, so never strip it. Anything that **clones** elements (`cloneElementsWithOffset` for paste/duplicate, `addTemplate` for placing a palette template) must strip all of them via the `detachServer*Ids` helpers — the copy is a new entity, and carrying the original's ids tells the server the entity moved. One deliberate exclusion: **nothing server-assigned goes inside an opaque blob** — neither the binding JSON in `script` nor the baked `composition` descriptors in `states[].image`, because those blobs are rebuilt on every save and compared whole during merge.
-
-### Properties travel with the scene
-
-`element.properties` are **ordinary scene data**, not a separate resource. `buildComponentNode`
-sends the **complete** list for every element type; the backend treats the list as the whole set
-for that component (missing = deleted, matched first by `id`, then by `name`) and creates the
-new ones itself. A binding can attach to a property created in the same request via
-`component_property_name`, which is why that field is now always sent.
-
-Consequences worth knowing:
-
-- **A property can be created on an element that does not exist on the server yet.** That is the
-  point of the design — it is what makes palette templates work. Owners are therefore addressed
-  by **element key**, never by `component_id` (which is `null` until the first save and would
-  match every other unsaved element).
-- `addProperty` / `editProperty` / `deleteProperty` are **local `set()` mutations**: they enter
-  undo and mark the scene dirty. The old machinery is gone — no write queue, no
-  `based_on_version` per property, no version re-fetch after each edit, no two-phase
-  "save then provision".
-- **Exactly one network call survives**: renaming an already-saved property still goes through
-  `PUT /api/editor/tags/{id}` (`renamePropertyOnServer`). Its original reason is gone — recipe
-  setpoints used to be keyed by the row **name**, and only that endpoint migrated them — but
-  recipes no longer reference properties at all (see below), so nothing on the frontend now
-  depends on this call. It is kept because what else that backend endpoint does is not visible
-  from here; removing it is a deliberate separate change. **It writes a new scene version**
-  (`version_no` in the response, contract `2026-09-25-script-syntax-check-contract.md`, `scada-r9lr`):
-  `adoptPropertyEditVersion` takes it as `sceneVersion` *before* the local rename, but only if it
-  is our base or base + 1 — any other number means someone else saved in between, so the base is
-  kept and `staleBaseVersion` raised (adopting it would let the next save skip the merge). It also
-  drops the scene-cache entry.
-- `PropertyCreateDto.id` is optional and identity inside a component rests on the **name** — hence
-  the duplicate-name check in `addProperty`/`editProperty` (the backend matches by name too).
-- A property has **three names** (contract `docs/contract/2026-09-24-property-label-contract.md`):
-  `name` — the script address (`OP.V`, `component_property_name`), `label` («Имя») — what the
-  operator sees in the monitor's «Опции», `gateway_name` («Имя для шлюза») — formerly
-  `description`. Properties travel as whole objects, so `normalizeProperty`
-  (`transformElements.ts`) maps `description → gateway_name` and **drops** `description` on every
-  way in (scene/template load, baked `composition` descriptors, JSON import); otherwise the old
-  name would ride along to the server. Table cells bound to `field: "description"` still render
-  `gateway_name`.
-- `propertyRefs` address a neighbour's property by `componentKey` + `propertyName`; the numeric
-  `propertyId` the runtime routes by is filled in from the save response
-  (`resolvePendingPropertyRefs`).
-
-### Recipes: procedural step chains
-
-Contract: `docs/contract/2026-09-09-recipe-steps-contract.md` (verified against the backend
-code, not just the doc). A recipe is a **procedure**, not a set of values: a manifest of tags
-(`tags[]`) plus ordered `steps[]`, where a step writes tags on entry and then waits for its
-condition to become true. It belongs to no component and no scene, but **to a project**
-(contract `docs/contract/2026-10-19-recipes-in-project-contract.md`). An earlier design keyed values to a table's `ComponentProperty` and applied them in one
-shot; `component_id`, `type`, `values`, `/resolved` and `POST /api/runtime/recipes/apply` are all
-gone from both sides.
-
-- **Two lists, two sources.** The editor's `useRecipeStore` holds the *draft* of the open project
-  (`/api/editor/projects/{id}/recipes[/{id}]`, read `view`/`edit`, write `edit`; `id` is a
-  per-project slug — URL-encode it, Cyrillic). The monitor never reads it: `useMonitorRecipesStore`
-  loads the **prod release's** recipes from `GET /api/runtime/projects/{id}/recipes`, reloaded by
-  `useProcedureSync` on `(projectId, releaseVersionNo)` like `procedure-levels`. A saved but
-  unreleased recipe does not exist for the wash, and an operator with only `operate` gets 403 on the
-  editor paths. Starting a recipe missing from prod answers 409 with a `message` (shown as is). A
-  running procedure keeps the recipe it started with; a new prod changes only the list.
-  `document_id` is the history key: `recipes` is a `docType` of the history proxy, and
-  `RecipeHistoryModal` (button in `RecipesPanel`) lists versions and restores — restore changes the
-  draft only, then the list is re-read.
-- **`action[].tag` is the short `tags[].name`, not the tag path.** The path lives in
-  `RecipeTag.tag`. Getting this wrong is a 400 listing the undeclared names, so the steps editor
-  offers a dropdown over the manifest rather than free text.
-- **`value_type` must be one of `number` / `bool` / `string`.** `RecipeServiceImpl.requireTypeMatch`
-  switches on exactly those and falls through to `default -> true`, so an out-of-vocabulary value
-  (e.g. `"float"`, the channel base's own term) does not error — it **silently disables**
-  validation. `tagValueType()` therefore returns the contract vocabulary directly. `bool` cannot
-  be inferred at all: the channel base only knows «Строковый (IsString)», so discrete tags are
-  marked by hand.
-- **Execution lives in the monitor**, in two places over one store: a floating `ProcedureHud`
-  above the mnemonic scheme (drag/collapse persisted in localStorage) and the detailed
-  «Процедуры» tab. `SceneTabs` already supported a non-scene tab via `extraTab` (that's how the
-  editor mounts «Рецепты»). Five endpoints drive it: `start` / `status` / `confirm` / `jump` /
-  `abort`, proxied under `src/app/api/runtime/recipes/[id]/…`. All of them are keyed by
-  `projectId`; `sessionId` rides along only as a signature of which screen pressed the button
-  and grants no rights.
-- **Behaviour is split so two views can coexist.** `useProcedureControls` is callbacks only
-  (safe to call from anywhere); every *effect* — the 5s `GET /status` poll and the alert
-  toasts — lives in `useProcedureSync`, **mounted exactly once** in
-  `MonitorClient`. Duplicate that hook in a component and you get two polls and two toasts per
-  event. A third consumer must follow the same rule.
-- **Switching the watched recipe mid-run is safe and needs no confirmation**: a procedure is
-  keyed `(projectId, recipeId)` on the backend, so switching only changes what the UI watches —
-  the running one keeps going and `GET /status` restores its state on return. Events for other
-  recipes are filtered out by `applyEvents`, so their alerts are not shown while you look
-  elsewhere; that is deliberate, since an alert without its step context misleads.
-- **A 400 from `/status` means the procedure is not running** — never started, or already
-  finished. It no longer means "the runtime lost its state": procedure state lives in
-  `runtime.procedure_state` and is restored exactly after a restart, so `resume-guess` is gone
-  from both sides. The frontend answers by clearing the shown status (`adoptStatuses([])`),
-  never by guessing a step.
-- **409 is a state, not a failure.** `start` on a running procedure, a `stepIndex` that no
-  longer matches, and any call against a project that is not in operation all answer 409. The
-  first two carry the current `ProcedureStatusDto` in a `procedure` field, which
-  `ProcedureConflictError` surfaces so the operator sees which step the wash is on instead of a
-  red toast — a repeated «Запустить» must never re-apply step 0 under a running wash. `jump`
-  still works without a prior `start`: that is how an operator places a procedure by hand.
-- **`procedures[]` is a third array in the WS `UPDATE` frame** and must NOT go through
-  `pendingRef`/`flush`: that path coalesces *values* last-write-wins with a "same value" guard,
-  which would swallow `STEP_STARTED`/`STEP_COMPLETED` pairs and drop `WRITE_FAILED`/`STALLED`
-  entirely. Events are dispatched straight into `useProcedureStore`. It is a store rather than
-  `runtimeEventBus` because that bus is a set of *single slots*, and these events need more than
-  one consumer.
-- **`WRITE_FAILED` is the only way an operator learns a step's write was rejected** — writes
-  inside a step are fire-and-forget. Surface it as an alert. `STALLED` does not stop anything.
-- A recipe is **not scene content**: it creates no canvas elements and no scenes. Its manifest
-  and steps are shown inline in the «Рецепты» panel by expanding a row. An earlier attempt put
-  a generated table on a dedicated scene; that meant canvas elements which had to be kept in
-  sync with a recipe living on the backend, for no gain.
-
-### Direct tag bindings (element value ← tag)
-
-Besides JS bindings and `propertyRefs`, an element can follow a **tag** directly: a binding
-with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` routes it into
-`directTagsByTagId`, and `flush` writes the value straight into the element's render prop
-(`directTarget`, normally `value`) — the same bypass live table cells use, merged through
-`runBindings`' `seedPropsByKey`. Consequences worth knowing:
-
-- **The element needs no properties of its own.** The tag scope of a JS binding comes from the
-  element's own tag properties; a direct tag binding skips that entirely, which is what makes
-  "bind a tag to a progress bar" a two-click operation.
-- **It is deliberately excluded from JS compilation** (`bindingIndex`): an empty-code binding
-  in `all` would be re-run on every scheme change and counted in the bindings-problem chip.
-- **It must seed on scheme change** alongside the table cells, or a scheme opened after the
-  values already arrived would sit at its default forever — `flush` only reacts to *changed*
-  tags.
-- The tag value is taken **as percent 0-100** by the progress bar and merely clamped; there is
-  no min/max scaling. A physical quantity must be normalised on the PLC side.
-
-### Trends: pens are tag properties, data comes from the tag archive
-
-Contract: `docs/contract/2026-09-28-tag-archive-contract.md` (all sections implemented; the
-operator action journal, section 5, is the read-only `/actions` page — `GET /api/runtime/actions`
-returns a bare array with no total, so "more" means "the last page was full").
-
-- **A pen is a tag property** of the `trend` element (`property_type === "Тег"`, name `pen1`,
-  `pen2`, …). Its look lives in `element.trend` (`{window, step, min, max, pens: {<name>: {color,
-  width, k}}}`) — a base key like `monitorMenu`: in `BASE_ONLY_KEYS`, in `STRUCTURAL_KEYS` of
-  `transformElements`, restored from the default image (composition descriptors too), clamped by
-  `readTrendSettings` (`lib/editor/trendSettings.ts`). A `pens` entry without a property is
-  ignored.
-- **One Y axis per trend** (`docs/contract/2026-09-29-trend-common-scale-contract.md`): `trend.min/max`
-  is the common scale (a missing bound is auto over all pens), and a pen's `k` and `b` bring its
-  units to that scale — the chart, axis, hover and legend all show `value × k + b` (the old SCADA's
-  `SetStairs(tag, field, k, b, 0)`; `b` lifts discrete 0/5 steps apart and a negative-`k` pen above
-  the axis). The archive and WS stay raw.
-  Per-pen `min/max` used to exist and made the axis lie (it was labelled by the first pen); they are
-  no longer read, so they disappear from a scene on its next save. `k` of 0 or non-numeric means 1;
-  `b` of 0 is not stored.
-- **Drawn as steps**, never sloped lines: the archive stores only changes, so the value holds until
-  the next point. `null` is a gap (bad quality). `lib/editor/trendGeometry.ts` is the single pure
-  implementation, shared by the Konva shape and the monitor's SVG `TrendModal`.
-- **Monitor data**: `useTrendStore` holds series only for tags in `watched` (pens of the open
-  scene). `useRuntimeEngine` sets `watched` and loads `[now − window, now]` from
-  `GET /api/runtime/archive/values` on every `index` change, and appends WS points in
-  `onSnapshot`/`onUpdate` **directly, not through `pendingRef`/`flush`** — coalescing would merge
-  two changes inside one flush tick. `TrendShapeElement` treats "my pens are watched" as "I am in
-  the monitor"; there is no readOnly flag in the render context.
-- **The operator's changes are local**: `TrendModal` (opened by «Открыть тренд» in the monitor
-  menu; trends get no «Опции») keeps window, scale, hidden pens and the rewind position in its own
-  state and issues its own archive requests. Nothing is saved.
-- `fetchArchiveValues` (`lib/runtime/archive.ts`) splits tags into batches of 20 and clamps `from`
-  to the 30-day archive depth — the backend answers 400 to the whole request otherwise.
-- **Every archive request carries the monitor's `projectId` in the query** (contract
-  `docs/contract/2026-10-19-archive-project-id-contract.md`) — `values` and `replay` alike, and for
-  `replay` **only** in the query, never the body (the owner's access check reads the query). Runtime
-  forwards it to the instance that owns the project and checks tags against *that* prod release;
-  without it a project on another runtime instance gets 403. The BFF routes re-validate it (digits,
-  > 0) and pass it on. A 409 from the archive is retried once (`fetchArchive`): the project's
-  assignment changed mid-request.
-- The `logging` checkbox is gone from the property form (the archive records every tag), but the
-  field still travels with the property: the backend has not dropped it yet.
-
-### Monitor «Архив» mode: replaying a scene from the tag archive
-
-`useRuntimeEngine(active, mode)` has two value sources. In `"archive"` mode the WS is never
-opened, no bus handlers are registered (clicks run nothing), and `Canvas archive` skips
-`MonitorInteractionLayer` and reduces the menu to «Открыть тренд». The player
-(`useArchiveReplay`, mounted **once** in `MonitorClient`; state in `useArchiveReplayStore`,
-pure buffer logic in `lib/runtime/replayBuffer.ts`) feeds `engine.archive.reset/apply`, which
-go through `pendingRef` + synchronous `flush` exactly like `onSnapshot` — so bindings draw the
-scheme as usual.
-
-- **Archive values are converted back to the WS form** (`archiveValueToWire`). WS carries the
-  gateway's raw string (`"true"`/`"false"` for bools), the archive stores `Boolean` as 1.0/0.0
-  (backend `ArchiveRecorder.toPoint`), so a binding comparing with `"true"` would silently fail.
-  A tag counts as bool if it arrived as `"true"`/`"false"` over WS in this tab, or its property
-  has a boolean `value_type`.
-- **Seeking**: forward inside the loaded feed just applies up to the new point; backwards or past
-  it re-requests with `from` = the seek point (`initial` exists only on the first page). The
-  engine is reset only when the new first page has arrived, so the scheme never goes blank.
-- **The cursor never outruns the loaded feed** (`advanceCursor`): the backend pages by
-  `(ts, tag)`, so the feed is complete only up to *before* the last loaded `ts`.
-- **Trends follow the cursor**: `useTrendStore.clockTs` replaces `Date.now()` as "now", and
-  `archive.reset` clears the series (bumping `generation`, which `TrendModal` watches) and reloads
-  trend history around the cursor.
-- Server-script property writes (`properties[]`) are not archived; bindings that depend on them do
-  not fire in the archive. Leaving archive mode resets everything, and the WS `SNAPSHOT` restores
-  the live scheme.
-
-### Group frames hug their content
-
-`recomputeAncestorBounds` (`useEditorStore.ts`) pads with `GROUP_PADDING` — the **same**
-constant `unionBounds` uses when a group is created. It is now **0**: the frame runs exactly
-along the members' outline (geometric edges — stroke width is not part of the bounds). It was
-20 before, so older saved schemes keep the 20px margin until their group is next edited. Any
-non-zero value must stay a multiple of `GRID`. There used to be a second
-`RECOMPUTE_EXTRA_PADDING` on top, so a group was born with a 20px margin and jumped to 40 the
-moment any member moved; the origin-shift it claimed to compensate for is actually handled by
-the counter-shift loop that adjusts children in base *and* in every state's overrides.
-
-With no margin, a group made only of horizontal (or vertical) lines has `h` (or `w`) of 0, so
-its background `Rect` in `GroupNode` — the group's only hit area — has no fill to click. That
-`Rect` therefore gets an invisible `hitStrokeWidth` whenever a side is below `MIN_SIZE`.
-The selection / active-group frame is **not** drawn by that background `Rect` (it sits under
-the members, so an edge shape would hide it): `GroupFrame` in `CanvasNode.tsx` draws it
-*after* the members as two non-listening `Rect`s — a `handleFill` halo under a solid
-`selection`-blue line (same look for a selected and an entered group), both with
-`strokeScaleEnabled={false}` so the width is in screen pixels. The line stands **2 screen
-pixels** outside the content (`FRAME_GAP_PX`) — a purely visual offset, the group's
-`x/y/w/h` stay on the content. Converting screen px to world units needs `zoom`, which
-`GroupFrame` reads through its own `camera.zoom` subscription (never through ctx); it is
-mounted only while the frame is visible.
-
-Members are filtered through `isBoundsContributor` (`src/lib/editor/boundsContributor.ts`)
-before the union: `visible: false` (CONTUR's `contur_meta` element used to stretch frames to
-the origin), zero-size elements (which pin a corner while drawing nothing), and empty groups
-(whose bounds fall back to their own already-padded `w/h`, compounding ~80px per nesting
-level). Point-based types (line/curve/polygon) pass through — their bounds come from points,
-so a horizontal line's `h: 0` is not "empty". The filter lives there rather than in
-`getElementBounds` on purpose: that module also feeds fit-to-screen, the selection frame and
-smart guides.
-
-`POSITIONAL_KEYS` in `updateElementVisual` gates the recompute, so it lists everything that
-moves the measured box — not just coordinates but `text`/`fontSize`/`fontFamily`/`bold`/
-`autoWidth` (text is measured by `measureText`, not `w/h`), `rotate` and `visible`.
-
-Frames are **not** migrated on load: an old scheme tightens when its group is next edited.
-
-### Monitor picking resolves to the deepest element
-
-`pickMonitorTarget` descends into `composition`+`children` and returns the innermost element
-under the cursor, falling back to a container when no child of it is hit (so a click in a
-group's padding still selects the group). `activeGroupKey` only chooses the level the descent
-starts from, so enter/exit behaviour is unchanged. This makes the right-click menu agree with
-`onClick` scripts, which already resolved deeply — `MonitorInteractionLayer` lays a rect over
-every element with a handler at any depth and Konva takes the topmost.
-
-Two consequences to keep in mind:
-
-- **Double-click needs `pickMonitorContainer`, not the deep pick** — the deep pick returns a
-  leaf, and entering a group by it would never fire.
-- **The context menu climbs back up.** Tags and `displayed` scripts usually live on the
-  *component*, while its inner primitives carry none, so `Canvas.handleMonitorContextMenu`
-  walks `parentKey` from the picked element to the nearest ancestor with menu items
-  (`hasMonitorMenu`). Without that, right-clicking a primitive inside a component would open
-  nothing where it used to open the component's menu.
-
-Rotation is still ignored by the pick (axis-aligned bbox) while the interaction rects honour
-it, so the two can disagree at the edges of a rotated element.
-
-### Monitor: component menu, actions, manual tag values
-
-The monitor is `<Canvas readOnly />`: the content layer is `listening={false}`, so shapes are out
-of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only mechanisms:
-
-- **Hit-testing is ours, not Konva's** — `src/lib/editor/pickMonitorTarget.ts` walks the members of
-  the current level (`activeGroupKey` ?? scene root) top-down by `zIndex` and returns the element
-  whose absolute bbox contains the point. Same semantics as the editor's `resolveClickTarget`, only
-  downward. Right-click builds the menu from it (`canvas/buildMonitorMenu.ts`), double-click enters
-  the container (`enterGroup`) — unless a `MonitorInteractionLayer` rect consumed the event, which
-  is how existing `onClick`/`onDoubleClick` schemes keep working at any depth.
-- **Menu items**: «Опции» when the element has `property_type === "Тег"` properties, plus one item
-  per script with `displayed` (the editor checkbox «Добавить действие в монитор?»). A script runs
-  through `emitRuntimeScript` → `sendAction(Number(script.id))` → WS `ACTION`, so it needs a numeric
-  **server** id — an unsaved script cannot run. `ElementScript.displayed` rides in the script DTO
-  (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
-  treats the script list as complete.
-- **Left click and tap open the same menu** when nothing consumed them (`Canvas.handleMonitorClick`,
-  Stage `onClick`/`onTap`): a rect with an `onClick` script sets `cancelBubble`, so the menu only
-  appears for a click without an `onClick` — including on an `onDoubleClick`-only element. Touch
-  panels have no right button; without this the menu was unreachable there. The menu is **delayed
-  by `Konva.dblClickWindow`** when a double click means something (enterable container,
-  `onDoubleClick` rect) and always for touch: the menu opens under the pointer, so the second click
-  would land on a menu item instead of the canvas, and on empty Stage Konva does not
-  `preventDefault` a touch, so the browser's emulated `mousedown` would close the menu and its
-  emulated `click` would pass for a second click (ignored via `lastTapAtRef`). A second click
-  inside the window, or any dblclick, cancels the pending menu.
-- **Scene navigation skips the confirmation.** `isNonWritingScript` (`lib/runtime/eventScript.ts`)
-  is a static check: `openScene(` present and no mention of `runScript`/`setProperty` anywhere,
-  comments included — so any doubt keeps the dialog. `setProp`/`setState` only restyle the element
-  and do not count. Menu actions (server scripts) always confirm.
-- **Action arguments and choice menus** (contract `docs/contract/2026-10-02-action-args-contract.md`).
-  `ACTION` may carry `args` — a JSON object the server script sees as `args`. In `onClick`,
-  `runScript("Имя", {recipe: 4})` sends them; `showMenu([{label, script, args}])` opens a menu at
-  the click point whose item runs `script` with its `args`. The backend silently drops a non-object
-  `args` and rejects one over 4096 chars with no reply, so `normalizeActionArgs` (`eventScript.ts`)
-  refuses both on our side and snapshots the object via JSON at call time. `showMenu` is a result
-  intent (`res.menu`, like `openScene`; `openScene` wins if both): the click point travels through
-  `emitRuntimeEvent(…, point)`, the engine passes the menu to the `showRuntimeMenu` bus slot, and
-  `Canvas` (readOnly, live only) draws it with `buildChoiceMenu`. Confirmation moves to the chosen
-  item («Выполнить «Скрипт»: пункт?») — `isNonWritingScript` lets a click whose script only does
-  `openScene`/`showMenu` through without a dialog, otherwise the operator would get two.
-
-**The right-click menu is sized per component.** `element.monitorMenu` (`{width, fontSize,
-itemHeight}` in px — the menu *plate* with «Опции» and the `displayed` actions, not the «Опции»
-modal) is set in the editor on the «Свойства» tab via `MonitorMenuSettingsBlock`, which also
-renders a live preview through the same `ContextMenuPanel` the monitor uses. It rides inside
-`states[].image` like `zIndex`: it is in `BASE_ONLY_KEYS` (never written to overrides) and in
-`STRUCTURAL_KEYS` of `transformElements` (stripped from overrides, restored into the base from the
-default image — for `composition` primitives too). `readMonitorMenu` (`src/lib/editor/monitorMenu.ts`)
-clamps it on every read. The settings come from the element that **owns** the menu — the ancestor
-`handleMonitorContextMenu` climbs to — and editor menus never get any. `optionsWindow` is a dead
-predecessor (sized the modal for a day): it is only stripped on load, never restored.
-
-**Object inspector** (`ObjectInspectorModal`, contract `docs/contract/2026-10-01-object-inspector-contract.md`):
-any object of the prod release, from every scene (`GET /api/runtime/projects/{id}/objects`, re-read
-on a new `releaseVersionNo`), with all its properties. Values need no new channel — the engine
-exposes them through the bus (`getRuntimeTagValue`, `getRuntimeTagQuality`,
-`getRuntimePropertyValue`, read once a second like «Опции»). Properties arrive for the whole
-project, but tags only for the subscribed scene, so the inspector registers the selected object's
-tags in `runtimeTagInterest` (see the scene subscription below). A tag property writes to the PLC via `tags/write`; a local one via
-`POST …/projects/{id}/properties/write` (journal kind `PROPERTY_WRITE`). Never show the written
-value locally — the UPDATE that follows is what proves runtime holds it. `UNKNOWN_PROPERTY` means
-the list is stale: re-read it. Opened from the monitor toolbar and the component menu, live only —
-never in the archive.
-
-**The WS is subscribed to the open scene** (contract
-`docs/contract/2026-10-08-ws-scene-subscription-contract.md`). `{"type":"SUBSCRIBE_SCENE", sceneId,
-tags}` makes runtime send `UPDATE.tags` only for that scene's subtree plus `tags`, and put the
-scene's current values into the next `UPDATE` at once. `SNAPSHOT`, `properties`, procedures and
-tasks are not filtered. How the frontend drives it:
-
-- **The subscription effect in `useRuntimeEngine`** fires on `(sceneId, sceneTags, extraTags)` and
-  is declared *before* the "re-run bindings on scene change" effect on purpose. **`tags` carries
-  only off-scene tags** — `runtimeTagInterest` minus `sceneTags`, and no field at all when that is
-  empty (`docs/contract/2026-10-09-ws-scene-subscription-tags-fix.md`). Runtime finds the scene's
-  tags itself, properties and direct bindings included (`composition` primitives too). Sessions of
-  one scene without `tags` share a single serialized `UPDATE`; a non-empty `tags` makes the
-  session's set unique and costs runtime a per-session frame. A scene tag that freezes or shows
-  «нет данных» without being in `tags` is a runtime index bug (report `sceneId` + tag path), not
-  something to fix by adding it to `tags`. The full set (scene + panels) is still what decides
-  locally whether the subscription changed and which values to drop.
-- **Values that fall out of the subscription are dropped**, not kept: only tags in *previous ∩ new*
-  survive in `valuesRef`/`pendingRef`/`tagMetaRef` (intersection, because a straggler frame that
-  arrived after leaving the scene is stale too). Returning to a scene therefore shows «нет данных»
-  for one frame instead of a confidently wrong mimic, and the immediate `UPDATE` runs the bindings
-  through `flush` (no value in `valuesRef` → not a no-op).
-- `runtimeConnection` remembers the subscription and resends it in `onopen` (a new session knows
-  nothing of it); `TREE_CHANGED` forgets it on both sides (`lastSubRef = null`), because runtime
-  drops it and the new release's scene ids may differ — the effect resubscribes once
-  `reloadRelease` redraws the scene. The archive mode never subscribes.
-- **Panels that show tags outside the scene must register them** in `runtimeTagInterest`
-  (`setRuntimeTagInterest(owner, tags)` / `clearRuntimeTagInterest(owner)`); the engine unions
-  them into `tags`. Today only the object inspector does (the selected object's tags). A new
-  consumer that skips this sees its values freeze, then reset to «нет данных».
-
-**The monitor session is an observer, not the owner of the work.** A project runs while its
-«in operation» flag is set (`GET|PUT /api/editor/projects/{id}/runtime` ⇄ `{inOperation}`,
-mirrored in the store as `projectRuntimeFlags` — the flag is a separate table and does **not**
-come with the project list, so it is fetched per project). Closing the tab drops the observer
-only; procedures keep running. Two consequences the frontend must honour:
-
-- `POST /sessions` answers **409** for a project that is not in operation. It is terminal —
-  status `rejected`, no reconnect — because the retry loop would hide the reason behind
-  «Переподключение…», and the monitor shows the backend's text on the canvas instead.
-- The **first WS frame is `SNAPSHOT`** (`{tags, properties, procedures}`, where `procedures`
-  are *statuses*, not events — the list is complete, so a watched recipe missing from it means
-  "not running"). Its values go through `pendingRef` + a synchronous `flush`, exactly like an
-  operator's tag write. Pre-writing `valuesRef` would make the no-op guard in `flush` swallow
-  them and no binding would fire, leaving the scheme at its defaults on top of a running
-  process — the worst failure mode here.
-
-**Switching scenes must re-run the bindings.** The WS session lives on `(active, projectId)`
-(`useRuntimeEngine`), so changing the scene inside a project keeps it — `valuesRef` holds the
-values of *every* project tag, including scenes that are not open. But `applyServerComponents`
-resets `currentComponentStateByElementKey` (and now `runtimeOverridesByElementKey`) when the
-document is replaced, and `flush` only executes bindings of tags whose value *changed*. So a
-scene opened after its values already arrived would stay in its default state forever — the
-telemetry keeps repeating the same value and the no-op guard drops it. The effect on `index`
-therefore seeds property/table values and then re-runs `index.all` (filtered by
-`hasKnownTrigger`) through the shared `runBindings`, applying everything in one
-`applyRuntimeBatch`. Anything that replaces `elements` must keep that path intact: a scene whose
-bindings never ran shows a confident but wrong mimic, which is the worst failure mode here.
-
-**Written tag values are shown once, not pinned.** After a successful
-`POST /api/runtime/tags/write` the modal calls `notifyRuntimeTagsWritten` (`runtimeEventBus`), and
-the engine's handler drops the values into `pendingRef` and calls `flush` synchronously — the
-operator sees the command land without waiting for a frame, which on a slow tag would be minutes.
-That is the *whole* mechanism: the value carries no priority, so the next frame for that tag
-overwrites it and the tag stays free to change from a script, another operator, or the PLC itself.
-Never pre-write `valuesRef` — the no-op guard in `flush` would swallow the change and no binding
-would fire. The handler also seeds `tagMetaRef` for a tag that has **no** entry yet, so a confirmed
-write lifts the «нет данных» overlay off the element it just set; a tag already reporting bad
-quality keeps its entry and its overlay, because our write says nothing about someone else's BAD.
-There is deliberately no sticky-override map any more (`manualTagValues` and its badge are gone):
-an override that outlives telemetry is a mimic that confidently shows what the hardware no longer
-holds.
-
-### Project releases: the monitor shows prod, the editor edits the draft
-
-Contract: `docs/contract/2026-09-29-project-release-contract.md` (backend: `ProjectReleaseController`,
-`ProjectRuntimeController`, runtime `ProjectScenesController`, `TreeChangedMessage`). A release is an
-immutable snapshot of the whole project; runtime executes the **prod** release and the monitor must
-draw exactly it, not the editor's draft.
-
-- **`sceneSource` in the store** (`"draft" | "release"`) decides where `loadSceneList`/`loadScene`
-  read from. `MonitorClient` sets `release` on mount and `draft` on unmount. It is a flag rather than
-  separate monitor actions because the monitor also opens scenes from scripts
-  (`openSceneFromScript`) and tabs — any path without the flag would show the draft.
-- **Switching source stashes the editor document** (`draftStash`: scene, list, elements, dirty flag,
-  `sceneVersion`, saved snapshot) and restores it on the way back if the project is unchanged. Without
-  it, entering the monitor would wipe unsaved work, and returning would leave the release in the
-  editor for the next save to write over the draft. `hasUnsavedWork` reads the stash while in the
-  monitor.
-- **The scene cache keys by source** (`release:…` vs `draft:…`). Release entries carry
-  `releaseVersion` (header `X-Release-Version`), have `version: null` (the monitor never saves) and
-  are never revalidated — they are dropped wholesale by `dropReleaseScenes` on `TREE_CHANGED`.
-- **`TREE_CHANGED`** (and a different `versionNo` on a new session after a reconnect) →
-  `reloadRelease`: re-read the list, reopen the current scene or the first one. The `SNAPSHOT` that
-  follows goes through the usual path; the new `elements` rebuild the binding index.
-- Release responses: 409 = project not in operation (`releaseError`, shown on the canvas, not a
-  toast); 404 on a scene = not in this release (toast, the shown scene stays). The BFF must forward
-  `X-Release-Version` (`passThroughRelease`) — `passThrough` drops headers.
-- Editor: «Выпуски» (`ReleasesModal`, from `ProjectModal` and `ToolsPanel`) — release the **saved**
-  draft (unsaved work is offered to be saved first; `unchanged: true` = nothing changed since the last
-  release), list them (the generic versions API with doc type `projects`), make one prod. Enabling
-  operation without prod answers 409 `no_prod_release`; the store offers to release, make prod and
-  retry. Project restore (`restore/{n}`) is not supported by the backend and never called.
-
-### Pinned scenes are a project setting
-
-Contract: `docs/contract/2026-09-30-project-image-contract.md` (accepted by the backend as is).
-Pinned tabs live in the project's `image` as `pinnedScenes: {v: 1, ids, recipesIndex}`, shared by
-every user of the project. The image is **read from the project list only**
-(`GET /api/editor/components/projects` returns `image` per project, always present, `null` when
-empty) and **written** with `PUT /api/editor/projects/{id}/image` — an opaque JSON, no document
-versions, no release (`src/lib/editor/projectSettingsApi.ts`). The backend keeps it in its own
-column (`editor.project_runtime.image`), not in the project's states, so it is **not** in
-`GET /components/{projectId}` nor in a release tree. Limit: 16 KB serialized (400 above that).
-
-- **Only the editor changes them** (`usePinnedScenesStore` bails unless `sceneSource === "draft"`);
-  the monitor renders `SceneTabs editable={false}` and has no pin button.
-- **localStorage is a cache and a fallback**: `hydrate` shows the cache instantly, then adopts the
-  server list; a project list without the `image` field, or 404/405/501 on the write, means the
-  backend is not updated yet — `supported: false` and everything
-  stays local, as before. When the server has no `pinnedScenes` yet, the first engineer to open the
-  project in the editor uploads their local pins.
-- A write re-reads the image and merges only its own key (`saveProjectSetting`); a failed write
-  rolls the tabs back. `hydrate` also runs on `visibilitychange` so a colleague's change shows up
-  without a reload. A pinned id missing from `sceneList` (deleted, or not in the prod release) is
-  simply not shown.
-
-### Scene cache (fast scene switching)
-
-`src/lib/editor/sceneCache.ts` keeps the **raw** `GET /api/editor/scene/{id}` response per
-`(projectId, sceneId)` in tab memory; `loadScene` applies it through the same
-`applyLoadedScene` → `applyServerComponents` path as a network load, so editor and runtime
-behave identically either way. After `loadSceneList`, every scene of the project is prefetched
-in the background (2 at a time, pinned tabs first, stops when the project changes).
-
-- **The cached `version` is the base of that exact document** and becomes `sceneVersion` on a
-  hit. It must be fetched *before* the scene request starts (`fetchSceneWithVersion`), so the
-  document can only be newer than its number — the harmless direction (an extra server merge),
-  never a silent overwrite. `undefined` = unknown, and such an entry is not a hit.
-- A hit is revalidated in the background with `versions?limit=1`. Different number → refetch
-  and swap quietly **only if the scene is untouched** (`!isDirty`, same `documentGeneration`);
-  otherwise leave it and let the normal save-conflict path handle it.
-- Whoever changes a scene on the server must update the cache: a successful save drops the
-  entry and puts the tree from the response; restore does the same; `deleteScene` drops.
-  `loadScene({keepHistory})` never reads the cache and uses `fresh` so it cannot pick up a
-  background request started before the save. A request's result is not stored if the entry
-  was written or dropped while it was in flight.
-- Entries are cloned on read: `transformElements` reuses some input objects (bindings) by
-  reference, so without the clone a store edit would leak into the cache.
-- In development `loadScene` logs `[scene] … загрузка / распаковка / отрисовка` timings.
-
-### Document versions (undo → versioning)
-
-Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026). The unit of history is the **whole scene**, not an action. Client-side Ctrl+Z (zundo) is unrelated and stays.
-
-- **Save envelope.** `exportScene` sends `PUT {components, scene_id, based_on_version, save_kind}`. `save_kind` comes from an explicit `kind` option (`MANUAL` / `AUTOSAVE`) — never inferred from `silent`, which only means "no toast"; `"RESTORE"` is server-only and sending it is a 400. The BFF (`src/lib/saveEnvelope.ts` + `api/editor/components/route.ts`) forwards that `PUT` to the backend unchanged — one shape, no alternatives; the transitional `EDITOR_SAVE_ENVELOPE` flag that used to switch body *and* method has been removed along with the legacy `POST`-with-a-bare-array path. Responses are still normalized to `{components, version_no}` (`normalizeSaveResponse`), and a missing `version_no` is the signal that the response shape is not guaranteed — the store then reloads the scene instead of trusting the returned tree.
-- **`PUT` means "here is the entire scene".** A component missing from the body is **deleted** by the backend. `buildComponentTree` already serializes every element of the scene, so this needs no diffing — but it also means there is deliberately **no out-of-band `DELETE`** any more: `deleteSelectedElement` and `ungroupSelected` only mutate local state and let the next save persist the removal. The BFF `DELETE` route is gone entirely — nothing called it. Consequence to keep in mind: a deletion that is never saved is a deletion that never happened.
-- **`based_on_version`** comes from `sceneVersion`, learned via `GET …/versions?limit=1` (`refreshSceneVersion`) because the plain scene GET does not carry it today. When there are no versions the field is **omitted entirely** — sending it against a version-less scene is a 400.
-- **409 is not an error path.** For a *manual* save it fills `saveConflict` and opens `SaveConflictDialog`; the canvas is untouched and `isDirty` stays true. One code path covers both `version_mismatch` (no `conflicts` list) and `merge_conflict` (with one); only the wording differs. **Merging only ever happens for `PUT` + `MANUAL`**, so an *autosave* 409 is routine and must not raise a modal: it sets `staleBaseVersion` (rendered by `StaleVersionBanner`) and deliberately leaves `sceneVersion` alone — advancing it would send the next manual save with someone else's base and overwrite their work without the merge dialog ever appearing. A `merged` block on a *successful* save must be surfaced (`reportMergedChanges`) **even when `changes` is empty** — the empty case still means the save landed on top of a newer version. In conflict rows, `path === "Сцена"` is a reserved address for a top-level ordering conflict, not a component of that name (`formatConflictPath`).
-- **A script that does not parse fails the whole save** (400, backend since 25.09.2026; `scripts[].script`, `events[].script`, binding `code`, `properties[].onChange`, all parsed as a *function body*). The editors check first with `checkScriptSyntax` (`lib/runtime/scriptSyntax.ts`, `new Function` — parses, never runs) and disable «Сохранить»; `OnCanChange` only warns, the backend does not check it. Component scripts are **JavaScript** (GraalJS on the server), not Java, whatever old labels said. A failed *autosave* keeps its reason in `autosaveError`: toast only when the reason changes, then `AutosaveErrorBanner` — otherwise the same 400 would toast every 10 minutes. Any successful save or document switch clears it; «Скрыть» is local to the banner so the next tick does not re-toast.
-- **Document shape differs between endpoints.** The save response puts an *array* in `components`; the restore response puts the *whole document* there, and a plain document GET uses `children`. `rootComponentsOf` (`src/lib/editor/documentComponents.ts`) is the single place that resolves all three — reading `components` with `Array.isArray` on a restore response silently yields `[]` and wipes the canvas.
-- **Someone else's save is announced over STOMP** (`useSceneChangedNotifications`, mounted once in
-  `EditorClient`): SockJS `/ws/editor` via the gateway, topic `/topic/scenes/{sceneId}` for the open
-  draft scene, body `{type: "SCENE_CHANGED", scene_id, version_no, user_name}`. It is a notice, not
-  sync. Whether to show it is *derived* (`visibleSceneChange`): only for the open scene, only when
-  `version_no > sceneVersion` (that is how our own save is filtered — `PUT` writes its version there),
-  and never while `isSaving` (our own message can beat the `PUT` response). `SceneChangedBanner`'s
-  «Перезагрузить» drops the scene-cache entry and reloads, asking first about unsaved work; in
-  `versionPreview` there is no button. The old catalog STOMP (`/ws`, `/topic/device-tree/…`) was dead
-  on both sides and has been removed.
-- **History endpoints** are proxied under `/api/editor/history/{scenes|templates}/{id}/…` (`src/lib/editorHistoryProxy.ts`). `docType` is whitelisted because it is interpolated into the backend URL; `kind` may repeat, so use `getAll`. Paging uses a `to = created_at` cursor, never an offset.
-- **Version preview** reuses `Canvas readOnly` (the monitor's path). Entering stashes live state in a module var, pauses `temporal`, and marks the scene saved so the dirty flag describes the version, not the user's work; exiting restores everything including `savedElementsSnapshot`. **Anything that can mutate or persist must bail on `versionPreview`** — `exportScene`, the autosave tick, the properties panel, and the unload warning (`hasUnsavedWork`, which reads the stash) all do. Crossing a document boundary (`loadScene`, `createScene`, `deleteScene`, `setCurrentProject`) calls `discardVersionPreview`, which drops the stash rather than restoring it into a different scene.
-
-### Access roles: hide what the backend will refuse
-
-Contract: `docs/contract/2026-10-15-access-roles-contract.md` (with a «Уточнения» section verified
-against the backend). Per project a user has `view` / `operate` / `edit` + a level 1–10 (only with
-`operate`); admins can do everything at level 10. **The backend refuses on its own** — every check
-here is convenience, never protection.
-
-- **Where rights come from.** `EditorProject.access` from the project list (the list itself only
-  contains projects with at least one right; admins get full `access`). `grantOf(project, admin)`
-  (`lib/access/grants.ts`) is the only reader; hooks `useCurrentProjectGrant` /
-  `getCurrentProjectGrant` live in `lib/access/projectAccess.ts`. The admin flag is the JWT claim,
-  decoded server-side in `(app)/layout.tsx` and handed to `useSessionUserStore` by
-  `SessionUserBootstrap` (the cookie is httpOnly). Rights change without a new token — never
-  read them from the token.
-- **Denial bodies** are `{error: "FORBIDDEN", reason, requiredLevel?}` with no `message`;
-  `describeDenial` / `errorTextFromBody` / `errorTextFromJson` (`lib/access/accessErrors.ts`)
-  translate them. Any new fetch error path must go through them or the toast shows «FORBIDDEN».
-  `ACCESS_NOT_READY` (403) means "server is starting" — retry, not a denial.
-- **Global logout**: `authInterceptor.ts` wraps `window.fetch` at module load (in `providers.tsx`,
-  not an effect — child effects run first) and sends any 401 / 403 `USER_DISABLED` from `/api/*`
-  to `/login`. Login/logout routes are exempt.
-- **Editor, `view` without `edit`**: local editing and undo stay; everything that writes is hidden
-  (`canWrite` in `ToolsPanel`, separate from the existing `canEdit`) **and** refused in the store
-  by `canWriteCurrentProject()` — `exportScene` (autosave silently), restore, create/delete scene,
-  pins, the saved-property rename PUT. Operate-only projects are not shown in the editor/data/
-  automation pickers and are reset on entering the editor.
-- **Script `access_level`** rides as `ElementScript.accessLevel` through the same whitelists as
-  `displayed` (`transformElements` ×2, `buildComponentTree` scene + palette); composition
-  descriptors and `instantiateTemplate` copy scripts whole. Losing it silently makes the script
-  level 1 — the backend cannot notice.
-- **Monitor actions**: `runScriptOn` in `useRuntimeEngine` is the single refusal point — an `onClick`
-  calls `runScript(name)` from JS, so the button cannot be disabled ahead of time. Without
-  `operate` or below the level, no `ACTION` leaves and `showRuntimeNotice` draws the reason at the
-  click point (`RuntimeNoticeLayer`); a server `ACTION_DENIED` lands at the same point
-  (`actionPointsRef`, keyed by script id). Menu items get the reason via `unavailableReason`.
-  «Опции» and the inspector need `operate` + level ≥ 9 (`canWriteDirectly`).
-- **Monitor WS close codes**: `4403` → status `revoked` (no reconnect, back to the project list),
-  `1008` → `rejected`, `1013` → reconnect after 4 s; `POST /sessions` 403 is terminal except
-  `ACCESS_NOT_READY`.
-- **Procedure levels** come from prod via `GET /api/runtime/projects/{id}/procedure-levels`
-  (`useProcedureLevelsStore`, loaded by `useProcedureSync` on project and `releaseVersionNo`
-  change); `useProcedureControls().denied[op]` disables the buttons. The editor's
-  `/api/editor/projects/{id}/procedure-levels` is the *draft* — it reaches the monitor only with a
-  new prod release, like script levels.
-- `tags/write` always carries `projectId` (400 without it); the backend writes only tags of that
-  project's prod release.
-
-## Editing conventions
-
-- Comments and user-facing strings in this codebase are in **Russian**; match that when adding to editor/store code.
-- The scene/project hierarchy is enforced: operations bail if the scene doesn't belong to `currentProject` (`sceneBelongsToCurrentProject`). Preserve these guards.
+- **Тестов нет** (ни jest, ни vitest).
+- **Husky + lint-staged** при коммите запускают `eslint --fix` + `prettier --write` для `*.{js,ts,tsx}`.
+- Алиас путей: `@/*` → `src/*`.
+- У `tsc --noEmit` есть **стабильный базовый набор старых ошибок** (union `ElementType` не включает
+  `button`/`rectangle`/`checkbox`/`progress_bar`/`path`, хотя они используются). `next dev` их
+  терпит. Правило: **не добавлять новых ошибок** — сравнивайте число до и после правки.
+
+## Архитектура — читать перед любой правкой
+
+Полное описание: **`docs/architecture.md`**. Главное:
+
+- Слои: `app` → `modules/<область>` → `core` → `shared`; `app/api` → `server` → `shared`.
+  Импорты только вниз, модули не импортируют друг друга, вход в модуль — через `index.ts`.
+- Код переезжает постепенно. Старые папки `src/components`, `src/lib`, `src/store` ещё живы, но
+  **новые файлы туда не добавляются** — новый код сразу в новую структуру.
+- **Компонент ≤ 200 строк, файл ≤ 300.** Логика — в хук `useXxx`, расчёты — в чистые функции
+  `lib/`, запросы — в `api/`, разметка — в подкомпоненты.
+- **Старые большие файлы не растут.** Перед правкой в файле длиннее лимита — вынести из него
+  кусок, который правите.
+- **Состояние:** серверные данные — TanStack Query; клиентское — zustand, один стор на зону,
+  слайсы при росте; realtime (значения тегов) — отдельно от документа редактора.
+  Документ сцены (`elements`, undo, сохранение) остаётся в zustand.
+- **zustand:** подписка только через селектор (`useShallow` для нескольких полей), производные
+  значения не хранить, `fetch` в сторах и компонентах не писать.
+
+## Как работать над задачей
+
+1. Большая правка или рефакторинг — сначала план, потом код.
+2. **Перенос файлов и изменение логики — разные коммиты.** Коммит переезда: только `git mv` и импорты.
+3. Одна задача рефакторинга — одна ветка. Работа идёт от `dev`, `main` — стабильная.
+4. После каждого шага: `npm run lint` и `npx tsc --noEmit` (не больше базовых ошибок).
+5. Не меняйте поведение «попутно» при рефакторинге. Нашли баг — сообщите отдельно.
+
+## Предметная область — читать по теме задачи
+
+Здесь много неочевидного: нарушение этих правил даёт «уверенно неправильную мнемосхему» —
+худший сбой для SCADA. Перед правкой в области прочитайте её файл:
+
+| Файл | Когда читать |
+|---|---|
+| `docs/domain/backend-and-bff.md` | маршруты `src/app/api`, авторизация, cookie, WS/STOMP-адреса |
+| `docs/domain/editor-model.md` | элементы, группы/компоненты, состояния, снаппинг, рамки групп, сериализация, свойства |
+| `docs/domain/monitor.md` | монитор: блокировка вида, выбор элемента, меню, действия, инспектор, WS-подписка, привязки тегов |
+| `docs/domain/recipes.md` | рецепты и процедуры |
+| `docs/domain/trends-and-archive.md` | тренды, архив тегов, режим «Архив» |
+| `docs/domain/projects-and-releases.md` | выпуски, prod/draft, закреплённые сцены |
+| `docs/domain/scene-cache-and-versions.md` | кэш сцен, сохранение, версии, конфликты |
+| `docs/domain/access-roles.md` | права `view`/`operate`/`edit`, уровни, отказы |
+
+Контракты с бэкендом — `docs/contract/*.md`. Для редактора есть skill `scada-editor`.
+
+Самые важные правила, которые нельзя забыть, даже не открыв файлы:
+
+- Все `src/app/api/**/route.ts` — тонкий прокси к Java-бэкенду, оборачиваются в `protectedRoute`.
+- WS/STOMP идут в gateway напрямую через `gatewayOrigin.ts` — вызывать при подключении, не
+  на уровне модуля, никогда не хардкодить `localhost`.
+- Рендерить и измерять элемент только через `getRenderedElement(el)`, не через «сырой» `el`.
+- Сериализация `buildComponentTree` ↔ `transformElements` должна оставаться симметричной.
+- Значения из WS (`SNAPSHOT`, записанные теги) идут через `pendingRef` + `flush`; никогда не
+  записывать заранее в `valuesRef`.
+- Всё, что меняет или сохраняет документ, проверяет `versionPreview` и права (`canWriteCurrentProject`).
+
+## Соглашения
+
+- Комментарии и тексты для пользователя — **на русском**.
+- Иерархия сцена/проект соблюдается: операции прерываются, если сцена не принадлежит
+  `currentProject` (`sceneBelongsToCurrentProject`). Сохраняйте эти проверки.
+- **Обновляйте документацию вместе с кодом:** изменили поведение области — поправьте её файл в
+  `docs/domain/`; изменили структуру — `docs/architecture.md` (таблица «План»).
