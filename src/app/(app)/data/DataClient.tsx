@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useState, useMemo} from "react";
 import Link from "next/link";
-import {RefreshCw, Save, Upload} from "lucide-react";
+import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
@@ -19,7 +19,10 @@ import {
   restoreProjectDataVersion,
   saveProjectData,
 } from "@/lib/projectData/projectDataApi";
-import {TablesEditor} from "@/components/projectData/TablesEditor";
+import {confirmRemoveTable, TablesEditor} from "@/components/projectData/TablesEditor";
+import {compactButton} from "@/components/projectData/ColumnsEditor";
+import {UnsavedNotice} from "@/components/ui/UnsavedNotice";
+import {FloatingHelp} from "@/components/ui/FloatingHelp";
 import {VariablesEditor} from "@/components/automation/VariablesEditor";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {DataDiffView, DataVersionChanges, loadDataVersion} from "@/components/projectData/DataVersionChanges";
@@ -31,6 +34,57 @@ import type {VersionSummary} from "@/types/editorVersion.types";
 type Tab = "tables" | "variables" | "history";
 
 const TAB_LABELS: Record<Tab, string> = {tables: "Таблицы", variables: "Переменные", history: "История таблиц"};
+
+/** Справка раздела: по вкладке — своя инструкция. */
+const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
+  tables: {
+    title: "Таблицы данных проекта",
+    body: <>
+      <p>
+        Таблица — справочник для серверных скриптов (задач автоматизации и скриптов монитора):
+        уставки, рецептуры, коэффициенты. Скрипт читает её так: <code>data(&apos;имя&apos;)</code> —
+        вся таблица, <code>data(&apos;имя&apos;, &apos;ключ&apos;)</code> — одна строка.
+      </p>
+      <ul>
+        <li><b>Имя таблицы</b> — по нему таблицу находят скрипты. Только латиница, цифры и _.</li>
+        <li><b>Заголовок</b> и <b>Описание</b> — для людей: название в списке слева и заметка. На скрипты не влияют.</li>
+        <li>
+          <b>Колонки</b> задают, из чего состоит строка: имя для скриптов, заголовок для людей, тип значения.
+          «Обязательна» — в каждой строке должно быть значение (или значение по умолчанию).
+        </li>
+        <li><b>Строки</b> — сами данные. key — уникальный ключ строки.</li>
+        <li>
+          «Сохранить» записывает таблицы на сервер новой версией. Чтобы работающие задачи увидели
+          изменения, нажмите «Применить данные».
+        </li>
+        <li>Удаление таблицы тоже применяется только при сохранении.</li>
+      </ul>
+    </>,
+  },
+  variables: {
+    title: "Переменные проекта",
+    body: <>
+      <p>
+        Переменная — именованное значение, общее для всего проекта. Задачи пишут её через{" "}
+        <code>setVar(имя, значение)</code> и читают через <code>vars.имя</code>, а в мнемосхеме её
+        можно привязать к элементу как <code>@var.имя</code>.
+      </p>
+      <ul>
+        <li>Тип и значение по умолчанию задаются здесь.</li>
+        <li>Отметки «пишет» показывают, какие задачи меняют переменную.</li>
+        <li>Переменные хранятся вместе с задачами автоматизации и сохраняются в их версии.</li>
+      </ul>
+    </>,
+  },
+  history: {
+    title: "История таблиц",
+    body: <ul>
+      <li>Каждое сохранение таблиц — отдельная версия: кто и когда её сделал.</li>
+      <li>«Подробнее» показывает, что изменилось относительно предыдущей версии, и таблицы версии целиком.</li>
+      <li>«Восстановить…» сначала показывает, что изменится, и только потом возвращает таблицы к выбранной версии.</li>
+    </ul>,
+  },
+};
 
 /**
  * Данные проекта: таблицы, которые серверные скрипты читают через data(), и переменные проекта.
@@ -62,6 +116,7 @@ export default function DataClient() {
   const [dataErrors, setDataErrors] = useState<ProjectDataValidationError[]>([]);
   const [invalidCells, setInvalidCells] = useState(0);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
+  const [selectedTable, setSelectedTable] = useState(0);
 
   const [automation, setAutomation] = useState<AutomationSet | null>(null);
   const [automationDirty, setAutomationDirty] = useState(false);
@@ -179,6 +234,49 @@ export default function DataClient() {
     }
   };
 
+  /** Плашка внизу сохраняет всё несохранённое, а не только документ открытой вкладки. */
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      if (dataDirty && invalidCells === 0) await saveTables();
+      if (automationDirty) await saveVariables();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscardAll = async () => {
+    const ok = await confirmModal({
+      title: "Отменить несохранённые изменения?",
+      description: "Таблицы и переменные перечитаются с сервера, ваши правки пропадут.",
+      confirmLabel: "Отменить изменения",
+      danger: true,
+    });
+    if (!ok) return;
+    if (dataDirty) await reloadData();
+    if (automationDirty) await reloadAutomation();
+  };
+
+  const handleRemoveTable = async () => {
+    if (!data) return;
+    const tables = await confirmRemoveTable(data.tables, selectedTable);
+    if (!tables) return;
+    setData(d => (d ? {...d, tables} : d));
+    setDataDirty(true);
+  };
+
+  // Уход со страницы молча выбросил бы правки.
+  const anyDirty = dataDirty || automationDirty;
+  useEffect(() => {
+    if (!anyDirty || !canWrite) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [anyDirty, canWrite]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -268,20 +366,29 @@ export default function DataClient() {
           </button>
         ))}
         <div className="flex-1" />
-        {loaded && (
-          <span className="text-xs text-neutral-500">
-            {onVariablesTab ? "набор automation" : "таблицы"}, версия {version ?? "—"}{dirty ? " · есть несохранённые правки" : ""}
-          </span>
+        {loaded && version != null && (
+          <span className="text-xs text-neutral-500" title={onVariablesTab ? "Версия набора автоматизации" : "Версия таблиц"}>v{version}</span>
         )}
         <Button
+          className={compactButton}
           onClick={() => void (onVariablesTab ? reloadAutomation() : reloadData())}
           disabled={!loaded}
           title="Перечитать с сервера"
         >
           <RefreshCw size={14} />
         </Button>
+        {tab === "tables" && data && data.tables.length > 0 && (
+          <Button
+            className={cn(compactButton, "text-red-600 dark:text-red-400 hover:text-red-700")}
+            onClick={() => void handleRemoveTable()}
+            title="Удалить выбранную таблицу (применится при сохранении)"
+          >
+            <Trash2 size={14} />Удалить таблицу
+          </Button>
+        )}
         {canWrite ? <>
         <Button
+          className={compactButton}
           onClick={() => void handleApply()}
           disabled={!data || dataDirty}
           title={dataDirty ? "Сначала сохраните таблицы" : "Попросить automation перечитать сохранённые данные"}
@@ -290,6 +397,7 @@ export default function DataClient() {
         </Button>
         <Button
           variant="primary"
+          className={compactButton}
           onClick={() => void handleSave()}
           disabled={!loaded || !dirty || saving || (!onVariablesTab && invalidCells > 0)}
           title={!onVariablesTab && invalidCells > 0 ? "Исправьте ячейки с неверным значением" : undefined}
@@ -318,9 +426,11 @@ export default function DataClient() {
           errors={dataErrors}
           onChange={tables => { setData(d => (d ? {...d, tables} : d)); setDataDirty(true); }}
           onInvalidCountChange={setInvalidCells}
+          selected={selectedTable}
+          onSelect={setSelectedTable}
         />
       ) : tab === "variables" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto pb-24">
           <VariablesEditor
             variables={automation!.variables}
             tasks={automation!.tasks}
@@ -329,7 +439,7 @@ export default function DataClient() {
           />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto pb-24">
           <VersionHistoryList
             versions={versions}
             currentVersion={data!.version}
@@ -345,6 +455,17 @@ export default function DataClient() {
           />
         </div>
       )}
+
+      {canWrite && anyDirty && (
+        <UnsavedNotice
+          details={[dataDirty && "таблицы", automationDirty && "переменные"].filter(Boolean).join(", ")}
+          onSave={() => void handleSaveAll()}
+          onDiscard={() => void handleDiscardAll()}
+          saving={saving}
+          saveBlockedReason={dataDirty && invalidCells > 0 ? `Есть ячейки с неверным значением: ${invalidCells}` : null}
+        />
+      )}
+      {loaded && <FloatingHelp storageKey="help.data" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
     </div>
   );
 }

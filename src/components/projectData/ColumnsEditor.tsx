@@ -17,6 +17,16 @@ import {
 
 export const cellInput = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm";
 
+/** Подпись поля: заметная на сером фоне страницы, а не бледная мелочь капслоком. */
+export const fieldTitle = "block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1";
+
+/** Пояснение под полем: что это и на что влияет. */
+export const fieldHint = "text-xs text-neutral-500 dark:text-neutral-400 mt-1";
+
+/** Компактные кнопки строк: размер `Button` по умолчанию рассчитан на подвал модалки. */
+export const compactButton = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+export const iconButton = "p-1.5 shadow-none";
+
 /** Локальная подсказка к имени (таблицы или колонки) — до того, как это скажет бэкенд. */
 export const nameHint = (name: string): string | null =>
   name === "" ? "имя не задано"
@@ -70,9 +80,22 @@ function ColumnNameInput({name, taken, onCommit}: {name: string; taken: (name: s
   );
 }
 
-const GRID = "grid grid-cols-[1fr_1fr_100px_90px_1fr_auto] gap-2";
+/**
+ * «Обязательна» стоит сразу за заголовком: так её ищут. Последняя колонка — ширина кнопки-иконки,
+ * чтобы шапка совпадала с полями до пикселя.
+ */
+const GRID = "grid grid-cols-[minmax(120px,1fr)_minmax(140px,1fr)_120px_110px_minmax(120px,1fr)_32px] gap-2";
 
-/** Колонки таблицы: имя, заголовок, тип, обязательность, значение по умолчанию. */
+/** Шапка колонок: подпись и пояснение по наведению. `px-2` — как у поля, чтобы текст встал над текстом. */
+const HEADERS: {title: string; hint: string}[] = [
+  {title: "Имя", hint: "Имя колонки для скриптов: data('таблица', 'ключ').имя. Латиница, цифры и _."},
+  {title: "Заголовок", hint: "Понятная людям подпись колонки — в шапке строк ниже. На скрипты не влияет."},
+  {title: "Обязательна", hint: "В каждой строке должно быть значение (или значение по умолчанию). Это про значения, а не про заголовок."},
+  {title: "Тип", hint: "Какие значения хранит колонка: число, строка, да/нет, JSON."},
+  {title: "По умолчанию", hint: "Что получит скрипт, если в строке ячейка пустая."},
+];
+
+/** Колонки таблицы: имя, заголовок, обязательность, тип, значение по умолчанию. */
 export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
   const patch = (index: number, value: Partial<ProjectDataColumn>) =>
     onChange(columns.map((c, i) => (i === index ? {...c, ...value} : c)), rows);
@@ -101,31 +124,36 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Колонки</h3>
-        <Button onClick={add}><Plus size={14} />Колонка</Button>
+        <div>
+          <h3 className="text-base font-semibold">Колонки</h3>
+          <p className={fieldHint}>Из чего состоит каждая строка таблицы. Наведите на подпись колонки — появится пояснение.</p>
+        </div>
+        <Button className={compactButton} onClick={add}><Plus size={14} />Колонка</Button>
       </div>
       {columns.length > 0 && (
-        <div className={cn(GRID, "text-xs uppercase tracking-wider text-neutral-500")}>
-          <span>Имя</span><span>Заголовок</span><span>Тип</span><span>Обязат.</span><span>По умолчанию</span><span />
+        <div className={cn(GRID, "rounded-lg bg-neutral-200/70 dark:bg-neutral-800 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200")}>
+          {HEADERS.map(h => <span key={h.title} className="px-2 cursor-help" title={h.hint}>{h.title}</span>)}
+          <span />
         </div>
       )}
       {columns.map((c, i) => (
         <div key={i} className={cn(GRID, "items-start")}>
           <ColumnNameInput name={c.name} taken={name => columns.some((o, j) => j !== i && o.name === name)} onCommit={name => rename(i, name)} />
-          <input className={cellInput} value={c.title ?? ""} onChange={e => patch(i, {title: e.target.value === "" ? null : e.target.value})} />
+          <input className={cellInput} value={c.title ?? ""} placeholder="как назвать для людей" onChange={e => patch(i, {title: e.target.value === "" ? null : e.target.value})} />
+          <label className="flex items-center gap-2 h-[30px] px-2 text-sm cursor-pointer" title={HEADERS[2].hint}>
+            <input type="checkbox" checked={c.required} onChange={e => patch(i, {required: e.target.checked})} />
+            {c.required ? "да" : "нет"}
+          </label>
           <select className={cellInput} value={c.value_type} onChange={e => retype(i, e.target.value as ProjectDataValueType)}>
             {PROJECT_DATA_VALUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <label className="flex items-center justify-center h-8">
-            <input type="checkbox" checked={c.required} onChange={e => patch(i, {required: e.target.checked})} />
-          </label>
           <input
             className={cn(cellInput, "font-mono")}
             value={c.default_value ?? ""}
             placeholder={c.value_type === "json" ? "{}" : ""}
             onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})}
           />
-          <Button onClick={() => remove(i)} title="Удалить колонку и её значения во всех строках"><Trash2 size={14} /></Button>
+          <Button className={iconButton} onClick={() => remove(i)} title="Удалить колонку и её значения во всех строках"><Trash2 size={14} /></Button>
         </div>
       ))}
       {columns.length === 0 && <p className="text-xs text-neutral-500">Колонок нет — у строк будет только ключ.</p>}

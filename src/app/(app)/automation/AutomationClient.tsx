@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import Link from "next/link";
-import {CircleHelp, Plus, RefreshCw, Save, Send, X} from "lucide-react";
+import {Plus, RefreshCw, Save, Send, X} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
@@ -31,7 +31,8 @@ import {
 import {TemplatePalette} from "@/components/automation/TemplatePalette";
 import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
 import {compactButton} from "@/components/automation/formStyles";
-import {SectionHelp} from "@/components/ui/SectionHelp";
+import {FloatingHelp} from "@/components/ui/FloatingHelp";
+import {UnsavedNotice} from "@/components/ui/UnsavedNotice";
 import {
   missingVariables,
   stripIoHints,
@@ -77,18 +78,6 @@ const newTask = (index: number): AutomationTask => ({
   script: "// inputs.<alias> — значения входов, write('<alias>', value) — запись выхода\n"
     + "// state — память между тактами, dt — мс с прошлого успешного такта, firstRun\n",
 });
-
-const HELP_KEY = "automation.help.hidden";
-
-/** Какие подсказки пользователь скрыл. localStorage может не быть (сервер, запрет сайта). */
-const readHiddenHelp = (): Tab[] => {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(HELP_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((t): t is Tab => t in TAB_LABELS) : [];
-  } catch {
-    return [];
-  }
-};
 
 const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
   tasks: {
@@ -171,7 +160,6 @@ export default function AutomationClient() {
   const [selected, setSelected] = useState(0);
   const [statuses, setStatuses] = useState<AutomationTaskStatusRow[]>([]);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
-  const [hiddenHelp, setHiddenHelp] = useState<Tab[]>(readHiddenHelp);
 
   const dirty = useMemo(() => isSetDirty(draft, saved), [draft, saved]);
   // «Вернуть» в уведомлении срабатывает позже — ему нужно текущее состояние, а не то, что
@@ -489,20 +477,6 @@ export default function AutomationClient() {
     }
   };
 
-  const helpShown = !hiddenHelp.includes(tab);
-  const toggleHelp = (show: boolean) => {
-    const next = show ? hiddenHelp.filter(t => t !== tab) : [...hiddenHelp, tab];
-    setHiddenHelp(next);
-    try {
-      localStorage.setItem(HELP_KEY, JSON.stringify(next));
-    } catch {
-      // не запомнится между заходами — не страшно
-    }
-  };
-  const help = helpShown && (
-    <SectionHelp title={HELP[tab].title} onClose={() => toggleHelp(false)}>{HELP[tab].body}</SectionHelp>
-  );
-
   const handleSaveAsTemplate = () => {
     if (!task) return;
     openTemplateModal({mode: "create", initial: taskToTemplate(task)});
@@ -529,19 +503,8 @@ export default function AutomationClient() {
             {TAB_LABELS[key]}
           </button>
         ))}
-        {/* Только после загрузки: состояние берётся из localStorage, на сервере его нет. */}
-        {draft && <button
-          type="button"
-          onClick={() => toggleHelp(!helpShown)}
-          title={helpShown ? "Скрыть подсказку о разделе" : "Что это за раздел?"}
-          aria-label="Подсказка о разделе"
-          aria-pressed={helpShown}
-          className={cn("p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800", helpShown && "text-indigo-600 dark:text-indigo-400")}
-        >
-          <CircleHelp size={16} />
-        </button>}
         <div className="flex-1" />
-        {draft && <span className="text-xs text-neutral-500">версия {saved?.version ?? "—"}{dirty ? " · есть несохранённые правки" : ""}</span>}
+        {saved?.version != null && <span className="text-xs text-neutral-500" title="Версия сохранённого набора">v{saved.version}</span>}
         <Button className={compactButton} onClick={() => void handleReload()} disabled={!draft || saving} title="Перечитать с сервера"><RefreshCw size={14} /></Button>
         {canWrite ? <>
         <Button className={compactButton} onClick={handleRepublish} disabled={!draft || dirty} title="Отправить сохранённый набор в automation заново"><Send size={14} /></Button>
@@ -575,9 +538,8 @@ export default function AutomationClient() {
         </div>
       ) : tab === "tasks" ? (
         <div className="flex-1 min-h-0 flex flex-col">
-        {help && <div className="shrink-0 px-4 pt-3 pb-1">{help}</div>}
         <div className="flex-1 min-h-0 flex">
-          <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 space-y-1">
+          <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 pb-28 space-y-1">
             {draft.tasks.map((t, i) => {
               const status = statusOf(t);
               const state = taskDraftState(t, saved);
@@ -638,13 +600,11 @@ export default function AutomationClient() {
         </div>
         </div>
       ) : tab === "watchdog" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {help && <div className="px-4 pt-3 max-w-3xl">{help}</div>}
+        <div className="flex-1 min-h-0 overflow-y-auto pb-24">
           <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => update({watchdog})} />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {help && <div className="px-4 pt-3 max-w-3xl">{help}</div>}
+        <div className="flex-1 min-h-0 overflow-y-auto pb-24">
           <VersionHistoryList
             versions={versions}
             currentVersion={saved.version}
@@ -661,6 +621,16 @@ export default function AutomationClient() {
           />
         </div>
       )}
+
+      {canWrite && dirty && (
+        <UnsavedNotice
+          details={unsavedCount > 0 ? `Не сохранено изменений: ${unsavedCount}. Задачу можно сохранить отдельно — кнопкой в её редакторе.` : undefined}
+          onSave={() => void handleSaveAll()}
+          onDiscard={() => void handleReload()}
+          saving={saving}
+        />
+      )}
+      {draft && <FloatingHelp storageKey="help.automation" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
     </div>
   );
 }

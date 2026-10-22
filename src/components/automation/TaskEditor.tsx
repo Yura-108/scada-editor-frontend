@@ -66,7 +66,7 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
 
   return (
     <div className="h-full flex">
-      <div className="flex-1 min-w-0 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 pb-28 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-56">
             <label className={label}>Название</label>

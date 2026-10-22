@@ -1,34 +1,47 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
-import {Plus, Trash2} from "lucide-react";
+import React, {useEffect} from "react";
+import {Plus} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {cellInput, ColumnsEditor, nameHint} from "@/components/projectData/ColumnsEditor";
+import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "@/components/projectData/ColumnsEditor";
 import {RowsGrid} from "@/components/projectData/RowsGrid";
 import type {ProjectDataTable, ProjectDataValidationError} from "@/types/projectData.types";
-
-const label = "block text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1";
 
 interface Props {
   tables: ProjectDataTable[];
   errors: ProjectDataValidationError[];
   onChange: (tables: ProjectDataTable[]) => void;
   onInvalidCountChange: (count: number) => void;
+  /** Выбранная таблица живёт у страницы: «Удалить таблицу» стоит в её верхней панели. */
+  selected: number;
+  onSelect: (index: number) => void;
+}
+
+/** Удаление выбранной таблицы с подтверждением; применится при сохранении. */
+export async function confirmRemoveTable(tables: ProjectDataTable[], index: number): Promise<ProjectDataTable[] | null> {
+  const table = tables[index];
+  if (!table) return null;
+  const ok = await confirmModal({
+    title: `Удалить таблицу «${table.title ?? table.name}»?`,
+    description: "Вместе с колонками и строками. Удаление применится при сохранении; "
+      + "скрипты, читающие эту таблицу через data(), перестанут её находить.",
+    confirmLabel: "Удалить",
+    danger: true,
+  });
+  return ok ? tables.filter((_, i) => i !== index) : null;
 }
 
 /**
  * Таблицы данных проекта. Порядок списка задаёт сервер (по алфавиту `title`); новая таблица
  * встаёт в конец и займёт своё место после сохранения.
  */
-export function TablesEditor({tables, errors, onChange, onInvalidCountChange}: Props) {
-  const [selected, setSelected] = useState(0);
-
+export function TablesEditor({tables, errors, onChange, onInvalidCountChange, selected, onSelect: setSelected}: Props) {
   // Набор перечитали или таблицу удалили — выбор не должен указывать за конец списка.
   useEffect(() => {
     if (selected >= tables.length) setSelected(Math.max(0, tables.length - 1));
-  }, [tables.length, selected]);
+  }, [tables.length, selected, setSelected]);
 
   const table = tables[selected];
   const errorsOf = (name: string) => errors.filter(e => e.table === name.trim());
@@ -44,25 +57,12 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange}: P
     setSelected(tables.length);
   };
 
-  const remove = async () => {
-    if (!table) return;
-    const ok = await confirmModal({
-      title: `Удалить таблицу «${table.title ?? table.name}»?`,
-      description: "Вместе с колонками и строками. Удаление применится при сохранении; "
-        + "скрипты, читающие эту таблицу через data(), перестанут её находить.",
-      confirmLabel: "Удалить",
-      danger: true,
-    });
-    if (!ok) return;
-    onChange(tables.filter((_, i) => i !== selected));
-  };
-
   const duplicateName = table && tables.some((t, i) => i !== selected && t.name === table.name);
   const tableNameHint = table ? (duplicateName ? "такая таблица уже есть" : nameHint(table.name)) : null;
 
   return (
     <div className="flex-1 min-h-0 flex">
-      <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 space-y-1">
+      <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 pb-28 space-y-1">
         {tables.map((t, i) => (
           <button
             key={i}
@@ -73,43 +73,50 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange}: P
             <div className="text-[11px] text-neutral-500 font-mono truncate">{t.name} · {t.rows.length} стр.</div>
           </button>
         ))}
-        <Button className="w-full" onClick={add}><Plus size={14} />Таблица</Button>
+        <Button className={cn(compactButton, "w-full")} onClick={add}><Plus size={14} />Таблица</Button>
       </div>
 
       <div className="flex-1 min-w-0 overflow-y-auto">
         {!table ? (
           <div className="h-full flex items-center justify-center text-sm text-neutral-500">Таблиц нет</div>
         ) : (
-          <div className="p-4 space-y-6 max-w-6xl">
-            <div className="flex items-start gap-3">
-              <div className="w-64">
-                <label className={label}>Имя (для data())</label>
+          <div className="p-4 pb-28 space-y-6 max-w-6xl">
+            <div className="grid grid-cols-1 md:grid-cols-[18rem_1fr] gap-4">
+              <div>
+                <label className={fieldTitle} htmlFor="table-name">Имя таблицы</label>
                 <input
+                  id="table-name"
                   className={cn(cellInput, "font-mono", tableNameHint && "border-red-400 dark:border-red-500")}
                   value={table.name}
                   onChange={e => patch({name: e.target.value})}
                 />
-                {tableNameHint && <p className="text-[11px] text-red-600 mt-0.5">{tableNameHint}</p>}
+                {tableNameHint
+                  ? <p className="text-xs text-red-600 mt-1">{tableNameHint}</p>
+                  : <p className={fieldHint}>Для скриптов: <code className="font-mono">data(&apos;{table.name}&apos;)</code>. Латиница, цифры и _.</p>}
               </div>
-              <div className="flex-1">
-                <label className={label}>Заголовок</label>
-                <input className={cellInput} value={table.title ?? ""} onChange={e => patch({title: e.target.value === "" ? null : e.target.value})} />
-              </div>
-              <div className="pt-5">
-                <Button variant="danger" onClick={() => void remove()}><Trash2 size={14} />Удалить</Button>
+              <div>
+                <label className={fieldTitle} htmlFor="table-title">Заголовок</label>
+                <input
+                  id="table-title"
+                  className={cellInput}
+                  value={table.title ?? ""}
+                  placeholder="например: Уставки насосов"
+                  onChange={e => patch({title: e.target.value === "" ? null : e.target.value})}
+                />
+                <p className={fieldHint}>Понятное людям название — так таблица подписана в списке слева. На работу скриптов не влияет.</p>
               </div>
             </div>
             <div>
-              <label className={label}>Описание</label>
+              <label className={fieldTitle} htmlFor="table-description">Описание</label>
               <textarea
+                id="table-description"
                 className={cn(cellInput, "min-h-16")}
                 value={table.description ?? ""}
+                placeholder="что хранит таблица, кто и когда её заполняет"
                 onChange={e => patch({description: e.target.value === "" ? null : e.target.value})}
               />
+              <p className={fieldHint}>Заметка для коллег. Ни на что не влияет — только поясняет таблицу.</p>
             </div>
-            <p className="text-xs text-neutral-500 font-mono">
-              data(&apos;{table.name}&apos;) · data(&apos;{table.name}&apos;, &apos;ключ&apos;) — только в серверных скриптах automation и runtime
-            </p>
             {tableErrors.filter(e => e.field === "name").map((e, i) => (
               <p key={i} className="text-xs text-red-600">{e.message}</p>
             ))}

@@ -4,7 +4,7 @@ import React, {useCallback, useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/Button";
-import {cellInput} from "@/components/projectData/ColumnsEditor";
+import {cellInput, compactButton, fieldHint, iconButton} from "@/components/projectData/ColumnsEditor";
 import {formatCell, parseCell, setCellValue} from "@/lib/projectData/values";
 import type {
   ProjectDataColumn,
@@ -144,19 +144,22 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Строки <span className="text-neutral-500 font-normal">({rows.length})</span></h3>
-        <Button onClick={addRow}><Plus size={14} />Строка</Button>
+        <div>
+          <h3 className="text-base font-semibold">Строки <span className="text-neutral-500 font-normal">({rows.length})</span></h3>
+          <p className={fieldHint}>Сами данные. key — уникальный ключ строки, по нему скрипт берёт строку: data(&apos;таблица&apos;, &apos;key&apos;).</p>
+        </div>
+        <Button className={compactButton} onClick={addRow}><Plus size={14} />Строка</Button>
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
           <table className="text-sm border-separate border-spacing-1">
             <thead>
-              <tr className="text-xs text-left text-neutral-500">
-                <th className="font-medium px-1 min-w-32">key</th>
+              <tr className="text-xs text-left text-neutral-700 dark:text-neutral-200">
+                <th className="font-semibold px-2 py-1 min-w-32 rounded-md bg-neutral-200/70 dark:bg-neutral-800">key</th>
                 {columns.map(c => (
-                  <th key={c.name} className="font-medium px-1" title={`${c.name} · ${c.value_type}`}>
+                  <th key={c.name} className="font-semibold px-2 py-1 rounded-md bg-neutral-200/70 dark:bg-neutral-800 whitespace-nowrap" title={`${c.name} · ${c.value_type}${c.required ? " · обязательна" : ""}`}>
                     {c.title ?? c.name}{c.required && <span className="text-red-500">*</span>}
-                    <span className="ml-1 text-[10px] text-neutral-400">{c.value_type}</span>
+                    <span className="ml-1 text-[10px] font-normal text-neutral-500">{c.value_type}</span>
                   </th>
                 ))}
                 <th />
@@ -187,7 +190,7 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
                       </td>
                     ))}
                     <td className="align-top">
-                      <Button onClick={() => onChange(rows.filter((_, i) => i !== ri))} title="Удалить строку"><Trash2 size={14} /></Button>
+                      <Button className={iconButton} onClick={() => onChange(rows.filter((_, i) => i !== ri))} title="Удалить строку"><Trash2 size={14} /></Button>
                     </td>
                   </tr>
                 );
