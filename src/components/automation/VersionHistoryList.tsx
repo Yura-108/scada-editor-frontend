@@ -2,8 +2,8 @@
 
 import React, {useState} from "react";
 import {ChevronDown, ChevronRight, History} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import type {VersionSummary} from "@/types/editorVersion.types";
 
 interface Props {

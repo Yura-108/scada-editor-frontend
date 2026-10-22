@@ -31,6 +31,8 @@ app/api  →  server  →  shared
 - **Модули не импортируют друг друга.** Если редактору и монитору нужно одно и то же — это `core`.
 - `server` нельзя импортировать из клиентского кода (`'use client'`), а `modules`/`core` — из `server`.
 - Внутрь модуля или раздела `core` заходят только через его `index.ts`, не через внутренние пути.
+- `shared` импортируют по прямому пути к файлу (`@/shared/ui/Button`, `@/shared/lib/cn`): общего
+  `index.ts` у ui-kit нет, чтобы не тянуть в бандл всё сразу.
 
 ### Что где лежит
 
@@ -234,12 +236,23 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 |---|---|---|
 | 1 | Документация: этот файл, `docs/domain/`, короткий `CLAUDE.md` | готово |
 | 2 | ESLint: `max-lines`, границы слоёв — в режиме `warn` (`eslint.config.mjs`) | готово: 22 длинных файла, 28 длинных функций, 44 импорта против слоёв |
-| 3 | Создать `shared/` и перенести ui-kit и общие утилиты | — |
+| 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | — |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | — |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | — |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
+
+### Что осталось после шага 3
+
+В `shared` перенесено всё, что не зависит от предметной области. В старых папках остались:
+
+| Файл | Почему не в `shared` | Что сделать |
+|---|---|---|
+| `components/ui/NumberInput`, `TextInput`, `ColorField` | зависят от `lib/editor/historyGroup` (группировка undo редактора) | передавать начало/конец правки через пропсы — тогда в `shared/ui` |
+| `components/ui/ReadOnlyBanner`, `AccessLevelSelect` | тексты и типы прав проекта | `core/access` |
+| `components/ui/Open*Modal`, `ProjectModal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
+| `lib/utils.ts` (`GRID`, `snap`), `lib/pickImageFile` | сетка редактора | `core/scene` |
 
 ### Зоны `useEditorStore` (для шага 6)
 

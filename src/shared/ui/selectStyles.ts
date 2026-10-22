@@ -1,4 +1,4 @@
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 
 /** Триггер выпадающего списка */
 export const selectTriggerClassName = cn(

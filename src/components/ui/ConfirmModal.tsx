@@ -3,7 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 import React, { useId, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 import { useConfirmStore, type ConfirmEntry } from "@/store/confirmStore";
 import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
 

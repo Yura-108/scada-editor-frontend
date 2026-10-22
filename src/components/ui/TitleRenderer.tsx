@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 import {
   Building2,
   FolderOpen,

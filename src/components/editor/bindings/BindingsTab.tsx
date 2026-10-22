@@ -2,7 +2,7 @@
 
 import React, {useState} from "react";
 import {Boxes, Pencil, Plus, Tag as TagIcon, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
 import {collectTagScope} from "@/lib/runtime/bindingScope";

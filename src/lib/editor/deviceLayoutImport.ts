@@ -1,6 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {PaletteItemType} from "@/types/palette.types";
-import {createUuid} from "@/lib/createUuid";
+import {createUuid} from "@/shared/lib/createUuid";
 import {snap} from "@/lib/utils";
 import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {findTemplateRoot} from "@/lib/editor/templateRoot";

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Minus, Plus, Maximize, RotateCcw, FileText, Lock, Unlock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 
 interface ZoomControlsProps {
   zoom: number;

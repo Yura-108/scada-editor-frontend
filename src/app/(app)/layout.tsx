@@ -6,7 +6,7 @@ import { getUser } from '@/lib/getUser';
 import HeaderNav from '@/components/editor/HeaderNav';
 import LogoLink from '@/components/editor/LogoLink';
 import DocumentTitle from '@/components/DocumentTitle';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { ThemeToggle } from '@/shared/ui/ThemeToggle';
 
 /**
  * Оболочка рабочей области: шапка с навигацией + содержимое страницы.

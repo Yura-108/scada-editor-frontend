@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {readBackendError} from "@/lib/access/accessErrors";
 import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";

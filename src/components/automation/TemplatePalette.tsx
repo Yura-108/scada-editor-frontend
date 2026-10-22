@@ -2,8 +2,8 @@
 
 import React, {useEffect, useMemo, useState} from "react";
 import {ChevronDown, Pencil, Search, Trash2, X} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useAutomationTemplateStore} from "@/store/useAutomationTemplateStore";
 import {groupTemplates} from "@/lib/automation/automationTemplates";

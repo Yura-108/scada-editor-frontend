@@ -1,4 +1,4 @@
-import {createUuid} from "@/lib/createUuid";
+import {createUuid} from "@/shared/lib/createUuid";
 import {DEFAULT_DASH} from "@/lib/editor/dashArray";
 
 /**

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Cpu } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { ThemeToggle } from '@/shared/ui/ThemeToggle';
 
 /**
  * Оболочка страниц входа и регистрации.

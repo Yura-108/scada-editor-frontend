@@ -1,4 +1,4 @@
-import {createUuid} from "@/lib/createUuid";
+import {createUuid} from "@/shared/lib/createUuid";
 import {uniqueVarName} from "@/lib/runtime/bindingScope";
 import type {TagBinding} from "@/types/binding.types";
 import type {PickedProperty} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";

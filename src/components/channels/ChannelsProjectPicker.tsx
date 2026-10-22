@@ -1,10 +1,10 @@
 import {useEffect, useId, useState} from "react";
 import {toast} from "sonner";
 import {Building2, Download, FolderOpen, RefreshCw} from 'lucide-react';
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useDeviceStore} from "@/store/useDeviceStore";
-import {Button} from "@/components/ui/Button";
-import {MultiSelect} from "@/components/ui/MultiSelect";
+import {Button} from "@/shared/ui/Button";
+import {MultiSelect} from "@/shared/ui/MultiSelect";
 
 const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
 

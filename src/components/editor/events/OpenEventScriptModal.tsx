@@ -4,9 +4,9 @@ import {javascript} from "@codemirror/lang-javascript";
 import {Boxes, ExternalLink, Play, Tag, Terminal, Wand2, X} from "lucide-react";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/store/useEditorStore";
-import {cn} from "@/lib/utils";
-import {formatCode} from "@/lib/formatCode";
-import {Collapsible, TitleWithHint} from "@/components/ui/codeModalParts";
+import {cn} from "@/shared/lib/cn";
+import {formatCode} from "@/shared/lib/formatCode";
+import {Collapsible, TitleWithHint} from "@/shared/ui/codeModalParts";
 import {DiagramElement} from "@/types/editorElement.type";
 import {
   ElementEventHandler,

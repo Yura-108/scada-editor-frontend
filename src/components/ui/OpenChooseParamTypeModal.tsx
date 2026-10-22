@@ -3,16 +3,16 @@ import { useModalStore } from "@/store/modalStore";
 import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 import { ChevronDown, Type } from "lucide-react"; // Добавил иконку Type для инпута
-import SelectItem from "@/components/ui/SelectItem";
+import SelectItem from "@/shared/ui/SelectItem";
 import {
   selectContentClassName,
   selectIconClassName,
   selectTriggerClassName,
-} from "@/components/ui/selectStyles";
+} from "@/shared/ui/selectStyles";
 import { useDeviceStore } from "@/store/useDeviceStore";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface Props {
   onLoadAction: (param: { id: number; value: string; parentKey: string }) => void;

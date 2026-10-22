@@ -4,7 +4,7 @@ import React, {useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {readBackendError} from "@/lib/access/accessErrors";
 
 /** Те же пределы, что проверяет auth (`ChangePasswordDto`). */

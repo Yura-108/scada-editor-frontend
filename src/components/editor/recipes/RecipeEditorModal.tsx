@@ -3,13 +3,13 @@
 import React, {useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, ChevronDown, ChevronUp, Plus, Tags, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {ChooseManifestTagsModal} from "@/components/editor/recipes/ChooseManifestTagsModal";
 import {actionValueText, coerceActionValue, validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {
   RECIPE_VALUE_TYPES,
   type Recipe,

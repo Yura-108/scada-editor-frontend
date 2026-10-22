@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from "react";
 import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {useRecipeStore} from "@/store/useRecipeStore";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
 import openRecipeEditorModal from "@/components/editor/recipes/RecipeEditorModal";

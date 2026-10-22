@@ -2,7 +2,7 @@
 
 import React, {useCallback, useLayoutEffect, useRef, useState} from "react";
 import {GripVertical, X} from "lucide-react";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {
   closeFloatingWindow, focusFloatingWindow, useFloatingWindowsStore, type FloatingWindow,
 } from "@/store/useFloatingWindowsStore";

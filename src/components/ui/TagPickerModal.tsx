@@ -3,7 +3,7 @@
 import React, {useEffect, useMemo, useRef} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
-import {Button, ModalFooter} from "@/components/ui/Button";
+import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
 import {useDeviceStore} from "@/store/useDeviceStore";
 

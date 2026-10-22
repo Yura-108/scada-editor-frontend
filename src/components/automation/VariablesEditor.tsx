@@ -2,8 +2,8 @@
 
 import React from "react";
 import {Plus, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {
   AUTOMATION_VALUE_TYPES,
   VARIABLE_TAG_PREFIX,

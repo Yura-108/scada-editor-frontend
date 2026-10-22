@@ -1,12 +1,12 @@
 import {useModalStore} from "@/store/modalStore";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import React, {useId, useState, useEffect, useMemo} from "react";
 import CodeMirror from '@uiw/react-codemirror';
 import {javascript} from "@codemirror/lang-javascript";
 import {Wand2} from "lucide-react";
-import {formatCode} from "@/lib/formatCode";
-import {TitleWithHint} from "./codeModalParts";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import {formatCode} from "@/shared/lib/formatCode";
+import {TitleWithHint} from "@/shared/ui/codeModalParts";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 

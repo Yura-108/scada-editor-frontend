@@ -5,7 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import React from 'react';
 import { ModalRoot } from '@/components/ui/ModalRoot';
 import { ConfirmRoot } from '@/components/ui/ConfirmModal';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 import type { Metadata } from 'next';
 
 // Имя переменной должно совпадать с --font-geist-sans из globals.css (@theme inline).

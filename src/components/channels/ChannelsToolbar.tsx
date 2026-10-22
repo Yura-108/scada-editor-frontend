@@ -1,5 +1,5 @@
 import {FileUp} from 'lucide-react';
-import {Button} from "@/components/ui/Button";
+import {Button} from "@/shared/ui/Button";
 import ChannelsProjectPicker from "@/components/channels/ChannelsProjectPicker";
 import {openImportCdbxModal} from "@/components/channels/OpenImportCdbxModal";
 

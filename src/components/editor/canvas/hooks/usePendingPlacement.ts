@@ -2,7 +2,7 @@ import { RefObject, useCallback, useEffect } from "react";
 import Konva from "konva";
 import { useEditorStore } from "@/store/useEditorStore";
 import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
-import { createUuid } from "@/lib/createUuid";
+import { createUuid } from "@/shared/lib/createUuid";
 
 interface PendingPlacementDeps {
   stageRef: RefObject<Konva.Stage | null>;

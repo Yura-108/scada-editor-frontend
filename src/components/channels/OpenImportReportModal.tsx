@@ -4,8 +4,8 @@ import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2} from "lucide-react";
 import {useModalStore} from "@/store/modalStore";
-import {Button, ModalFooter} from "@/components/ui/Button";
-import {Collapsible} from "@/components/ui/codeModalParts";
+import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Collapsible} from "@/shared/ui/codeModalParts";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 
 /**

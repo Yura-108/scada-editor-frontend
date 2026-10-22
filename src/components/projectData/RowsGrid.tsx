@@ -2,8 +2,8 @@
 
 import React, {useCallback, useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {cellInput, compactButton, fieldHint, iconButton} from "@/components/projectData/ColumnsEditor";
 import {formatCell, parseCell, setCellValue} from "@/lib/projectData/values";
 import type {

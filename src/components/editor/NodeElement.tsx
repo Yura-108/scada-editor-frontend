@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/cn";
 import {LeafElement} from "@/types/editorElement.type";
 import { Button } from "@/components/ui/SVGComponents/ButtonSVG";
 import { ProgressBar } from "@/components/ui/SVGComponents/ProgressBarSVG";

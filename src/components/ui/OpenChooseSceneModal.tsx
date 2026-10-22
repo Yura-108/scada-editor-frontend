@@ -1,7 +1,7 @@
 "use client";
 
 import {useModalStore} from "@/store/modalStore";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Pin, PinOff, X} from "lucide-react";
 import {useState} from "react";
@@ -10,7 +10,7 @@ import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {toast} from "sonner";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import { Button, ModalFooter } from "@/components/ui/Button";
+import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface Props {
   onLoadAction: (value: number) => void;

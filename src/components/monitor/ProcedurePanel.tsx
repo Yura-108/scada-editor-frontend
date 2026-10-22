@@ -2,8 +2,8 @@
 
 import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, RefreshCw} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {Button} from "@/components/ui/Button";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
 import {useMonitorRecipesStore} from "@/store/useMonitorRecipesStore";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";

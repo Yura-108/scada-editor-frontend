@@ -11,7 +11,7 @@ import {handleTabListKey} from "@/lib/editor/tabListKeys";
 import React, {useMemo, useRef, useState, useEffect} from "react";
 import Palette from "./Palette";
 import ToolsPanel from "@/components/editor/ToolsPanel";
-import {cn} from "@/lib/utils";
+import {cn} from "@/shared/lib/cn";
 import {EditorPanel} from "@/components/editor/panels/EditorPanel";
 import {RecipesPanel} from "@/components/editor/panels/RecipesPanel";
 
