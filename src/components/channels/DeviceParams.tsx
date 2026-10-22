@@ -2,7 +2,7 @@
 
 import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {useDeviceStore} from '@/store/useDeviceStore';
-import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus} from 'lucide-react';
+import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
 import ContextMenu from "@/components/ui/ContextMenu";
@@ -209,21 +209,20 @@ const DeviceParams = () => {
 
   if (!selectedDevice) {
     return (
-      <div className="flex flex-col items-center justify-start mt-10 h-full text-gray-600 dark:text-gray-400">
-        <AlertCircle className="w-12 h-12 mb-4"/>
-        <p className="text-lg">Выберите устройство или канал</p>
+      <div className="flex flex-col items-center justify-start mt-10 h-full text-neutral-500 dark:text-neutral-400">
+        {/* Обычное пустое состояние, а не ошибка: нейтральная иконка вместо «!». */}
+        <MousePointerClick className="w-10 h-10 mb-3 opacity-60"/>
+        <p className="text-base">Выберите устройство или канал в дереве слева</p>
       </div>
     );
   }
 
   if (rawParams.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-600 dark:text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full text-neutral-500 dark:text-neutral-400">
         <div className="text-center">
-          <div className="bg-gray-100 dark:bg-neutral-800 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-            <AlertCircle className="w-12 h-12"/>
-          </div>
-          <p className="text-lg">Нет параметров для отображения</p>
+          <Inbox className="w-10 h-10 mx-auto mb-3 opacity-60"/>
+          <p className="text-base">Нет параметров для отображения</p>
         </div>
       </div>
     );

@@ -12,6 +12,7 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
 import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "@/lib/editor/deviceTreeData";
+import ChannelsProjectPicker from "@/components/channels/ChannelsProjectPicker";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -269,16 +270,18 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
             )}
           </div>
         ) : treeData.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            {fill
-              ? 'Дерево пусто — загрузите площадку и проект в разделе «База каналов».'
-              : 'Дерево пусто — выберите площадку и проект на панели сверху.'}
-            {/* Чтение фильтруется по веткам каталога: без веток бэкенд отдаёт пустое
-                дерево, а не 403 — иначе пользователь не узнал бы причину. */}
-            <p className="mt-2 text-xs">
-              Если площадок нет вовсе — у вас нет доступных веток каталога; их выдаёт администратор.
-            </p>
-          </div>
+          fill ? (
+            // Встроенное дерево («Автоматизация», выбор тега): выбор проекта прямо здесь, а не
+            // отсылка в другой раздел.
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+              <p>Дерево пусто — загрузите площадку и проект:</p>
+              <ChannelsProjectPicker layout="stacked" />
+            </div>
+          ) : (
+            <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+              Дерево пусто — выберите площадку и проект на панели сверху.
+            </div>
+          )
         ) : (
           <Tree
             treeData={treeData}
