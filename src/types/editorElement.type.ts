@@ -78,7 +78,7 @@ export interface ElementScript {
 /**
  * Статические (design-time) данные одной ячейки таблицы. Ключ в LeafElement.cells —
  * `${row}_${col}` (0-based). Живое значение из привязки к тегу переопределяет `value`
- * через runtimeOverridesByElementKey[el.key][`cell_${row}_${col}`] — см. src/lib/editor/tableCells.ts.
+ * через useRuntimeOverlayStore.overridesByKey[el.key][`cell_${row}_${col}`] — см. src/lib/editor/tableCells.ts.
  */
 export interface TableCellData {
   value?: string;

@@ -158,7 +158,7 @@ only; procedures keep running. Two consequences the frontend must honour:
 **Switching scenes must re-run the bindings.** The WS session lives on `(active, projectId)`
 (`useRuntimeEngine`), so changing the scene inside a project keeps it — `valuesRef` holds the
 values of *every* project tag, including scenes that are not open. But `applyServerComponents`
-resets `currentComponentStateByElementKey` (and now `runtimeOverridesByElementKey`) when the
+resets `currentComponentStateByElementKey` (and the runtime overrides, see below) when the
 document is replaced, and `flush` only executes bindings of tags whose value *changed*. So a
 scene opened after its values already arrived would stay in its default state forever — the
 telemetry keeps repeating the same value and the no-op guard drops it. The effect on `index`
@@ -166,6 +166,17 @@ therefore seeds property/table values and then re-runs `index.all` (filtered by
 `hasKnownTrigger`) through the shared `runBindings`, applying everything in one
 `applyRuntimeBatch`. Anything that replaces `elements` must keep that path intact: a scene whose
 bindings never ran shows a confident but wrong mimic, which is the worst failure mode here.
+
+**Где живёт рантайм-слой.** `applyRuntimeBatch` / `clearRuntime` остаются экшенами
+`useEditorStore`, но делят работу: переключения состояний пишутся в
+`currentComponentStateByElementKey` (это поле общее с редактором), а патчи свойств (`setProp`,
+живые ячейки таблиц, прямые привязки) и набор «нет данных» — в `useRuntimeOverlayStore`
+(`src/core/scene`, поля `overridesByKey` / `noDataKeys`). Так кадры телеметрии не пересчитывают
+селекторы всех подписчиков стора редактора. Два `set()` идут подряд синхронно, React сводит их в
+одну перерисовку. `applyServerComponents` сбрасывает оверрайды (`resetOverrides`) **до** смены
+`elements`, а набор «нет данных» не трогает — его ведёт движок через свой diff
+(`noDataKeysRef`). Читать оверрайды: `getRenderedElement` (нереактивно) или подпиской на
+`useRuntimeOverlayStore` — как `useElementRenderState` и `NoDataOverlay`.
 
 **Written tag values are shown once, not pinned.** After a successful
 `POST /api/runtime/tags/write` the modal calls `notifyRuntimeTagsWritten` (`runtimeEventBus`), and

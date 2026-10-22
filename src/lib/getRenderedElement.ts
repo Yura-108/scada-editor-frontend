@@ -1,5 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {useEditorStore} from "@/store/useEditorStore";
+import {useRuntimeOverlayStore} from "@/core/scene";
 
 type Overrides = Record<string, unknown>;
 
@@ -70,10 +71,10 @@ export function getRenderedElementWith(
  * Годится для расчётов вне рендера (геометрия, сериализация, направляющие).
  */
 export function getRenderedElement(el: DiagramElement): DiagramElement {
-  const {currentComponentStateByElementKey, runtimeOverridesByElementKey} = useEditorStore.getState();
+  const {currentComponentStateByElementKey} = useEditorStore.getState();
   return getRenderedElementWith(
     el,
     currentComponentStateByElementKey[el.key],
-    runtimeOverridesByElementKey[el.key],
+    useRuntimeOverlayStore.getState().overridesByKey[el.key],
   );
 }

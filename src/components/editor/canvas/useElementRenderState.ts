@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useEditorStore } from "@/store/useEditorStore";
+import { useRuntimeOverlayStore } from "@/core/scene";
 import { getElementIndex } from "@/lib/editor/elementIndex";
 import { DiagramElement, GroupElement } from "@/types/editorElement.type";
 import { sortKeysByZIndex } from "@/lib/editor/zOrder";
@@ -52,7 +54,11 @@ export interface ElementRenderState {
  * узел не узнал бы о смене состояния), и как пропы фигуры — см. `stateId`.
  */
 export function useElementRenderState(elementKey: string): ElementRenderState {
-  return useEditorStore(useShallow((s): ElementRenderState => {
+  // Рантайм-оверрайды — в отдельном сторе (core/scene): кадры телеметрии не должны
+  // пересчитывать селекторы стора редактора. Ссылка на объект меняется только когда
+  // меняются оверрайды ЭТОГО элемента, поэтому useMemo ниже держит identity стабильной.
+  const runtime = useRuntimeOverlayStore(s => s.overridesByKey[elementKey]);
+  const base = useEditorStore(useShallow((s): Omit<ElementRenderState, "runtime"> => {
     // Индекс кэширован по ссылке на массив — это O(1) поиск, а не проход по нему.
     const el = getElementIndex(s.elements).byKey[elementKey];
     const isSelected = s.selectedIds.includes(elementKey);
@@ -70,9 +76,9 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
       isEditing: s.editingTextKey === elementKey,
       focusedCell: cell && cell.elementKey === elementKey ? cell : null,
       stateId: s.currentComponentStateByElementKey[elementKey],
-      runtime: s.runtimeOverridesByElementKey[elementKey],
     };
   }));
+  return useMemo(() => ({...base, runtime}), [base, runtime]);
 }
 
 /**

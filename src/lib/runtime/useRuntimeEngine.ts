@@ -215,7 +215,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   // Последнее известное качество/момент снятия по тегу (docs/contract/TAG_CONTRACT_CHANGES.md B1/B3).
   const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
   // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
-  // чтобы не пересчитывать noDataElementKeys на каждый тик без надобности.
+  // чтобы не пересчитывать набор «нет данных» (noDataKeys рантайм-слоя) на каждый тик без надобности.
   const qualityDirtyRef = useRef(false);
   // Последний набор "нет данных", отправленный в стор — для diff перед новым applyRuntimeBatch.
   const noDataKeysRef = useRef(new Set<string>());
@@ -499,7 +499,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
     // «Нет данных» (B4): тег, по которому ещё не было ни одного сообщения (tagMetaRef
     // пуст на самый первый маунт), считается недостоверным — элементы уходят в
-    // noDataElementKeys, не дожидаясь первого BAD-кадра. При смене схемы внутри той же
+    // noDataKeys рантайм-слоя, не дожидаясь первого BAD-кадра. При смене схемы внутри той же
     // сессии tagMetaRef уже знает часть тегов, и пересчёт это учитывает.
     //
     // Пишем БЕЗУСЛОВНО, без сравнения с прошлым набором: документ заменён целиком, и
