@@ -144,8 +144,18 @@ export function useRecipes(projectId: number) {
   кэш сцен — это сложная клиентская модель редактирования, она остаётся в zustand. В Query не
   переносится.
 
-> `QueryClientProvider` сейчас убран из `src/app/providers.tsx` (см. комментарий там). Первый
-> модуль, переходящий на Query, возвращает его.
+**Образец — шаблоны задач** (`src/modules/automation/api/templates.ts`). Как переводить стор:
+
+1. Функции запросов (`fetchXxx`, `createXxx`, …) не меняются — Query только вызывает их.
+2. Список — `useQuery` с ключом из `xxxKeys`. Грузится один раз за сессию — `staleTime: Infinity`.
+3. Создание/правка — `useMutation`; в `onSuccess` дождаться `invalidateQueries`, затем тост.
+   Форма вызывает `mutateAsync` и сама ловит ошибку (подсветка полей).
+4. Удаление — `setQueryData` убирает элемент сразу; при ошибке тост и `invalidateQueries`.
+5. Компоненты берут хуки из `index.ts` модуля; старый стор удаляется в том же коммите.
+
+Клиент — `src/shared/api/queryClient.ts`, провайдер — `src/app/providers.tsx`. По умолчанию
+**выключены** повторы (`retry`) и перечитка при возврате на вкладку (`refetchOnWindowFocus`):
+приложение до Query так не делало. Запрос, которому это нужно, включает их у себя.
 
 ### Клиентское состояние → zustand
 
@@ -239,7 +249,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 2 | ESLint: `max-lines`, границы слоёв — в режиме `warn` (`eslint.config.mjs`) | готово: 22 длинных файла, 28 длинных функций, 44 импорта против слоёв |
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
-| 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | — |
+| 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач автоматизации; дальше — остальные сторы с `fetch` по тому же образцу |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | — |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |

@@ -1,14 +1,17 @@
 "use client";
 
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useMemo, useState} from "react";
 import {ChevronDown, Pencil, Search, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useAutomationTemplateStore} from "@/store/useAutomationTemplateStore";
+import {useDeleteTemplate, useTemplates} from "@/modules/automation";
 import {groupTemplates} from "@/lib/automation/automationTemplates";
 import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+
+/** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */
+const NO_TEMPLATES: AutomationTaskTemplate[] = [];
 
 interface Props {
   /** Вставка кладёт в набор черновик задачи; сохраняет его обычное сохранение набора. */
@@ -21,17 +24,20 @@ interface Props {
  * Порядок внутри группы задаёт сервер (по имени), группировка по категории — здесь.
  */
 export function TemplatePalette({onInsert}: Props) {
-  const items = useAutomationTemplateStore(s => s.items);
-  const status = useAutomationTemplateStore(s => s.status);
-  const error = useAutomationTemplateStore(s => s.error);
-  const loadTemplates = useAutomationTemplateStore(s => s.loadTemplates);
-  const reload = useAutomationTemplateStore(s => s.reload);
-  const deleteTemplate = useAutomationTemplateStore(s => s.deleteTemplate);
+  const templates = useTemplates();
+  const items = templates.data ?? NO_TEMPLATES;
+  // Пока есть список, перечитка (после сохранения) идёт фоном и список не прячется.
+  // Без списка «Повторить» после ошибки снова показывает «Загрузка…», а не старую ошибку.
+  const status =
+    templates.status === "success" ? "ready" : templates.isFetching ? "loading" : "error";
+  const error = templates.error
+    ? templates.error.message || "Не удалось загрузить шаблоны задач"
+    : null;
+  const reload = templates.refetch;
+  const {mutate: deleteTemplate} = useDeleteTemplate();
 
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  useEffect(() => { void loadTemplates(); }, [loadTemplates]);
 
   const groups = useMemo(() => {
     const needle = search.trim().toLowerCase();
