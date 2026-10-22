@@ -37,7 +37,7 @@ export const journalPage =
 
 /** Панель фильтров — форма в строку под заголовком журнала. */
 export const journalFilterBar =
-  "shrink-0 flex flex-wrap items-end gap-3 px-4 pt-1 pb-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80";
+  "shrink-0 flex flex-wrap items-end justify-center gap-3 px-4 pt-1 pb-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80";
 
 export const journalTableBox =
   "overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900";
@@ -62,7 +62,7 @@ export const journalBadge = (tone: "ok" | "error" | "warn" | "neutral") =>
  */
 export function JournalTitle({title, description}: {title: string; description: string}) {
   return (
-    <div className="shrink-0 px-4 pt-3 pb-1 bg-white dark:bg-neutral-900/80">
+    <div className="shrink-0 px-4 pt-3 pb-1 text-center bg-white dark:bg-neutral-900/80">
       <h1 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h1>
       <p className="text-xs text-neutral-500 dark:text-neutral-400">{description}</p>
     </div>
