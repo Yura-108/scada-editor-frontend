@@ -28,3 +28,4 @@ export {
   scheduleScenePrefetch,
   VERSIONS_PAGE_SIZE,
 } from "./model/editorStoreInternals";
+export {createVersionsSlice, type VersionsSlice} from "./model/slices/versions.slice";

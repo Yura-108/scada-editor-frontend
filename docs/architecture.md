@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
-| 6 | Разрезать `useEditorStore` на слайсы по зонам | в работе: 2 из 6 зон (камера и холст, выделение) + общие хелперы и буферы вынесены (`editorStoreInternals`, `editorSession`), см. ниже |
+| 6 | Разрезать `useEditorStore` на слайсы по зонам | в работе: 3 из 6 зон (камера и холст, выделение, сохранение и версии) + общие хелперы и буферы вынесены (`editorStoreInternals`, `editorSession`), см. ниже |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
 
@@ -299,7 +299,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 |---|---|---|---|
 | Камера и холст | `camera`, `canvasRect`, `pendingPlacement`, `ensureElementVisible` | `camera.slice` | сделано (`setMonitorView`, `setSheet` пишут `elements` — остались в документе) |
 | Выделение | `selectedIds`, `activeGroupKey`, вход/выход из группы, `revealElement`, ячейка таблицы, `editingTextKey`, `editAllStates` | `selection.slice` | сделано. Слайс не меняет `elements`: сдвиг, выравнивание, слои, удаление, дубликат остались в документе. Буфер (`clipboard`, копирование/вставка) — тоже: делит со вставкой модульные счётчики, переедет вместе с ней |
-| Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview` | `versions.slice` | — |
+| Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview`, `exportScene`, просмотр и восстановление версий | `versions.slice` | сделано. Зависимости — весь `EditorState`: сохранение читает и пишет почти все зоны. Файл длиннее лимита (`exportScene` ~270 строк) — разбить его — отдельная задача шага 7 |
 | Проекты и выпуски | `projectList`, `currentProject`, `createProject`, `releaseProject`, `projectRuntimeFlags` | `projects.slice` (позже `core/project`) | — |
 | Сцены | `scene`, `sceneList`, `loadScene`, `createScene`, `sceneSource`, `draftStash` | `scenes.slice` (позже `core/project`) | — |
 | Документ | `elements`, группы, компоненты, свойства, привязки, состояния | `document.slice` | — |
