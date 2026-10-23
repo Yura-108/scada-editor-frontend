@@ -45,3 +45,4 @@ export {createPropertiesSlice, type PropertiesSlice} from "./model/slices/proper
 export {createElementsSlice, type ElementsSlice} from "./model/slices/elements.slice";
 export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboard.slice";
 export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
+export {useEditorStore, type EditorProject, type EditorState} from "./model/editorStore";

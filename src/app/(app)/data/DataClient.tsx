@@ -7,7 +7,7 @@ import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {useEditableProject} from "@/lib/editor/lastProject";
 import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";

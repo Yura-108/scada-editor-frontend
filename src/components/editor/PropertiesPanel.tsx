@@ -20,7 +20,7 @@ import {TextInput} from "@/components/ui/TextInput";
 import {choiceModal, confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/shared/lib/createUuid";

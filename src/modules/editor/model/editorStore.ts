@@ -1,20 +1,21 @@
 import {create} from "zustand/react";
 import {temporal} from "zundo";
 import type {EditorProject} from "@/lib/pickProjectsFromComponents";
-import {
-  bindEditorStore, editorSession,
-  createCameraSlice, createSelectionSlice, createVersionsSlice, createProjectsSlice, createScenesSlice,
-  createLayoutSlice, createStatesSlice, createPropertiesSlice, createElementsSlice, createClipboardSlice,
-  createGroupsSlice,
-  type CameraSlice, type SelectionSlice, type VersionsSlice, type ProjectsSlice, type ScenesSlice,
-  type LayoutSlice, type StatesSlice, type PropertiesSlice, type ElementsSlice, type ClipboardSlice,
-  type GroupsSlice,
-} from "@/modules/editor";
+import {bindEditorStore} from "./editorStoreRef";
+import {editorSession} from "./editorSession";
+import {createCameraSlice, type CameraSlice} from "./slices/camera.slice";
+import {createSelectionSlice, type SelectionSlice} from "./slices/selection.slice";
+import {createVersionsSlice, type VersionsSlice} from "./slices/versions.slice";
+import {createProjectsSlice, type ProjectsSlice} from "./slices/projects.slice";
+import {createScenesSlice, type ScenesSlice} from "./slices/scenes.slice";
+import {createLayoutSlice, type LayoutSlice} from "./slices/layout.slice";
+import {createStatesSlice, type StatesSlice} from "./slices/states.slice";
+import {createPropertiesSlice, type PropertiesSlice} from "./slices/properties.slice";
+import {createElementsSlice, type ElementsSlice} from "./slices/elements.slice";
+import {createClipboardSlice, type ClipboardSlice} from "./slices/clipboard.slice";
+import {createGroupsSlice, type GroupsSlice} from "./slices/groups.slice";
 
 export type {EditorProject};
-// Общие хелперы переехали в src/modules/editor/model/editorStoreInternals.ts; эти три читают
-// и снаружи стора, поэтому прежний путь импорта сохраняется.
-export {canWriteCurrentProject, hasUnsavedWork, SCENE_EXPORT_FORMAT, type SceneExportFile} from "@/modules/editor";
 
 // Стор режется на слайсы по зонам (docs/architecture.md, шаг 6); поля слайса описаны в его файле.
 export type EditorState = CameraSlice & SelectionSlice & VersionsSlice & ProjectsSlice & ScenesSlice

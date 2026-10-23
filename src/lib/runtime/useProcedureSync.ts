@@ -3,7 +3,7 @@
 import {useEffect} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {fetchProcedureStatus, NoActiveProcedureError} from "@/lib/runtime/procedures";
 
 /**

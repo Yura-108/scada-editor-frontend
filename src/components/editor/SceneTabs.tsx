@@ -6,7 +6,7 @@ import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type Dr
 import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {cn} from "@/shared/lib/cn";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {handleTabListKey} from "@/lib/editor/tabListKeys";
 

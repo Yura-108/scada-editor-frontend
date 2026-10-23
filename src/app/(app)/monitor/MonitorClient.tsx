@@ -6,7 +6,7 @@ import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModa
 import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
 import {closeFloatingWindows} from "@/store/useFloatingWindowsStore";
 import Canvas from "@/components/editor/Canvas";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
 import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";

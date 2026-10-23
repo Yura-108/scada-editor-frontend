@@ -5,7 +5,7 @@ import { Group, Rect, Text } from "react-konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";

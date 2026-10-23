@@ -3,7 +3,7 @@ import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {TagBinding} from "@/types/binding.types";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";
 import {
   adoptPropertyEditVersion, canWriteCurrentProject, renamePropertyOnServer,

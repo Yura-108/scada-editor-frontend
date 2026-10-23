@@ -16,7 +16,7 @@ import {createUuid} from "@/shared/lib/createUuid";
 import {getElementBoundsRendered} from "@/lib/getElementBounds";
 import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
 import {getCanvasPointerWorld} from "@/lib/editor/canvasPointer";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";
 import {
   SCENE_EXPORT_FORMAT, sceneBelongsToCurrentProject, type SceneExportFile,

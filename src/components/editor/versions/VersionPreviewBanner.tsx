@@ -3,7 +3,7 @@
 import {useEffect} from "react";
 import {History, RotateCcw, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {shouldIgnoreEditorHotkey} from "@/components/editor/canvas/hooks/useEditorHotkeys";
 import {

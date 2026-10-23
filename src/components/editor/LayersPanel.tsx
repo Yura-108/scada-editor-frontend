@@ -2,7 +2,7 @@
 
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {ChevronDown, ChevronRight, ChevronsDownUp, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, Radius, PenTool, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/shared/lib/cn";
 import {sortByZIndex, sortKeysByZIndex} from "@/lib/editor/zOrder";

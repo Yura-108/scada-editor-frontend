@@ -4,7 +4,7 @@ import React, {useMemo, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronDown, ChevronRight, Puzzle} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import {DiagramElement, ElementType} from "@/types/editorElement.type";
 

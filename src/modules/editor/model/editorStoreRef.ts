@@ -1,5 +1,5 @@
 // Только тип: значение стора сюда не импортируется, циклической зависимости нет.
-import type {useEditorStore} from "@/store/useEditorStore";
+import type {useEditorStore} from "./editorStore";
 
 type EditorStore = typeof useEditorStore;
 

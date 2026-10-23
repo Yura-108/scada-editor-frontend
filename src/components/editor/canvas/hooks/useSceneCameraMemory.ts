@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { resolveSheet } from "@/lib/editor/sheet";
 import { cameraForSheet } from "@/lib/editor/fitCamera";
 import { CameraScope, readSceneCamera, writeSceneCamera } from "@/lib/editor/sceneCamera";

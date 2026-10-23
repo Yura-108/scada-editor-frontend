@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {useRecipeMutations, useRecipes} from "@/modules/editor";
+import {useEditorStore, useRecipeMutations, useRecipes} from "@/modules/editor";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
 import openRecipeEditorModal from "@/components/editor/recipes/RecipeEditorModal";
 import {openRecipeHistoryModal} from "@/components/editor/recipes/RecipeHistoryModal";
@@ -13,7 +13,6 @@ import {validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
-import {useEditorStore} from "@/store/useEditorStore";
 
 /**
  * Процедурные рецепты открытого проекта. Рецепт не принадлежит ни компоненту, ни сцене —

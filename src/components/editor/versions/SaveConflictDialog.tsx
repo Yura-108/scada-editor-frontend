@@ -3,7 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {
   CONFLICT_KIND_LABEL,
   formatConflictPath,

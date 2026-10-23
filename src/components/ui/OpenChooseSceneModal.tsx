@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Pin, PinOff, X} from "lucide-react";
 import {useState} from "react";
-import {canWriteCurrentProject, useEditorStore} from "@/store/useEditorStore";
+import {canWriteCurrentProject, useEditorStore} from "@/modules/editor";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {toast} from "sonner";

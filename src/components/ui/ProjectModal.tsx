@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect, useMemo} from "react";
-import {useEditorStore, type EditorProject} from "@/store/useEditorStore";
+import {useEditorStore, type EditorProject} from "@/modules/editor";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";

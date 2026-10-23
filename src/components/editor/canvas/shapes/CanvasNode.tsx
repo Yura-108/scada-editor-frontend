@@ -6,7 +6,7 @@ import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { EditorRenderContext, MIN_SIZE } from "../types";
 import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";

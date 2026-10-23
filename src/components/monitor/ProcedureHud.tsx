@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useMonitorRecipes} from "@/modules/monitor";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";

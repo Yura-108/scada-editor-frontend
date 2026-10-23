@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { getRenderedElement } from "@/lib/getRenderedElement";
 import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";

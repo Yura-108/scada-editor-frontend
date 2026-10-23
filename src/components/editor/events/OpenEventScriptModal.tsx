@@ -3,7 +3,7 @@ import CodeMirror, {EditorView} from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {Boxes, ExternalLink, Play, Tag, Terminal, Wand2, X} from "lucide-react";
 import {useModalStore} from "@/store/modalStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {cn} from "@/shared/lib/cn";
 import {formatCode} from "@/shared/lib/formatCode";
 import {Collapsible, TitleWithHint} from "@/shared/ui/codeModalParts";

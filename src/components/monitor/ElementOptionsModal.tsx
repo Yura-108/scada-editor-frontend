@@ -5,7 +5,7 @@ import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";

@@ -5,7 +5,7 @@ import { Circle } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GRID } from "@/lib/utils";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 
 interface CircleResizeHandleProps {
   /** Центр круга в координатах родителя (у элемента в модели лежит левый верхний угол габарита). */

@@ -3,7 +3,7 @@
 import {useCallback, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {getRuntimeSessionId} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {

@@ -3,7 +3,7 @@ import {Client, type StompSubscription} from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayHttpOrigin} from "@/lib/gatewayOrigin";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useSceneChangeStore} from "@/store/useSceneChangeStore";
 
 const log = (...args: unknown[]) => devLog("[editor:ws]", ...args);

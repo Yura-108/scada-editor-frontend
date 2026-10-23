@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { useRuntimeOverlayStore } from "@/core/scene";
 import { getElementIndex } from "@/lib/editor/elementIndex";
 import { DiagramElement, GroupElement } from "@/types/editorElement.type";

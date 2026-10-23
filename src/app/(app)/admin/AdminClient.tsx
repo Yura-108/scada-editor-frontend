@@ -8,7 +8,7 @@ import {Button} from "@/shared/ui/Button";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {passwordProblem} from "@/components/auth/ChangePasswordModal";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {
   createUser,

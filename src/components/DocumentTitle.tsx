@@ -2,7 +2,7 @@
 
 import {useEffect} from "react";
 import {usePathname} from "next/navigation";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {sectionOf} from "@/components/editor/navItems";
 
 const APP_NAME = "SCADA";

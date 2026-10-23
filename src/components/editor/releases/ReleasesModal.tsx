@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {Loader2, Package, Rocket} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {fetchReleases} from "@/lib/editor/releasesApi";

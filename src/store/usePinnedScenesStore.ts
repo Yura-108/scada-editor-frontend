@@ -4,7 +4,7 @@ import {
   readPinnedTabs, readPinsFromSettings, writePinnedTabs,
 } from "@/lib/editor/pinnedScenes";
 import {fetchProjectSettings, ProjectSettingsUnsupported, saveProjectSetting} from "@/lib/editor/projectSettingsApi";
-import {canWriteCurrentProject, useEditorStore} from "@/store/useEditorStore";
+import {canWriteCurrentProject, useEditorStore} from "@/modules/editor";
 import {toast} from "sonner";
 
 /**

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { clampZoom } from "@/lib/editor/zoomLimits";
 import { resolveSheet } from "@/lib/editor/sheet";
 import { cameraForSheet } from "@/lib/editor/fitCamera";

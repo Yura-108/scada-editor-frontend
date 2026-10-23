@@ -2,7 +2,7 @@
 
 import {devLog} from "@/shared/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";

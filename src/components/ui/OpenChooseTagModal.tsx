@@ -11,7 +11,7 @@ import { cn } from "@/shared/lib/cn";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import { useModalStore } from "@/store/modalStore";
 import { useDeviceStore } from "@/store/useDeviceStore";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { isBooleanValueType } from "@/lib/editor/valueTypes";
 import { Button, ModalFooter } from "@/shared/ui/Button";

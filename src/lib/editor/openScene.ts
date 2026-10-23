@@ -1,4 +1,4 @@
-import {hasUnsavedWork, useEditorStore} from "@/store/useEditorStore";
+import {hasUnsavedWork, useEditorStore} from "@/modules/editor";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 

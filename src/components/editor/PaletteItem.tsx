@@ -2,7 +2,7 @@
 
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {ElementType} from "@/types/editorElement.type";
 import {Trash2} from "lucide-react";
 import {confirmModal} from "@/components/ui/ConfirmModal";

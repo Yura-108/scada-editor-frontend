@@ -1,7 +1,7 @@
 "use client";
 
 import {RefreshCw, Users, X} from "lucide-react";
-import {hasUnsavedWork, useEditorStore} from "@/store/useEditorStore";
+import {hasUnsavedWork, useEditorStore} from "@/modules/editor";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useSceneChangeStore, useVisibleSceneChange} from "@/store/useSceneChangeStore";
 import {confirmModal} from "@/components/ui/ConfirmModal";

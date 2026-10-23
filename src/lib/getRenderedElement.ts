@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useRuntimeOverlayStore} from "@/core/scene";
 
 type Overrides = Record<string, unknown>;
