@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
-| 6 | Разрезать `useEditorStore` на слайсы по зонам | в работе: 2 из 6 зон (камера и холст, выделение), см. таблицу зон ниже |
+| 6 | Разрезать `useEditorStore` на слайсы по зонам | в работе: 2 из 6 зон (камера и холст, выделение) + общие хелперы и буферы вынесены (`editorStoreInternals`, `editorSession`), см. ниже |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
 
@@ -280,6 +280,20 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 
 Образец — `camera.slice.ts`. Сборка стора пока в `src/store/useEditorStore.ts`; её перенос
 и правка импортов — отдельным коммитом, когда зоны разъедутся.
+
+**Общее для нескольких зон** вынесено рядом со слайсами (`src/modules/editor/model/`):
+
+- `editorSession.ts` — буферы и счётчики вне стора (`saveInFlight`, `documentGeneration`,
+  `savedElementsSnapshot`, `draftStash`, `versionPreviewStash`, `sceneLoadSeq`, счётчики
+  вставки). Раньше модульные `let` в файле стора; теперь `editorSession.x`, чтобы их видели
+  все файлы зон.
+- `editorStoreRef.ts` — `bindEditorStore` / `editorStore()`: стор регистрирует себя после
+  создания, и хелперы берут его отсюда, не импортируя (иначе цикл импортов).
+- `editorStoreInternals.ts` — общие хелперы: подмена документа серверным деревом, загрузка
+  сцены, вход/выход из просмотра версии, `markSceneSaved`, `hasUnsavedWork`, права. Файл
+  длиннее лимита — это промежуточное место: хелперы, нужные одной зоне, уедут в её слайс.
+  `hasUnsavedWork`, `canWriteCurrentProject`, `SCENE_EXPORT_FORMAT` по-прежнему
+  импортируются из `@/store/useEditorStore` (реэкспорт).
 
 | Зона | Поля / экшены | Куда | Статус |
 |---|---|---|---|
