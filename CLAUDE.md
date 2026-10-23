@@ -7,16 +7,18 @@
 ```bash
 npm run dev      # Next.js dev server (Turbopack) на http://localhost:3000
 npm run lint     # eslint
-npm run build    # next build — сейчас красный из-за старых ошибок типов (см. ниже)
+npm run build    # next build (standalone) — проходит: ошибки типов и eslint сборку не роняют
 npx tsc --noEmit # проверка типов
 ```
 
 - **Тестов нет** (ни jest, ни vitest).
-- **Husky + lint-staged** при коммите запускают `eslint --fix` + `prettier --write` для `*.{js,ts,tsx}`.
+- **Хук коммита не работает:** `lint-staged` описан в `package.json`, но файла `.husky/pre-commit`
+  нет, поэтому при коммите ничего не запускается. Проверяйте сами: `npm run lint`.
 - Алиас путей: `@/*` → `src/*`.
-- У `tsc --noEmit` есть **стабильный базовый набор старых ошибок** (union `ElementType` не включает
-  `button`/`rectangle`/`checkbox`/`progress_bar`/`path`, хотя они используются). `next dev` их
-  терпит. Правило: **не добавлять новых ошибок** — сравнивайте число до и после правки.
+- У `tsc --noEmit` есть **стабильный базовый набор старых ошибок** — 27 (union `ElementType` не
+  включает `button`/`rectangle`/`checkbox`/`progress_bar`/`path`, хотя они используются). `next dev`
+  и `next build` (`ignoreBuildErrors` в `next.config.ts`) их терпят. Правило: **не добавлять новых
+  ошибок** — сравнивайте число и список до и после правки.
 
 ## Архитектура — читать перед любой правкой
 
