@@ -4,7 +4,7 @@ import React from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import type { ThemeColors } from "../types";
 
 interface AnchorProps {

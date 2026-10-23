@@ -1,3 +1,7 @@
+// Стор — первым: если в коде слайсов появится цикл обратно на стор, стор всё равно начнёт
+// загрузку раньше любого слайса и вызовет их уже определёнными.
+// Проверка циклов: npm run check:store-cycles.
+export {useEditorStore, type EditorProject, type EditorState} from "./model/editorStore";
 export {recipeKeys, useInvalidateRecipes, useRecipeMutations, useRecipes} from "./api/recipes";
 export {createCameraSlice, type CameraSlice} from "./model/slices/camera.slice";
 export {createSelectionSlice, type SelectionSlice} from "./model/slices/selection.slice";
@@ -45,3 +49,4 @@ export {createPropertiesSlice, type PropertiesSlice} from "./model/slices/proper
 export {createElementsSlice, type ElementsSlice} from "./model/slices/elements.slice";
 export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboard.slice";
 export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
+

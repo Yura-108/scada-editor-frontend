@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {

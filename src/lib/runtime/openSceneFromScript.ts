@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import type {SceneTarget} from "@/lib/runtime/eventScript";
 import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
 

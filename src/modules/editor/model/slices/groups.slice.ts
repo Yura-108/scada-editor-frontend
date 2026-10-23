@@ -9,7 +9,7 @@ import {
 } from "@/lib/groupLayout";
 import {shiftElementPositions} from "@/lib/editor/shiftPositions";
 import {createUuid} from "@/shared/lib/createUuid";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {
   isComplex, isComponentEl, isGroup, isLeafPrimitive,
   resplitContainer,

@@ -10,7 +10,7 @@ import {
 import {toast} from "sonner";
 import {createUuid} from "@/shared/lib/createUuid";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {
   sceneBelongsToCurrentProject,
 } from "../editorStoreInternals";

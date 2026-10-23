@@ -1,6 +1,6 @@
 import type {ProjectGrant} from "@/types/access.types";
 import {grantOf} from "@/lib/access/grants";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 
 export * from "@/lib/access/grants";

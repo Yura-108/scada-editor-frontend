@@ -8,6 +8,7 @@
     "postbuild": "node scripts/copy-standalone-assets.mjs",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
+    "check:store-cycles": "node scripts/check-store-cycles.mjs",
     "prepare": "husky install"
   },
   "lint-staged": {

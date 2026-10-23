@@ -7,7 +7,7 @@ import {
   formatTs, journalBadge, journalFilterBar, journalInput as inputClass, journalPage, journalTableBox, journalTbody,
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,
 } from "@/components/journal/journalUi";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {
   ACTION_KIND_LABEL, fetchActionLog, type ActionKind, type ActionLogFilter, type ActionLogRecord,

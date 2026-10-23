@@ -3,7 +3,7 @@ import {getElementIndex} from "@/lib/editor/elementIndex";
 import {zIndexOf} from "@/lib/editor/zOrder";
 import {getElementBoundsRendered} from "@/lib/getElementBounds";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {topLevelSelectedKeys, applyShifts, recomputeAncestorBounds} from "../elementTree";
 
 /**

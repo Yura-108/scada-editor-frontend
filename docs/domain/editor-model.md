@@ -3,7 +3,7 @@
 > Перенесено из CLAUDE.md без изменений. Держите в актуальном состоянии при правках этой области.
 
 
-The editor state lives in `src/store/useEditorStore.ts` (Zustand wrapped in **zundo** `temporal` for undo/redo; only `elements` is persisted to history via `partialize`). Understanding these cross-cutting concepts requires reading several files together.
+The editor state lives in `useEditorStore` — assembled in `src/modules/editor/model/editorStore.ts` from the zone slices in `model/slices/`, imported from `@/modules/editor` (Zustand wrapped in **zundo** `temporal` for undo/redo; only `elements` is persisted to history via `partialize`). Understanding these cross-cutting concepts requires reading several files together.
 
 ## Flat element array + two kinds of membership
 
@@ -35,7 +35,7 @@ Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===tru
 
 ## Group frames hug their content
 
-`recomputeAncestorBounds` (`useEditorStore.ts`) pads with `GROUP_PADDING` — the **same**
+`recomputeAncestorBounds` (`src/modules/editor/model/elementTree.ts`) pads with `GROUP_PADDING` — the **same**
 constant `unionBounds` uses when a group is created. It is now **0**: the frame runs exactly
 along the members' outline (geometric edges — stroke width is not part of the bounds). It was
 20 before, so older saved schemes keep the 20px margin until their group is next edited. Any

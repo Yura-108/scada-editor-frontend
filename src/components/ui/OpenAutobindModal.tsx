@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import {

@@ -5,7 +5,7 @@ import {MousePointerClick, Pencil, Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import {ElementEventName, ElementEvents} from "@/types/binding.types";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {openEventScriptModal} from "./OpenEventScriptModal";
 
 interface EventsTabProps {

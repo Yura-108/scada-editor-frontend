@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useMemo} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {NumberInput} from "@/components/ui/NumberInput";
 import {resolveSheet, SHEET_PRESETS, SHEET_MIN, SHEET_MAX, isSameSheet} from "@/lib/editor/sheet";
 import {cn} from "@/shared/lib/cn";

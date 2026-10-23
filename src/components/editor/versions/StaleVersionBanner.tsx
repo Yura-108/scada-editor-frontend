@@ -2,7 +2,7 @@
 
 import {Users, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
 
 /**

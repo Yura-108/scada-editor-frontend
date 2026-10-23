@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect, Circle, Text } from "react-konva";
 import { DiagramElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { useRuntimeOverlayStore } from "@/core/scene";
 import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
 import { getElementBoundsRendered } from "@/lib/getElementBounds";

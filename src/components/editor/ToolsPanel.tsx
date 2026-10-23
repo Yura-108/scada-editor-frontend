@@ -1,7 +1,7 @@
 import React, {useRef, useState} from "react";
 import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore, SCENE_EXPORT_FORMAT} from "@/store/useEditorStore";
+import {useEditorStore, SCENE_EXPORT_FORMAT} from "@/modules/editor";
 import {
   Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
   Undo2, Redo2, Loader2, History, RotateCcw, Rocket,

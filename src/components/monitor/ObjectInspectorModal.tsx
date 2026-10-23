@@ -5,7 +5,7 @@ import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoint
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {confirmModal} from "@/components/ui/ConfirmModal";

@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useTrendStore} from "@/store/useTrendStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {shortTagPath} from "@/lib/editor/tagPath";

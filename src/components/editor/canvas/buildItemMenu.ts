@@ -1,5 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { getDescendants } from "@/lib/getDescendants";
 import { handleAddProperty } from "@/lib/handleAddProperty";
 import { OpenCreateFaceplateModal } from "@/components/ui/OpenCreateFaceplateModal";

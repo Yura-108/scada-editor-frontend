@@ -1,7 +1,7 @@
 import * as Select from "@radix-ui/react-select";
 import {ChevronDown} from "lucide-react";
 import React, {useEffect} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import SelectItem from "@/shared/ui/SelectItem";
 import {
   selectContentClassName,

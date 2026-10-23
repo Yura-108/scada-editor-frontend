@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useState} from "react";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {canOpenInEditor, grantOf} from "@/lib/access/grants";
 import type {EditorProject} from "@/lib/pickProjectsFromComponents";

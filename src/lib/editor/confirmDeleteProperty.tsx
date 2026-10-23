@@ -3,7 +3,7 @@
 import React from "react";
 import {toast} from "sonner";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {collectPropertyDependents} from "@/lib/editor/propertyDependents";
 import type {PropertyCreateDto} from "@/types/tags.types";
 

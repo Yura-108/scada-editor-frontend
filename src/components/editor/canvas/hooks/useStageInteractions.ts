@@ -1,7 +1,7 @@
 import { RefObject, useEffect, useRef, useState } from "react";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/shared/lib/isIntersecting";

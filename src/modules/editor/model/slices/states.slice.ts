@@ -3,7 +3,7 @@ import {getElementIndex} from "@/lib/editor/elementIndex";
 import {findStateNameRefs, renameStateNameInCode, type StateNameRef} from "@/lib/editor/stateNameRefs";
 import {createUuid} from "@/shared/lib/createUuid";
 import {useRuntimeOverlayStore} from "@/core/scene";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import {getDescendantKeys} from "../elementTree";
 import {cascadeStateByName, ensureStateByName} from "../elementStates";
 

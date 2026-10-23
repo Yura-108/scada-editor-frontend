@@ -1,6 +1,6 @@
 import { RefObject, useCallback, useEffect } from "react";
 import Konva from "konva";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
 import { createUuid } from "@/shared/lib/createUuid";
 

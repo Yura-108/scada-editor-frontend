@@ -5,7 +5,7 @@ import { Transformer } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { getRenderedElement } from "@/lib/getRenderedElement";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 import { snap } from "@/lib/utils";
 import { MIN_SIZE } from "../types";
 import { useThemeColors } from "../useThemeColors";

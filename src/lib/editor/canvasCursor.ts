@@ -1,4 +1,4 @@
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/modules/editor";
 
 /**
  * Возвращает курсор «покоя» для холста.

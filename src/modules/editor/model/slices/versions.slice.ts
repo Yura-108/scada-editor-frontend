@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import type {EditorState} from "@/store/useEditorStore";
+import type {EditorState} from "../editorStore";
 import type {DiagramElement} from "@/types/editorElement.type";
 import type {PropertyRef} from "@/types/binding.types";
 import {

@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import {Boxes, Pencil, Plus, Tag as TagIcon, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding, buildDirectTagBinding} from "@/lib/runtime/directBinding";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";

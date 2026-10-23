@@ -1,6 +1,6 @@
 import {create} from "zustand";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "@/store/useEditorStore";
+import {useEditorStore} from "@/modules/editor";
 
 /**
  * Последнее уведомление `SCENE_CHANGED` из STOMP редактора (`/topic/scenes/{sceneId}`):

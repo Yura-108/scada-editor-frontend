@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { canWriteCurrentProject, hasUnsavedWork, useEditorStore } from "@/store/useEditorStore";
+import { canWriteCurrentProject, hasUnsavedWork, useEditorStore } from "@/modules/editor";
 
 const AUTOSAVE_INTERVAL_MS = 10 * 60_000;
 
