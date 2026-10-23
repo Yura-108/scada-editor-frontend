@@ -9,7 +9,13 @@ npm run dev      # Next.js dev server (Turbopack) на http://localhost:3000
 npm run lint     # eslint
 npm run build    # next build (standalone) — проходит: ошибки типов и eslint сборку не роняют
 npx tsc --noEmit # проверка типов
+npm run check:store-cycles  # нет ли цикла импортов обратно на стор редактора (см. ниже)
 ```
+
+- **Код стора редактора (`src/modules/editor/model/**`) не импортирует стор**, ни напрямую, ни
+  через `@/modules/editor`, — в том числе через `lib`-файлы, которые он подтягивает. Иначе в
+  браузере падает `Cannot access 'createXxxSlice' before initialization`. Такому файлу нужен
+  `editorStore()` из `editorStoreRef`. `npm run check:store-cycles` ищет такие цепочки.
 
 - **Тестов нет** (ни jest, ни vitest).
 - **Хук коммита не работает:** `lint-staged` описан в `package.json`, но файла `.husky/pre-commit`
@@ -43,7 +49,8 @@ npx tsc --noEmit # проверка типов
 1. Большая правка или рефакторинг — сначала план, потом код.
 2. **Перенос файлов и изменение логики — разные коммиты.** Коммит переезда: только `git mv` и импорты.
 3. Одна задача рефакторинга — одна ветка. Работа идёт от `dev`, `main` — стабильная.
-4. После каждого шага: `npm run lint` и `npx tsc --noEmit` (не больше базовых ошибок).
+4. После каждого шага: `npm run lint`, `npx tsc --noEmit` (не больше базовых ошибок), а если трогали стор
+   редактора или его импорты — `npm run check:store-cycles`.
 5. Не меняйте поведение «попутно» при рефакторинге. Нашли баг — сообщите отдельно.
 
 ## Предметная область — читать по теме задачи
