@@ -42,3 +42,6 @@ export {
 export {createLayoutSlice, type LayoutSlice} from "./model/slices/layout.slice";
 export {createStatesSlice, type StatesSlice} from "./model/slices/states.slice";
 export {createPropertiesSlice, type PropertiesSlice} from "./model/slices/properties.slice";
+export {createElementsSlice, type ElementsSlice} from "./model/slices/elements.slice";
+export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboard.slice";
+export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";

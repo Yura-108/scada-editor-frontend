@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
-| 6 | Разрезать `useEditorStore` на слайсы по зонам | 5 из 6 зон (камера и холст, выделение, сохранение и версии, проекты, сцены) + общие хелперы и буферы (`editorStoreInternals`, `editorSession`). Осталась зона «Документ» — её разбить на 3–4 слайса. Состояние на 23.10.2026 передано в тестирование, см. ниже |
+| 6 | Разрезать `useEditorStore` на слайсы по зонам | все зоны вынесены: в `src/store/useEditorStore.ts` осталась только сборка (88 строк). Осталось: перенести сборку в `src/modules/editor/model/editorStore.ts` и перевести импорты |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
 
@@ -302,5 +302,5 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | Сохранение и версии | `isDirty`, `isSaving`, `saveConflict`, `versions`, `versionPreview`, `exportScene`, просмотр и восстановление версий | `versions.slice` | сделано. Зависимости — весь `EditorState`: сохранение читает и пишет почти все зоны. Файл длиннее лимита (`exportScene` ~270 строк) — разбить его — отдельная задача шага 7 |
 | Проекты и выпуски | `projectList`, `currentProject`, `createProject`, `releaseProject`, `projectRuntimeFlags` | `projects.slice` (позже `core/project`) | сделано |
 | Сцены | `scene`, `sceneList`, `loadScene`, `createScene`, `sceneSource`, `releaseVersionNo` | `scenes.slice` (позже `core/project`) | сделано (`draftStash` — в `editorSession`) |
-| Документ | `elements`, группы, компоненты, свойства, привязки, состояния | несколько слайсов | в работе. Сделано: чистые хелперы (`elementTree.ts`, `elementStates.ts`), `layout.slice` (сдвиг, выравнивание, слои), `states.slice` (состояния, рантайм-батч), `properties.slice` (свойства, привязки). Осталось: `clipboard`, `groups`, `elements`, затем перенос сборки стора |
+| Документ | `elements`, группы, компоненты, свойства, привязки, состояния, буфер | хелперы `elementTree.ts`, `elementStates.ts`; слайсы `layout`, `states`, `properties`, `elements`, `clipboard`, `groups` | сделано. Длиннее лимита: `elements.slice` (`addElementAt` ~310 строк), `groups.slice`, `clipboard.slice` — разбить их функции — шаг 7 |
 | Runtime монитора | ~~`runtimeOverridesByElementKey`, `noDataElementKeys`~~ → `core/scene/runtimeOverlayStore` (шаг 4); `applyRuntimeBatch` пока координирует оба стора | сделано |
