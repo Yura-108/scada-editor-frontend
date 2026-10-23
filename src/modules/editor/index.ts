@@ -31,3 +31,14 @@ export {
 export {createVersionsSlice, type VersionsSlice} from "./model/slices/versions.slice";
 export {createProjectsSlice, type ProjectsSlice} from "./model/slices/projects.slice";
 export {createScenesSlice, type ScenesSlice} from "./model/slices/scenes.slice";
+export {
+  applyShifts, cloneElementsWithOffset, getDescendantKeys, isComplex, isComponentEl, isGroup, isLeafPrimitive,
+  recomputeAncestorBounds, resplitContainer, topLevelSelectedKeys,
+} from "./model/elementTree";
+export {
+  BASE_ONLY_KEYS, cascadeStateByName, ensureStateByName, isPatchEffective, isSameValue, splitBaseOnly,
+  syncMemberStates,
+} from "./model/elementStates";
+export {createLayoutSlice, type LayoutSlice} from "./model/slices/layout.slice";
+export {createStatesSlice, type StatesSlice} from "./model/slices/states.slice";
+export {createPropertiesSlice, type PropertiesSlice} from "./model/slices/properties.slice";
