@@ -1,6 +1,6 @@
 ---
 name: scada-editor
-description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/store/useEditorStore.ts, the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
+description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/modules/editor/model/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
 ---
 
 # SCADA Editor — architecture & gotchas
@@ -13,7 +13,7 @@ the core of the repo. Comments and user-facing strings are **in Russian** — ma
 Goal when editing: **don't add NEW errors beyond baseline** (check the count before/after).
 `next build` is red for the same reason. There is no test runner.
 
-## Core data model (`src/types/editorElement.type.ts`, `src/store/useEditorStore.ts`)
+## Core data model (`src/types/editorElement.type.ts`, `src/modules/editor/model/editorStore.ts` + `model/slices/*`)
 
 `elements: DiagramElement[]` is a **flat** array. Hierarchy is by keys, not nesting:
 - `parentKey` — every element points at its container (or `String(scene.id)` at the root).
@@ -251,7 +251,7 @@ Example to copy: the "Управление" controls (`button/toggle/slider/drop
 3. **`src/constants/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
    (`complex:false` for a widget) and `elementPropertyMap` (a `PropertySchema[]`). These are
    `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
-4. **`src/store/useEditorStore.ts` → `addElementAt`** — a `if (type === '…')` branch mirroring the
+4. **`src/modules/editor/model/slices/elements.slice.ts` → `addElementAt`** — a `if (type === '…')` branch mirroring the
    `checkbox`/`progress_bar` ones (full scaffolding: `id:null, key:createUuid(), composition:[],
    parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`).
 5. **`src/components/editor/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
@@ -324,7 +324,7 @@ version contract — that's why templates have no merge), so **entities link by 
 
 ## Undo / history (zundo `temporal`)
 
-Store is wrapped in `temporal` (`zundo`). Options at the bottom of `useEditorStore.ts`:
+Store is wrapped in `temporal` (`zundo`). Options at the bottom of `src/modules/editor/model/editorStore.ts`:
 `limit:50`, `partialize: s => ({elements})`, and **`equality: (a,b) => a.elements === b.elements`**.
 The equality is essential: without it zundo snapshots on **every** `set()` (camera/zoom/pan,
 selection, state switch), flooding the stack with duplicate-`elements` entries so Ctrl+Z appears to
@@ -369,7 +369,7 @@ unbounded.
 
 | Concern | File |
 |---|---|
-| Store (state + all actions + undo config) | `src/store/useEditorStore.ts` |
+| Store (assembly + undo config) / actions by zone | `src/modules/editor/model/editorStore.ts` / `model/slices/*.slice.ts`; pure helpers in `model/elementTree.ts`, `model/elementStates.ts`, `model/editorStoreInternals.ts` |
 | Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
 | Rendered element (base + active overrides) | `src/lib/getRenderedElement.ts` |
 | Canvas orchestrator | `src/components/editor/Canvas.tsx` |

@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 3 | Создать `shared/` и перенести ui-kit и общие утилиты | готово, см. ниже, что осталось |
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
-| 6 | Разрезать `useEditorStore` на слайсы по зонам | все зоны вынесены: в `src/store/useEditorStore.ts` осталась только сборка (88 строк). Осталось: перенести сборку в `src/modules/editor/model/editorStore.ts` и перевести импорты |
+| 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 11 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | — |
 | 8 | Перенести модули в `src/modules/*` | — |
 
@@ -278,8 +278,10 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 - стор подмешивает слайс: `...createCameraSlice(set, get)`; 69 импортёров не меняются;
 - код переносится без изменений; другие зоны могут писать поля слайса своим `set()`.
 
-Образец — `camera.slice.ts`. Сборка стора пока в `src/store/useEditorStore.ts`; её перенос
-и правка импортов — отдельным коммитом, когда зоны разъедутся.
+Образец — `camera.slice.ts`. Стор собирается в `src/modules/editor/model/editorStore.ts`: он
+подмешивает слайсы через относительные импорты (`./slices/…`), а снаружи его берут из
+`@/modules/editor`. Внутри модуля `@/modules/editor` не импортируют — только относительные
+пути, иначе модуль замкнётся на собственный `index.ts`.
 
 **Общее для нескольких зон** вынесено рядом со слайсами (`src/modules/editor/model/`):
 
@@ -292,8 +294,8 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 - `editorStoreInternals.ts` — общие хелперы: подмена документа серверным деревом, загрузка
   сцены, вход/выход из просмотра версии, `markSceneSaved`, `hasUnsavedWork`, права. Файл
   длиннее лимита — это промежуточное место: хелперы, нужные одной зоне, уедут в её слайс.
-  `hasUnsavedWork`, `canWriteCurrentProject`, `SCENE_EXPORT_FORMAT` по-прежнему
-  импортируются из `@/store/useEditorStore` (реэкспорт).
+  `hasUnsavedWork`, `canWriteCurrentProject`, `SCENE_EXPORT_FORMAT` снаружи берут из
+  `@/modules/editor`.
 
 | Зона | Поля / экшены | Куда | Статус |
 |---|---|---|---|
