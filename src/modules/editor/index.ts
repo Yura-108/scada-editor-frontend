@@ -29,3 +29,5 @@ export {
   VERSIONS_PAGE_SIZE,
 } from "./model/editorStoreInternals";
 export {createVersionsSlice, type VersionsSlice} from "./model/slices/versions.slice";
+export {createProjectsSlice, type ProjectsSlice} from "./model/slices/projects.slice";
+export {createScenesSlice, type ScenesSlice} from "./model/slices/scenes.slice";
