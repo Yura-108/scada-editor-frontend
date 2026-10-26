@@ -1,8 +1,10 @@
-import React, {useRef, useState} from "react";
+import React, {useState} from "react";
 import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
-import {SCENE_EXPORT_FORMAT} from "../../model/editorStoreInternals";
+import {exportSceneFile} from "./lib/exportSceneFile";
+import {useSceneFileImport} from "./hooks/useSceneFileImport";
+import {useToolbarAccess} from "./hooks/useToolbarAccess";
 import {
   Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
   Undo2, Redo2, Loader2, History, RotateCcw, Rocket,
@@ -11,14 +13,6 @@ import {
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
 } from "lucide-react";
-import {downloadJson, safeFileName} from "@/shared/lib/downloadJson";
-import {choiceModal} from "@/components/ui/ConfirmModal";
-import {
-  buildDeviceLayout,
-  isDeviceLayoutFile,
-  type DeviceLayoutFile,
-} from "@/lib/editor/deviceLayoutImport";
-import {openDeviceImportReportModal} from "@/components/editor/OpenDeviceImportReportModal";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {openProjectModal} from "@/components/ui/ProjectModal";
 import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
@@ -30,7 +24,6 @@ import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBan
 import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner";
 import SceneChangedBanner from "@/components/editor/versions/SceneChangedBanner";
 import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 
 function TooltipBtn({
   icon,
@@ -109,23 +102,10 @@ export function ToolsPanel() {
   const canRedo = useStore(useEditorStore.temporal, s => s.futureStates.length > 0);
 
   const {loadPaletteItems} = usePaletteStore();
-  const importInputRef = useRef<HTMLInputElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  // Иерархия Проект -> Схема -> Элементы: блокируем операции над сценой,
-  // если она не принадлежит выбранному проекту (или проект/сцена не выбраны).
-  const sceneBelongsToProject = !!currentProject
-    && !!scene
-    && (scene.project_id == null || scene.project_id === currentProject.id);
-  // В режиме просмотра версии на холсте лежит старая версия: любая правка ушла бы
-  // в текущую сцену как чужое прошлое. Одна проверка гасит разом импорт, undo/redo,
-  // группировку, выравнивание и сохранение — все они уже завязаны на canEdit.
-  const canEdit = sceneBelongsToProject && !versionPreview;
-  // Право правки проекта — отдельно от canEdit: с одним «просмотром» схему можно
-  // «потыкать» локально (undo, группировка, импорт), но не записать на сервер.
-  // Скрываем всё, что пишет: сохранение, новую схему, откат и выпуски.
-  const canWrite = useCurrentProjectGrant().edit;
-  const canSave = canEdit && canWrite;
+  const {sceneBelongsToProject, canEdit, canWrite, canSave} = useToolbarAccess();
+  const {importInputRef, handleImport, handleImportFile} = useSceneFileImport(sceneBelongsToProject);
 
   const handleOpenProject = () => {
     openProjectModal();
@@ -139,205 +119,6 @@ export function ToolsPanel() {
     }
     await loadSceneList(currentProject.id);
     openChooseSceneModal();
-  };
-
-  const handleImport = () => {
-    if (!scene) {
-      toast.info("Сначала загрузите или создайте схему");
-      return;
-    }
-    if (!sceneBelongsToProject) {
-      toast.error("Схема не принадлежит выбранному проекту");
-      return;
-    }
-    importInputRef.current?.click();
-  };
-
-  const handleExport = () => {
-    if (!scene) {
-      toast.info("Сначала загрузите или создайте схему");
-      return;
-    }
-
-    const file = useEditorStore.getState().buildSceneExport();
-    if (!file.elements.length) {
-      toast.info("Схема пуста — экспортировать нечего");
-      return;
-    }
-
-    // Дата в имени: файл кладут «себе на компьютер», и через неделю их там несколько.
-    const stamp = new Date().toISOString().slice(0, 10);
-    downloadJson(`${safeFileName(scene.name, "scheme")}_${stamp}.json`, file);
-    toast.success(`Сохранено элементов: ${file.elements.length}`);
-  };
-
-  /**
-   * План устройств: «какой шаблон взять и в какие координаты поставить».
-   *
-   * Экземпляры собираются одним массивом и кладутся одним действием — иначе 47 вызовов
-   * `addTemplate` дали бы 47 шагов undo при лимите истории в 50.
-   */
-  const importDeviceLayout = async (file: DeviceLayoutFile) => {
-    // Палитра грузится при монтировании редактора, но если запрос не прошёл, в списке
-    // останутся только статические элементы — без шаблонов импортировать нечего.
-    if (!usePaletteStore.getState().paletteItems.some((i) => i.type === "custom")) {
-      await usePaletteStore.getState().loadPaletteItems();
-    }
-
-    const {scene, addImportedElements} = useEditorStore.getState();
-    const {elements, report} = buildDeviceLayout(
-      file,
-      usePaletteStore.getState().paletteItems,
-      scene?.id ?? null,
-    );
-
-    // Выходим ДО вопроса о режиме: с «Заменить» пустой результат стёр бы всю схему.
-    if (!elements.length) {
-      toast.error("Импорт не дал ни одного элемента", {
-        description: "Ни одного из шаблонов файла нет в палитре.",
-      });
-      openDeviceImportReportModal(report);
-      return;
-    }
-
-    let mode: "append" | "replace" = "replace";
-    if (useEditorStore.getState().elements.length) {
-      const answer = await choiceModal({
-        title: "На схеме уже есть элементы",
-        description: `В файле ${report.devices} устройств, ${report.lines} линий и ${report.junctions} узлов соединения. Что с ними сделать?`,
-        options: [
-          {
-            id: "replace",
-            label: "Заменить содержимое схемы",
-            description: "Текущие элементы будут убраны. Отменяется через Ctrl+Z, на сервере — до ближайшего сохранения.",
-            danger: true,
-          },
-          {
-            id: "append",
-            label: "Добавить к существующим",
-            description: "Импортированное ляжет поверх текущего. Повторный импорт того же файла задвоит элементы.",
-          },
-        ],
-      });
-      if (!answer) return;
-      mode = answer as "append" | "replace";
-    }
-
-    addImportedElements(elements, mode);
-
-    toast.success(`Поставлено устройств: ${report.placed} из ${report.devices}`, {
-      description: [
-        `линий ${report.lines}`,
-        `узлов ${report.junctions}`,
-        `повёрнуто ${report.rotated}`,
-        `отражено ${report.mirrored}`,
-        `элементов на холсте ${elements.length}`,
-      ].join(" · "),
-      duration: 12_000,
-    });
-
-    if (report.missing.length || report.ambiguous.length || report.unsupportedRotation.length) {
-      openDeviceImportReportModal(report);
-    }
-  };
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!sceneBelongsToProject) {
-      toast.error("Схема не принадлежит выбранному проекту");
-      e.target.value = "";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const json = JSON.parse(ev.target?.result as string);
-
-        // План устройств — объект {devices, lines}, а не массив. Ветка должна стоять
-        // ДО общего распознавания: там объект без нашего конверта заворачивается в
-        // [json] и становится одним мусорным элементом.
-        if (isDeviceLayoutFile(json)) {
-          await importDeviceLayout(json);
-          return;
-        }
-
-        // Свой файл приезжает конвертом (см. buildSceneExport), чужая выгрузка — голым
-        // массивом. Флаг `native` важнее удобства: без него нормализатор CONTUR второй
-        // раз пересчитал бы координаты схемы, однажды пришедшей из выгрузки.
-        const native = !Array.isArray(json)
-          && json?.format === SCENE_EXPORT_FORMAT
-          && Array.isArray(json.elements);
-        const arr: Record<string, unknown>[] = native
-          ? json.elements
-          : (Array.isArray(json) ? json : [json]);
-
-        // На непустой схеме спрашиваем: без этого повторный импорт того же листа молча
-        // удваивал схему, а замена была недоступна вовсе.
-        let mode: "append" | "replace" = "replace";
-        if (useEditorStore.getState().elements.length) {
-          const answer = await choiceModal({
-            title: "На схеме уже есть элементы",
-            description: `В файле ${arr.length} элементов. Что с ними сделать?`,
-            options: [
-              {
-                id: "replace",
-                label: "Заменить содержимое схемы",
-                description: "Текущие элементы будут убраны. Отменяется через Ctrl+Z, на сервере — до ближайшего сохранения.",
-                danger: true,
-              },
-              {
-                id: "append",
-                label: "Добавить к существующим",
-                description: "Импортированное ляжет поверх текущего. Повторный импорт того же файла задвоит элементы.",
-              },
-            ],
-          });
-          if (!answer) return;
-          mode = answer as "append" | "replace";
-        }
-
-        const stats = useEditorStore.getState().importElementsFromJson(arr, {mode, native});
-
-        if (!stats) {
-          toast.success(`Импортировано элементов: ${arr.length}`);
-          return;
-        }
-
-        // Разбивка по типам — она же приёмка: контрольные числа листа сверяются глазами,
-        // без консоли (см. docs/contur/CONTUR_IMPORT_PLAN.md, §5). Виды перечислены все, что бывают
-        // в выгрузке: пропущенный вид — это молча не сошедшееся число при приёмке.
-        const breakdown = [
-          `техобъектов ${stats.groups}`,
-          stats.frameLines
-            ? `линий чертежа ${stats.lines} (рамка листа ${stats.frameLines})`
-            : `линий чертежа ${stats.lines}`,
-          `устройств ${stats.circles}`,
-          `подписей ${stats.labels}`,
-          `имён контуров ${stats.contourNames}`,
-          `рамок ${stats.contourFrames + stats.frames}`,
-        ];
-        if (stats.drawingTexts) breakdown.push(`надписей чертежа ${stats.drawingTexts}`);
-        if (stats.meta) breakdown.push(`данные листа ${stats.meta}`);
-
-        toast.success(`Импортировано элементов: ${stats.total}`, {
-          description: breakdown.join(" · "),
-          duration: 12_000,
-        });
-
-        if (stats.repairedLinks) {
-          toast.warning(`Достроено связей групп: ${stats.repairedLinks}`, {
-            description: "В файле были односторонние ссылки родитель ↔ ребёнок. Стоит сказать об этом CONTUR.",
-            duration: 12_000,
-          });
-        }
-      } catch {
-        toast.error("Ошибка чтения файла: неверный JSON");
-      } finally {
-        e.target.value = "";
-      }
-    };
-    reader.readAsText(file);
   };
 
   const handleCreateSchema = async () => {
@@ -415,7 +196,7 @@ export function ToolsPanel() {
           disabled={!canEdit}
         />
         <TooltipBtn
-          icon={<Download size={16} />} label="Экспорт в файл" onClick={handleExport}
+          icon={<Download size={16} />} label="Экспорт в файл" onClick={exportSceneFile}
           disabled={!scene || !elements.length}
         />
 
