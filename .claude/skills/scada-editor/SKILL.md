@@ -264,7 +264,7 @@ Serialization needs **no** change for plain visual props (see below). The drop h
 
 ## Making element params actually functional
 
-The properties panel is generated from `elementPropertyMap[type]` (`PropertiesPanel.tsx`). A param
+The properties panel is generated from `elementPropertyMap[type]` (`src/modules/editor/ui/properties-panel/`; fields render in `PropertyInput.tsx`). A param
 "exists" in the panel but only *works* if the shape component **reads that exact key**. Common bug:
 the panel writes one key while the renderer reads another (e.g. panel `backgroundColor` vs renderer
 `bg`). When wiring params: make the renderer read the schema key (fallback to legacy key for old
@@ -378,7 +378,7 @@ unbounded.
 | Render context / ShapeElementProps / MIN_SIZE | `src/components/editor/canvas/types.ts` |
 | Palette items | `src/constants/palette.ts` |
 | Registry + property schemas | `src/constants/propertiesPanel.ts` |
-| Properties panel UI | `src/components/editor/PropertiesPanel.tsx` |
+| Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |
 | Drop handling | `src/app/editor/EditorClient.tsx` |
 | Save / load serialization | `src/lib/buildComponentTree.ts`, `src/lib/transformElements.ts` |
 | Snapping/GRID | `src/lib/utils.ts` |

@@ -1,9 +1,8 @@
 import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
-import {PropertiesPanel} from "@/components/editor/PropertiesPanel";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
 import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
-import {useEditorStore} from "@/modules/editor";
+import {PropertiesPanel, useEditorStore} from "@/modules/editor";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
