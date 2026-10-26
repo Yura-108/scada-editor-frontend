@@ -45,21 +45,3 @@ export interface AlarmAckResult extends AlarmRef {
   message?: string | null;
 }
 
-export type AlarmLogEvent = "RAISED" | "ACCEPTED" | "RETURNED" | "CLEARED" | "SUPPRESSED" | "UNSUPPRESSED";
-
-/** Запись журнала аварий (`GET /api/runtime/alarms/log`). */
-export interface AlarmLogRecord {
-  ts: string;
-  projectId: number;
-  controllerId: string;
-  key: string;
-  objectType: number;
-  objectNumber: number;
-  alarmNumber: number;
-  description: string;
-  group: string;
-  priority: number;
-  event: AlarmLogEvent | string;
-  /** Кто подтвердил через новый монитор; `null` — в другом месте или ушла сама. */
-  username: string | null;
-}

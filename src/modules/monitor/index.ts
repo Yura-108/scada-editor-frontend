@@ -6,4 +6,4 @@ export {useAlarmsProjectId} from "./model/alarmsStore";
 export {AlarmsBadge} from "./ui/alarms/AlarmsBadge";
 export {AlarmsPanel} from "./ui/alarms/AlarmsPanel";
 export {AlarmPopups} from "./ui/alarms/AlarmPopups";
-export type {ActiveAlarm, AlarmLogRecord, AlarmLogEvent} from "./types";
+export type {ActiveAlarm} from "./types";

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {cn} from "@/shared/lib/cn";
 
 /**
@@ -66,6 +67,34 @@ export function JournalTitle({title, description}: {title: string; description: 
       <h1 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h1>
       <p className="text-xs text-neutral-500 dark:text-neutral-400">{description}</p>
     </div>
+  );
+}
+
+const JOURNAL_TABS = [
+  {key: "actions", label: "Действия", href: "/actions"},
+  {key: "alarms", label: "Аварии", href: "/actions/alarms"},
+] as const;
+
+/** Разделы журнала действий: нажатия и записи операторов — и аварии ПЛК. */
+export function JournalTabs({active}: {active: (typeof JOURNAL_TABS)[number]["key"]}) {
+  return (
+    <nav className="shrink-0 flex justify-center gap-1 pb-2 bg-white dark:bg-neutral-900/80">
+      {JOURNAL_TABS.map(t => (
+        <Link
+          key={t.key}
+          href={t.href}
+          aria-current={t.key === active ? "page" : undefined}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            t.key === active
+              ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+              : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+          )}
+        >
+          {t.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

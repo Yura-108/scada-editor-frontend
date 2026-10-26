@@ -5,7 +5,8 @@ import {Loader2, RefreshCw} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {
   formatTs, journalBadge, journalFilterBar, journalInput as inputClass, journalPage, journalTableBox, journalTbody,
-  journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,
+  journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTabs, JournalTitle,
+  toLocalInput,
 } from "@/components/journal/journalUi";
 import {useEditorStore} from "@/modules/editor";
 import {shortTagPath} from "@/lib/editor/tagPath";
@@ -30,7 +31,8 @@ function ActionTarget({r}: {r: ActionLogRecord}) {
     );
   }
   // Действие с аргументами (выбор из меню `showMenu`): имя скрипта и что выбрали.
-  if (r.kind === "ACTION" && r.tags?.length) {
+  // Подтверждение аварии — так же: текст аварии и её ключ.
+  if ((r.kind === "ACTION" || r.kind === "ALARM_ACK") && r.tags?.length) {
     return (
       <div>
         <span>{r.target ?? "—"}</span>
@@ -148,6 +150,7 @@ export default function ActionsClient() {
           title="Журнал действий"
           description="Нажатия операторов в мониторе, управление процедурами и ручные записи тегов"
         />
+        <JournalTabs active="actions" />
         <form
           className={journalFilterBar}
           onSubmit={e => { e.preventDefault(); apply(); }}

@@ -4,7 +4,7 @@ import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
  * Журнал действий оператора (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 5).
  */
 
-export type ActionKind = "ACTION" | "PROCEDURE" | "TAG_WRITE" | "PROPERTY_WRITE";
+export type ActionKind = "ACTION" | "PROCEDURE" | "TAG_WRITE" | "PROPERTY_WRITE" | "ALARM_ACK";
 
 export const ACTION_KIND_LABEL: Record<ActionKind, string> = {
   ACTION: "Действие",
@@ -12,6 +12,8 @@ export const ACTION_KIND_LABEL: Record<ActionKind, string> = {
   TAG_WRITE: "Запись тегов",
   // Инспектор объектов: значение локального свойства (без тега), docs/contract/2026-10-01-object-inspector-contract.md.
   PROPERTY_WRITE: "Запись свойства",
+  // Квитирование аварии ПЛК из монитора, docs/contract/2026-10-26-pac-alarms-frontend-contract.md.
+  ALARM_ACK: "Подтверждение аварии",
 };
 
 export interface ActionLogRecord {
@@ -22,12 +24,13 @@ export interface ActionLogRecord {
   kind: ActionKind | string;
   componentId: number | null;
   component: string | null;
-  /** Имя скрипта (ACTION), «операция рецепт» (PROCEDURE); null у TAG_WRITE. */
+  /** Имя скрипта (ACTION), «операция рецепт» (PROCEDURE), текст аварии (ALARM_ACK); null у TAG_WRITE. */
   target: string | null;
   /**
    * Что пытались записать: у TAG_WRITE — `{tag, value}`, у PROPERTY_WRITE — `{property, value}`
    * (id свойства: имени в журнале нет). У ACTION — аргументы действия `{arg, value}`
-   * (docs/contract/2026-10-02-action-args-contract.md), null — запуск без аргументов.
+   * (docs/contract/2026-10-02-action-args-contract.md), null — запуск без аргументов. У ALARM_ACK —
+   * `{arg: "key", value}`: ключ аварии.
    */
   tags: {tag?: string; property?: number; arg?: string; value: unknown}[] | null;
   outcome: "OK" | "ERROR" | string;
