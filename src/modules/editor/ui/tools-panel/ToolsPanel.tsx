@@ -1,23 +1,14 @@
 import React, {useState} from "react";
-import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
-import {exportSceneFile} from "./lib/exportSceneFile";
 import {useSceneFileImport} from "./hooks/useSceneFileImport";
 import {useToolbarAccess} from "./hooks/useToolbarAccess";
-import {
-  Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
-  Undo2, Redo2, Loader2, History, RotateCcw, Rocket,
-  RotateCw, FlipHorizontal, FlipVertical,
-  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
-} from "lucide-react";
-import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
-import {openProjectModal} from "@/components/ui/ProjectModal";
-import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
-import {usePaletteStore} from "@/store/usePaletteStore";
-import {toast} from "sonner";
+import {ArrangeButtons} from "./ArrangeButtons";
+import {HistoryButtons} from "./HistoryButtons";
+import {SaveButton} from "./SaveButton";
+import {SceneButtons} from "./SceneButtons";
+import {SceneStatus} from "./SceneStatus";
+import {ToolbarDivider} from "./TooltipBtn";
 import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPanel";
 import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
 import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBanner";
@@ -25,111 +16,22 @@ import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner"
 import SceneChangedBanner from "@/components/editor/versions/SceneChangedBanner";
 import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
 
-function TooltipBtn({
-  icon,
-  label,
-  onClick,
-  disabled,
-  className,
-  badge = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  className?: string;
-  /** Точка-индикатор в углу кнопки (например, «есть несохранённые изменения»). */
-  badge?: boolean;
-}) {
-  return (
-    <div className="relative group/tip">
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        aria-label={label}
-        title={label}
-        className={className ?? `flex items-center justify-center w-9 h-9 rounded-xl
-          bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-gray-900 dark:text-white
-          hover:bg-black/10 dark:hover:bg-white/10 hover:border-black/20 dark:hover:border-white/20
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-          active:translate-y-0.5 disabled:opacity-20 transition-all`}
-      >
-        {icon}
-        {badge && (
-          <span
-            aria-hidden
-            className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-neutral-900"
-          />
-        )}
-      </button>
-      {/* group-focus-within — подсказка видна и при переходе клавиатурой. */}
-      <span
-        role="tooltip"
-        className="
-        absolute top-full left-1/2 -translate-x-1/2 mt-2 z-dropdown
-        px-2 py-1 text-xs font-medium rounded-lg whitespace-nowrap
-        bg-gray-900 dark:bg-gray-700 text-white
-        opacity-0 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 pointer-events-none
-        transition-opacity duration-150
-      ">
-        {label}
-      </span>
-    </div>
-  );
-}
-
 /**
  * Отступы тулбара от боковых панелей приходят CSS-переменными от WorkSpace
  * (`--ws-left-m` / `--ws-right-m`), а не числовыми пропсами: во время
  * перетаскивания края панели их пишет обработчик указателя, без ре-рендера.
+ *
+ * Каждая группа кнопок подписана на стор сама и только на своё: подписка на весь стор
+ * перерисовывала панель на каждый тик пана/зума (то же замечание, что и в WorkSpace/Canvas).
  */
 export function ToolsPanel() {
-  // Точечный срез: подписка на весь стор перерисовывала панель на каждый тик
-  // пана/зума (то же замечание, что и в WorkSpace/Canvas).
-  const {
-    selectedIds, exportScene, elements, loadSceneList, createScene, scene, currentProject,
-    isSaving, isDirty, lastSavedAt, versionPreview, sceneVersion,
-  } = useEditorStore(useShallow(s => ({
-    selectedIds: s.selectedIds, exportScene: s.exportScene, elements: s.elements,
-    loadSceneList: s.loadSceneList, createScene: s.createScene,
+  const {scene, currentProject} = useEditorStore(useShallow(s => ({
     scene: s.scene, currentProject: s.currentProject,
-    isSaving: s.isSaving, isDirty: s.isDirty, lastSavedAt: s.lastSavedAt,
-    versionPreview: s.versionPreview, sceneVersion: s.sceneVersion,
   })));
-
-  // Глубина стеков undo/redo — чтобы кнопки гасли, когда отменять нечего.
-  const canUndo = useStore(useEditorStore.temporal, s => s.pastStates.length > 0);
-  const canRedo = useStore(useEditorStore.temporal, s => s.futureStates.length > 0);
-
-  const {loadPaletteItems} = usePaletteStore();
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const {sceneBelongsToProject, canEdit, canWrite, canSave} = useToolbarAccess();
   const {importInputRef, handleImport, handleImportFile} = useSceneFileImport(sceneBelongsToProject);
-
-  const handleOpenProject = () => {
-    openProjectModal();
-  };
-
-  const handleLoadSchema = async () => {
-    if (!currentProject) {
-      toast.info("Сначала выберите проект");
-      openProjectModal();
-      return;
-    }
-    await loadSceneList(currentProject.id);
-    openChooseSceneModal();
-  };
-
-  const handleCreateSchema = async () => {
-    if (!currentProject) {
-      toast.info("Сначала выберите проект");
-      openProjectModal();
-      return;
-    }
-    await createScene();
-    await loadPaletteItems();
-  };
 
   return (
     <nav
@@ -142,214 +44,22 @@ export function ToolsPanel() {
     >
       {/* Проект и сцена: отдельная колонка слева, не влияет на центрирование тулбара */}
       <div className="min-w-0 flex justify-start">
-        {(currentProject || scene) && (
-          <div className="min-w-0 flex items-center gap-3 text-xs font-medium text-neutral-400 pointer-events-auto">
-            {currentProject && (
-              <span className="truncate">
-                Проект: <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentProject.name}</span>
-              </span>
-            )}
-            {scene && (
-              <span className="truncate">
-                Схема: <span className="text-gray-900 dark:text-gray-100 font-semibold">{scene.name}</span>
-              </span>
-            )}
-            {/* Статус сохранения: автосейв тихий и раз в 10 минут, поэтому без
-                этой подписи пользователь не знал, в безопасности ли его работа.
-                В режиме просмотра версии статус не показываем — там говорит плашка,
-                а «сохранено в …» рядом со старой версией только запутает. */}
-            {currentProject && !canWrite && (
-              <span
-                className="shrink-0 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400"
-                title="У вас право просмотра проекта: правки остаются локальными и не сохраняются"
-              >
-                только просмотр
-              </span>
-            )}
-            {scene && !versionPreview && canWrite && (
-              <span className="shrink-0 whitespace-nowrap">
-                {isSaving
-                  ? <span className="text-neutral-500 dark:text-neutral-400">сохранение…</span>
-                  : isDirty
-                    ? <span className="text-amber-600 dark:text-amber-400">● есть несохранённые изменения</span>
-                    : lastSavedAt
-                      ? <span className="text-neutral-500 dark:text-neutral-400">
-                          сохранено в {new Date(lastSavedAt).toLocaleTimeString("ru-RU", {hour: "2-digit", minute: "2-digit"})}
-                        </span>
-                      : null}
-                {sceneVersion != null && (
-                  <span className="ml-2 text-neutral-400 dark:text-neutral-500">версия {sceneVersion}</span>
-                )}
-              </span>
-            )}
-          </div>
-        )}
+        <SceneStatus canWrite={canWrite} />
       </div>
 
       <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto justify-self-center">
 
-        <TooltipBtn icon={<Briefcase size={16} />} label="Проект" onClick={handleOpenProject} />
-        {canWrite && <TooltipBtn icon={<FilePlus size={16} />} label="Создать схему" onClick={handleCreateSchema} />}
-        <TooltipBtn icon={<FolderOpen size={16} />} label="Загрузить схему" onClick={handleLoadSchema} />
-        <TooltipBtn
-          icon={<Upload size={16} />} label="Импорт" onClick={handleImport}
-          disabled={!canEdit}
-        />
-        <TooltipBtn
-          icon={<Download size={16} />} label="Экспорт в файл" onClick={exportSceneFile}
-          disabled={!scene || !elements.length}
-        />
+        <SceneButtons canEdit={canEdit} canWrite={canWrite} onImport={handleImport} />
 
-        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
+        <ToolbarDivider />
 
-        {/* Отмена/повтор: раньше существовали только как Ctrl+Z/Ctrl+Y, без
-            подсказки в интерфейсе и без признака, что стек пуст. */}
-        <TooltipBtn
-          icon={<Undo2 size={16} />}
-          label="Отменить (Ctrl+Z)"
-          onClick={() => useEditorStore.temporal.getState().undo()}
-          disabled={!canEdit || !canUndo}
-        />
-        <TooltipBtn
-          icon={<Redo2 size={16} />}
-          label="Повторить (Ctrl+Y)"
-          onClick={() => useEditorStore.temporal.getState().redo()}
-          disabled={!canEdit || !canRedo}
-        />
+        <HistoryButtons canEdit={canEdit} canWrite={canWrite} onToggleHistory={() => setHistoryOpen(v => !v)} />
 
-        {/* Отмена выше — клиентская и по действиям (zundo, в памяти). Здесь другое:
-            сохранённые на сервере версии схемы, с автором и временем. Обе кнопки
-            доступны и в режиме просмотра версии — из него надо уметь выйти в историю. */}
-        <TooltipBtn
-          icon={<History size={16} />}
-          label={sceneVersion != null ? `История версий (текущая ${sceneVersion})` : "История версий"}
-          onClick={() => setHistoryOpen(v => !v)}
-          disabled={!scene}
-        />
-        {canWrite && <TooltipBtn
-          icon={<RotateCcw size={16} />}
-          label="Вернуться к предыдущему сохранению"
-          onClick={() => { void useEditorStore.getState().restorePreviousManualVersion(); }}
-          disabled={!scene || !!versionPreview}
-        />}
-        {/* Выпуски — уровень проекта, а не схемы: монитор показывает prod-выпуск, и правки
-            доходят до него только через «Выпустить» и «Сделать prod». */}
-        {canWrite && <TooltipBtn
-          icon={<Rocket size={16} />}
-          label="Выпуски проекта"
-          onClick={() => currentProject && openReleasesModal(currentProject.id, currentProject.name)}
-          disabled={!currentProject}
-        />}
+        <ToolbarDivider />
 
-        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
+        <ArrangeButtons canEdit={canEdit} />
 
-        <TooltipBtn
-          icon={<Group size={16} />}
-          label="Сгруппировать"
-          onClick={() => useEditorStore.getState().groupSelected()}
-          disabled={!canEdit || selectedIds.length < 2}
-        />
-        <TooltipBtn
-          icon={<Ungroup size={16} />}
-          label="Разгруппировать"
-          onClick={() => useEditorStore.getState().ungroupSelected()}
-          disabled={!canEdit || !selectedIds.some(id => elements.find(e => e.key === id)?.type === "group")}
-        />
-
-        {/* Поворот на 90° и отражения. Работают и для одного элемента, и для набора,
-            и для группы целиком: геометрия пересчитывается по-настоящему (см.
-            lib/editor/transformSelection.ts), поэтому всё остаётся на сетке. */}
-        <TooltipBtn
-          icon={<RotateCw size={16} />}
-          label="Повернуть по часовой (Shift + >)"
-          onClick={() => useEditorStore.getState().transformSelected("cw")}
-          disabled={!canEdit || !selectedIds.length}
-        />
-        <TooltipBtn
-          icon={<RotateCcw size={16} />}
-          label="Повернуть против часовой (Shift + <)"
-          onClick={() => useEditorStore.getState().transformSelected("ccw")}
-          disabled={!canEdit || !selectedIds.length}
-        />
-        <TooltipBtn
-          icon={<FlipHorizontal size={16} />}
-          label="Отразить по горизонтали (Shift + H)"
-          onClick={() => useEditorStore.getState().transformSelected("flipH")}
-          disabled={!canEdit || !selectedIds.length}
-        />
-        <TooltipBtn
-          icon={<FlipVertical size={16} />}
-          label="Отразить по вертикали (Shift + V)"
-          onClick={() => useEditorStore.getState().transformSelected("flipV")}
-          disabled={!canEdit || !selectedIds.length}
-        />
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />
-
-        {/* Выравнивание (≥2 выделенных) и распределение (≥3).
-            Блок был закомментирован, из-за чего alignSelected/distributeSelected
-            в сторе оставались недостижимым кодом. */}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignStartVertical size={16} />} label="По левому краю"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('left')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignCenterVertical size={16} />} label="По центру (гориз.)"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('hcenter')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignEndVertical size={16} />} label="По правому краю"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('right')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignStartHorizontal size={16} />} label="По верхнему краю"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('top')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignCenterHorizontal size={16} />} label="По центру (верт.)"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('vcenter')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignEndHorizontal size={16} />} label="По нижнему краю"*/}
-        {/*  onClick={() => useEditorStore.getState().alignSelected('bottom')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 2}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignHorizontalSpaceBetween size={16} />} label="Распределить по горизонтали"*/}
-        {/*  onClick={() => useEditorStore.getState().distributeSelected('h')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 3}*/}
-        {/*/>*/}
-        {/*<TooltipBtn*/}
-        {/*  icon={<AlignVerticalSpaceBetween size={16} />} label="Распределить по вертикали"*/}
-        {/*  onClick={() => useEditorStore.getState().distributeSelected('v')}*/}
-        {/*  disabled={!canEdit || selectedIds.length < 3}*/}
-        {/*/>*/}
-
-        {/*<div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />*/}
-
-        {/* Пока сохранение идёт — спиннер и блокировка: раньше промис не
-            ожидался и не было никакого признака работы, поэтому нетерпеливые
-            клики выстраивали очередь из полных циклов «сохранение + перезагрузка».
-            Точка-индикатор показывает несохранённые изменения. */}
-        {canWrite && <TooltipBtn
-          icon={isSaving
-            ? <Loader2 size={16} strokeWidth={2.5} className="animate-spin" />
-            : <Save size={16} strokeWidth={2.5} />}
-          label={isSaving ? "Сохранение…" : isDirty ? "Сохранить (есть изменения)" : "Сохранить"}
-          onClick={() => { void exportScene(); }}
-          disabled={!canSave || isSaving}
-          className="relative flex items-center justify-center w-9 h-9 rounded-xl
-            bg-primary/10 border border-primary/30 text-primary
-            hover:bg-primary/20 hover:border-primary/40
-            active:translate-y-0.5 transition-all
-            disabled:opacity-20 disabled:cursor-not-allowed"
-          badge={isDirty && !isSaving}
-        />}
+        {canWrite && <SaveButton canSave={canSave} />}
       </div>
 
       <div className="min-w-0 flex justify-end">
