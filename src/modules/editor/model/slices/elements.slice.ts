@@ -9,7 +9,6 @@ import {
 } from "@/lib/editor/sheet";
 import {toast} from "sonner";
 import {createUuid} from "@/shared/lib/createUuid";
-import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
 import type {EditorState} from "../editorStore";
 import {
   sceneBelongsToCurrentProject,
@@ -22,6 +21,7 @@ import {
   isPatchEffective, splitBaseOnly,
   syncMemberStates,
 } from "../elementStates";
+import {buildNewElement} from "../newElement";
 
 /**
  * Зона «Элементы» документа стора редактора: сам массив `elements`, правка элемента и его
@@ -288,8 +288,6 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
       return;
     }
 
-    const composition: string[] = [];
-
     const x = snap(screenX);
     const y = snap(screenY);
 
@@ -343,248 +341,7 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
       });
     };
 
-    if (type === 'line') {
-      const newElement: DiagramElement = {
-        id: null,
-        key: createUuid(),
-        type,
-        composition,
-        x,
-        y,
-        x1: x - 40,
-        x2: x + 40,
-        y1: y,
-        y2: y,
-        w: 80,
-        h: 80,
-        parentId: scene?.id || null,
-        parentKey: String(scene?.id) || null,
-        children: [],
-        label: "Element",
-        bg: "transparent",
-        scripts: [],
-        bindings: [],
-        properties: [],
-        states: [{
-          id: createUuid(),
-          name: "Нормальное",
-          overrides: {},
-          isDefault: true,
-        }],
-      };
-
-      commitNewElement(newElement);
-
-      return;
-    }
-
-    if (type === 'curve') {
-      // Кубическая кривая Безье: точки локальны относительно x/y (как у полигона),
-      // поэтому перетаскивание меняет только x/y, а форма живёт в points.
-      const points = [...DEFAULT_CURVE_POINTS];
-      const bounds = curvePointsBounds(points);
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY,
-        points,
-        label: "",
-        bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2, strokeDasharray: "",
-        arrowStart: false, arrowEnd: false,
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'arc') {
-      // Радиус 60 = три клетки; габарит — описанный квадрат 2r×2r, как у круга
-      // (см. ArcShapeElement). Раствор 90°, начало 0° — четверть окружности
-      // от «трёх часов» по часовой стрелке.
-      const radius = 60;
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 2 * radius, h: 2 * radius,
-        radius, innerRadius: 0, angle: 90, rotate: 0, arcClosed: false,
-        label: "",
-        bg: "transparent", strokeColor: "#9ca3af", strokeWidth: 2, strokeDasharray: "",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'checkbox') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 160, h: 20,
-        checked: false, label: "Checkbox",
-        color: "#3b82f6", strokeColor: "#3b82f6",
-        bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'progress_bar') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 200, h: 20,
-        value: 50, label: "", orientation: "horizontal",
-        color: "#3b82f6", backgroundColor: "#e5e7eb",
-        textColor: "#ffffff", showPercentage: true,
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'button') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 120, h: 40,
-        // label — название элемента, text — надпись на кнопке: поля независимы.
-        label: "Кнопка", text: "Кнопка", color: "#3b82f6", textColor: "#ffffff", fontSize: 16,
-        rx: 6, pressed: false, enabled: true, bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'toggle') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 40, h: 20,
-        checked: false, label: "",
-        color: "#22c55e", backgroundColor: "#9ca3af", textColor: "#e5e7eb", bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'slider') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 160, h: 20,
-        value: 50, min: 0, max: 100,
-        color: "#3b82f6", backgroundColor: "#d1d5db", bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'dropdown') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 160, h: 40,
-        value: "Выбор",
-        backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a", bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'input') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 160, h: 40,
-        value: "", placeholder: "Введите...",
-        backgroundColor: "#ffffff", strokeColor: "#9ca3af", textColor: "#1a1a1a", bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'image') {
-      // Дроп создаёт элемент СРАЗУ (плейсхолдер), src заполняется обработчиком
-      // после выбора файла в проводнике — по этому же key (extraProps.key).
-      const key = typeof extraProps?.key === 'string' ? extraProps.key : createUuid();
-      const src = typeof extraProps?.src === 'string' ? extraProps.src : "";
-      const w = typeof extraProps?.w === 'number' ? extraProps.w : 120;
-      const h = typeof extraProps?.h === 'number' ? extraProps.h : 120;
-      const newElement: DiagramElement = {
-        id: null, key, type, composition,
-        x, y, w, h,
-        src, objectFit: "contain", bg: "transparent",
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        label: "Картинка",
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    if (type === 'table') {
-      const newElement: DiagramElement = {
-        id: null, key: createUuid(), type, composition,
-        x, y, w: 300, h: 160,
-        rows: 4, cols: 3, showHeader: true, headerText: "Таблица", alternateRow: false,
-        backgroundColor: "transparent", headerColor: "transparent",
-        strokeColor: "#000000", textColor: "#000000", fontSize: 12,
-        alternateColor: "#f1f5f9",
-        cells: {},
-        parentId: scene?.id || null, parentKey: String(scene?.id) || null,
-        children: [], scripts: [], bindings: [], properties: [],
-        states: [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }],
-      };
-      commitNewElement(newElement);
-      return;
-    }
-
-    const newElement: DiagramElement = {
-      id: null,
-      key: createUuid(),
-      type,
-      composition,
-      x,
-      y,
-      w: 80,
-      h: 80,
-      // У круга рендер и панель свойств читают radius, а не w/h. Без него фигура
-      // рисовалась по w/2, но в панели «Радиус» стоял 0, а первая же правка радиуса
-      // прыгала с 40 на введённое. Держим тройку radius/w/h согласованной с рождения.
-      ...(type === "circle" ? {radius: 40} : {}),
-      parentId: scene?.id || null,
-      parentKey: String(scene?.id) || null,
-      children: [],
-      label: "Element",
-      bg: "transparent",
-        scripts: [],
-        bindings: [],
-      properties: [],
-      states: [{
-        id: createUuid(),
-        name: "Нормальное",
-        overrides: {},
-        isDefault: true,
-      }],
-    };
-
-    commitNewElement(newElement);
+    commitNewElement(buildNewElement(type, x, y, scene?.id, extraProps));
   },
   deleteSelectedElement: async () => {
     const { selectedIds, elements, activeGroupKey, scene } = get();
