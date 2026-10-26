@@ -5,66 +5,23 @@ import {LayersPanel} from "@/components/editor/LayersPanel";
 import {useEditorStore} from "../../model/editorStore";
 import {PropertiesPanel} from "../properties-panel";
 import {ToolsPanel} from "../tools-panel";
-import {openSceneGuarded} from "@/lib/editor/openScene";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {handleTabListKey} from "@/lib/editor/tabListKeys";
-import React, {useMemo, useRef, useState, useEffect} from "react";
+import React, {useMemo, useRef} from "react";
+import {LEFT_COLLAPSE, LEFT_MAX, LEFT_TABS, type LeftTabType, RIGHT_COLLAPSE, RIGHT_MAX} from "./lib/workspaceLayout";
+import {usePanelResize} from "./hooks/usePanelResize";
+import {usePersistedLayout} from "./hooks/usePersistedLayout";
+import {useWorkspaceTabs} from "./hooks/useWorkspaceTabs";
 import Palette from "@/components/editor/Palette";
 import {cn} from "@/shared/lib/cn";
 import {EditorPanel} from "@/components/editor/panels/EditorPanel";
 import {RecipesPanel} from "@/components/editor/panels/RecipesPanel";
 
-// Готовы только «Редактор» и «Рецепты». Раньше здесь были ещё 8 вкладок-заглушек
-// (по 7 строк каждая) — они импортировались и разводились в switch, но ни одна
-// не была достижима: полоса вкладок с ними закомментирована. Заглушки удалены,
-// вернуть их можно вместе с реальным содержимым.
-type TabType = "editor" | "recipes";
-type LeftTabType = "palette" | "layers";
-
-// Порядок вкладок для навигации стрелками.
-const MAIN_TABS = ["editor", "recipes"] as const satisfies readonly TabType[];
-
 // Вкладки-не-схемы для SceneTabs. На уровне модуля, а не литералом в JSX: новый объект
 // на каждый рендер сбрасывал бы мемоизацию ряда вкладок внутри компонента.
 const RECIPES_TAB = {key: "recipes", label: "Рецепты"} as const;
 const EDITOR_TAB = {key: "editor", label: "Редактор"} as const;
-const LEFT_TABS = ["palette", "layers"] as const satisfies readonly LeftTabType[];
-
-// Ширины боковых панелей: дефолт/максимум/порог, ниже которого перетаскивание края схлопывает панель.
-const LEFT_DEFAULT = 288, LEFT_MAX = 480, LEFT_COLLAPSE = 160;
-const RIGHT_DEFAULT = 320, RIGHT_MAX = 520, RIGHT_COLLAPSE = 180;
-/**
- * Раскладка редактора в localStorage.
- *
- * Раньше здесь было два ключа только под ширины, и каждый эффект писал в
- * хранилище на КАЖДЫЙ пиксель перетаскивания края панели (сотни синхронных
- * записей на один жест). Теперь одна запись на всю раскладку, отложенная на
- * SAVE_DELAY после последнего изменения, и в неё попали свёрнутость панелей и
- * активные вкладки — их состояние терялось при перезагрузке.
- */
-const LS_LAYOUT = "scada-editor:layout";
-const SAVE_DELAY = 300;
-
-type PersistedLayout = {
-  leftWidth: number;
-  rightWidth: number;
-  leftVisible: boolean;
-  rightVisible: boolean;
-  leftTab: LeftTabType;
-  activeTab: TabType;
-};
-
-const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
-
-const readLayout = (): Partial<PersistedLayout> => {
-  try {
-    const raw = localStorage.getItem(LS_LAYOUT);
-    return raw ? (JSON.parse(raw) as Partial<PersistedLayout>) : {};
-  } catch {
-    return {};
-  }
-};
 
 export function WorkSpace() {
   // Закрепления — настройка проекта: без права правки вкладки только видны.
@@ -75,185 +32,18 @@ export function WorkSpace() {
   const selectedElement = useEditorStore(s => s.elements.find(el => el.key === s.selectedIds[0]));
   const elements = useEditorStore(s => s.elements);
   const isVersionPreview = useEditorStore(s => s.versionPreview !== null);
-  const scene = useEditorStore(s => s.scene);
 
   const selectedElements = useMemo(
     () => selectedIds.map(id => elements.find(el => el.key === id)).filter((el): el is NonNullable<typeof el> => Boolean(el)),
     [selectedIds, elements],
   );
 
-  const [leftVisible, setLeftVisible] = useState(true);
-  const [rightVisible, setRightVisible] = useState(true);
-  const [leftTab, setLeftTab] = useState<LeftTabType>("palette");
-  const [activeTab, setActiveTab] = useState<TabType>("editor");
-
-  // Ширина боковых панелей — настраивается перетаскиванием края (см. handleResizeStart).
-  const [leftWidth, setLeftWidth] = useState(LEFT_DEFAULT);
-  const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT);
-  const [resizingSide, setResizingSide] = useState<"left" | "right" | null>(null);
-  /** Корневой узел — на нём живут CSS-переменные раскладки (см. handleResizeStart). */
+  const layout = usePersistedLayout();
+  const {leftWidth, rightWidth, leftVisible, setLeftVisible, rightVisible, setRightVisible, leftTab, setLeftTab, activeTab, setActiveTab} = layout;
+  /** Корневой узел — на нём живут CSS-переменные раскладки (см. usePanelResize). */
   const rootRef = useRef<HTMLDivElement>(null);
-
-  // Восстанавливаем раскладку после монтирования (localStorage недоступен на сервере,
-  // поэтому не читаем его в useState-инициализаторе — это дало бы рассинхронизацию с SSR-разметкой).
-  // Синхронный setState здесь оправдан: это единственный способ безопасно прочитать
-  // браузерный API после монтирования, а не «выводимое» из пропсов состояние.
-  useEffect(() => {
-    const saved = readLayout();
-
-    if (Number.isFinite(saved.leftWidth) && saved.leftWidth! > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLeftWidth(clamp(saved.leftWidth!, LEFT_COLLAPSE, LEFT_MAX));
-    }
-    if (Number.isFinite(saved.rightWidth) && saved.rightWidth! > 0) {
-      setRightWidth(clamp(saved.rightWidth!, RIGHT_COLLAPSE, RIGHT_MAX));
-    }
-    if (typeof saved.leftVisible === "boolean") setLeftVisible(saved.leftVisible);
-    if (typeof saved.rightVisible === "boolean") setRightVisible(saved.rightVisible);
-    if (LEFT_TABS.includes(saved.leftTab as LeftTabType)) setLeftTab(saved.leftTab!);
-    if (MAIN_TABS.includes(saved.activeTab as TabType)) setActiveTab(saved.activeTab!);
-  }, []);
-
-  // Одна отложенная запись вместо синхронной на каждое изменение ширины.
-  useEffect(() => {
-    const id = setTimeout(() => {
-      const layout: PersistedLayout = {
-        leftWidth,
-        rightWidth,
-        leftVisible,
-        rightVisible,
-        leftTab,
-        activeTab,
-      };
-      try {
-        localStorage.setItem(LS_LAYOUT, JSON.stringify(layout));
-      } catch {
-        // Квота/приватный режим — раскладка не сохранится, работать это не мешает.
-      }
-    }, SAVE_DELAY);
-
-    return () => clearTimeout(id);
-  }, [leftWidth, rightWidth, leftVisible, rightVisible, leftTab, activeTab]);
-
-  /**
-   * Перетаскивание края панели: ширина следует за курсором, а при уходе ниже
-   * порога панель схлопывается (тот же жест, что и «Свернуть», плюс сброс к
-   * дефолтной ширине).
-   *
-   * Во время жеста ширина живёт в CSS-переменных корневого узла, и React в нём
-   * не участвует. Раньше каждый `pointermove` вызывал `setState` — то есть сотни
-   * ре-рендеров всего редактора (палитра, слои, свойства, тулбар и холст) на
-   * один жест. В стор состояние уходит один раз, на отпускании.
-   */
-  const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>, side: "left" | "right") => {
-    e.preventDefault();
-    const handle = e.currentTarget;
-    handle.setPointerCapture(e.pointerId);
-    const startX = e.clientX;
-    const startWidth = side === "left" ? leftWidth : rightWidth;
-    setResizingSide(side);
-
-    const [collapseAt, maxWidth, defaultWidth] = side === "left"
-      ? [LEFT_COLLAPSE, LEFT_MAX, LEFT_DEFAULT]
-      : [RIGHT_COLLAPSE, RIGHT_MAX, RIGHT_DEFAULT];
-
-    // Итог жеста: применяется к CSS-переменным на каждое движение и один раз
-    // уходит в состояние React на отпускании.
-    let width = startWidth;
-    let visible = true;
-
-    const paint = () => {
-      const root = rootRef.current;
-      if (!root) return;
-      root.style.setProperty(`--ws-${side}-w`, `${width}px`);
-      root.style.setProperty(`--ws-${side}-m`, visible ? `${width}px` : "0px");
-    };
-
-    const onMove = (ev: PointerEvent) => {
-      const delta = side === "left" ? ev.clientX - startX : startX - ev.clientX;
-      const raw = startWidth + delta;
-      if (raw < collapseAt) {
-        visible = false;
-        width = defaultWidth;
-      } else {
-        visible = true;
-        width = Math.min(raw, maxWidth);
-      }
-      paint();
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      handle.releasePointerCapture(ev.pointerId);
-      handle.removeEventListener("pointermove", onMove);
-      handle.removeEventListener("pointerup", onUp);
-      // pointercancel: система может отобрать указатель (жест браузера, отключение
-      // устройства). Без этого обработчика панель залипала в режиме перетаскивания.
-      handle.removeEventListener("pointercancel", onUp);
-      setResizingSide(null);
-      if (side === "left") {
-        setLeftWidth(width);
-        setLeftVisible(visible);
-      } else {
-        setRightWidth(width);
-        setRightVisible(visible);
-      }
-    };
-
-    handle.addEventListener("pointermove", onMove);
-    handle.addEventListener("pointerup", onUp);
-    handle.addEventListener("pointercancel", onUp);
-  };
-
-  /** Изменение ширины панели с клавиатуры (ручка — role="separator"). */
-  const handleResizeKey = (e: React.KeyboardEvent, side: "left" | "right") => {
-    const STEP = 16;
-    const width = side === "left" ? leftWidth : rightWidth;
-    const [min, max] = side === "left" ? [LEFT_COLLAPSE, LEFT_MAX] : [RIGHT_COLLAPSE, RIGHT_MAX];
-    const setWidth = side === "left" ? setLeftWidth : setRightWidth;
-    const setVisible = side === "left" ? setLeftVisible : setRightVisible;
-
-    // Для левой панели «шире» — это вправо, для правой — влево.
-    const grow = side === "left" ? "ArrowRight" : "ArrowLeft";
-    const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
-
-    let next: number | null = null;
-    if (e.key === grow) next = Math.min(width + STEP, max);
-    else if (e.key === shrink) next = width - STEP;
-    else if (e.key === "Home") next = min;
-    else if (e.key === "End") next = max;
-    else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setVisible(false);
-      return;
-    }
-
-    if (next === null) return;
-    e.preventDefault();
-    if (next < min) {
-      setVisible(false);
-      setWidth(side === "left" ? LEFT_DEFAULT : RIGHT_DEFAULT);
-    } else {
-      setWidth(next);
-    }
-  };
-
-  const activeTabKey = activeTab === "recipes"
-    ? "recipes"
-    : (scene ? `scene:${scene.id}` : "editor");
-
-  /** Активирует вкладку по ключу — общий вход для клика и стрелок. */
-  const activateTab = (key: string) => {
-    if (key === "recipes") { setActiveTab("recipes"); return; }
-    if (key === "editor") { setActiveTab("editor"); return; }
-
-    const id = Number(key.slice("scene:".length));
-    if (!Number.isFinite(id)) return;
-    // Своя схема уже открыта — просто показываем холст.
-    if (scene?.id === id) { setActiveTab("editor"); return; }
-    // Чужая: вкладку переключаем только если переход состоялся (могли отказаться
-    // из-за несохранённых правок).
-    void openSceneGuarded(id).then(ok => { if (ok) setActiveTab("editor"); });
-  };
+  const {resizingSide, handleResizeStart, handleResizeKey} = usePanelResize(rootRef, layout);
+  const {activeTabKey, activateTab} = useWorkspaceTabs(activeTab, setActiveTab);
 
   // Палитра, свойства, инструменты и Canvas показываются только во вкладке «Редактор».
   const showEditorPanels = activeTab === "editor";
