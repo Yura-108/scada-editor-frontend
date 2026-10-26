@@ -251,9 +251,11 @@ Example to copy: the "Управление" controls (`button/toggle/slider/drop
 3. **`src/constants/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
    (`complex:false` for a widget) and `elementPropertyMap` (a `PropertySchema[]`). These are
    `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
-4. **`src/modules/editor/model/slices/elements.slice.ts` → `addElementAt`** — a `if (type === '…')` branch mirroring the
-   `checkbox`/`progress_bar` ones (full scaffolding: `id:null, key:createUuid(), composition:[],
-   parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`).
+4. **`src/modules/editor/model/newElement.ts` → `TYPE_PROPS`** — an entry with the type's own fields (size, colours,
+   value), mirroring `checkbox`/`progress_bar`. The shared scaffolding (`id:null, key, composition:[],
+   parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`)
+   comes from `baseElement`; `addElementAt` calls `buildNewElement`, then `placeNewElement` puts it into
+   the entered container.
 5. **`src/components/editor/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
    a dispatch branch in `ShapeElement.tsx`. Include: Group at `rendered.x/y`, selection dashed Rect,
    live-snap drag (with the `e.target===e.currentTarget` guard if it has a resize handle), and a
@@ -268,7 +270,7 @@ The properties panel is generated from `elementPropertyMap[type]` (`src/modules/
 "exists" in the panel but only *works* if the shape component **reads that exact key**. Common bug:
 the panel writes one key while the renderer reads another (e.g. panel `backgroundColor` vs renderer
 `bg`). When wiring params: make the renderer read the schema key (fallback to legacy key for old
-scenes), and make `addElementAt` seed the same key. `PropertiesPanel.handleSelectChange`
+scenes), and make `buildNewElement` (`newElement.ts`) seed the same key. `PropertyInput.handleSelectChange`
 special-cases `orientation` (progress bar) to **swap w/h** so vertical bars become tall/narrow.
 
 ## Serialization round-trip (bake ↔ unbake)
