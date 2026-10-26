@@ -1,11 +1,10 @@
 "use client";
 
 import {useEffect} from "react";
-import WorkSpace from "@/components/editor/WorkSpace";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
 import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifications";
-import {useEditorStore} from "@/modules/editor";
+import {useEditorStore, WorkSpace} from "@/modules/editor";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 import {canOpenInEditor, grantOf} from "@/lib/access/grants";
 import {restoreLastProject} from "@/lib/editor/lastProject";

@@ -2,13 +2,15 @@ import {ChevronLeft, ChevronRight, PanelLeft, PanelRight} from "lucide-react";
 import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
 import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
 import {LayersPanel} from "@/components/editor/LayersPanel";
-import {PropertiesPanel, ToolsPanel, useEditorStore} from "@/modules/editor";
+import {useEditorStore} from "../../model/editorStore";
+import {PropertiesPanel} from "../properties-panel";
+import {ToolsPanel} from "../tools-panel";
 import {openSceneGuarded} from "@/lib/editor/openScene";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {handleTabListKey} from "@/lib/editor/tabListKeys";
 import React, {useMemo, useRef, useState, useEffect} from "react";
-import Palette from "./Palette";
+import Palette from "@/components/editor/Palette";
 import {cn} from "@/shared/lib/cn";
 import {EditorPanel} from "@/components/editor/panels/EditorPanel";
 import {RecipesPanel} from "@/components/editor/panels/RecipesPanel";
@@ -64,7 +66,7 @@ const readLayout = (): Partial<PersistedLayout> => {
   }
 };
 
-export default function WorkSpace() {
+export function WorkSpace() {
   // Закрепления — настройка проекта: без права правки вкладки только видны.
   const canWrite = useCurrentProjectGrant().edit;
   // Точечные селекторы вместо подписки на весь стор: иначе каждый тик пана/зума
