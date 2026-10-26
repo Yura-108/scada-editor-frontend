@@ -1,7 +1,6 @@
 import {snap, GRID} from "@/lib/utils";
 import type {MonitorView} from "@/lib/editor/monitorView";
 import {DiagramElement, ElementType} from "@/types/editorElement.type";
-import {getElementIndex} from "@/lib/editor/elementIndex";
 import {
   isMetaElement, isSameSheet, resolveSheet, SHEET_MAX, SHEET_MIN,
 } from "@/lib/editor/sheet";
@@ -11,13 +10,10 @@ import type {EditorState} from "../editorStore";
 import {
   sceneBelongsToCurrentProject,
 } from "../editorStoreInternals";
-import {
-  getDescendantKeys,
-  recomputeAncestorBounds,
-} from "../elementTree";
 import {buildNewElement} from "../newElement";
 import {placeNewElement} from "../placeNewElement";
 import {applyVisualPatch} from "../visualPatch";
+import {removeElementsCascade} from "../removeElements";
 
 /**
  * Зона «Элементы» документа стора редактора: сам массив `elements`, правка элемента и его
@@ -203,45 +199,7 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
     const { selectedIds, elements, activeGroupKey, scene } = get();
     if (!selectedIds.length) return;
 
-    // Каскад: удаляем выделенные + всех их потомков (children и composition, любой глубины).
-    const descendantKeys = selectedIds.flatMap(key => getDescendantKeys(key, elements));
-
-    const idsToDelete = new Set([...selectedIds, ...descendantKeys]);
-
-    // Уцелевшие родители удаляемых: чистим их children/composition от висячих ключей
-    // и пересчитываем рамки (иначе рамка остаётся растянутой под удалённое).
-    const parentKeysToClean = new Set(
-      elements
-        .filter(el => idsToDelete.has(el.key) && el.parentKey && !idsToDelete.has(el.parentKey))
-        .map(el => el.parentKey!)
-    );
-
-    let nextElements = elements
-      .filter(el => !idsToDelete.has(el.key))
-      .map(el =>
-        parentKeysToClean.has(el.key)
-          ? {
-              ...el,
-              children: el.children.filter(k => !idsToDelete.has(k)),
-              composition: (el.composition ?? []).filter(k => !idsToDelete.has(k)),
-            } as DiagramElement
-          : el
-      );
-
-    // Уцелевшим родителям пересчитываем рамку одним проходом: точкой входа
-    // берём любого их оставшегося члена (цепочка предков от него включает
-    // самого родителя).
-    const membersToRecompute: string[] = [];
-    const survivorsIndex = getElementIndex(nextElements);
-    for (const parentKey of parentKeysToClean) {
-      const parent = survivorsIndex.byKey[parentKey];
-      if (!parent || parent.type !== "group") continue;
-      const firstMember = [...(parent.children ?? []), ...(parent.composition ?? [])][0];
-      if (firstMember) membersToRecompute.push(firstMember);
-    }
-    if (membersToRecompute.length) {
-      nextElements = recomputeAncestorBounds(nextElements, membersToRecompute, scene?.id);
-    }
+    const {elements: nextElements, deletedKeys: idsToDelete} = removeElementsCascade(elements, selectedIds, scene?.id);
 
     // Удаление живёт только локально и уезжает ближайшим сохранением: тело `PUT`
     // описывает состав сцены целиком, и компонента, которого в нём нет, сервер
