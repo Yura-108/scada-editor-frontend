@@ -1,7 +1,8 @@
 import React, {useRef, useState} from "react";
 import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
-import {useEditorStore, SCENE_EXPORT_FORMAT} from "@/modules/editor";
+import {useEditorStore} from "../../model/editorStore";
+import {SCENE_EXPORT_FORMAT} from "../../model/editorStoreInternals";
 import {
   Save, Group, Ungroup, FilePlus, FolderOpen, Briefcase, Upload, Download,
   Undo2, Redo2, Loader2, History, RotateCcw, Rocket,
@@ -89,7 +90,7 @@ function TooltipBtn({
  * (`--ws-left-m` / `--ws-right-m`), а не числовыми пропсами: во время
  * перетаскивания края панели их пишет обработчик указателя, без ре-рендера.
  */
-export default function ToolsPanel() {
+export function ToolsPanel() {
   // Точечный срез: подписка на весь стор перерисовывала панель на каждый тик
   // пана/зума (то же замечание, что и в WorkSpace/Canvas).
   const {
