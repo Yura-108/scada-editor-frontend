@@ -24,7 +24,7 @@ here is convenience, never protection.
   not an effect — child effects run first) and sends any 401 / 403 `USER_DISABLED` from `/api/*`
   to `/login`. Login/logout routes are exempt.
 - **Editor, `view` without `edit`**: local editing and undo stay; everything that writes is hidden
-  (`canWrite` in `ToolsPanel`, separate from the existing `canEdit`) **and** refused in the store
+  (`canWrite` in `ToolsPanel`, computed by `modules/editor/ui/tools-panel/hooks/useToolbarAccess.ts`, separate from the existing `canEdit`) **and** refused in the store
   by `canWriteCurrentProject()` — `exportScene` (autosave silently), restore, create/delete scene,
   pins, the saved-property rename PUT. Operate-only projects are not shown in the editor/data/
   automation pickers and are reset on entering the editor.
