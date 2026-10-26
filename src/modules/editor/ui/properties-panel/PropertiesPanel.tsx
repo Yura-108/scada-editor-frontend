@@ -8,7 +8,7 @@ import {cn} from "@/shared/lib/cn";
 import {GRID} from "@/lib/utils";
 import {DiagramElement, ElementType, PropertySchema, TableCellData} from "@/types/editorElement.type";
 import {PropertyCreateDto} from "@/types/tags.types";
-import {elementPropertyMap, basePropertySchema, elementTypeLabel, ROTATABLE_TYPES} from "@/constants/propertiesPanel";
+import {elementPropertyMap, basePropertySchema, elementTypeLabel} from "@/constants/propertiesPanel";
 import {Plus, AlertTriangle, Trash2, Boxes, GripVertical, Pencil, Layers, Check} from "lucide-react";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
@@ -21,6 +21,10 @@ import {choiceModal, confirmModal, promptModal} from "@/components/ui/ConfirmMod
 import {toast} from "sonner";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "../../model/editorStore";
+import {needsTag, propertyKey, sortProperties} from "./lib/propertyOrder";
+import {getNumberValue} from "./lib/getNumberValue";
+import {getGeometryFields} from "./lib/geometryFields";
+import {getTableTracks} from "./lib/tableTracks";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {createUuid} from "@/shared/lib/createUuid";
@@ -34,9 +38,8 @@ import {cellBindingAt, cellSourceFieldsFor} from "@/lib/editor/tableBindings";
 import {MonitorMenuSettingsBlock} from "@/components/editor/MonitorMenuSettingsBlock";
 import {TrendSettingsBlock} from "@/components/editor/TrendSettingsBlock";
 import {hasMonitorMenu} from "@/components/editor/canvas/buildMonitorMenu";
-import {MIN_TRACK, headerHeight, resolveTracks, setTrackSize} from "@/lib/editor/tableLayout";
+import {MIN_TRACK, setTrackSize} from "@/lib/editor/tableLayout";
 import {shortTagPath} from "@/lib/editor/tagPath";
-import {MIN_SIZE} from "@/components/editor/canvas/types";
 import type {CellSourceField} from "@/types/binding.types";
 
 interface PropertiesPanelProps {
@@ -48,21 +51,6 @@ interface PropertiesPanelProps {
  * dnd-kit) висит ТОЛЬКО на иконке — остальная часть таблетки сохраняет исходный
  * onClick открытия модалки редактирования, drag и клик не конфликтуют.
  */
-/**
- * Ключ свойства в списке.
- *
- * Серверного id может не быть: свойства из шаблона палитры приезжают черновиками (тег
- * у каждого экземпляра свой, а без тега свойство на сервере не заводится). Для таких
- * ключом служит имя — в пределах одного элемента оно и так обязано быть уникальным,
- * по нему идёт разрешение ссылок и сбор скоупа биндингов.
- */
-const propertyKey = (p: PropertyCreateDto): string =>
-  p.id != null ? `id-${p.id}` : `draft-${p.name}`;
-
-/** Теговое свойство без тега — черновик из шаблона, его надо донастроить. */
-const needsTag = (p: PropertyCreateDto): boolean =>
-  p.property_type === "Тег" && !p.tag_id;
-
 function SortablePropertyPill({property, onClick, onDelete}: {property: PropertyCreateDto; onClick: () => void; onDelete: () => void}) {
   const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: propertyKey(property)});
   const style: React.CSSProperties = {
@@ -171,17 +159,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     setLocalOrderElementKey(element?.key);
     setLocalOrder(null);
   }
-  const sortedProperties = useMemo(() => {
-    const base = [...elementProperties].sort((a, b) =>
-      (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER)
-      || (a.id ?? Number.MAX_SAFE_INTEGER) - (b.id ?? Number.MAX_SAFE_INTEGER)
-    );
-    if (!localOrder) return base;
-    const byId = new Map(base.map(p => [propertyKey(p), p] as const));
-    const reordered = localOrder.map(id => byId.get(id)).filter((p): p is PropertyCreateDto => Boolean(p));
-    for (const p of base) if (!localOrder.includes(propertyKey(p))) reordered.push(p);
-    return reordered;
-  }, [elementProperties, localOrder]);
+  const sortedProperties = useMemo(
+    () => sortProperties(elementProperties, localOrder),
+    [elementProperties, localOrder],
+  );
   const dndSensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 4}}));
   const handlePropertyDragEnd = (event: DragEndEvent) => {
     const {active, over} = event;
@@ -335,98 +316,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
     });
   }
 
-  const getNumberValue = (rawValue: unknown, fallback = 0) => {
-    const parsed = Number(rawValue);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  };
-
-  /**
-   * Поля блока «Геометрия» — ровно те, что рендерер действительно читает.
-   *
-   * Раньше панель расходилась с холстом в двух местах: «Поворот°» показывался
-   * для всех типов кроме группы, хотя `rotation` прокидывает только часть фигур
-   * (см. ROTATABLE_TYPES); а у круга правились «Ширина»/«Высота», тогда как
-   * рендерер берёт `radius || w / 2` — то есть ввод ширины ничего не менял.
-   */
-  const geometryFields: {key: string; label: string; value?: number; commit?: (v: number) => Record<string, unknown>}[] =
-    element.type === "line"
-      ? [
-          {key: "x1", label: "X1"}, {key: "y1", label: "Y1"},
-          {key: "x2", label: "X2"}, {key: "y2", label: "Y2"},
-        ]
-      : element.type === "curve"
-        // Форму кривой задают четыре точки — их правят ручками на холсте, числами это
-        // было бы восемь полей. В панели остаётся положение; w/h пересчитываются сами.
-        ? [{key: "x", label: "X"}, {key: "y", label: "Y"}]
-      : element.type === "text"
-        // У текста габарит вычисляемый: `h` не пишется вообще ничем и остаётся
-        // ископаемым значением из `addElementAt`, а `w` действует только в режиме
-        // фиксированной ширины (`autoWidth === false`). Показывать оба поля значило бы
-        // предлагать править числа, которых рендерер не читает. В авторежиме ширину
-        // задаёт ручка на холсте, вернуть его — двойной клик по ней.
-        ? [
-            {key: "x", label: "X"}, {key: "y", label: "Y"},
-            ...(renderedElementValues.autoWidth === false
-              ? [{
-                  key: "w",
-                  label: "Ширина",
-                  commit: (v: number) => ({w: Math.max(MIN_SIZE, v), autoWidth: false}),
-                }]
-              : []),
-          ]
-      : element.type === "circle" || element.type === "arc"
-        ? (() => {
-            // Круг и дуга описываются ЦЕНТРОМ и радиусом — так их двигает холст (центр
-            // садится в узел сетки), так их задают ручки и так приходит выгрузка CONTUR.
-            // В модели же в `x, y` лежит левый верхний угол габарита, поэтому панель
-            // переводит одно в другое, а не показывает угол: иначе поля и жест на холсте
-            // описывали бы разные точки.
-            // Тот же порядок запасных значений, что у рендера (`radius || w / 2 || …`):
-            // панель обязана описывать ровно то, что нарисовано.
-            const isArc = element.type === "arc";
-            const r =
-              getNumberValue(renderedElementValues.radius, getNumberValue(renderedElementValues.w) / 2)
-              || (isArc ? 60 : 40);
-            const cx = getNumberValue(renderedElementValues.x) + r;
-            const cy = getNumberValue(renderedElementValues.y) + r;
-            return [
-              {key: "cx", label: "X центра", value: cx, commit: (v: number) => ({x: v - r})},
-              {key: "cy", label: "Y центра", value: cy, commit: (v: number) => ({y: v - r})},
-              {
-                key: "radius",
-                label: "Радиус",
-                // Растём вокруг центра — как ручка на холсте. `w/h` держим равными
-                // диаметру: рендер берёт radius, а выделение и рамка группы — w/h.
-                commit: (v: number) => {
-                  const nr = Math.max(1, v);
-                  return {radius: nr, w: nr * 2, h: nr * 2, x: cx - nr, y: cy - nr};
-                },
-              },
-              // Дуга: начало живёт в общем `rotate` (своего поворота у неё нет —
-              // поворот дуги это и есть её начальный угол), раствор — в `angle`.
-              ...(isArc
-                ? [
-                    {
-                      key: "rotate",
-                      label: "Начало, °",
-                      commit: (v: number) => ({rotate: ((v % 360) + 360) % 360}),
-                    },
-                    {
-                      key: "angle",
-                      label: "Раствор, °",
-                      commit: (v: number) => ({angle: Math.min(360, Math.max(1, Math.round(v)))}),
-                    },
-                  ]
-                : []),
-            ];
-          })()
-        : [
-            {key: "x", label: "X"}, {key: "y", label: "Y"},
-            {key: "w", label: "Ширина"}, {key: "h", label: "Высота"},
-            ...(ROTATABLE_TYPES.has(element.type as ElementType)
-              ? [{key: "rotate", label: "Поворот°"}]
-              : []),
-          ];
+  const geometryFields = getGeometryFields(element.type, renderedElementValues);
 
   // Требование «сначала сохраните схему» снято: свойства едут вместе со сценой, и
   // заводить их можно элементу, которого на сервере ещё нет. Осталось единственное
@@ -478,20 +368,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   // ---- Размеры полос таблицы ----
   // Считаются тем же кодом, что и рендер: в элементе лежат ВЕСА, а показывать и
   // редактировать надо фактические единицы сцены (см. src/lib/editor/tableLayout.ts).
-  const tableTracks = element.type !== "table" ? null : (() => {
-    const w = getNumberValue(renderedElementValues.w, 300);
-    const h = getNumberValue(renderedElementValues.h, 160);
-    const rows = Math.max(1, Math.round(getNumberValue(renderedElementValues.rows, 4)));
-    const cols = Math.max(1, Math.round(getNumberValue(renderedElementValues.cols, 3)));
-    const showHeader = renderedElementValues.showHeader !== false;
-    const fontSize = getNumberValue(renderedElementValues.fontSize, 12);
-    const headerH = headerHeight(showHeader, fontSize, renderedElementValues.headerH);
-    return {
-      rows, cols, h, headerH, showHeader,
-      colWs: resolveTracks(renderedElementValues.colWidths, cols, w),
-      rowHs: resolveTracks(renderedElementValues.rowHeights, rows, h - headerH),
-    };
-  })();
+  const tableTracks = element.type !== "table" ? null : getTableTracks(renderedElementValues);
 
   /** Задать ширину столбца / высоту строки: разница снимается с соседней полосы. */
   const setTableTrack = (axis: "col" | "row", index: number, size: number) => {
