@@ -4,7 +4,7 @@ import {devLog} from "@/shared/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
 import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
-import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
+import {projectStreamHandlers, resetProjectStreams} from "@/modules/monitor";
 import {getRenderedElement} from "@/lib/getRenderedElement";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
@@ -739,10 +739,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     log(`движок запущен для проекта ${projectId}`);
     lastMessageAtRef.current = 0;
     // Статусы принадлежат проекту: задачи прошлого проекта в панели остаться не должны.
-    resetTaskStatuses();
+    resetProjectStreams();
 
     const conn = openRuntimeConnection(projectId, {
-      onTasks: pushTaskStatuses,
+      ...projectStreamHandlers,
       /**
        * Выпуск, который крутит проект. Сменился (кадр TREE_CHANGED, либо prod переключили,
        * пока не было связи, — тогда другой номер приходит с новой сессией) — стор перечитывает
