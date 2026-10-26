@@ -23,7 +23,7 @@ import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
 import {canWriteDirectly} from "@/lib/runtime/actionAccess";
 import {restoreLastProject} from "@/lib/editor/lastProject";
 import {lastMonitorScene, rememberMonitorScene} from "@/lib/editor/projectMemory";
-import {MonitorStatusBadges} from "@/modules/monitor";
+import {AlarmPopups, AlarmsBadge, AlarmsPanel, MonitorStatusBadges, useAlarmsProjectId} from "@/modules/monitor";
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
@@ -144,7 +144,8 @@ export default function MonitorClient() {
   }, [status, setCurrentProject, loadProjectList]);
 
   // «Опции» и инспектор пишут теги/свойства напрямую: «управление» и уровень ≥ 9.
-  const directWrite = canWriteDirectly(useCurrentProjectGrant());
+  const grant = useCurrentProjectGrant();
+  const directWrite = canWriteDirectly(grant);
 
   // Подписка на статусы задач — пока монитор открыт. sessionId меняется при каждом переподключении
   // и смене проекта: повторная подписка безвредна, сервер просто пришлёт полный список ещё раз.
@@ -153,6 +154,12 @@ export default function MonitorClient() {
   }, [sessionId, subscribeTasks]);
 
   const [showTasks, setShowTasks] = useState(false);
+
+  // Аварии ПЛК: список держит стор монитора, пока открыт проект, — и во время переподключения.
+  // Пока соединение нового проекта не открылось, в сторе ещё список прежнего: его не показываем.
+  const [showAlarms, setShowAlarms] = useState(false);
+  const alarmsProjectId = useAlarmsProjectId();
+  const alarmsShown = !isArchive && currentProject != null && alarmsProjectId === currentProject.id;
   const taskProblems = useAutomationTasksStore(s => countTaskProblems(s.byId));
 
   // Вкладка «Процедуры» — ровно тот же приём, что у «Рецептов» в редакторе:
@@ -227,7 +234,7 @@ export default function MonitorClient() {
               onClick={() => {
                 setMode(m);
                 // Процедуры — живое управление, в архиве им не место.
-                if (m === "archive") { setShowProcedures(false); setShowTasks(false); }
+                if (m === "archive") { setShowProcedures(false); setShowTasks(false); setShowAlarms(false); }
               }}
               className={cn(
                 "flex items-center gap-1 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-40",
@@ -270,7 +277,7 @@ export default function MonitorClient() {
 
         {isLive && sessionId && (
           <button
-            onClick={() => setShowTasks(v => !v)}
+            onClick={() => { setShowTasks(v => !v); setShowAlarms(false); }}
             aria-pressed={showTasks}
             className={cn(
               "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
@@ -284,6 +291,10 @@ export default function MonitorClient() {
             <span className="hidden xl:inline">Задачи</span>
             {taskProblems > 0 && <span><span className="hidden xl:inline">: </span>{taskProblems}</span>}
           </button>
+        )}
+
+        {alarmsShown && (
+          <AlarmsBadge open={showAlarms} onToggle={() => { setShowAlarms(v => !v); setShowTasks(false); }} />
         )}
 
         <MonitorStatusBadges
@@ -368,6 +379,11 @@ export default function MonitorClient() {
         {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
         {!showProcedures && !isArchive && <FloatingWindowsLayer />}
         {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
+        {/* Окна новых аварий — над любой вкладкой, и над «Процедурами» тоже: оператор должен
+            увидеть отказ ПЛК, где бы ни был. Открытая панель показывает их все — окна не нужны. */}
+        {alarmsShown && currentProject && (showAlarms
+          ? <AlarmsPanel projectId={currentProject.id} canAck={grant.operate} onClose={() => setShowAlarms(false)} />
+          : <AlarmPopups projectId={currentProject.id} canAck={grant.operate} />)}
       </div>
     </div>
   );
