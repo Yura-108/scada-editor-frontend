@@ -54,3 +54,4 @@ export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
 export {PropertiesPanel} from "./ui/properties-panel";
 export {Canvas} from "./ui/canvas";
 export {ToolsPanel} from "./ui/tools-panel";
+export {WorkSpace} from "./ui/workspace";
