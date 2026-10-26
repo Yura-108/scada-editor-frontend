@@ -45,7 +45,7 @@ app/api  →  server  →  shared
 | `core/project` | проект, список сцен, `sceneSource`, кэш сцен | Общая «открытая сцена» |
 | `core/access` | `grantOf`, `projectAccess`, `accessErrors` | Права, общие для всех модулей |
 | `modules/editor` | панели, палитра, инструменты, выделение, сохранение и версии | Только редактор |
-| `modules/monitor` | `useRuntimeEngine`, WS, процедуры, архив, тренды-модалки | Только монитор |
+| `modules/monitor` | `useRuntimeEngine`, WS, процедуры, архив, тренды-модалки; уже здесь — разбор кадров WS (`lib/runtimeFrame`), аварии ПЛК (`model/alarmsStore`, `ui/alarms`) | Только монитор |
 | `modules/channels` | дерево устройств, параметры | Только каналы |
 | `server` | `protected`, `backendProxy`, `setTokenCookies`, `*Proxy.ts` | Выполняется на сервере Next |
 
