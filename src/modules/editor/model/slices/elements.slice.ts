@@ -5,7 +5,6 @@ import {
   isMetaElement, isSameSheet, resolveSheet, SHEET_MAX, SHEET_MIN,
 } from "@/lib/editor/sheet";
 import {toast} from "sonner";
-import {createUuid} from "@/shared/lib/createUuid";
 import type {EditorState} from "../editorStore";
 import {
   sceneBelongsToCurrentProject,
@@ -14,6 +13,7 @@ import {buildNewElement} from "../newElement";
 import {placeNewElement} from "../placeNewElement";
 import {applyVisualPatch} from "../visualPatch";
 import {removeElementsCascade} from "../removeElements";
+import {newMetaElement} from "../metaElement";
 
 /**
  * Зона «Элементы» документа стора редактора: сам массив `elements`, правка элемента и его
@@ -77,21 +77,7 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
 
       // Служебного элемента ещё нет (лист по умолчанию) — заводим его тем же видом, что
       // и setSheet, но без блока `canvas`: лист остаётся по умолчанию.
-      const created = {
-        id: null,
-        key: createUuid(),
-        type: "meta",
-        visible: false,
-        monitorView: view,
-        x: 0, y: 0, w: 0, h: 0,
-        composition: [],
-        parentId: scene?.id ?? null,
-        parentKey: String(scene?.id ?? ""),
-        children: [],
-        label: "Лист",
-        scripts: [], bindings: [], properties: [],
-        states: [{id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true}],
-      } as unknown as DiagramElement;
+      const created = newMetaElement(scene?.id, {monitorView: view});
       return {elements: [...state.elements, created]};
     });
   },
@@ -132,21 +118,7 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
         };
       }
 
-      const created = {
-        id: null,
-        key: createUuid(),
-        type: "meta",
-        visible: false,
-        canvas: {width: next.w, height: next.h, units: "px", grid: GRID},
-        x: 0, y: 0, w: 0, h: 0,
-        composition: [],
-        parentId: scene?.id ?? null,
-        parentKey: String(scene?.id ?? ""),
-        children: [],
-        label: "Лист",
-        scripts: [], bindings: [], properties: [],
-        states: [{id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true}],
-      } as unknown as DiagramElement;
+      const created = newMetaElement(scene?.id, {canvas: {width: next.w, height: next.h, units: "px", grid: GRID}});
 
       return {elements: [...state.elements, created]};
     });
