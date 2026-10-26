@@ -52,3 +52,4 @@ export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
 
 // UI — последним: компонентам нужен уже загруженный стор, а не наоборот.
 export {PropertiesPanel} from "./ui/properties-panel";
+export {Canvas} from "./ui/canvas";

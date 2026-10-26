@@ -6,7 +6,7 @@ import { Stage, Layer, Rect, Line, Circle } from "react-konva";
 
 import { useShallow } from "zustand/react/shallow";
 
-import { useEditorStore } from "@/modules/editor";
+import { useEditorStore } from "../../model/editorStore";
 import { useRuntimeOverlayStore } from "@/core/scene";
 import { snap, GRID } from "@/lib/utils";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
@@ -17,7 +17,7 @@ import { resolveSheet } from "@/lib/editor/sheet";
 import { getChildElements, getElementIndex } from "@/lib/editor/elementIndex";
 import { selectVisibleRootKeys } from "@/lib/editor/viewportCulling";
 import { sortByZIndex } from "@/lib/editor/zOrder";
-import { NON_TRANSFORMABLE } from "./canvas/useElementRenderState";
+import { NON_TRANSFORMABLE } from "@/components/editor/canvas/useElementRenderState";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
 import "@/lib/editor/konvaConfig";
@@ -25,28 +25,28 @@ import "@/lib/editor/konvaConfig";
 import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
 import { AddComponentModal } from "@/components/ui/AddComponentModal";
 
-import { CanvasNode } from "./canvas/shapes/CanvasNode";
-import { NoDataOverlay } from "./canvas/shapes/NoDataOverlay";
-import { TextEditorOverlay } from "./canvas/shapes/TextEditorOverlay";
-import { SelectionTransformer } from "./canvas/shapes/SelectionTransformer";
-import { ZoomControls } from "./canvas/ZoomControls";
-import { CanvasContextMenu } from "./canvas/CanvasContextMenu";
-import { buildItemMenu } from "./canvas/buildItemMenu";
-import { useThemeColors } from "./canvas/useThemeColors";
-import { useCanvasRect } from "./canvas/hooks/useCanvasRect";
-import { useEditorHotkeys } from "./canvas/hooks/useEditorHotkeys";
-import { useStageInteractions } from "./canvas/hooks/useStageInteractions";
-import { useMultiDragAndGuides } from "./canvas/hooks/useMultiDragAndGuides";
-import { useZoomControls } from "./canvas/hooks/useZoomControls";
-import { useHoverHighlight } from "./canvas/hooks/useHoverHighlight";
-import { usePendingPlacement } from "./canvas/hooks/usePendingPlacement";
-import { MonitorInteractionLayer } from "./canvas/MonitorInteractionLayer";
-import { buildChoiceMenu, buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "./canvas/buildMonitorMenu";
+import { CanvasNode } from "@/components/editor/canvas/shapes/CanvasNode";
+import { NoDataOverlay } from "@/components/editor/canvas/shapes/NoDataOverlay";
+import { TextEditorOverlay } from "@/components/editor/canvas/shapes/TextEditorOverlay";
+import { SelectionTransformer } from "@/components/editor/canvas/shapes/SelectionTransformer";
+import { ZoomControls } from "@/components/editor/canvas/ZoomControls";
+import { CanvasContextMenu } from "@/components/editor/canvas/CanvasContextMenu";
+import { buildItemMenu } from "@/components/editor/canvas/buildItemMenu";
+import { useThemeColors } from "@/components/editor/canvas/useThemeColors";
+import { useCanvasRect } from "@/components/editor/canvas/hooks/useCanvasRect";
+import { useEditorHotkeys } from "@/components/editor/canvas/hooks/useEditorHotkeys";
+import { useStageInteractions } from "@/components/editor/canvas/hooks/useStageInteractions";
+import { useMultiDragAndGuides } from "@/components/editor/canvas/hooks/useMultiDragAndGuides";
+import { useZoomControls } from "@/components/editor/canvas/hooks/useZoomControls";
+import { useHoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
+import { usePendingPlacement } from "@/components/editor/canvas/hooks/usePendingPlacement";
+import { MonitorInteractionLayer } from "@/components/editor/canvas/MonitorInteractionLayer";
+import { buildChoiceMenu, buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "@/components/editor/canvas/buildMonitorMenu";
 import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorView";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
 import { isRuntimeLive, setRuntimeMenuHandler, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
 import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
-import type { CanvasMenuItem, EditorRenderContext } from "./canvas/types";
+import type { CanvasMenuItem, EditorRenderContext } from "@/components/editor/canvas/types";
 import type { DiagramElement, MonitorMenuSettings } from "@/types/editorElement.type";
 import { readMonitorMenu } from "@/lib/editor/monitorMenu";
 
@@ -70,7 +70,7 @@ interface CanvasProps {
   archive?: boolean;
 }
 
-export default function Canvas({ readOnly = false, archive = false }: CanvasProps) {
+export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   // Обработчики монитора не пересоздаются на смену режима — читают его через ref.
   const archiveRef = useRef(archive);
   useEffect(() => { archiveRef.current = archive; }, [archive]);
