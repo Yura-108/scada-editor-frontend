@@ -4,7 +4,7 @@ import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/lib/gatewayOrigin";
 import {describeDenial, isAccessDenial, isAccessNotReady} from "@/lib/access/accessErrors";
 import type {AccessDenial} from "@/types/access.types";
-import {handleRuntimeFrame} from "@/modules/monitor";
+import {handleRuntimeFrame, type ActiveAlarm} from "@/modules/monitor";
 
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -93,6 +93,11 @@ export interface RuntimeConnectionHandlers {
   onRelease?: (versionNo: number, changed: boolean) => void;
   /** `ACTION_DENIED`: нажатие отклонено по правам, состояние элементов не меняется. */
   onActionDenied?: (denied: ActionDenied) => void;
+  /**
+   * Аварии ПЛК проекта (контракт 2026-10-26-pac-alarms-frontend-contract.md): всегда ПОЛНЫЙ
+   * список. Приходит в каждом `SNAPSHOT` и в `UPDATE`, только когда список изменился.
+   */
+  onAlarms?: (alarms: ActiveAlarm[]) => void;
 }
 
 export interface RuntimeConnection {
@@ -134,7 +139,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
 
 export function openRuntimeConnection(
   projectId: number,
-  {onUpdate, onStatus, onTasks, onSnapshot, onRelease, onActionDenied}: RuntimeConnectionHandlers,
+  {onUpdate, onStatus, onTasks, onSnapshot, onRelease, onActionDenied, onAlarms}: RuntimeConnectionHandlers,
 ): RuntimeConnection {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -283,7 +288,7 @@ export function openRuntimeConnection(
     };
 
     socket.onmessage = (e) => {
-      handleRuntimeFrame(e.data, {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied}, () => {
+      handleRuntimeFrame(e.data, {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied, onAlarms}, () => {
         sceneWanted = null;
       });
     };

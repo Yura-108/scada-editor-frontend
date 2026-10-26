@@ -739,7 +739,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     log(`движок запущен для проекта ${projectId}`);
     lastMessageAtRef.current = 0;
     // Статусы принадлежат проекту: задачи прошлого проекта в панели остаться не должны.
-    resetProjectStreams();
+    resetProjectStreams(projectId);
 
     const conn = openRuntimeConnection(projectId, {
       ...projectStreamHandlers,

@@ -1,5 +1,6 @@
 import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
 import type {AutomationTaskStatus} from "@/types/automation.types";
+import type {ActiveAlarm} from "../types";
 import {devLog} from "@/shared/lib/devLog";
 // переедет в модуль вместе с соединением (шаг 8)
 import type {
@@ -11,7 +12,7 @@ import type {
 /** Обработчики, которым раздаются кадры сокета. */
 export type RuntimeFrameHandlers = Pick<
   RuntimeConnectionHandlers,
-  "onUpdate" | "onSnapshot" | "onTasks" | "onRelease" | "onActionDenied"
+  "onUpdate" | "onSnapshot" | "onTasks" | "onRelease" | "onActionDenied" | "onAlarms"
 >;
 
 const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
@@ -24,7 +25,7 @@ const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
  */
 export function handleRuntimeFrame(
   data: unknown,
-  {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied}: RuntimeFrameHandlers,
+  {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied, onAlarms}: RuntimeFrameHandlers,
   onTreeChanged: () => void,
 ): void {
   let msg: {
@@ -35,6 +36,8 @@ export function handleRuntimeFrame(
     procedures?: ProcedureEvent[] | ProcedureStatus[] | null;
     // Статусы задач automation — только после SUBSCRIBE_TASKS.
     tasks?: AutomationTaskStatus[] | null;
+    // Аварии ПЛК: в SNAPSHOT — всегда, в UPDATE — полный список, если изменился, иначе null.
+    alarms?: ActiveAlarm[] | null;
     // TREE_CHANGED — номер нового prod-выпуска.
     versionNo?: number;
     // ACTION_DENIED — какое нажатие отклонено и почему.
@@ -54,9 +57,10 @@ export function handleRuntimeFrame(
     const procedures = (msg.procedures ?? []) as ProcedureStatus[];
     log(
       `SNAPSHOT — тегов: ${tags.length}, свойств: ${properties.length},`
-      + ` активных процедур: ${procedures.length}`,
+      + ` активных процедур: ${procedures.length}, аварий: ${msg.alarms?.length ?? 0}`,
     );
     onSnapshot?.(tags, properties, procedures);
+    onAlarms?.(Array.isArray(msg.alarms) ? msg.alarms : []);
     return;
   }
   if (msg?.type === "TREE_CHANGED") {
@@ -96,4 +100,8 @@ export function handleRuntimeFrame(
   }
   onUpdate(tags, properties, procedures as ProcedureEvent[]);
   if (msg.tasks?.length) onTasks?.(msg.tasks);
+  if (Array.isArray(msg.alarms)) {
+    log(`UPDATE — список аварий изменился, аварий: ${msg.alarms.length}`);
+    onAlarms?.(msg.alarms);
+  }
 }
