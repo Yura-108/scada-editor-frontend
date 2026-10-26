@@ -2,8 +2,6 @@ import {snap, GRID} from "@/lib/utils";
 import type {MonitorView} from "@/lib/editor/monitorView";
 import {ComponentState, DiagramElement, ElementType} from "@/types/editorElement.type";
 import {getElementIndex} from "@/lib/editor/elementIndex";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
-import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
 import {
   isMetaElement, isSameSheet, resolveSheet, SHEET_MAX, SHEET_MIN,
 } from "@/lib/editor/sheet";
@@ -14,14 +12,14 @@ import {
   sceneBelongsToCurrentProject,
 } from "../editorStoreInternals";
 import {
-  getDescendantKeys, isComponentEl, isGroup, isLeafPrimitive,
+  getDescendantKeys, isGroup,
   recomputeAncestorBounds,
 } from "../elementTree";
 import {
   isPatchEffective, splitBaseOnly,
-  syncMemberStates,
 } from "../elementStates";
 import {buildNewElement} from "../newElement";
+import {placeNewElement} from "../placeNewElement";
 
 /**
  * Зона «Элементы» документа стора редактора: сам массив `elements`, правка элемента и его
@@ -291,57 +289,11 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
     const x = snap(screenX);
     const y = snap(screenY);
 
-    /**
-     * Кладёт готовый элемент в схему — в открытый контейнер, если пользователь в него
-     * вошёл, иначе в корень сцены.
-     *
-     * Раньше все ветки писали `parentKey: scene.id` намертво, и добавить примитив в
-     * компонент было нельзя вообще: приходилось класть его рядом и потом «Переместить
-     * в группу». Элемент строится в МИРОВЫХ координатах, поэтому внутрь контейнера он
-     * переезжает сдвигом на его абсолютную позицию (`shiftElementPositions` двигает и
-     * `x/y`, и концы линии, и overrides всех состояний).
-     */
-    const commitNewElement = (element: DiagramElement) => {
-      const {activeGroupKey, elements} = get();
-      const {byKey} = getElementIndex(elements);
-      const host = activeGroupKey ? byKey[activeGroupKey] : undefined;
-
-      if (!host || !isGroup(host)) {
-        set(state => ({elements: [...state.elements, element]}));
-        return;
-      }
-
-      const hostAbs = getAbsoluteRenderedPos(host, byKey);
-      const local = shiftElementPositions(element, -hostAbs.x, -hostAbs.y);
-      const member: DiagramElement = {
-        ...local,
-        parentKey: host.key,
-        parentId: host.id ?? null,
-      };
-
-      // Роль в контейнере — та же, что у resplitContainer: примитивы компонента
-      // живут в composition, компоненты — в children.
-      const toComposition = isLeafPrimitive(member) && isComponentEl(host);
-
-      set(state => {
-        let next = [
-          ...state.elements.map(el => el.key !== host.key ? el : ({
-            ...el,
-            children: toComposition ? el.children : [...el.children, member.key],
-            composition: toComposition
-              ? [...(el.composition ?? []), member.key]
-              : (el.composition ?? []),
-          } as DiagramElement)),
-          member,
-        ];
-        // Новый член сразу получает весь набор состояний контейнера.
-        next = syncMemberStates(next, host.key, [member.key]);
-        // Рамка контейнера обязана вырасти под новый элемент.
-        return {elements: recomputeAncestorBounds(next, [member.key], scene?.id)};
-      });
-    };
-
-    commitNewElement(buildNewElement(type, x, y, scene?.id, extraProps));
+    // Элемент строится в мировых координатах в корне сцены; в открытый контейнер его
+    // переносит placeNewElement.
+    const element = buildNewElement(type, x, y, scene?.id, extraProps);
+    const {activeGroupKey, elements} = get();
+    set({elements: placeNewElement(elements, element, activeGroupKey, scene?.id)});
   },
   deleteSelectedElement: async () => {
     const { selectedIds, elements, activeGroupKey, scene } = get();
