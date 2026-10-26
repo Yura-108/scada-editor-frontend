@@ -50,3 +50,5 @@ export {createElementsSlice, type ElementsSlice} from "./model/slices/elements.s
 export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboard.slice";
 export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
 
+// UI — последним: компонентам нужен уже загруженный стор, а не наоборот.
+export {PropertiesPanel} from "./ui/properties-panel";
