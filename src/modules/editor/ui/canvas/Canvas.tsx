@@ -2,14 +2,13 @@
 
 import React, { useMemo, useRef, useState, useCallback } from "react";
 import Konva from "konva";
-import { Stage, Layer, Rect, Line, Circle } from "react-konva";
+import { Stage, Layer } from "react-konva";
 
 import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "../../model/editorStore";
 import { useRuntimeOverlayStore } from "@/core/scene";
-import { snap, GRID } from "@/lib/utils";
-import { createGridPattern } from "@/lib/editor/gridPattern";
+import { snap } from "@/lib/utils";
 import { resolveSheet } from "@/lib/editor/sheet";
 import { getChildElements, getElementIndex } from "@/lib/editor/elementIndex";
 import { selectVisibleRootKeys } from "@/lib/editor/viewportCulling";
@@ -19,13 +18,8 @@ import { NON_TRANSFORMABLE } from "@/components/editor/canvas/useElementRenderSt
 // должны примениться до создания Stage.
 import "@/lib/editor/konvaConfig";
 
-import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
-import { AddComponentModal } from "@/components/ui/AddComponentModal";
-
 import { CanvasNode } from "@/components/editor/canvas/shapes/CanvasNode";
-import { NoDataOverlay } from "@/components/editor/canvas/shapes/NoDataOverlay";
 import { TextEditorOverlay } from "@/components/editor/canvas/shapes/TextEditorOverlay";
-import { SelectionTransformer } from "@/components/editor/canvas/shapes/SelectionTransformer";
 import { ZoomControls } from "@/components/editor/canvas/ZoomControls";
 import { CanvasContextMenu } from "@/components/editor/canvas/CanvasContextMenu";
 import { useThemeColors } from "@/components/editor/canvas/useThemeColors";
@@ -41,16 +35,12 @@ import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorV
 import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
 import type { EditorRenderContext } from "@/components/editor/canvas/types";
 import type { CanvasMenuState } from "./types";
-import { gridStepForZoom } from "./lib/gridStep";
+import { CanvasModals } from "./CanvasModals";
+import { BackgroundLayer } from "./layers/BackgroundLayer";
+import { OverlayLayer } from "./layers/OverlayLayer";
 import { useElementClick } from "./hooks/useElementClick";
 import { useMonitorClicks } from "./hooks/useMonitorClicks";
 import { useEditorContextMenu } from "./hooks/useEditorContextMenu";
-
-/**
- * Насколько «стол» выходит за края листа. Константа, а не доля от листа: лист
- * может быть маленьким, и `sheet.w * 3` оставил бы вокруг него голый Stage.
- */
-const DESK_PAD = 20000;
 
 interface CanvasProps {
   /**
@@ -133,18 +123,6 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   // Вид, зафиксированный для монитора (замок в панели зума). В редакторе — рамка и
   // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. lib/editor/monitorView.ts).
   const monitorView = useMemo(() => resolveMonitorView(elements), [elements]);
-
-  const gridStep = useMemo(() => gridStepForZoom(camera.zoom), [camera.zoom]);
-
-  const gridPattern = useMemo(
-    () => gridStep === null
-      ? null
-      : createGridPattern(
-        gridStep === GRID ? themeColors.gridLine : themeColors.gridLineMajor,
-        gridStep,
-      ),
-    [gridStep, themeColors.gridLine, themeColors.gridLineMajor],
-  );
 
   const closeMenu = useCallback(() => setContextMenu(null), []);
 
@@ -255,53 +233,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
           onMouseOver={readOnly ? undefined : handleStageMouseOver}
           onMouseLeave={clearHover}
         >
-          {/* Слой фона: перерисовывается только при смене темы, размера листа и
-              шага сетки. В общем слое он переписывался бы заново на каждый кадр
-              перетаскивания и на каждое движение рамки выделения.
-              listening=false — большие прямоугольники уходят из hit-графа Konva;
-              клик по пустому месту приходит на сам Stage, и это уже учтено.
-
-              Лист — подсказка, а не запрет: за его край можно выйти, поэтому
-              «стол» рисуется с большим запасом вокруг. */}
-          <Layer listening={false}>
-            <Rect
-              key={`desk-${resolvedTheme}`}
-              name="desk-bg"
-              x={-DESK_PAD}
-              y={-DESK_PAD}
-              width={sheet.w + DESK_PAD * 2}
-              height={sheet.h + DESK_PAD * 2}
-              fill={themeColors.deskBg}
-            />
-            <Rect
-              key={`sheet-${resolvedTheme}`}
-              name="sheet-bg"
-              x={0}
-              y={0}
-              width={sheet.w}
-              height={sheet.h}
-              fill={themeColors.canvasBg}
-              stroke={themeColors.sheetBorder}
-              strokeWidth={1}
-              // Толщина кромки — в экранных пикселях, БЕЗ деления на зум: иначе
-              // проп менялся бы на каждый тик колеса и слой фона перерисовывался
-              // бы вместе с ним. Тени у листа нет по той же причине (и потому что
-              // тень на прямоугольнике в 21520 единиц дорога сама по себе).
-              strokeScaleEnabled={false}
-            />
-            {gridPattern && (
-              <Rect
-                key={`grid-${resolvedTheme}-${gridStep}`}
-                name="grid-bg"
-                x={0}
-                y={0}
-                width={sheet.w}
-                height={sheet.h}
-                fillPriority="pattern"
-                fillPatternImage={gridPattern as unknown as HTMLImageElement}
-              />
-            )}
-          </Layer>
+          <BackgroundLayer sheet={sheet} zoom={camera.zoom} themeColors={themeColors} resolvedTheme={resolvedTheme} />
 
           {/* Слой содержимого: сами фигуры.
               readOnly (монитор): слой вне hit-графа Konva — фигуры не кликаются
@@ -312,136 +244,22 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
             ))}
           </Layer>
 
-          {/* Слой оверлеев: подсветка, направляющие, рамка выделения, Transformer.
-              Живёт отдельно, чтобы движение мыши при протяжке рамки или
-              перетаскивании перерисовывало только его, а не всю сцену. */}
-          <Layer listening={!readOnly}>
-            {/* Рамка вида для монитора — только в редакторе: инженер видит, что именно
-                зафиксировал. Ширина — точно то, что монитор впишет во всю ширину экрана;
-                высота — сколько было видно у инженера (в мониторе по вертикали прокручивают). */}
-            {!readOnly && monitorView && (
-              <Rect
-                name="monitor-view-frame"
-                x={monitorView.x}
-                y={monitorView.y}
-                width={monitorView.w}
-                height={monitorView.h}
-                stroke={themeColors.selection}
-                strokeWidth={2}
-                dash={[10, 6]}
-                strokeScaleEnabled={false}
-                listening={false}
-              />
-            )}
-
-            {/* «Нет данных» (монитор, docs/contract/TAG_CONTRACT_CHANGES.md B2/B4): пустой набор
-                вне монитора — движок рантайма там не запущен. */}
-            <NoDataOverlay noDataElementKeys={noDataElementKeys} elements={elements} elementsMap={elementsMap} />
-
-            {/* Hover-подсветка: один оверлей вместо пропса в фигуры — иначе каждое
-                движение мыши ре-рендерило бы всю мемоизированную сцену.
-
-                Форма повторяет геометрию фигуры, а не её габарит: у наклонного отрезка
-                габаритный прямоугольник накрывает пол-листа вместе с соседями, и понять
-                по нему, что именно выберется, невозможно (см. useHoverHighlight).
-
-                strokeScaleEnabled={false} — толщина и штрих в ЭКРАННЫХ пикселях: подсветка
-                остаётся одинаково тонкой и на общем виде листа, и при сильном приближении. */}
-            {hoverHighlight && !selectionRect && (() => {
-              const common = {
-                stroke: themeColors.selection,
-                strokeWidth: 1.5,
-                dash: [5, 3],
-                opacity: 0.7,
-                strokeScaleEnabled: false,
-                listening: false,
-              };
-
-              if (hoverHighlight.kind === "line") {
-                return (
-                  <Line
-                    {...common}
-                    points={hoverHighlight.points}
-                    // Сплошная и толще: подсветка ложится поверх самой линии, и пунктир
-                    // на пунктире читался бы хуже, чем «утолщение» под курсором.
-                    dash={undefined}
-                    strokeWidth={4}
-                    opacity={0.45}
-                  />
-                );
-              }
-
-              if (hoverHighlight.kind === "circle") {
-                return (
-                  <Circle
-                    {...common}
-                    x={hoverHighlight.x}
-                    y={hoverHighlight.y}
-                    radius={hoverHighlight.radius + 2}
-                  />
-                );
-              }
-
-              if (hoverHighlight.kind === "polygon") {
-                return <Line {...common} points={hoverHighlight.points} closed />;
-              }
-
-              return (
-                <Rect
-                  {...common}
-                  x={hoverHighlight.x - 2}
-                  y={hoverHighlight.y - 2}
-                  width={hoverHighlight.w + 4}
-                  height={hoverHighlight.h + 4}
-                  cornerRadius={2}
-                />
-              );
-            })()}
-
-            {/* Smart-guides: линии привязки к соседям во время перетаскивания.
-                Тянутся за пределы листа — выравнивать можно и то, что за его краем. */}
-            {guides.v !== null && (
-              <Line
-                points={[guides.v, -sheet.h, guides.v, sheet.h * 2]}
-                stroke={themeColors.guide}
-                strokeWidth={1 / camera.zoom}
-                dash={[4, 4]}
-                listening={false}
-              />
-            )}
-            {guides.h !== null && (
-              <Line
-                points={[-sheet.w, guides.h, sheet.w * 2, guides.h]}
-                stroke={themeColors.guide}
-                strokeWidth={1 / camera.zoom}
-                dash={[4, 4]}
-                listening={false}
-              />
-            )}
-
-            {/* Transformer: 8 ручек + поворот для одиночного бокс-элемента */}
-            {transformTarget && !readOnly && (
-              <SelectionTransformer
-                element={transformTarget}
-                stageRef={stageRef}
-                updateElementVisual={updateElementVisual}
-                zoom={camera.zoom}
-              />
-            )}
-
-            {selectionRect && (
-              <Rect
-                x={Math.min(selectionRect.x, selectionRect.x + selectionRect.width)}
-                y={Math.min(selectionRect.y, selectionRect.y + selectionRect.height)}
-                width={Math.abs(selectionRect.width)}
-                height={Math.abs(selectionRect.height)}
-                fill={themeColors.selectionFill}
-                stroke={themeColors.selection}
-                strokeWidth={1}
-                listening={false}
-              />
-            )}
-          </Layer>
+          <OverlayLayer
+            readOnly={readOnly}
+            themeColors={themeColors}
+            zoom={camera.zoom}
+            sheet={sheet}
+            monitorView={monitorView}
+            noDataElementKeys={noDataElementKeys}
+            elements={elements}
+            elementsMap={elementsMap}
+            hoverHighlight={hoverHighlight}
+            selectionRect={selectionRect}
+            guides={guides}
+            transformTarget={transformTarget}
+            stageRef={stageRef}
+            updateElementVisual={updateElementVisual}
+          />
 
           {/* Монитор: отдельный слой кликов по элементам с обработчиками событий
               (основной слой в readOnly не слушает — интерактив только здесь). */}
@@ -477,23 +295,12 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
 
       <CanvasContextMenu menu={contextMenu} onClose={closeMenu} />
 
-      {/* Монтируем только на время показа: обе модалки читают `elements`, и
-          постоянно смонтированные они подписывали холст на лишние обновления. */}
-      {moveToGroupState.isOpen && (
-        <MoveToGroupModal
-          isOpen
-          elementKey={moveToGroupState.elementKey}
-          onClose={closeMoveToGroup}
-        />
-      )}
-
-      {addComponentState.isOpen && (
-        <AddComponentModal
-          isOpen
-          targetKey={addComponentState.targetKey}
-          onClose={closeAddComponent}
-        />
-      )}
+      <CanvasModals
+        moveToGroupState={moveToGroupState}
+        closeMoveToGroup={closeMoveToGroup}
+        addComponentState={addComponentState}
+        closeAddComponent={closeAddComponent}
+      />
     </div>
   );
 }
