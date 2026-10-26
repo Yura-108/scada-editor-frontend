@@ -1,5 +1,4 @@
-import Canvas from "@/components/editor/Canvas";
-import {useEditorStore} from "@/modules/editor";
+import {Canvas, useEditorStore} from "@/modules/editor";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 
 /**

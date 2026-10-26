@@ -5,8 +5,7 @@ import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, Searc
 import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
 import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
 import {closeFloatingWindows} from "@/store/useFloatingWindowsStore";
-import Canvas from "@/components/editor/Canvas";
-import {useEditorStore} from "@/modules/editor";
+import {Canvas, useEditorStore} from "@/modules/editor";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
 import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";

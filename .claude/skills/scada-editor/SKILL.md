@@ -77,7 +77,7 @@ leaves whose live position sits in overrides.
 
 ## Konva render tree (`src/components/editor/`)
 
-- `Canvas.tsx` — thin orchestrator (~200 lines): the `<Stage>` sized to the **viewport**
+- `Canvas.tsx` (now `src/modules/editor/ui/canvas/`, layers in `layers/`, click/menu hooks in `hooks/`) — thin orchestrator: the `<Stage>` sized to the **viewport**
   (`canvasRect` from the store — NEVER a fixed 5000×5000; Konva allocates w×h×DPR canvases per
   layer and a huge stage eats hundreds of MB / breaks Safari; the 5000-unit world is virtual via
   `camera {x,y,zoom}` transform), grid pattern, marquee, context menu, and builds one
@@ -372,7 +372,7 @@ unbounded.
 | Store (assembly + undo config) / actions by zone | `src/modules/editor/model/editorStore.ts` / `model/slices/*.slice.ts`; pure helpers in `model/elementTree.ts`, `model/elementStates.ts`, `model/editorStoreInternals.ts` |
 | Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
 | Rendered element (base + active overrides) | `src/lib/getRenderedElement.ts` |
-| Canvas orchestrator | `src/components/editor/Canvas.tsx` |
+| Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
 | Leaf dispatch + generic fallback | `src/components/editor/canvas/shapes/ShapeElement.tsx` |
 | Group/component recursion | `src/components/editor/canvas/shapes/GroupNode.tsx` |
 | Render context / ShapeElementProps / MIN_SIZE | `src/components/editor/canvas/types.ts` |
