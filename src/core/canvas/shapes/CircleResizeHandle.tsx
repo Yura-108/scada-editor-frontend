@@ -3,9 +3,8 @@
 import React, { useRef } from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { GRID } from "@/core/scene";
-import { useSceneView } from "@/core/canvas";
+import { resetCanvasCursor } from "../canvasCursor";
+import {GRID, useSceneView} from "@/core/scene";
 
 interface CircleResizeHandleProps {
   /** Центр круга в координатах родителя (у элемента в модели лежит левый верхний угол габарита). */

@@ -3,8 +3,8 @@
 import React from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { useSceneView } from "@/core/canvas";
+import { resetCanvasCursor } from "../canvasCursor";
+import { useSceneView } from "@/core/scene";
 import type { ThemeColors } from "../types";
 
 interface AnchorProps {

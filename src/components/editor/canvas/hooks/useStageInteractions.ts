@@ -1,13 +1,13 @@
 import { RefObject, useEffect, useRef, useState } from "react";
 import Konva from "konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
+import { resetCanvasCursor } from "@/core/canvas";
 import { useEditorStore } from "@/modules/editor";
 import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/shared/lib/isIntersecting";
 import {getSelectionBounds, ZOOM_MIN, ZOOM_MAX, getElementIndex, cameraForMonitorView, resolveMonitorView, resolveSheet} from "@/core/scene";
 import { pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
-import type { SelectionRect } from "../types";
+import type { SelectionRect } from "@/core/canvas";
 
 
 /**

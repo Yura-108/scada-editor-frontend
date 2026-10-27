@@ -1,4 +1,4 @@
-import { GRID } from "@/core/scene";
+import { GRID } from "../geometry/grid";
 
 /**
  * Раскладка полос таблицы: где проходят границы столбцов и строк.

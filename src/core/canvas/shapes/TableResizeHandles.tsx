@@ -3,10 +3,8 @@
 import React, { useRef } from "react";
 import { Rect } from "react-konva";
 import Konva from "konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { snap } from "@/core/scene";
-import { useSceneView } from "@/core/canvas";
-import { MIN_TRACK, resizeTrackAt, sameTracks, trackOffsets } from "@/lib/editor/tableLayout";
+import { resetCanvasCursor } from "../canvasCursor";
+import {snap, useSceneView, MIN_TRACK, resizeTrackAt, sameTracks, trackOffsets} from "@/core/scene";
 import { MIN_SIZE, type ThemeColors } from "../types";
 
 interface TableResizeHandlesProps {

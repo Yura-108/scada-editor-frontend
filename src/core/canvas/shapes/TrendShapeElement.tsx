@@ -4,10 +4,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Group, Rect, Line, Text, Circle } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 import { LeafElement } from "@/types/editorElement.type";
-import {getRenderedElementWith, trendPens, trendScale, trendTiming} from "@/core/scene";
-import { buildTrendGeometry, formatTrendValue } from "@/lib/editor/trendGeometry";
-import { useTrendStore } from "@/store/useTrendStore";
-import type { TrendPoint } from "@/lib/runtime/archive";
+import {getRenderedElementWith, trendPens, trendScale, trendTiming, buildTrendGeometry, formatTrendValue} from "@/core/scene";
+import { useTrendStore } from "../runtime/trendStore";
+import type { TrendPoint } from "@/core/scene";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
 

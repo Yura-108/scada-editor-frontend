@@ -1,7 +1,7 @@
 import { RefObject, useCallback, useEffect } from "react";
 import Konva from "konva";
 import { useEditorStore } from "@/modules/editor";
-import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
+import {pickImageFile, fitImageSize} from "@/core/scene";
 import { createUuid } from "@/shared/lib/createUuid";
 
 interface PendingPlacementDeps {

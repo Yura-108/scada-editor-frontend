@@ -1,6 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import {ElementIndex, getChildElements, getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
-import { sortKeysByZIndex } from "@/lib/editor/zOrder";
+import {ElementIndex, getChildElements, getRenderedElement, getAbsoluteRenderedPos, sortKeysByZIndex} from "@/core/scene";
 
 /**
  * Хит-тест монитора: какой элемент находится под точкой.

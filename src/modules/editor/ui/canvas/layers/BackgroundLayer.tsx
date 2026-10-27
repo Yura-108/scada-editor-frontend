@@ -5,7 +5,7 @@ import { Layer, Rect } from "react-konva";
 import { GRID } from "@/core/scene";
 import { createGridPattern } from "@/lib/editor/gridPattern";
 import type { SheetSize } from "@/core/scene";
-import type { ThemeColors } from "@/components/editor/canvas/types";
+import type { ThemeColors } from "@/core/canvas";
 import { gridStepForZoom } from "../lib/gridStep";
 
 /**

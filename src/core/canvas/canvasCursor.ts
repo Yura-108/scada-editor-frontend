@@ -1,4 +1,4 @@
-import { getSceneView } from "@/core/canvas";
+import { getSceneView } from "@/core/scene";
 
 /**
  * Возвращает курсор «покоя» для холста.

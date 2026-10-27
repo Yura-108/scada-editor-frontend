@@ -1,5 +1,4 @@
-import {snap, getElementIndex, getElementBoundsRendered} from "@/core/scene";
-import {zIndexOf} from "@/lib/editor/zOrder";
+import {snap, getElementIndex, getElementBoundsRendered, zIndexOf} from "@/core/scene";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
 import type {EditorState} from "../editorStore";
 import {topLevelSelectedKeys, applyShifts, recomputeAncestorBounds} from "../elementTree";

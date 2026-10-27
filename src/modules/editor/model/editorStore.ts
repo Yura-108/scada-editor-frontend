@@ -2,8 +2,7 @@ import {create} from "zustand/react";
 import {temporal} from "zundo";
 import type {EditorProject} from "@/lib/pickProjectsFromComponents";
 import {bindEditorStore} from "./editorStoreRef";
-import {bindActiveStateReader} from "@/core/scene";
-import {bindSceneViewStore} from "@/core/canvas";
+import {bindActiveStateReader, bindSceneViewStore} from "@/core/scene";
 import {editorSession} from "./editorSession";
 import {createCameraSlice, type CameraSlice} from "./slices/camera.slice";
 import {createSelectionSlice, type SelectionSlice} from "./slices/selection.slice";
@@ -60,7 +59,7 @@ export const useEditorStore = create<EditorState>()(temporal(
 bindEditorStore(useEditorStore);
 // getRenderedElement (core/scene) читает активные состояния элементов через эту регистрацию.
 bindActiveStateReader(() => useEditorStore.getState().currentComponentStateByElementKey);
-// Холст (core/canvas) подписывается на сцену через эту регистрацию — тем же стором.
+// Холст (core/canvas) подписывается на сцену через эту регистрацию (core/scene) — тем же стором.
 bindSceneViewStore(useEditorStore);
 
 /**

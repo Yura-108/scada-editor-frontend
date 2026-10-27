@@ -6,7 +6,7 @@ import {
   advanceCursor, appendPage, canSeekInBuffer, emptyBuffer, needsPrefetch, takeUntil, type ReplayBuffer,
 } from "@/lib/runtime/replayBuffer";
 import type {ArchiveTagChange, RuntimeArchiveInput} from "@/lib/runtime/useRuntimeEngine";
-import {setTrendClock} from "@/store/useTrendStore";
+import {setTrendClock} from "@/core/canvas";
 import {initialReplayState, useArchiveReplayStore} from "@/store/useArchiveReplayStore";
 import {devLog} from "@/shared/lib/devLog";
 

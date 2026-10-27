@@ -3,8 +3,7 @@
 import React from "react";
 import { Group, Rect, Circle, Text } from "react-konva";
 import { DiagramElement } from "@/types/editorElement.type";
-import {getRenderedElementWith, useRuntimeOverlayStore, getAbsoluteRenderedPos, getElementBoundsRendered} from "@/core/scene";
-import { useSceneView } from "@/core/canvas";
+import {getRenderedElementWith, useRuntimeOverlayStore, getAbsoluteRenderedPos, getElementBoundsRendered, useSceneView} from "@/core/scene";
 
 interface NoDataOverlayProps {
   noDataElementKeys: Set<string>;

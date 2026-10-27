@@ -1,6 +1,5 @@
 import {DiagramElement, LeafElement} from "@/types/editorElement.type";
-import {getRenderedElement, getElementIndex, getElementBoundsRendered, getAbsoluteRenderedPos, measureText} from "@/core/scene";
-import {parseCurvePoints} from "@/lib/editor/curvePoints";
+import {getRenderedElement, getElementIndex, getElementBoundsRendered, getAbsoluteRenderedPos, measureText, parseCurvePoints} from "@/core/scene";
 
 /**
  * Поворот на 90° и отражения выделения — **пересчётом геометрии**, а не полем `rotate`.

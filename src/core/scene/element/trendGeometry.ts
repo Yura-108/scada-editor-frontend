@@ -1,5 +1,5 @@
-import type {TrendPoint} from "@/lib/runtime/archive";
-import type {TrendPen} from "@/core/scene";
+import type {TrendPoint} from "../trendTypes";
+import type {TrendPen} from "./trendSettings";
 
 /**
  * Геометрия тренда — чистая функция, общая для холста (Konva) и окна тренда в мониторе (SVG).

@@ -7,18 +7,15 @@ import { Stage, Layer } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "../../model/editorStore";
-import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElementIndex, selectVisibleRootKeys, monitorViewFromCamera, resolveMonitorView} from "@/core/scene";
-import { sortByZIndex } from "@/lib/editor/zOrder";
-import { NON_TRANSFORMABLE } from "@/components/editor/canvas/useElementRenderState";
+import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElementIndex, selectVisibleRootKeys, monitorViewFromCamera, resolveMonitorView, sortByZIndex} from "@/core/scene";
+import {NON_TRANSFORMABLE, CanvasNode, useThemeColors} from "@/core/canvas";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
 import "@/lib/editor/konvaConfig";
 
-import { CanvasNode } from "@/components/editor/canvas/shapes/CanvasNode";
-import { TextEditorOverlay } from "@/components/editor/canvas/shapes/TextEditorOverlay";
+import { TextEditorOverlay } from "./TextEditorOverlay";
 import { ZoomControls } from "@/components/editor/canvas/ZoomControls";
 import { CanvasContextMenu } from "@/components/editor/canvas/CanvasContextMenu";
-import { useThemeColors } from "@/components/editor/canvas/useThemeColors";
 import { useCanvasRect } from "@/components/editor/canvas/hooks/useCanvasRect";
 import { useEditorHotkeys } from "@/components/editor/canvas/hooks/useEditorHotkeys";
 import { useStageInteractions } from "@/components/editor/canvas/hooks/useStageInteractions";
@@ -28,7 +25,7 @@ import { useHoverHighlight } from "@/components/editor/canvas/hooks/useHoverHigh
 import { usePendingPlacement } from "@/components/editor/canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "@/components/editor/canvas/MonitorInteractionLayer";
 import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
-import type { EditorRenderContext } from "@/components/editor/canvas/types";
+import type { EditorRenderContext } from "@/core/canvas";
 import type { CanvasMenuState } from "./types";
 import { CanvasModals } from "./CanvasModals";
 import { BackgroundLayer } from "./layers/BackgroundLayer";

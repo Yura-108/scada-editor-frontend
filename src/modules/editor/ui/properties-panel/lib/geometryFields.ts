@@ -1,6 +1,6 @@
 import {ElementType} from "@/types/editorElement.type";
 import {ROTATABLE_TYPES} from "@/constants/propertiesPanel";
-import {MIN_SIZE} from "@/components/editor/canvas/types";
+import {MIN_SIZE} from "@/core/canvas";
 import {getNumberValue} from "./getNumberValue";
 
 export interface GeometryField {

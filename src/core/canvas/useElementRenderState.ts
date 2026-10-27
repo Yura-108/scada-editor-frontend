@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useSceneView } from "@/core/canvas";
-import {useRuntimeOverlayStore, getElementIndex} from "@/core/scene";
+import {useSceneView, useRuntimeOverlayStore, getElementIndex, sortKeysByZIndex} from "@/core/scene";
 import { DiagramElement, GroupElement } from "@/types/editorElement.type";
-import { sortKeysByZIndex } from "@/lib/editor/zOrder";
 
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 // Дуга — со своими ручками (начало/раствор/радиус), рамка Transformer'а ей не нужна:

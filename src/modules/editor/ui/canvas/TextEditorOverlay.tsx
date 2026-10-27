@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useEditorStore } from "@/modules/editor";
+import { useEditorStore } from "../../model/editorStore";
 import {getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
-import { useThemeColors } from "../useThemeColors";
+import { useThemeColors } from "@/core/canvas";
 
 interface TextEditorOverlayProps {
   elementKey: string;

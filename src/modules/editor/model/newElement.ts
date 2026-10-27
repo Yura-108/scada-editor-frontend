@@ -1,6 +1,6 @@
 import {DiagramElement, ElementType} from "@/types/editorElement.type";
 import {createUuid} from "@/shared/lib/createUuid";
-import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/lib/editor/curvePoints";
+import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/core/scene";
 
 /**
  * Заготовки новых элементов для `addElementAt`: что лежит в элементе, только что

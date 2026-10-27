@@ -3,8 +3,8 @@
 import React from "react";
 import { Text } from "react-konva";
 import Konva from "konva";
-import { useSceneView } from "@/core/canvas";
-import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
+import { useSceneView } from "@/core/scene";
+import { isTextVisibleAtZoom } from "../textLod";
 
 /** Ниже этого кегля надпись всё равно нечитаема — лучше обрезать, чем сжимать дальше. */
 const MIN_FONT_SIZE = 6;

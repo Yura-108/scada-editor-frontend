@@ -14,8 +14,8 @@ const TAGS_PER_REQUEST = 20;
 export const ARCHIVE_DEPTH_MS = 30 * 24 * 3600_000 - 60_000;
 export const MAX_POINTS_LIMIT = 5000;
 
-// Точка и серия тренда — в core/canvas: их рисует фигура тренда, общая для редактора и монитора.
-import type {ArchiveSeries, TrendPoint} from "@/core/canvas";
+// Точка и серия тренда — в core/scene: их рисует фигура тренда, общая для редактора и монитора.
+import type {ArchiveSeries, TrendPoint} from "@/core/scene";
 export type {ArchiveSeries, TrendPoint};
 
 type RawPoint = {ts: string; value: unknown; good: boolean};
