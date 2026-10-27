@@ -1,8 +1,6 @@
 import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
 import {
-  isSaveConflictBody,
-  type MergeReport,
   type SaveConflict,
   type SaveKind,
   type VersionKind,
@@ -23,6 +21,7 @@ import {
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
 import {resolvePendingPropertyRefs} from "../propertyRefs";
+import {requestSaveScene} from "../../api/saveScene";
 import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
 import {
   applyServerComponents,
@@ -212,31 +211,16 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         // и подменять его нашим деревом уже нельзя — см. documentGeneration.
         const generationAtSend = editorSession.documentGeneration;
 
-        // `PUT`, а не `POST`: `POST` только создаёт компоненты и не принимает
-        // `scene_id`, а слияние чужих правок сервер делает исключительно для `PUT`
-        // с `save_kind: "MANUAL"`. В теле — весь состав сцены (buildComponentTree
-        // сериализует все элементы), поэтому удалённое исчезает по отсутствию.
-        const res = await fetch("/api/editor/components", {
-          method: "PUT",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            components,
-            scene_id: sceneId,
-            save_kind: opts?.kind ?? "MANUAL",
-            // Версий нет — это первое сохранение, и поле не отправляем вовсе
-            // (прислать его при отсутствующих версиях — 400 по контракту).
-            ...(basedOnVersion != null ? {based_on_version: basedOnVersion} : {}),
-          }),
+        // `PUT` со всем составом сцены — см. requestSaveScene.
+        const result = await requestSaveScene({
+          components, sceneId, kind: opts?.kind ?? "MANUAL", basedOnVersion,
         });
 
         // 409 — сцену успел сохранить кто-то другой. Это не ошибка сохранения:
         // правки пользователя целы, их надо показать рядом с чужими и дать решить.
         // Поэтому ни тоста, ни сброса isDirty, ни перезагрузки сцены.
-        if (res.status === 409) {
-          const body = await res.json().catch(() => null);
-          const conflict: SaveConflict = isSaveConflictBody(body)
-            ? body
-            : {error: "version_mismatch", base_version: basedOnVersion ?? null, current_version: null};
+        if (result.kind === "conflict") {
+          const {conflict} = result;
 
           // Автосохранение сервер не сливает — расхождение версии для него всегда
           // безусловный отказ. Модалку в этом случае не открываем: человек её не
@@ -252,17 +236,11 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
           return false;
         }
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(parseBackendErrorMessage(res.status, text));
+        if (result.kind === "failed") {
+          throw new Error(parseBackendErrorMessage(result.status, result.text));
         }
 
-        const saved = await res.json().catch(() => null);
-        const savedComponents: Record<string, unknown>[] = Array.isArray(saved?.components)
-          ? saved.components
-          : [];
-        const savedVersion: number | null =
-          typeof saved?.version_no === "number" ? saved.version_no : null;
+        const {components: savedComponents, versionNo: savedVersion, merged} = result;
 
         // На сервере теперь другой документ — прежняя запись кэша сцен устарела при
         // любом исходе ниже. Где дерево из ответа ложится на холст, оно же ляжет и в кэш.
@@ -277,7 +255,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         // спрашиваем у истории, там порядок событий уже разрешён.
         if (editorSession.documentGeneration !== generationAtSend) {
           set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
-          if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
+          if (merged) reportMergedChanges(merged);
           void get().refreshSceneVersion();
           if (get().versions.length) void get().loadVersions();
 
@@ -305,7 +283,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
           ...(savedVersion != null ? {sceneVersion: savedVersion} : {}),
         });
 
-        if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
+        if (merged) reportMergedChanges(merged);
 
         if (scene?.id) {
           // Дерево из ответа заменяет elements серверным (уже с id) и сбрасывает
