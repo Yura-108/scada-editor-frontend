@@ -1,21 +1,13 @@
 import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {PropertyRef} from "@/types/binding.types";
 import {
-  isSaveConflictBody,
-  type MergeReport,
-  type SaveConflict,
-  type SaveKind,
   type VersionKind,
   type VersionListQuery,
   type VersionPreview,
   type VersionSummary,
 } from "@/types/editorVersion.types";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {getElementIndex} from "@/lib/editor/elementIndex";
-import {buildComponentTree} from "@/lib/buildComponentTree";
-import {dropScene, putScene} from "@/lib/editor/sceneCache";
+import {dropScene} from "@/lib/editor/sceneCache";
 import {
   fetchCurrentVersion,
   fetchVersionAt,
@@ -25,50 +17,27 @@ import {
 } from "@/lib/editor/versionsApi";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
+import {replaceCanvasFromServer, withSaveLock} from "../saveFlow";
+import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
 import {
-  applyServerComponents,
   canWriteCurrentProject,
   enterVersionPreview,
   getErrorMessage,
-  invalidProperties,
   markSceneSaved,
-  parseBackendErrorMessage,
-  rebaseHistoryIds,
   refuseViewOnly,
-  reportMergedChanges,
-  sceneBelongsToCurrentProject,
   VERSIONS_PAGE_SIZE,
 } from "../editorStoreInternals";
 
 /**
- * Зона «Сохранение и версии» стора редактора: сохранение сцены (`exportScene`), признак
- * несохранённого, история версий, просмотр и восстановление версии, конфликты сохранения.
+ * Зона «Версии» стора редактора: номер версии сцены, история версий, просмотр и
+ * восстановление версии. Сохранение и конфликты — соседний `save.slice`.
  * Правила — в docs/domain/scene-cache-and-versions.md.
  *
  * Слайс — часть единого `useEditorStore` (docs/architecture.md, шаг 6). Его экшены читают и
  * пишут почти все зоны (сцена, проект, элементы, выделение), поэтому зависимости здесь — весь
- * `EditorState`, а не узкий срез, как у камеры и выделения. Код перенесён без изменений.
+ * `EditorState`, а не узкий срез, как у камеры и выделения.
  */
 export interface VersionsSlice {
-  /**
-   * `kind` задаётся ЯВНО, а не выводится из `silent`: `silent` значит «без тоста», и
-   * связывать с ним семантику журнала версий нельзя — автосохранения не должны попадать
-   * в «отменить последнее действие», и это решение вызывающего, а не наличия тоста.
-   * `basedOnVersion` передаёт диалог конфликта, чтобы пересохранить поверх чужой версии.
-   */
-  exportScene: (opts?: {
-    silent?: boolean;
-    keepView?: boolean;
-    kind?: SaveKind;
-    basedOnVersion?: number;
-  }) => Promise<boolean>;
-  /** Идёт сохранение сцены (ручное или авто) — кнопка «Сохранить» показывает спиннер. */
-  isSaving: boolean;
-  /** Есть несохранённые изменения схемы (сравнение со снимком последнего сейва). */
-  isDirty: boolean;
-  /** Время последнего успешного сохранения (Date.now()), null — ещё не сохраняли. */
-  lastSavedAt: number | null;
-
   // ── Версии документа (контракт от 11.08.2026) ─────────────────────────────────
   /** Версия сцены, на которой основаны текущие правки → уезжает в `based_on_version`.
    *  null — версий ещё нет (первое сохранение), поле не отправляем. */
@@ -87,25 +56,6 @@ export interface VersionsSlice {
    * «показывать автосохранения и восстановления» начинала показывать именно их.
    */
   versionsKinds: VersionKind[] | null;
-  /** Ответ 409: сцену успел сохранить кто-то ещё. Открывает диалог сравнения. */
-  saveConflict: SaveConflict | null;
-  /**
-   * Версия, до которой сцена уехала у кого-то другого, пока мы работали, — узнаётся из
-   * 409 на АВТОСОХРАНЕНИИ. `null` — расхождения не замечено.
-   *
-   * Отдельно от `saveConflict` потому, что слияние сервер делает только для ручного
-   * сохранения: автосейв при расхождении отвергается всегда, и в многопользовательской
-   * сцене это штатное событие раз в десять минут. Модальный диалог здесь был бы
-   * издевательством — человек его не просил, а работу он прерывает. Показываем плашкой,
-   * а разбираться будет ручное сохранение, у которого есть слияние.
-   */
-  staleBaseVersion: number | null;
-  /**
-   * Почему не прошло последнее АВТОСОХРАНЕНИЕ (текст бэкенда), `null` — прошло или не
-   * запускалось. Нужен, чтобы ошибка, которая повторяется каждый такт (синтаксис скрипта,
-   * контракт 25.09.2026), показывалась тостом один раз, а дальше висела плашкой.
-   */
-  autosaveError: string | null;
   /** Режим просмотра старой версии: холст только для чтения, правки спрятаны. */
   versionPreview: VersionPreview | null;
 
@@ -120,362 +70,20 @@ export interface VersionsSlice {
   /** «Вернуться к предыдущему сохранению»: ближайшая MANUAL старше того, что на холсте
    *  (для RESTORE — старше версии-источника, иначе шаг назад ходил бы по кругу). */
   restorePreviousManualVersion: () => Promise<boolean>;
-  dismissSaveConflict: () => void;
-  /** Скрыть плашку о чужой версии, замеченной автосохранением. */
-  dismissStaleBaseVersion: () => void;
-  /** Пересохранить поверх чужой версии: based_on_version = current_version из 409. */
-  saveOverConflict: () => Promise<boolean>;
 }
-
-/**
- * Проставляет номера свойств тем ссылкам, что их ждали.
- *
- * Ссылка на свойство соседа адресует его парой «`componentKey` + `propertyName`», а
- * маршрутизирует рантайм по `propertyId`. Номера у свойства нет, пока сцена не сохранена
- * (свойства заводятся вместе с ней), и ссылка, созданная до первого сохранения, приходит
- * без него. Здесь она его и получает — из дерева, вернувшегося в ответе сохранения.
- *
- * Ссылка без номера появляется и у экземпляра шаблона: `addTemplate` снимает чужие
- * номера, оставляя ту же пару.
- */
-const resolvePendingPropertyRefs = (elements: DiagramElement[]): DiagramElement[] => {
-  const {byKey} = getElementIndex(elements);
-
-  const idOf = (componentKey: string, propertyName: string): number | undefined =>
-    (byKey[componentKey]?.properties ?? [])
-      .find(p => p.name === propertyName && typeof p.id === "number")?.id;
-
-  const fill = <T extends {propertyRefs?: PropertyRef[]}>(owner: T): T => {
-    const refs = owner.propertyRefs;
-    if (!refs?.length) return owner;
-    let changed = false;
-    const next = refs.map(ref => {
-      if (ref.propertyId != null) return ref;
-      const id = idOf(ref.componentKey, ref.propertyName);
-      if (id == null) return ref;
-      changed = true;
-      return {...ref, propertyId: id};
-    });
-    return changed ? {...owner, propertyRefs: next} : owner;
-  };
-
-  let touched = false;
-  const next = elements.map(el => {
-    let changed = false;
-    const bindings = (el.bindings ?? []).map(b => {
-      const filled = fill(b);
-      if (filled !== b) changed = true;
-      return filled;
-    });
-    const events = (el.events ?? []).map(e => {
-      if (!e.handler) return e;
-      const filled = fill(e.handler);
-      if (filled === e.handler) return e;
-      changed = true;
-      return {...e, handler: filled};
-    });
-    if (!changed) return el;
-    touched = true;
-    return {...el, bindings, ...(el.events ? {events} : {})} as DiagramElement;
-  });
-
-  // Ссылку на массив сохраняем, если ничего не изменилось: по ней завязаны equality
-  // истории undo и флаг несохранённых правок.
-  return touched ? next : elements;
-};
 
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
 ) => void;
 
 export const createVersionsSlice = (set: EditorSet, get: () => EditorState): VersionsSlice => ({
-  isSaving: false,
-  isDirty: false,
-  lastSavedAt: null,
-
   sceneVersion: null,
   versions: [],
   isVersionsLoading: false,
   versionsExhausted: false,
   versionsKinds: null,
-  saveConflict: null,
-  staleBaseVersion: null,
-  autosaveError: null,
   versionPreview: null,
 
-  exportScene: async (opts) => {
-    // Без права правки на сервер не пишем: автосейв просто пропускает тик.
-    if (!canWriteCurrentProject()) return opts?.silent ? false : refuseViewOnly();
-    // Сериализуем все сохранения через общий замок (см. `saveInFlight`),
-    // иначе два параллельных POST с id=null создадут дубли на сервере.
-    // Автосейв не встаёт в очередь — просто пропускает тик (поймает
-    // изменения на следующем).
-    if (opts?.silent && editorSession.saveInFlight) return false;
-    // Ручное сохранение дожидается текущего сейва, чтобы затем сохранить
-    // уже актуальное (и id-сверенное после reload) состояние. Между выходом
-    // из цикла и присвоением замка ниже нет `await`, поэтому два вызова не
-    // могут захватить его одновременно.
-    while (editorSession.saveInFlight) {
-      await editorSession.saveInFlight.catch(() => {});
-    }
-
-    const run = (async (): Promise<boolean> => {
-      set({isSaving: true});
-      try {
-        const {elements, scene, currentProject, versionPreview, sceneVersion} = get();
-
-        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-          if (!opts?.silent) toast.error("Сцена не принадлежит выбранному проекту");
-          return false;
-        }
-
-        // Свойства теперь уезжают вместе со сценой, поэтому одно незаполненное
-        // роняет сохранение ЦЕЛИКОМ («Property value_type is required for '…'»).
-        // Бэкенд называет только имя свойства — говорим сами, у какого элемента
-        // искать, и не тратим круг до сервера.
-        const invalid = invalidProperties(elements);
-        if (invalid.length) {
-          if (!opts?.silent) {
-            toast.error("Свойство заполнено не полностью", {
-              description: invalid.slice(0, 5).join("; ")
-                + (invalid.length > 5 ? ` и ещё ${invalid.length - 5}` : ""),
-              duration: 8_000,
-            });
-          }
-          return false;
-        }
-
-        // В режиме просмотра на холсте лежит СТАРАЯ версия. Сохранить её значит
-        // затереть текущую сцену чужим прошлым — молча и необратимо. Автосейв сюда
-        // приходит без участия человека, поэтому проверка именно здесь, а не в UI.
-        if (versionPreview) {
-          if (!opts?.silent) toast.error("Идёт просмотр версии — сохранение недоступно");
-          return false;
-        }
-
-        // `scene_id` обязателен в конверте `PUT`: тело описывает состав ИМЕННО этой
-        // сцены. Без числового id сохранять нельзя — сервер не поймёт, чей состав
-        // ему прислали, а угадывать здесь опаснее всего: тело читается как «вот
-        // сцена целиком», и промах адресом стёр бы чужую сцену.
-        const sceneId = Number(scene?.id);
-        if (!Number.isSafeInteger(sceneId)) {
-          if (!opts?.silent) toast.error("Сцена не сохранена на сервере — сохранять состав нечему");
-          return false;
-        }
-
-        const components = buildComponentTree(elements, String(scene?.id));
-        const basedOnVersion = opts?.basedOnVersion ?? sceneVersion;
-        // Поколение документа НА МОМЕНТ отправки. Если к возврату ответа оно выросло,
-        // холст успели заменить (восстановление версии, просмотр, перезагрузка сцены),
-        // и подменять его нашим деревом уже нельзя — см. documentGeneration.
-        const generationAtSend = editorSession.documentGeneration;
-
-        // `PUT`, а не `POST`: `POST` только создаёт компоненты и не принимает
-        // `scene_id`, а слияние чужих правок сервер делает исключительно для `PUT`
-        // с `save_kind: "MANUAL"`. В теле — весь состав сцены (buildComponentTree
-        // сериализует все элементы), поэтому удалённое исчезает по отсутствию.
-        const res = await fetch("/api/editor/components", {
-          method: "PUT",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            components,
-            scene_id: sceneId,
-            save_kind: opts?.kind ?? "MANUAL",
-            // Версий нет — это первое сохранение, и поле не отправляем вовсе
-            // (прислать его при отсутствующих версиях — 400 по контракту).
-            ...(basedOnVersion != null ? {based_on_version: basedOnVersion} : {}),
-          }),
-        });
-
-        // 409 — сцену успел сохранить кто-то другой. Это не ошибка сохранения:
-        // правки пользователя целы, их надо показать рядом с чужими и дать решить.
-        // Поэтому ни тоста, ни сброса isDirty, ни перезагрузки сцены.
-        if (res.status === 409) {
-          const body = await res.json().catch(() => null);
-          const conflict: SaveConflict = isSaveConflictBody(body)
-            ? body
-            : {error: "version_mismatch", base_version: basedOnVersion ?? null, current_version: null};
-
-          // Автосохранение сервер не сливает — расхождение версии для него всегда
-          // безусловный отказ. Модалку в этом случае не открываем: человек её не
-          // просил. Запоминаем чужую версию для плашки и НЕ трогаем sceneVersion —
-          // иначе следующее ручное сохранение уехало бы с уже «подтянутой» базой и
-          // затёрло чужую работу мимо слияния.
-          if (opts?.silent) {
-            set({staleBaseVersion: conflict.current_version ?? null});
-            return false;
-          }
-
-          set({saveConflict: conflict});
-          return false;
-        }
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(parseBackendErrorMessage(res.status, text));
-        }
-
-        const saved = await res.json().catch(() => null);
-        const savedComponents: Record<string, unknown>[] = Array.isArray(saved?.components)
-          ? saved.components
-          : [];
-        const savedVersion: number | null =
-          typeof saved?.version_no === "number" ? saved.version_no : null;
-
-        // На сервере теперь другой документ — прежняя запись кэша сцен устарела при
-        // любом исходе ниже. Где дерево из ответа ложится на холст, оно же ляжет и в кэш.
-        if (currentProject) dropScene(currentProject.id, sceneId);
-
-        // Пока летел запрос, документ на холсте заменили целиком — почти всегда это
-        // восстановление версии, начатое до того, как сохранение успело вернуться.
-        // Сохранение состоялось, но описывает уже ПРОШЛОЕ состояние: подменить им
-        // холст значит отменить восстановление на глазах у пользователя, а записать
-        // его `version_no` в базу — уехать следующим сохранением от чужого снимка.
-        // Поэтому ответ принимаем к сведению и не трогаем ни холст, ни базу; версию
-        // спрашиваем у истории, там порядок событий уже разрешён.
-        if (editorSession.documentGeneration !== generationAtSend) {
-          set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
-          if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
-          void get().refreshSceneVersion();
-          if (get().versions.length) void get().loadVersions();
-
-          if (!opts?.silent) {
-            toast.success("Сохранено", {
-              description: "Схему на холсте за это время заменили — показано новое содержимое, не то, что сохранялось.",
-            });
-          }
-          return true;
-        }
-
-        if (!opts?.silent) toast.success("Сохранено успешно!");
-
-        // Версия из ответа — база для следующего сохранения. Берём именно её, а не
-        // «спросим потом»: между сохранением и повторным запросом сцену мог сохранить
-        // кто-то ещё, и база разъехалась бы с деревом, которое лежит на холсте.
-        // Если version_no не пришёл (бэкенд ещё на старом контракте) — НЕ затираем
-        // уже известную версию: она получена из истории и по-прежнему валидна.
-        set({
-          saveConflict: null,
-          // Сохранение прошло — расхождение, о котором предупреждала плашка, закрыто.
-          staleBaseVersion: null,
-          // И причина прошлого отказа автосохранения больше не актуальна.
-          autosaveError: null,
-          ...(savedVersion != null ? {sceneVersion: savedVersion} : {}),
-        });
-
-        if (saved?.merged) reportMergedChanges(saved.merged as MergeReport);
-
-        if (scene?.id) {
-          // Дерево из ответа заменяет elements серверным (уже с id) и сбрасывает
-          // выделение/активную группу/состояния. При keepView (автосейв) снимаем их
-          // до подмены и восстанавливаем по ключам после — чтобы автосейв не «дёргал»
-          // пользователя. Подхватить серверные id обязательно: без них следующее
-          // сохранение снова вставит дубли (вариант А).
-          const prevSelected = opts?.keepView ? get().selectedIds : null;
-          const prevActive = opts?.keepView ? get().activeGroupKey : null;
-          const prevStates = opts?.keepView ? get().currentComponentStateByElementKey : null;
-
-          // Сама подмена не должна становиться шагом undo: elements лишь заменяются
-          // серверными. pause/resume — тот же приём, что у addTags/editProperty
-          // для изменений, синхронизированных с сервером.
-          const temporal = editorStore().temporal.getState();
-          temporal.pause();
-          try {
-            if (savedVersion != null && savedComponents.length) {
-              // Берём дерево ИЗ ОТВЕТА, а не перезапрашиваем сцену: повторный GET мог
-              // бы вернуть более свежую версию, чем та, чей version_no мы только что
-              // записали в sceneVersion, — база разъехалась бы с холстом. Заодно
-              // экономится round-trip на каждом сохранении.
-              //
-              // Условие на version_no не косметика: это признак того, что бэкенд
-              // ответил по контракту. Пришёл ответ без номера версии — форму дерева
-              // в нём никто не гарантировал, доверять ему холст нельзя, и мы уходим
-              // в честную перезагрузку сцены.
-              applyServerComponents(savedComponents, scene);
-              if (currentProject) {
-                putScene(
-                  currentProject.id,
-                  {...(scene as unknown as Record<string, unknown>), children: savedComponents},
-                  savedVersion,
-                );
-              }
-            } else {
-              await get().loadScene(scene.id, {keepHistory: true});
-            }
-          } finally {
-            editorStore().temporal.getState().resume();
-          }
-
-          // История пережила сохранение — значит, откатиться можно и «за» точку сейва.
-          // Снимки, снятые до сохранения, содержат id:null у новых элементов, и
-          // следующее сохранение вставило бы их повторно (дубли на сервере).
-          // Переносим присвоенные сервером id в стек по ключам.
-          // Свойства только что получили серверные номера — раздаём их ссылкам,
-          // которые адресовали свойство парой «ключ элемента + имя». До сохранения
-          // номера не существовало, и рантайму ссылка была не видна.
-          const withRefs = resolvePendingPropertyRefs(get().elements);
-          if (withRefs !== get().elements) {
-            const t = editorStore().temporal.getState();
-            t.pause();
-            set({elements: withRefs});
-            t.resume();
-          }
-
-          rebaseHistoryIds(get().elements);
-
-          if (opts?.keepView) {
-            const keys = new Set(get().elements.map(el => el.key));
-            set({
-              selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
-              activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
-              currentComponentStateByElementKey: Object.fromEntries(
-                Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),
-              ),
-            });
-          }
-        }
-
-        // Всё, что сейчас в elements, лежит на сервере — снимаем «грязный» флаг.
-        markSceneSaved(true);
-
-        // Отдельный refreshSceneVersion здесь не нужен: без version_no мы уходим в
-        // ветку с loadScene, а он спрашивает текущую версию сам.
-        // Список истории после сохранения устарел — обновим, если панель открыта.
-        if (get().versions.length) void get().loadVersions();
-
-        return true;
-      } catch (err: unknown) {
-        console.error(err);
-        if (opts?.silent) {
-          // Автосохранение повторяется каждый такт, и та же причина (синтаксическая
-          // ошибка в скрипте, контракт 25.09.2026) приходила бы тостом раз в 10 минут,
-          // пока скрипт не исправят. Тост — только на НОВУЮ причину, дальше висит
-          // плашка AutosaveErrorBanner.
-          const message = getErrorMessage(err, "Автосохранение не удалось");
-          if (message !== get().autosaveError) {
-            toast.error("Автосохранение не удалось", {description: message});
-          }
-          set({autosaveError: message});
-        } else {
-          // Сообщение бэкенда называет скрипт, компонент и строку — его надо успеть
-          // прочитать, поэтому тост держится дольше обычного.
-          toast.error(getErrorMessage(err, "Ошибка экспорта сцены"), {duration: 30_000});
-        }
-        return false;
-      } finally {
-        set({isSaving: false});
-      }
-    })();
-
-    editorSession.saveInFlight = run;
-    try {
-      return await run;
-    } finally {
-      if (editorSession.saveInFlight === run) editorSession.saveInFlight = null;
-    }
-  },
-
-  // ── Версии документа ─────────────────────────────────────────────────────
   refreshSceneVersion: async () => {
     const sceneId = get().scene?.id;
     if (sceneId == null) return;
@@ -613,11 +221,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     // откатывает его, а его ответ подменяет холст дореставрационным деревом — снаружи
     // это выглядит как «восстановление не сработало». Заодно замок сериализует два
     // восстановления подряд: побеждает нажатое последним, а не ответившее последним.
-    while (editorSession.saveInFlight) {
-      await editorSession.saveInFlight.catch(() => {});
-    }
-
-    const run = (async (): Promise<boolean> => {
+    return withSaveLock(async (): Promise<boolean> => {
       const {scene} = get();
       if (!scene?.id) return false;
 
@@ -650,24 +254,12 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         const projectId = get().currentProject?.id;
         if (projectId != null) dropScene(projectId, scene.id);
 
-        const temporal = editorStore().temporal.getState();
-        temporal.pause();
-        try {
-          if (trustResponse) {
-            applyServerComponents(restored.components, scene);
-            if (projectId != null) {
-              putScene(
-                projectId,
-                {...(scene as unknown as Record<string, unknown>), children: restored.components},
-                restored.version_no,
-              );
-            }
-          } else {
-            await get().loadScene(Number(scene.id), {keepHistory: true});
-          }
-        } finally {
-          editorStore().temporal.getState().resume();
-        }
+        await replaceCanvasFromServer(
+          get, scene, projectId,
+          trustResponse && restored.version_no != null
+            ? {components: restored.components, version: restored.version_no}
+            : null,
+        );
 
         // Стек undo помнит элементы ДО восстановления, часть из которых на сервере
         // уже не существует — оставлять его значит дать Ctrl+Z воскресить их.
@@ -682,38 +274,14 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         }
         void get().loadVersions();
 
-        // `restored_from` называет версию, которую сервер ВЗЯЛ за источник. Расхождение
-        // с запрошенной означает, что восстановлено не то, — и без этой проверки такой
-        // ответ неотличим от успеха: тост бодро называет запрошенный номер, а на холсте
-        // чужое содержимое.
-        if (restored.restored_from != null && restored.restored_from !== versionNo) {
-          toast.warning(`Сервер восстановил версию ${restored.restored_from}, а не ${versionNo}`, {
-            description: "На холсте содержимое версии " + restored.restored_from +
-              ". Если это повторяется, история версий на сервере отдаёт не тот снимок.",
-            duration: 12_000,
-          });
-        } else if (!trustResponse) {
-          toast.warning(`Версия ${versionNo} восстановлена, схема перечитана с сервера`, {
-            description: "Ответ восстановления пришёл в неожиданном виде, поэтому холсту он не доверен.",
-            duration: 10_000,
-          });
-        } else {
-          toast.success(`Восстановлена версия ${versionNo}`);
-        }
+        reportRestoreOutcome(versionNo, restored.restored_from, trustResponse);
         return true;
       } catch (err) {
         console.error(err);
         toast.error(getErrorMessage(err, "Не удалось восстановить версию"));
         return false;
       }
-    })();
-
-    editorSession.saveInFlight = run;
-    try {
-      return await run;
-    } finally {
-      if (editorSession.saveInFlight === run) editorSession.saveInFlight = null;
-    }
+    });
   },
   restorePreviousManualVersion: async () => {
     const sceneId = get().scene?.id;
@@ -721,29 +289,9 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     if (!canWriteCurrentProject()) return refuseViewOnly();
 
     try {
-      // Тянем ВСЕ виды, а не только MANUAL: чтобы понять, «предыдущее» относительно
-      // чего искать, надо увидеть и записи RESTORE. Список отфильтрованный по MANUAL
-      // после восстановления не меняется вовсе — по нему шаг назад всегда упирался
-      // в одну и ту же версию, и повторные нажатия возвращали то же самое состояние.
+      // Все виды, а не только MANUAL — см. findPreviousManualVersion.
       const all = await fetchVersions("scenes", Number(sceneId), {limit: VERSIONS_PAGE_SIZE});
-
-      if (!all.length) {
-        toast.info("Предыдущего ручного сохранения нет");
-        return false;
-      }
-
-      // Что лежит на холсте сейчас. sceneVersion может отставать (бэкенд не всегда
-      // отдаёт version_no) — тогда берём самую свежую запись истории.
-      const current = get().sceneVersion;
-      const head = all.find(v => v.version_no === current) ?? all[0];
-
-      // Для RESTORE содержимое равно версии-источнику: шаг назад надо делать от неё,
-      // иначе «отменить отмену» вернуло бы ту же самую версию по кругу.
-      const contentVersion =
-        head.kind === "RESTORE" && head.restored_from != null ? head.restored_from : head.version_no;
-
-      // Список свежие-первыми, поэтому первая подходящая строка — ближайшая старшая.
-      const previous = all.find(v => v.kind === "MANUAL" && v.version_no < contentVersion);
+      const previous = findPreviousManualVersion(all, get().sceneVersion);
 
       if (!previous) {
         toast.info("Предыдущего ручного сохранения нет");
@@ -756,16 +304,5 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
       toast.error(getErrorMessage(err, "Не удалось найти предыдущее сохранение"));
       return false;
     }
-  },
-  dismissSaveConflict: () => set({saveConflict: null}),
-  dismissStaleBaseVersion: () => set({staleBaseVersion: null}),
-  saveOverConflict: async () => {
-    const conflict = get().saveConflict;
-    if (!conflict) return false;
-
-    set({saveConflict: null});
-    // Пересохраняем от той версии, которую человек только что увидел в сравнении:
-    // отдельного эндпоинта разрешения конфликта в контракте нет и не нужно.
-    return get().exportScene({basedOnVersion: conflict.current_version ?? undefined});
   },
 });

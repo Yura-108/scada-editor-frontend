@@ -5,6 +5,7 @@ import {bindEditorStore} from "./editorStoreRef";
 import {editorSession} from "./editorSession";
 import {createCameraSlice, type CameraSlice} from "./slices/camera.slice";
 import {createSelectionSlice, type SelectionSlice} from "./slices/selection.slice";
+import {createSaveSlice, type SaveSlice} from "./slices/save.slice";
 import {createVersionsSlice, type VersionsSlice} from "./slices/versions.slice";
 import {createProjectsSlice, type ProjectsSlice} from "./slices/projects.slice";
 import {createScenesSlice, type ScenesSlice} from "./slices/scenes.slice";
@@ -18,7 +19,7 @@ import {createGroupsSlice, type GroupsSlice} from "./slices/groups.slice";
 export type {EditorProject};
 
 // Стор режется на слайсы по зонам (docs/architecture.md, шаг 6); поля слайса описаны в его файле.
-export type EditorState = CameraSlice & SelectionSlice & VersionsSlice & ProjectsSlice & ScenesSlice
+export type EditorState = CameraSlice & SelectionSlice & SaveSlice & VersionsSlice & ProjectsSlice & ScenesSlice
   & LayoutSlice & StatesSlice & PropertiesSlice & ElementsSlice & ClipboardSlice & GroupsSlice & {
   // removeElements: (ids: string[]) => void;
 }
@@ -27,6 +28,7 @@ export const useEditorStore = create<EditorState>()(temporal(
     (set, get) => ({
       ...createCameraSlice(set, get),
       ...createSelectionSlice(set, get),
+      ...createSaveSlice(set, get),
       ...createVersionsSlice(set, get),
       ...createProjectsSlice(set, get),
       ...createScenesSlice(set, get),

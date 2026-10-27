@@ -32,6 +32,7 @@ export {
   scheduleScenePrefetch,
   VERSIONS_PAGE_SIZE,
 } from "./model/editorStoreInternals";
+export {createSaveSlice, type SaveSlice} from "./model/slices/save.slice";
 export {createVersionsSlice, type VersionsSlice} from "./model/slices/versions.slice";
 export {createProjectsSlice, type ProjectsSlice} from "./model/slices/projects.slice";
 export {createScenesSlice, type ScenesSlice} from "./model/slices/scenes.slice";
