@@ -7,7 +7,7 @@ import {ArrangeButtons} from "./ArrangeButtons";
 import {HistoryButtons} from "./HistoryButtons";
 import {SaveButton} from "./SaveButton";
 import {SceneButtons} from "./SceneButtons";
-import {SceneStatus} from "./SceneStatus";
+import {SceneStatus} from "../project-bar/SceneStatus";
 import {ToolbarDivider} from "./TooltipBtn";
 import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPanel";
 import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
