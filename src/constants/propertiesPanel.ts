@@ -112,7 +112,7 @@ export const basePropertySchema: PropertySchema[] = [
  * Стиль обводки — один и тот же пункт у всех фигур с контуром.
  *
  * Значение уходит в `strokeDasharray` и разбирается общим `parseDashArray`
- * (`lib/editor/dashArray.ts`), который читают все ветки рендера.
+ * (`core/scene/element/dashArray.ts`), который читают все ветки рендера.
  */
 const DASH_FIELD: PropertySchema = {
   key: "strokeDasharray",

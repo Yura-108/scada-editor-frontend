@@ -9,12 +9,12 @@ import {SaveButton} from "./SaveButton";
 import {SceneButtons} from "./SceneButtons";
 import {SceneStatus} from "./SceneStatus";
 import {ToolbarDivider} from "./TooltipBtn";
-import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPanel";
-import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
-import VersionPreviewBanner from "@/components/editor/versions/VersionPreviewBanner";
-import StaleVersionBanner from "@/components/editor/versions/StaleVersionBanner";
-import SceneChangedBanner from "@/components/editor/versions/SceneChangedBanner";
-import AutosaveErrorBanner from "@/components/editor/versions/AutosaveErrorBanner";
+import VersionHistoryPanel from "../versions/VersionHistoryPanel";
+import SaveConflictDialog from "../versions/SaveConflictDialog";
+import VersionPreviewBanner from "../versions/VersionPreviewBanner";
+import StaleVersionBanner from "../versions/StaleVersionBanner";
+import SceneChangedBanner from "../versions/SceneChangedBanner";
+import AutosaveErrorBanner from "../versions/AutosaveErrorBanner";
 
 /**
  * Отступы тулбара от боковых панелей приходят CSS-переменными от WorkSpace

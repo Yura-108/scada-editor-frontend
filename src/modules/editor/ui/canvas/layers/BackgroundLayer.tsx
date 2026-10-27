@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Layer, Rect } from "react-konva";
 import { GRID } from "@/core/scene";
-import { createGridPattern } from "@/lib/editor/gridPattern";
+import { createGridPattern } from "../../../lib/gridPattern";
 import type { SheetSize } from "@/core/scene";
 import type { ThemeColors } from "@/core/canvas";
 import { gridStepForZoom } from "../lib/gridStep";

@@ -373,7 +373,7 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       bindings: parseBindings(el.bindings),
       events: parseEvents(el.events),
       // Для type==="table" это же поле несёт привязки строк к тегам (property_type
-      // "TAG:<row>", см. src/lib/editor/rowBinding.ts) — номер строки едет внутри
+      // "TAG:<row>", см. src/core/scene/element/rowBinding.ts) — номер строки едет внутри
       // property_type, реконструкция позиции по индексу массива не нужна.
       properties: normalizeProperties(el.properties),
       label: el.name,

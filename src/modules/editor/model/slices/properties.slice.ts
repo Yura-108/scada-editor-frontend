@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
+import {purgePropertyRefs} from "../propertyDependents";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {TagBinding} from "@/types/binding.types";
@@ -127,7 +127,7 @@ export const createPropertiesSlice = (set: EditorSet, get: () => EditorState): P
     set(state => {
       // У заведённого свойства могут быть ссылки по номеру: висячий
       // `component_property_id` роняет сохранение ВСЕЙ сцены 400-м, а висячий
-      // propertyRef тихо ломает логику (см. lib/editor/propertyDependents.ts).
+      // propertyRef тихо ломает логику (см. modules/editor/model/propertyDependents.ts).
       // У черновика номера нет — ссылаться на него по номеру нечему.
       if (target.id != null && owner.id != null) {
         return {elements: purgePropertyRefs(state.elements, target.id, owner.id)};

@@ -48,7 +48,7 @@ it, so the two can disagree at the edges of a rotated element.
 The monitor is `<Canvas readOnly />`: the content layer is `listening={false}`, so shapes are out
 of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only mechanisms:
 
-- **Hit-testing is ours, not Konva's** — `src/lib/editor/pickMonitorTarget.ts` walks the members of
+- **Hit-testing is ours, not Konva's** — `src/modules/editor/lib/pickMonitorTarget.ts` walks the members of
   the current level (`activeGroupKey` ?? scene root) top-down by `zIndex` and returns the element
   whose absolute bbox contains the point. Same semantics as the editor's `resolveClickTarget`, only
   downward. Right-click builds the menu from it (`canvas/buildMonitorMenu.ts`), double-click enters

@@ -6,8 +6,7 @@ import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/modules/editor";
-import {shortTagPath} from "@/lib/editor/tagPath";
-import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
+import {shortTagPath, isBooleanValueType, isNumericValueType} from "@/core/scene";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {describeDenial, isAccessDenial} from "@/core/access";
@@ -33,7 +32,7 @@ interface ContentProps extends Props {
 /** Как часто перечитываем живые значения, пока окно открыто. */
 const VALUE_POLL_MS = 1000;
 
-/** Общая проверка с инспектором объектов — см. lib/editor/valueTypes.ts. */
+/** Общая проверка с инспектором объектов — см. core/scene/tags/valueTypes.ts. */
 const isNumericType = isNumericValueType;
 
 /** Имя свойства для оператора: `label`, а без него — технический `name` из скриптов. */

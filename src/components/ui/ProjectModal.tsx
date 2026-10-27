@@ -5,13 +5,11 @@ import {cn} from "@/shared/lib/cn";
 import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {useState, useEffect, useMemo} from "react";
-import {useEditorStore, type EditorProject} from "@/modules/editor";
+import {useEditorStore, type EditorProject, openReleasesModal, openProcedureLevelsModal} from "@/modules/editor";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
-import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {openProcedureLevelsModal} from "@/components/editor/ProcedureLevelsModal";
 import {canOpenInEditor, grantOf, useSessionUserStore} from "@/core/access";
 
 async function selectProjectAndOpenScenes(

@@ -50,9 +50,19 @@ export {createPropertiesSlice, type PropertiesSlice} from "./model/slices/proper
 export {createElementsSlice, type ElementsSlice} from "./model/slices/elements.slice";
 export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboard.slice";
 export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
+export {beginHistoryGroup, cancelHistoryGroup, endHistoryGroup} from "./model/historyGroup";
+export {restoreLastProject, useEditableProject} from "./model/lastProject";
+export {openSceneGuarded} from "./model/openScene";
+export {confirmDeleteProperty} from "./lib/confirmDeleteProperty";
 
 // UI — последним: компонентам нужен уже загруженный стор, а не наоборот.
 export {PropertiesPanel} from "./ui/properties-panel";
 export {Canvas} from "./ui/canvas";
 export {ToolsPanel} from "./ui/tools-panel";
 export {WorkSpace} from "./ui/workspace";
+export {SceneTabs} from "./ui/scene-tabs/SceneTabs";
+export {useSceneCameraMemory} from "./ui/canvas/hooks/useSceneCameraMemory";
+export {openReleasesModal} from "./ui/project/ReleasesModal";
+export {openProcedureLevelsModal} from "./ui/project/ProcedureLevelsModal";
+export type {PickedProperty} from "./ui/properties-panel/bindings/OpenChooseObjectPropertyModal";
+export {useSceneChangedNotifications} from "./ui/hooks/useSceneChangedNotifications";

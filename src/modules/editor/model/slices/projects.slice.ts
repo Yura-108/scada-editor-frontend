@@ -3,7 +3,7 @@ import type {EditorState} from "../editorStore";
 import type {AutobindReport} from "@/types/autobind.types";
 // переедут в core/project вместе с остальным lib (шаг 8)
 import {normalizeProjectList, toEditorProject, type EditorProject, createRelease, NoProdReleaseError, putInOperation, setProdRelease, type CreatedRelease, rememberProject} from "@/core/project";
-import {clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
+import {clearCanvasPointerWorld} from "../../lib/canvasPointer";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";

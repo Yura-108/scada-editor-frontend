@@ -5,11 +5,11 @@ import {
   detachServerEventIds,
   detachServerScriptIds,
   detachServerStateIds,
-} from "@/lib/editor/detachServerIds";
-import {instantiateTemplate} from "@/lib/editor/templateInstance";
+} from "../detachServerIds";
+import {instantiateTemplate} from "../templateInstance";
 import {toast} from "sonner";
 import type {ConturImportStats} from "@/core/scene";
-import {getCanvasPointerWorld} from "@/lib/editor/canvasPointer";
+import {getCanvasPointerWorld} from "../../lib/canvasPointer";
 import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";
 import {normalizeImportedElements} from "../importElements";
@@ -44,7 +44,7 @@ export interface ClipboardSlice {
   pasteSelectedElement: () => void;
   /**
    * Импорт элементов из JSON. Выгрузка CONTUR распознаётся и переводится автоматически
-   * (см. `src/lib/editor/conturImport.ts`); всё прочее импортируется как раньше.
+   * (см. `src/core/scene/serialization/conturImport.ts`); всё прочее импортируется как раньше.
    *
    * `mode: "replace"` кладёт на холст только импортированное — иначе повторный импорт того
    * же листа удвоит схему. Возвращает разбивку по типам для выгрузки CONTUR либо `null`.

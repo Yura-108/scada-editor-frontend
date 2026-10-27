@@ -6,8 +6,7 @@ import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/modules/editor";
-import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   getRuntimePropertyValue, getRuntimeSessionId, getRuntimeTagQuality, getRuntimeTagValue,

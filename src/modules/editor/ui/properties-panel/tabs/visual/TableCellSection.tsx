@@ -7,7 +7,7 @@ import {GRID} from "@/core/scene";
 import {DiagramElement} from "@/types/editorElement.type";
 import {ColorField} from "@/components/ui/ColorField";
 import {NumberInput} from "@/components/ui/NumberInput";
-import {ChooseObjectPropertyModal} from "@/components/editor/bindings/OpenChooseObjectPropertyModal";
+import {ChooseObjectPropertyModal} from "../../bindings/OpenChooseObjectPropertyModal";
 import {collectTagScope} from "@/lib/runtime/bindingScope";
 import {buildDirectBinding} from "@/lib/runtime/directBinding";
 import {useEditorStore} from "../../../../model/editorStore";

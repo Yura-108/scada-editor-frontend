@@ -3,7 +3,7 @@
 import {useStore} from "zustand";
 import {useShallow} from "zustand/react/shallow";
 import {History, Redo2, Rocket, RotateCcw, Undo2} from "lucide-react";
-import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
+import {openReleasesModal} from "../project/ReleasesModal";
 import {useEditorStore} from "../../model/editorStore";
 import {TooltipBtn} from "./TooltipBtn";
 

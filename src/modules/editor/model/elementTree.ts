@@ -11,7 +11,7 @@ import {
   detachServerEventIds,
   detachServerScriptIds,
   detachServerStateIds,
-} from "@/lib/editor/detachServerIds";
+} from "./detachServerIds";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import {createUuid} from "@/shared/lib/createUuid";
 

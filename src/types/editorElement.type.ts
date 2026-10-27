@@ -78,7 +78,7 @@ export interface ElementScript {
 /**
  * Статические (design-time) данные одной ячейки таблицы. Ключ в LeafElement.cells —
  * `${row}_${col}` (0-based). Живое значение из привязки к тегу переопределяет `value`
- * через useRuntimeOverlayStore.overridesByKey[el.key][`cell_${row}_${col}`] — см. src/lib/editor/tableCells.ts.
+ * через useRuntimeOverlayStore.overridesByKey[el.key][`cell_${row}_${col}`] — см. src/core/scene/element/tableCells.ts.
  */
 export interface TableCellData {
   value?: string;
@@ -92,7 +92,7 @@ export interface TableCellData {
  * более лёгкий контракт, чем PropertyCreateDto (у той требуются id/component_id,
  * которых ещё нет на этапе черновика в модалке привязки). Хранится прямо в
  * element.properties (никакого отдельного поля rowBindings). Номер строки — в
- * поле position самого PropertyCreateDto (см. src/lib/editor/rowBinding.ts),
+ * поле position самого PropertyCreateDto (см. src/core/scene/element/rowBinding.ts),
  * а не закодирован в property_type: тот теперь обычная классификация
  * ("Тег" | "Локальный"), как у всех остальных свойств. tag_id === null — строка
  * без тега (локальный параметр, значение живёт в сессии, а не в ПЛК).
@@ -136,7 +136,7 @@ export type ComponentCreateDto = {
    * больше нет. Список задаёт весь набор: чего в нём нет, то бэкенд удаляет
    * (сопоставление сначала по `id`, затем по `name`). Отсутствие поля — «не трогать».
    *
-   * У строк таблицы номер строки лежит в `position` (см. src/lib/editor/rowBinding.ts).
+   * У строк таблицы номер строки лежит в `position` (см. src/core/scene/element/rowBinding.ts).
    */
   properties?: PropertyCreateDto[];
 };
@@ -170,19 +170,19 @@ export interface BaseCanvasElement {
   /**
    * Порядок отрисовки среди соседей (элементов с тем же parentKey), как CSS z-index.
    * Больше — выше. Отсутствует == 0; сортировка стабильная, поэтому при равных
-   * значениях порядок остаётся прежним — порядком массива. См. lib/editor/zOrder.ts.
+   * значениях порядок остаётся прежним — порядком массива. См. core/scene/element/zOrder.ts.
    */
   zIndex?: number;
   /**
    * Контекстное меню компонента в мониторе (ПКМ): ширина, шрифт, высота пункта. Нет поля
    * или ключа — значение по умолчанию. От состояния не зависит (BASE_ONLY_KEYS), на сервер
-   * едет внутри image, как zIndex. См. lib/editor/monitorMenu.ts.
+   * едет внутри image, как zIndex. См. core/scene/element/monitorMenu.ts.
    */
   monitorMenu?: MonitorMenuSettings;
   /**
    * Оформление тренда (только у `type === "trend"`): окно, шаг сетки и вид перьев. Перья
    * сами — тег-свойства элемента, связь по `name`. Базовый ключ, как monitorMenu: от
-   * состояния не зависит, едет внутри image. См. lib/editor/trendSettings.ts.
+   * состояния не зависит, едет внутри image. См. core/scene/element/trendSettings.ts.
    */
   trend?: TrendSettings;
 }
@@ -292,7 +292,7 @@ export interface LeafElement extends BaseCanvasElement {
   cells?: Record<string, TableCellData>;
   /**
    * Ширины столбцов и высоты строк — ВЕСА, а не координаты: на чтении нормируются
-   * к текущим w и (h − headerH), см. src/lib/editor/tableLayout.ts. Отсутствие поля
+   * к текущим w и (h − headerH), см. src/core/scene/element/tableLayout.ts. Отсутствие поля
    * означает равномерную сетку, поэтому старые таблицы выглядят как раньше.
    */
   colWidths?: number[];
@@ -394,7 +394,7 @@ export interface TrendSettings {
   pens?: Record<string, TrendPenStyle>;
 }
 
-/** Контекстное меню компонента в мониторе, px. Пределы — lib/editor/monitorMenu.ts. */
+/** Контекстное меню компонента в мониторе, px. Пределы — core/scene/element/monitorMenu.ts. */
 export interface MonitorMenuSettings {
   /** Ширина плашки; без неё меню по самой длинной подписи. */
   width?: number;

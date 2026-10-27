@@ -15,7 +15,7 @@ export interface TableTracks {
  * Размеры полос таблицы.
  *
  * Считаются тем же кодом, что и рендер: в элементе лежат ВЕСА, а показывать и
- * редактировать надо фактические единицы сцены (см. src/lib/editor/tableLayout.ts).
+ * редактировать надо фактические единицы сцены (см. src/core/scene/element/tableLayout.ts).
  */
 export function getTableTracks(values: Record<string, unknown>): TableTracks {
   const w = getNumberValue(values.w, 300);

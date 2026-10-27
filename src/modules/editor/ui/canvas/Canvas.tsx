@@ -11,19 +11,19 @@ import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElement
 import {NON_TRANSFORMABLE, CanvasNode, useThemeColors} from "@/core/canvas";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
-import "@/lib/editor/konvaConfig";
+import "./lib/konvaConfig";
 
 import { TextEditorOverlay } from "./TextEditorOverlay";
-import { ZoomControls } from "@/components/editor/canvas/ZoomControls";
-import { CanvasContextMenu } from "@/components/editor/canvas/CanvasContextMenu";
-import { useCanvasRect } from "@/components/editor/canvas/hooks/useCanvasRect";
-import { useEditorHotkeys } from "@/components/editor/canvas/hooks/useEditorHotkeys";
-import { useStageInteractions } from "@/components/editor/canvas/hooks/useStageInteractions";
-import { useMultiDragAndGuides } from "@/components/editor/canvas/hooks/useMultiDragAndGuides";
-import { useZoomControls } from "@/components/editor/canvas/hooks/useZoomControls";
-import { useHoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
-import { usePendingPlacement } from "@/components/editor/canvas/hooks/usePendingPlacement";
-import { MonitorInteractionLayer } from "@/components/editor/canvas/MonitorInteractionLayer";
+import { ZoomControls } from "./ZoomControls";
+import { CanvasContextMenu } from "./CanvasContextMenu";
+import { useCanvasRect } from "./hooks/useCanvasRect";
+import { useEditorHotkeys } from "./hooks/useEditorHotkeys";
+import { useStageInteractions } from "./hooks/useStageInteractions";
+import { useMultiDragAndGuides } from "./hooks/useMultiDragAndGuides";
+import { useZoomControls } from "./hooks/useZoomControls";
+import { useHoverHighlight } from "./hooks/useHoverHighlight";
+import { usePendingPlacement } from "./hooks/usePendingPlacement";
+import { MonitorInteractionLayer } from "./layers/MonitorInteractionLayer";
 import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
 import type { EditorRenderContext } from "@/core/canvas";
 import type { CanvasMenuState } from "./types";
@@ -113,7 +113,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   /** Лист сцены. Считается из elements (кэш по ссылке на массив), в сторе не хранится. */
   const sheet = useMemo(() => resolveSheet(elements), [elements]);
   // Вид, зафиксированный для монитора (замок в панели зума). В редакторе — рамка и
-  // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. lib/editor/monitorView.ts).
+  // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. core/scene/sheet/monitorView.ts).
   const monitorView = useMemo(() => resolveMonitorView(elements), [elements]);
 
   const closeMenu = useCallback(() => setContextMenu(null), []);

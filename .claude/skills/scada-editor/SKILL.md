@@ -1,6 +1,6 @@
 ---
 name: scada-editor
-description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/core/canvas/**, src/modules/editor/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
+description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/core/canvas/**, src/modules/editor/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
 ---
 
 # SCADA Editor — architecture & gotchas
@@ -61,7 +61,7 @@ leaves whose live position sits in overrides.
   `setState("Имя")` intent is resolved by name in `applyRuntimeBatch` and a miss is **silently
   skipped**; (d) the backend merges by name when no id is sent. Names must therefore be unique
   per element — nothing enforced it before rename, so the rename path validates the collision.
-- **Rename specifics** (`renameComponentStateInSubtree` + `src/lib/editor/stateNameRefs.ts`):
+- **Rename specifics** (`renameComponentStateInSubtree` + `src/modules/editor/model/stateNameRefs.ts`):
   spread the state so `serverId` survives — it is the *only* thing that makes the backend read a
   rename instead of delete+create (`docs/contract/frontend-contract-changes.md:306`,
   `buildComponentTree.ts:189-192`). `currentComponentStateByElementKey` needs no touching (keyed
@@ -174,7 +174,7 @@ leaves whose live position sits in overrides.
 - **Colors**: all color props go through `src/components/ui/ColorField.tsx` (picker + hex input
   + «прозрачный» button). `"transparent"` is a valid stored color value — Konva renders it as
   fully transparent; renderers' `rendered.color || fallback` chains treat it as truthy (kept).
-- **Smart guides** (`src/lib/editor/smartGuides.ts` + guide session in Canvas): on dragstart
+- **Smart guides** (`src/modules/editor/lib/smartGuides.ts` + guide session in Canvas): on dragstart
   collect edge/center lines of same-parent non-selected neighbors; on dragmove magnet the
   dragged node (`e.target` — may be the inner Arrow/Circle, not the id-Group) within a
   screen-constant threshold (6/zoom) and draw the matched lines. Final commit still grid-snaps
@@ -191,7 +191,7 @@ leaves whose live position sits in overrides.
   gets `zoom` as a prop from Canvas (it re-renders with camera anyway).
 - Properties panel has a «Геометрия» block: numeric X/Y/W/H (lines: X1/Y1/X2/Y2), writes via
   `updateElementVisual` (coords are parent-local).
-- Pure geometry helpers live in `src/lib/editor/`.
+- Pure geometry helpers live in `src/core/scene/geometry/`; editor-only helpers in `src/modules/editor/lib/` (smartGuides, sceneCamera, fitCamera, …) and `src/modules/editor/model/` (transformSelection, templateInstance, …).
 
 ## Snapping (GRID = 20)
 

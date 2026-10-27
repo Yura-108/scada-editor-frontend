@@ -6,7 +6,7 @@ import { Layer, Line, Rect } from "react-konva";
 import type { DiagramElement } from "@/types/editorElement.type";
 import type {MonitorView, SheetSize} from "@/core/scene";
 import type { SelectionRect, ThemeColors } from "@/core/canvas";
-import type { HoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
+import type { HoverHighlight } from "../hooks/useHoverHighlight";
 import {NoDataOverlay, SelectionTransformer} from "@/core/canvas";
 import { HoverHighlightShape } from "./HoverHighlightShape";
 

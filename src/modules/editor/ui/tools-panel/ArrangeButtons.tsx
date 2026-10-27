@@ -35,7 +35,7 @@ export function ArrangeButtons({canEdit}: {canEdit: boolean}) {
 
       {/* Поворот на 90° и отражения. Работают и для одного элемента, и для набора,
           и для группы целиком: геометрия пересчитывается по-настоящему (см.
-          lib/editor/transformSelection.ts), поэтому всё остаётся на сетке. */}
+          modules/editor/model/transformSelection.ts), поэтому всё остаётся на сетке. */}
       <TooltipBtn
         icon={<RotateCw size={16} />}
         label="Повернуть по часовой (Shift + >)"

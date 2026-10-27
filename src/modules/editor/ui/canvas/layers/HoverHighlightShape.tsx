@@ -1,7 +1,7 @@
 "use client";
 
 import { Circle, Line, Rect } from "react-konva";
-import type { HoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
+import type { HoverHighlight } from "../hooks/useHoverHighlight";
 
 /**
  * Hover-подсветка: один оверлей вместо пропса в фигуры — иначе каждое

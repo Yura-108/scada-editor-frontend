@@ -1,7 +1,7 @@
 import React, {useRef} from "react";
-import {SceneTabs} from "@/components/editor/SceneTabs";
-import {EditorPanel} from "@/components/editor/panels/EditorPanel";
-import {RecipesPanel} from "@/components/editor/panels/RecipesPanel";
+import {SceneTabs} from "../scene-tabs/SceneTabs";
+import {EditorPanel} from "./EditorPanel";
+import {RecipesPanel} from "../recipes/RecipesPanel";
 import {useCurrentProjectGrant} from "@/core/access";
 import {ToolsPanel} from "../tools-panel";
 import {usePanelResize} from "./hooks/usePanelResize";
