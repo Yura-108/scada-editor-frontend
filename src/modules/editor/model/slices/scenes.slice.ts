@@ -3,11 +3,12 @@ import type {EditorState} from "../editorStore";
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {
-  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, releaseVersionOf, SceneLoadError,
+  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, SceneLoadError,
   type SceneSource,
 } from "@/lib/editor/sceneCache";
 import {fetchCurrentVersion} from "@/lib/editor/versionsApi";
 import {promptModal} from "@/components/ui/ConfirmModal";
+import {requestCreateScene, requestSceneList} from "../../api/scenes";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
 import {
@@ -156,33 +157,19 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     const source = get().sceneSource;
     try {
       // Монитор — схемы prod-выпуска; редактор — черновика.
-      const res = await fetch(source === "release"
-        ? `/api/runtime/projects/${projectId}/scenes`
-        : `/api/editor/scene?project_id=${projectId}`);
-
-      // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
-      if (source === "release" && res.status === 409) {
-        if (get().sceneSource !== "release") return;
-        const body = await res.json().catch(() => null) as {message?: string} | null;
-        set({
-          sceneList: [], scene: null, elements: [], releaseVersionNo: null,
-          releaseError: body?.message || "Проект не в эксплуатации — выпуск не исполняется",
-        });
-        return [];
-      }
-      if (!res.ok) {
-        throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
-      }
-
-      const json = await res.json();
+      const result = await requestSceneList(projectId, source);
       // Ответ устарел: пока шёл запрос, ушли из монитора (или вернулись в него).
       if (get().sceneSource !== source) return;
-      const list = Array.isArray(json) ? json : [];
-      set({sceneList: list, ...(source === "release" ? {releaseError: null} : {})});
-      if (source === "release") {
-        const release = releaseVersionOf(res);
-        if (release != null) get().setReleaseVersionNo(release);
+
+      // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
+      if (result.kind === "notInOperation") {
+        set({sceneList: [], scene: null, elements: [], releaseVersionNo: null, releaseError: result.message});
+        return [];
       }
+
+      const {list} = result;
+      set({sceneList: list, ...(source === "release" ? {releaseError: null} : {})});
+      if (result.releaseVersion != null) get().setReleaseVersionNo(result.releaseVersion);
       scheduleScenePrefetch(projectId, list, source);
       return list;
     } catch (err: unknown) {
@@ -301,20 +288,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       }))?.trim();
       if (!sceneName) return;
 
-      const payload = {name: sceneName, project_id: currentProject.id};
-
-      const res = await fetch("/api/editor/scene", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Ошибка ${res.status}: ${text}`);
-      }
-
-      const newScene = await res.json();
+      const newScene = await requestCreateScene(sceneName, currentProject.id);
 
       set({
         scene: newScene,
