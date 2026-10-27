@@ -4,13 +4,15 @@ import type {AutobindReport} from "@/types/autobind.types";
 // переедут в core/project вместе с остальным lib (шаг 8)
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {
-  createRelease, NoProdReleaseError, parseRuntimeInfo, putInOperation, setProdRelease, type CreatedRelease,
+  createRelease, NoProdReleaseError, putInOperation, setProdRelease, type CreatedRelease,
 } from "@/lib/editor/releasesApi";
 import {clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import {rememberProject} from "@/lib/editor/projectMemory";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
+import {runtimeInfoPatch, saveBeforeProjectAction} from "../projectActions";
+import {requestAutobind, requestCreateProject, requestProjectList, requestRuntimeInfo} from "../../api/projects";
 import {
   deleteComponentsRequest, discardVersionPreview, getErrorMessage, hasUnsavedWork, parseBackendErrorMessage,
 } from "../editorStoreInternals";
@@ -21,7 +23,7 @@ import {
  *
  * Слайс — часть единого `useEditorStore` (docs/architecture.md, шаг 6). Смена проекта
  * сбрасывает документ и сцены, выпуск зовёт сохранение, — поэтому зависимости здесь весь
- * `EditorState`. Код перенесён без изменений.
+ * `EditorState`. Запросы — `api/projects.ts`, общие куски действий — `model/projectActions.ts`.
  */
 export interface ProjectsSlice {
   currentProject: EditorProject | null;
@@ -71,14 +73,10 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
 
   loadProjectList: async () => {
     try {
-      const res = await fetch("/api/editor/projects");
+      const result = await requestProjectList();
+      if (!result.ok) throw new Error(parseBackendErrorMessage(result.status, result.text));
 
-      if (!res.ok) {
-        throw new Error(parseBackendErrorMessage(res.status, await res.text().catch(() => "")));
-      }
-
-      const json = await res.json();
-      const projects = normalizeProjectList(json);
+      const projects = normalizeProjectList(result.data);
       set({projectList: projects});
       return projects;
     } catch (err: unknown) {
@@ -93,14 +91,9 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    */
   loadProjectRuntimeFlag: async (projectId: number) => {
     try {
-      const res = await fetch(`/api/editor/projects/${projectId}/runtime`);
-      if (!res.ok) return;
-      const info = parseRuntimeInfo(await res.json().catch(() => null));
+      const info = await requestRuntimeInfo(projectId);
       if (!info) return;
-      set(state => ({
-        projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
-        projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
-      }));
+      set(state => runtimeInfoPatch(state, projectId, info));
     } catch (err: unknown) {
       console.error(err);
     }
@@ -110,10 +103,8 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    * разрушительный — гасит открытую схему, элементы, список сцен и историю undo.
    */
   setProjectInOperation: async (projectId: number, inOperation: boolean) => {
-    const adopt = (info: {inOperation: boolean; prodVersionNo: number | null}) => set(state => ({
-      projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
-      projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
-    }));
+    const adopt = (info: {inOperation: boolean; prodVersionNo: number | null}) =>
+      set(state => runtimeInfoPatch(state, projectId, info));
     try {
       let info;
       try {
@@ -142,17 +133,13 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
     }
   },
   releaseProject: async (projectId, comment) => {
-    const {scene, currentProject} = get();
-    if (scene && currentProject?.id === projectId && hasUnsavedWork()) {
-      const ok = await confirmModal({
-        title: "Сохранить схему перед выпуском?",
-        description: "Выпуск снимает то, что сохранено на сервере. Несохранённые правки "
-          + "открытой схемы в него не попадут.",
-        confirmLabel: "Сохранить и выпустить",
-      });
-      if (!ok) return null;
-      if (!await get().exportScene({kind: "MANUAL"})) return null;
-    }
+    const proceed = await saveBeforeProjectAction(get, projectId, {
+      title: "Сохранить схему перед выпуском?",
+      description: "Выпуск снимает то, что сохранено на сервере. Несохранённые правки "
+        + "открытой схемы в него не попадут.",
+      confirmLabel: "Сохранить и выпустить",
+    });
+    if (!proceed) return null;
     try {
       const release = await createRelease(projectId, comment);
       if (release.unchanged) {
@@ -170,10 +157,7 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
   makeProdRelease: async (projectId, versionNo) => {
     try {
       const info = await setProdRelease(projectId, versionNo);
-      set(state => ({
-        projectRuntimeFlags: {...state.projectRuntimeFlags, [projectId]: info.inOperation},
-        projectProdVersions: {...state.projectProdVersions, [projectId]: info.prodVersionNo},
-      }));
+      set(state => runtimeInfoPatch(state, projectId, info));
       toast.success(info.inOperation
         ? `Выпуск №${versionNo} — prod: проект переключён, мониторы перечитают схемы`
         : `Выпуск №${versionNo} — prod: заработает при вводе в эксплуатацию`);
@@ -191,33 +175,26 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    * предыдущей версии, а не повторным запросом.
    */
   autobindProject: async (projectId: number, channelRoot: string) => {
-    const {scene, currentProject} = get();
+    const {currentProject} = get();
 
     // Автопривязка пишет новую версию сцены: несохранённая правка после неё упрётся в
     // расхождение версий (слияние или 409). Поэтому спрашиваем ДО запроса.
-    if (scene && currentProject?.id === projectId && hasUnsavedWork()) {
-      const ok = await confirmModal({
-        title: "Сохранить схему перед автопривязкой?",
-        description: "Автопривязка запишет новую версию схемы. Если не сохранить сейчас, "
-          + "текущие правки потом упрутся в расхождение версий.",
-        confirmLabel: "Сохранить и привязать",
-      });
-      if (!ok) return null;
-      if (!await get().exportScene({kind: "MANUAL"})) return null;
-    }
+    const proceed = await saveBeforeProjectAction(get, projectId, {
+      title: "Сохранить схему перед автопривязкой?",
+      description: "Автопривязка запишет новую версию схемы. Если не сохранить сейчас, "
+        + "текущие правки потом упрутся в расхождение версий.",
+      confirmLabel: "Сохранить и привязать",
+    });
+    if (!proceed) return null;
 
     try {
-      const res = await fetch(`/api/editor/projects/${projectId}/autobind`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({channel_root: channelRoot}),
-      });
-      if (!res.ok) {
+      const result = await requestAutobind(projectId, channelRoot);
+      if (!result.ok) {
         // Тело ошибки — `{timestamp, status, error, message}`; сырой JSON в тосте
         // пользователь читает как «ничего не произошло».
-        throw new Error(parseBackendErrorMessage(res.status, await res.text().catch(() => "")));
+        throw new Error(parseBackendErrorMessage(result.status, result.text));
       }
-      const report = await res.json() as AutobindReport;
+      const report = result.data;
 
       // Открытую сцену перечитываем, иначе на холсте останутся прежние теги, а ближайшее
       // сохранение затрёт автопривязку. Только для текущего проекта: `loadScene` берёт
@@ -246,18 +223,10 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
   },
   createProject: async (name: string) => {
     try {
-      const res = await fetch("/api/editor/project", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({name}),
-      });
+      const result = await requestCreateProject(name);
+      if (!result.ok) throw new Error(result.text);
 
-      if (!res.ok) {
-        throw new Error(await res.text().catch(() => "Ошибка создания проекта"));
-      }
-
-      const created = await res.json();
-      const newProject = toEditorProject(created);
+      const newProject = toEditorProject(result.data);
       if (!newProject) {
         throw new Error("Некорректный ответ при создании проекта");
       }
