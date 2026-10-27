@@ -10,7 +10,7 @@ import {
 } from "@/types/editorVersion.types";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {buildComponentTree} from "@/lib/buildComponentTree";
-import {dropScene, putScene} from "@/lib/editor/sceneCache";
+import {dropScene} from "@/lib/editor/sceneCache";
 import {
   fetchCurrentVersion,
   fetchVersionAt,
@@ -20,18 +20,16 @@ import {
 } from "@/lib/editor/versionsApi";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
-import {resolvePendingPropertyRefs} from "../propertyRefs";
 import {checkBeforeSave} from "../saveGuards";
+import {applySavedTree, replaceCanvasFromServer, withSaveLock} from "../saveFlow";
 import {requestSaveScene} from "../../api/saveScene";
 import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
 import {
-  applyServerComponents,
   canWriteCurrentProject,
   enterVersionPreview,
   getErrorMessage,
   markSceneSaved,
   parseBackendErrorMessage,
-  rebaseHistoryIds,
   refuseViewOnly,
   reportMergedChanges,
   VERSIONS_PAGE_SIZE,
@@ -152,14 +150,8 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     // изменения на следующем).
     if (opts?.silent && editorSession.saveInFlight) return false;
     // Ручное сохранение дожидается текущего сейва, чтобы затем сохранить
-    // уже актуальное (и id-сверенное после reload) состояние. Между выходом
-    // из цикла и присвоением замка ниже нет `await`, поэтому два вызова не
-    // могут захватить его одновременно.
-    while (editorSession.saveInFlight) {
-      await editorSession.saveInFlight.catch(() => {});
-    }
-
-    const run = (async (): Promise<boolean> => {
+    // уже актуальное (и id-сверенное после reload) состояние — см. withSaveLock.
+    return withSaveLock(async (): Promise<boolean> => {
       set({isSaving: true});
       try {
         const {elements, scene, currentProject, sceneVersion} = get();
@@ -250,73 +242,11 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         if (merged) reportMergedChanges(merged);
 
         if (scene?.id) {
-          // Дерево из ответа заменяет elements серверным (уже с id) и сбрасывает
-          // выделение/активную группу/состояния. При keepView (автосейв) снимаем их
-          // до подмены и восстанавливаем по ключам после — чтобы автосейв не «дёргал»
-          // пользователя. Подхватить серверные id обязательно: без них следующее
-          // сохранение снова вставит дубли (вариант А).
-          const prevSelected = opts?.keepView ? get().selectedIds : null;
-          const prevActive = opts?.keepView ? get().activeGroupKey : null;
-          const prevStates = opts?.keepView ? get().currentComponentStateByElementKey : null;
-
-          // Сама подмена не должна становиться шагом undo: elements лишь заменяются
-          // серверными. pause/resume — тот же приём, что у addTags/editProperty
-          // для изменений, синхронизированных с сервером.
-          const temporal = editorStore().temporal.getState();
-          temporal.pause();
-          try {
-            if (savedVersion != null && savedComponents.length) {
-              // Берём дерево ИЗ ОТВЕТА, а не перезапрашиваем сцену: повторный GET мог
-              // бы вернуть более свежую версию, чем та, чей version_no мы только что
-              // записали в sceneVersion, — база разъехалась бы с холстом. Заодно
-              // экономится round-trip на каждом сохранении.
-              //
-              // Условие на version_no не косметика: это признак того, что бэкенд
-              // ответил по контракту. Пришёл ответ без номера версии — форму дерева
-              // в нём никто не гарантировал, доверять ему холст нельзя, и мы уходим
-              // в честную перезагрузку сцены.
-              applyServerComponents(savedComponents, scene);
-              if (currentProject) {
-                putScene(
-                  currentProject.id,
-                  {...(scene as unknown as Record<string, unknown>), children: savedComponents},
-                  savedVersion,
-                );
-              }
-            } else {
-              await get().loadScene(scene.id, {keepHistory: true});
-            }
-          } finally {
-            editorStore().temporal.getState().resume();
-          }
-
-          // История пережила сохранение — значит, откатиться можно и «за» точку сейва.
-          // Снимки, снятые до сохранения, содержат id:null у новых элементов, и
-          // следующее сохранение вставило бы их повторно (дубли на сервере).
-          // Переносим присвоенные сервером id в стек по ключам.
-          // Свойства только что получили серверные номера — раздаём их ссылкам,
-          // которые адресовали свойство парой «ключ элемента + имя». До сохранения
-          // номера не существовало, и рантайму ссылка была не видна.
-          const withRefs = resolvePendingPropertyRefs(get().elements);
-          if (withRefs !== get().elements) {
-            const t = editorStore().temporal.getState();
-            t.pause();
-            set({elements: withRefs});
-            t.resume();
-          }
-
-          rebaseHistoryIds(get().elements);
-
-          if (opts?.keepView) {
-            const keys = new Set(get().elements.map(el => el.key));
-            set({
-              selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
-              activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
-              currentComponentStateByElementKey: Object.fromEntries(
-                Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),
-              ),
-            });
-          }
+          await applySavedTree(
+            get, set, scene, currentProject?.id,
+            {components: savedComponents, versionNo: savedVersion},
+            opts?.keepView,
+          );
         }
 
         // Всё, что сейчас в elements, лежит на сервере — снимаем «грязный» флаг.
@@ -349,14 +279,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
       } finally {
         set({isSaving: false});
       }
-    })();
-
-    editorSession.saveInFlight = run;
-    try {
-      return await run;
-    } finally {
-      if (editorSession.saveInFlight === run) editorSession.saveInFlight = null;
-    }
+    });
   },
 
   // ── Версии документа ─────────────────────────────────────────────────────
@@ -497,11 +420,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     // откатывает его, а его ответ подменяет холст дореставрационным деревом — снаружи
     // это выглядит как «восстановление не сработало». Заодно замок сериализует два
     // восстановления подряд: побеждает нажатое последним, а не ответившее последним.
-    while (editorSession.saveInFlight) {
-      await editorSession.saveInFlight.catch(() => {});
-    }
-
-    const run = (async (): Promise<boolean> => {
+    return withSaveLock(async (): Promise<boolean> => {
       const {scene} = get();
       if (!scene?.id) return false;
 
@@ -534,24 +453,12 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         const projectId = get().currentProject?.id;
         if (projectId != null) dropScene(projectId, scene.id);
 
-        const temporal = editorStore().temporal.getState();
-        temporal.pause();
-        try {
-          if (trustResponse) {
-            applyServerComponents(restored.components, scene);
-            if (projectId != null) {
-              putScene(
-                projectId,
-                {...(scene as unknown as Record<string, unknown>), children: restored.components},
-                restored.version_no,
-              );
-            }
-          } else {
-            await get().loadScene(Number(scene.id), {keepHistory: true});
-          }
-        } finally {
-          editorStore().temporal.getState().resume();
-        }
+        await replaceCanvasFromServer(
+          get, scene, projectId,
+          trustResponse && restored.version_no != null
+            ? {components: restored.components, version: restored.version_no}
+            : null,
+        );
 
         // Стек undo помнит элементы ДО восстановления, часть из которых на сервере
         // уже не существует — оставлять его значит дать Ctrl+Z воскресить их.
@@ -573,14 +480,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         toast.error(getErrorMessage(err, "Не удалось восстановить версию"));
         return false;
       }
-    })();
-
-    editorSession.saveInFlight = run;
-    try {
-      return await run;
-    } finally {
-      if (editorSession.saveInFlight === run) editorSession.saveInFlight = null;
-    }
+    });
   },
   restorePreviousManualVersion: async () => {
     const sceneId = get().scene?.id;
