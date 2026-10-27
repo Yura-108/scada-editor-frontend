@@ -3,6 +3,7 @@ import {temporal} from "zundo";
 import type {EditorProject} from "@/lib/pickProjectsFromComponents";
 import {bindEditorStore} from "./editorStoreRef";
 import {bindActiveStateReader, bindSceneViewStore} from "@/core/scene";
+import {bindCurrentProjectStore} from "@/core/access";
 import {editorSession} from "./editorSession";
 import {createCameraSlice, type CameraSlice} from "./slices/camera.slice";
 import {createSelectionSlice, type SelectionSlice} from "./slices/selection.slice";
@@ -61,6 +62,8 @@ bindEditorStore(useEditorStore);
 bindActiveStateReader(() => useEditorStore.getState().currentComponentStateByElementKey);
 // Холст (core/canvas) подписывается на сцену через эту регистрацию (core/scene) — тем же стором.
 bindSceneViewStore(useEditorStore);
+// Права (core/access) читают текущий проект и список проектов через эту регистрацию.
+bindCurrentProjectStore(useEditorStore);
 
 /**
  * Подчищает выделение, когда выделенных элементов больше нет в `elements`.
