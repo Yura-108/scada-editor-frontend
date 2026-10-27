@@ -16,6 +16,13 @@ export const selectTriggerClassName = cn(
   "transition-colors duration-150"
 );
 
+/** Компактный список в полосе раздела: выбор проекта и схемы (PickerSelect). */
+export const toolbarSelectClassName = cn(
+  "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg",
+  "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
+  "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
+);
+
 /** Панель со списком опций */
 export const selectContentClassName = cn(
   "z-dropdown overflow-hidden rounded-xl border shadow-xl",

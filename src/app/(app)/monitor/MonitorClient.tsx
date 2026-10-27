@@ -11,6 +11,7 @@ import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
 import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {cn} from "@/shared/lib/cn";
+import {PickerSelect} from "@/shared/ui/PickerSelect";
 import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
 import {ProcedureHud} from "@/components/monitor/ProcedureHud";
 import {AutomationTaskPanel, countTaskProblems} from "@/components/monitor/AutomationTaskPanel";
@@ -184,12 +185,6 @@ export default function MonitorClient() {
   const statusView = STATUS_VIEW[scene ? status : "closed"];
   const isLive = !isArchive && status === "live";
 
-  const selectClasses = cn(
-    "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg",
-    "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
-    "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
-  );
-
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
       {/* Тонкий тулбар: проект / сцена / индикатор соединения */}
@@ -200,38 +195,28 @@ export default function MonitorClient() {
           Монитор
         </span>
 
-        <select
-          className={cn(selectClasses, "min-w-0 max-w-48 shrink")}
-          value={currentProject?.id ?? ""}
-          onChange={(e) => {
-            const project = projectList.find(p => p.id === Number(e.target.value)) ?? null;
-            setCurrentProject(project);
-          }}
-        >
-          <option value="" disabled>Проект…</option>
-          {/* Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
-              Пометка у рабочих была бы шумом — их большинство. */}
-          {projectList.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}{runtimeFlags[p.id] === false ? " — не в эксплуатации" : ""}
-            </option>
-          ))}
-        </select>
+        <PickerSelect
+          className="min-w-0 max-w-48 shrink"
+          ariaLabel="Проект"
+          placeholder="Проект…"
+          value={currentProject?.id ?? null}
+          // Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
+          // Пометка у рабочих была бы шумом — их большинство.
+          options={projectList.map(p => ({
+            value: p.id, label: p.name, hint: runtimeFlags[p.id] === false ? "не в эксплуатации" : undefined,
+          }))}
+          onChange={(id) => setCurrentProject(projectList.find(p => p.id === id) ?? null)}
+        />
 
-        <select
-          className={cn(selectClasses, "min-w-0 max-w-56 shrink")}
-          value={scene?.id ?? ""}
+        <PickerSelect
+          className="min-w-0 max-w-56 shrink"
+          ariaLabel="Схема"
+          placeholder="Схема…"
+          value={scene?.id != null ? Number(scene.id) : null}
           disabled={!currentProject}
-          onChange={(e) => {
-            const id = Number(e.target.value);
-            if (Number.isSafeInteger(id)) void loadScene(id);
-          }}
-        >
-          <option value="" disabled>Схема…</option>
-          {sceneList.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+          options={sceneList.map(s => ({value: s.id, label: s.name}))}
+          onChange={(id) => { if (Number.isSafeInteger(id)) void loadScene(id); }}
+        />
 
         <div className="flex-1" />
 

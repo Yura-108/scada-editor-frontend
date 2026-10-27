@@ -61,6 +61,7 @@ import type {
 } from "@/types/automation.types";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
+import {PickerSelect} from "@/shared/ui/PickerSelect";
 
 type Tab = "tasks" | "watchdog" | "history";
 
@@ -490,18 +491,18 @@ export default function AutomationClient() {
       {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
       <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
         <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Автоматизация</span>
-        <select
-          className="min-w-0 max-w-48 shrink bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
-          value={projectId ?? ""}
-          onChange={async e => {
-            const next = projectList.find(p => p.id === Number(e.target.value)) ?? null;
+        <PickerSelect
+          className="min-w-0 max-w-48 shrink"
+          ariaLabel="Проект"
+          placeholder="Проект…"
+          value={projectId ?? null}
+          options={projectList.map(p => ({value: p.id, label: p.name}))}
+          onChange={async id => {
+            const next = projectList.find(p => p.id === id) ?? null;
             // Черновик набора принадлежит проекту: смена проекта его выбрасывает.
             if (await confirmLeave()) setCurrentProject(next);
           }}
-        >
-          <option value="" disabled>Проект…</option>
-          {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        />
         {(Object.keys(TAB_LABELS) as Tab[]).map(key => (
           <button
             key={key}
