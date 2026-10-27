@@ -4,7 +4,7 @@
  * знают. Перенесены из useEditorStore без изменений (docs/architecture.md, шаг 6).
  */
 import {DiagramElement} from "@/types/editorElement.type";
-import {getElementIndex} from "@/lib/editor/elementIndex";
+import {getElementIndex} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {getDescendantKeys} from "./elementTree";
 

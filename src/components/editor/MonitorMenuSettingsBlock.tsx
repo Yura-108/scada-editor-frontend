@@ -3,7 +3,7 @@
 import React from "react";
 import {NumberInput} from "@/components/ui/NumberInput";
 import type {DiagramElement, MonitorMenuSettings} from "@/types/editorElement.type";
-import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/lib/editor/monitorMenu";
+import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/core/scene";
 import {isOpenableTrend, monitorActions, tagProperties} from "@/components/editor/canvas/buildMonitorMenu";
 import {ContextMenuPanel} from "@/components/editor/canvas/CanvasContextMenu";
 import type {CanvasMenuItem} from "@/components/editor/canvas/types";

@@ -8,7 +8,7 @@ import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {
   TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming,
-} from "@/lib/editor/trendSettings";
+} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
 
 interface Props {

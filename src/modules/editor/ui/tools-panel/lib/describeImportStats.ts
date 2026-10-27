@@ -1,4 +1,4 @@
-import type {ConturImportStats} from "@/lib/editor/conturImport";
+import type {ConturImportStats} from "@/core/scene";
 
 /**
  * Разбивка импорта по типам — она же приёмка: контрольные числа листа сверяются глазами,

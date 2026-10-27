@@ -1,7 +1,7 @@
 "use client";
 
 import {cn} from "@/shared/lib/cn";
-import {GRID} from "@/lib/utils";
+import {GRID} from "@/core/scene";
 import {NumberInput} from "@/components/ui/NumberInput";
 import {MIN_TRACK} from "@/lib/editor/tableLayout";
 import {useEditorStore} from "../../../../model/editorStore";

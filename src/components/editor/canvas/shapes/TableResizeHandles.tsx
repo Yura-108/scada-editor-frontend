@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { Rect } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { snap } from "@/lib/utils";
+import { snap } from "@/core/scene";
 import { useEditorStore } from "@/modules/editor";
 import { MIN_TRACK, resizeTrackAt, sameTracks, trackOffsets } from "@/lib/editor/tableLayout";
 import { MIN_SIZE, type ThemeColors } from "../types";

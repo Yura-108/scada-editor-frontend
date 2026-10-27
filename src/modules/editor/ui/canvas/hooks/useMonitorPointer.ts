@@ -1,8 +1,7 @@
 import { useCallback, type RefObject } from "react";
 import type Konva from "konva";
-import { getElementIndex } from "@/lib/editor/elementIndex";
+import {getElementIndex, readMonitorMenu} from "@/core/scene";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
-import { readMonitorMenu } from "@/lib/editor/monitorMenu";
 import { isRuntimeLive, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
 import { buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "@/components/editor/canvas/buildMonitorMenu";
 import type { DiagramElement } from "@/types/editorElement.type";

@@ -1,12 +1,12 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/shared/lib/createUuid";
-import {parseBindings} from "@/lib/parseBindings";
-import {parseEvents} from "@/lib/parseEvents";
+import {parseBindings} from "./parseBindings";
+import {parseEvents} from "./parseEvents";
 import type {PropertyCreateDto} from "@/types/tags.types";
 import type {MonitorMenuSettings, TrendSettings} from "@/types/editorElement.type";
-import {readMonitorMenu} from "@/lib/editor/monitorMenu";
-import {readTrendSettings} from "@/lib/editor/trendSettings";
-import {readMonitorView} from "@/lib/editor/monitorView";
+import {readMonitorMenu} from "../element/monitorMenu";
+import {readTrendSettings} from "../element/trendSettings";
+import {readMonitorView} from "../sheet/monitorView";
 
 type BackendStateDto = {
   id?: number | string;

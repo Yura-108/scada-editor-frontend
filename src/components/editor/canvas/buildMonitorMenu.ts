@@ -6,7 +6,7 @@ import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
 import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
 import { openTrendModal } from "@/components/monitor/TrendModal";
-import { trendPens } from "@/lib/editor/trendSettings";
+import { trendPens } from "@/core/scene";
 import type { MenuChoice } from "@/lib/runtime/eventScript";
 import type { CanvasMenuItem } from "./types";
 

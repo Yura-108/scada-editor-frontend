@@ -1,4 +1,4 @@
-import {snap} from "@/lib/utils";
+import {snap} from "@/core/scene";
 
 /**
  * Открывает системный проводник для выбора картинки и возвращает её как data URL

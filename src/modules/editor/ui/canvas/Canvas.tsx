@@ -7,11 +7,7 @@ import { Stage, Layer } from "react-konva";
 import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "../../model/editorStore";
-import { useRuntimeOverlayStore } from "@/core/scene";
-import { snap } from "@/lib/utils";
-import { resolveSheet } from "@/lib/editor/sheet";
-import { getChildElements, getElementIndex } from "@/lib/editor/elementIndex";
-import { selectVisibleRootKeys } from "@/lib/editor/viewportCulling";
+import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElementIndex, selectVisibleRootKeys, monitorViewFromCamera, resolveMonitorView} from "@/core/scene";
 import { sortByZIndex } from "@/lib/editor/zOrder";
 import { NON_TRANSFORMABLE } from "@/components/editor/canvas/useElementRenderState";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
@@ -31,7 +27,6 @@ import { useZoomControls } from "@/components/editor/canvas/hooks/useZoomControl
 import { useHoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
 import { usePendingPlacement } from "@/components/editor/canvas/hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "@/components/editor/canvas/MonitorInteractionLayer";
-import { monitorViewFromCamera, resolveMonitorView } from "@/lib/editor/monitorView";
 import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
 import type { EditorRenderContext } from "@/components/editor/canvas/types";
 import type { CanvasMenuState } from "./types";

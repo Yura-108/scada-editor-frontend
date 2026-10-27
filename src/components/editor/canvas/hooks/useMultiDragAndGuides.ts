@@ -1,7 +1,6 @@
 import { RefObject, useCallback, useRef, useState } from "react";
 import Konva from "konva";
-import { snap } from "@/lib/utils";
-import { getElementBoundsRendered } from "@/lib/getElementBounds";
+import {snap, getElementBoundsRendered} from "@/core/scene";
 import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "@/lib/editor/smartGuides";
 import { DiagramElement } from "@/types/editorElement.type";
 import { beginHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";

@@ -1,9 +1,9 @@
 import {DiagramElement, GroupElement} from "@/types/editorElement.type";
-import {absolutePosition} from "@/lib/getAbsolutePosition";
-import {getElementBounds, getElementBoundsRendered} from "@/lib/getElementBounds";
-import {getRenderedElement} from "@/lib/getRenderedElement";
-import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
+import {absolutePosition} from "./getAbsolutePosition";
+import {getElementBounds, getElementBoundsRendered} from "./getElementBounds";
+import {getRenderedElement} from "../render/getRenderedElement";
+import {ElementIndex, getElementIndex, resolveParentElement} from "../element/elementIndex";
+import {shiftElementPositions} from "./shiftPositions";
 
 /**
  * Отступ рамки группы от её содержимого. Ноль — рамка идёт ровно по контуру членов.

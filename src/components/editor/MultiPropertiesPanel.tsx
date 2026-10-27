@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {elementPropertyMap, Z_INDEX_FIELD} from "@/constants/propertiesPanel";
 import {useEditorStore} from "@/modules/editor";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement} from "@/core/scene";
 import {ColorField} from "@/components/ui/ColorField";
 import {NumberInput} from "@/components/ui/NumberInput";
 

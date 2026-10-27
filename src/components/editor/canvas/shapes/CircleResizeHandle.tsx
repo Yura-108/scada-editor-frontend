@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { GRID } from "@/lib/utils";
+import { GRID } from "@/core/scene";
 import { useEditorStore } from "@/modules/editor";
 
 interface CircleResizeHandleProps {

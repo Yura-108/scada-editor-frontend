@@ -2,9 +2,8 @@ import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
 import {paletteItems as paletteItemsStatic} from "@/constants/palette";
 import {toast} from "sonner";
-import {buildPaletteComponentTree} from "@/lib/buildComponentTree";
+import {buildPaletteComponentTree, transformElements} from "@/core/scene";
 import {findTemplateRoot} from "@/lib/editor/templateRoot";
-import transformElements from "@/lib/transformElements";
 import {DiagramElement} from "@/types/editorElement.type";
 import {isSaveConflictBody, SaveConflictError} from "@/types/editorVersion.types";
 

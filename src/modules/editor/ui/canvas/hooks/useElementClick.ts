@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { resolveClickTarget as resolveClickTargetFn } from "@/lib/editor/resolveClickTarget";
-import { getElementIndex } from "@/lib/editor/elementIndex";
+import { getElementIndex } from "@/core/scene";
 import { useEditorStore } from "../../../model/editorStore";
 
 /**

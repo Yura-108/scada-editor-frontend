@@ -1,4 +1,4 @@
-import {snap, GRID} from "@/lib/utils";
+import {snap, GRID, getElementBoundsRendered} from "@/core/scene";
 import {DiagramElement} from "@/types/editorElement.type";
 import {
   detachServerBindingIds,
@@ -8,8 +8,7 @@ import {
 } from "@/lib/editor/detachServerIds";
 import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {toast} from "sonner";
-import {getElementBoundsRendered} from "@/lib/getElementBounds";
-import type {ConturImportStats} from "@/lib/editor/conturImport";
+import type {ConturImportStats} from "@/core/scene";
 import {getCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";

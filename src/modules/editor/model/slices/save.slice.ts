@@ -2,7 +2,7 @@ import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
 import type {SaveConflict, SaveKind} from "@/types/editorVersion.types";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {buildComponentTree} from "@/lib/buildComponentTree";
+import {buildComponentTree} from "@/core/scene";
 import {dropScene} from "@/lib/editor/sceneCache";
 import {editorSession} from "../editorSession";
 import {checkBeforeSave} from "../saveGuards";

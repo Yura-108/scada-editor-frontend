@@ -1,5 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import { getRenderedElement } from "../render/getRenderedElement";
 
 /**
  * Абсолютная мировая позиция элемента с учётом rendered-координат (state overrides)

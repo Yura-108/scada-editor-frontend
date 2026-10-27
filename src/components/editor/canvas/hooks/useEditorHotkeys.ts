@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GRID } from "@/lib/utils";
+import { GRID } from "@/core/scene";
 import { useEditorStore } from "@/modules/editor";
 import { useModalStore } from "@/store/modalStore";
 import { beginHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";

@@ -1,5 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { getElementBoundsRendered } from "@/lib/getElementBounds";
+import { getElementBoundsRendered } from "@/core/scene";
 
 export interface GuideCandidates {
   /** Вертикальные линии (координаты X): левый край / центр / правый край соседей. */

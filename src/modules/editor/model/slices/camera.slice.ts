@@ -1,8 +1,6 @@
 import type {DiagramElement, ElementType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с геометрией (шаг 8)
-import {getElementIndex} from "@/lib/editor/elementIndex";
-import {getElementBoundsRendered} from "@/lib/getElementBounds";
-import {cameraToReveal} from "@/lib/editor/revealCamera";
+import {getElementIndex, getElementBoundsRendered, cameraToReveal} from "@/core/scene";
 
 /**
  * Зона «Камера и холст» стора редактора: что видно на холсте и чем «вооружён» курсор.

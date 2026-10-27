@@ -12,7 +12,7 @@ returns a bare array with no total, so "more" means "the last page was full").
   `pen2`, …). Its look lives in `element.trend` (`{window, step, min, max, pens: {<name>: {color,
   width, k}}}`) — a base key like `monitorMenu`: in `BASE_ONLY_KEYS`, in `STRUCTURAL_KEYS` of
   `transformElements`, restored from the default image (composition descriptors too), clamped by
-  `readTrendSettings` (`lib/editor/trendSettings.ts`). A `pens` entry without a property is
+  `readTrendSettings` (`core/scene/element/trendSettings.ts`). A `pens` entry without a property is
   ignored.
 - **One Y axis per trend** (`docs/contract/2026-09-29-trend-common-scale-contract.md`): `trend.min/max`
   is the common scale (a missing bound is auto over all pens), and a pen's `k` and `b` bring its

@@ -44,9 +44,9 @@ leaves whose live position sits in overrides.
 ## Coordinates, states, rendering
 
 - Child coords are **local to the parent container**. Absolute = sum of rendered x/y up the
-  `parentKey` chain (`src/lib/editor/getAbsoluteRenderedPos.ts`).
+  `parentKey` chain (`src/core/scene/geometry/getAbsoluteRenderedPos.ts`).
 - **Groups store x/y/w/h in the base element. Leaf elements store visual props in per-state
-  `overrides`.** `getRenderedElement(el)` (`src/lib/getRenderedElement.ts`) returns
+  `overrides`.** `getRenderedElement(el)` (`src/core/scene/render/getRenderedElement.ts`) returns
   `{...el, ...currentState.overrides}` — **always render/measure/position via it, never raw `el`.**
   When a leaf is moved, `updateElementVisual` writes x/y to the current state's overrides, NOT base.
   This is why anything that shifts position (copy/paste offset, etc.) must touch overrides too.
@@ -126,7 +126,7 @@ leaves whose live position sits in overrides.
   from the unstripped image. Leave it in overrides and `{...base, ...overrides}` silently
   resurrects the old layer on the next save. Panel field: `Z_INDEX_FIELD` in
   `basePropertySchema` (every type) and prepended in `MultiPropertiesPanel`.
-- **Sheet (лист)**: the scene has a real size, `src/lib/editor/sheet.ts` —
+- **Sheet (лист)**: the scene has a real size, `src/core/scene/sheet/sheet.ts` —
   `resolveSheet(elements)` (cached by array ref, like `getElementIndex`) reads it from the
   `canvas: {width, height}` block of the service element (`visible:false`, `type:"meta"` —
   CONTUR's `contur_meta`), falling back to `DEFAULT_SHEET` (A3, 11900×8400). **Derived, never
@@ -138,7 +138,7 @@ leaves whose live position sits in overrides.
   clamp — nothing bounds coordinates. `CANVAS_WIDTH/HEIGHT = 5000` are gone.
 - Zoom UI: `canvas/ZoomControls.tsx` (±20% around viewport center, fit-to-content,
   **fit-to-sheet**, 100%); absolute camera setter `setCamera(x, y, zoom)` in the store.
-  Zoom clamp **[0.03, 3]**, single source `src/lib/editor/zoomLimits.ts` (it used to be two
+  Zoom clamp **[0.03, 3]**, single source `src/core/scene/sheet/zoomLimits.ts` (it used to be two
   independent copies that drifted); 0.03 because A0 (21520×15240) is 0.039 in a laptop window.
 - **Grid step follows zoom** (`gridPattern.ts`): the pattern lives in world coords, so at
   fit-A0 a 20-unit cell is ~1px of grey mush. ≥0.25 → fine (20) + `GRID_MAJOR` (200);
@@ -195,7 +195,7 @@ leaves whose live position sits in overrides.
 
 ## Snapping (GRID = 20)
 
-`snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/lib/utils.ts`). **Snap in world coords.** Konva's
+`snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/core/scene/geometry/grid.ts`). **Snap in world coords.** Konva's
 `e.target.x()` is already parent-local/world, so `snap(e.target.x())` on drag is correct. Drops
 convert screen→world before placing.
 
@@ -276,14 +276,14 @@ special-cases `orientation` (progress bar) to **swap w/h** so vertical bars beco
 ## Serialization round-trip (bake ↔ unbake)
 
 Backend stores each component's visual state as an **opaque JSON string** in `states[].image`.
-- **Save** — `src/lib/buildComponentTree.ts` (from `exportScene`). `buildBaseImage` serializes an
+- **Save** — `src/core/scene/serialization/buildComponentTree.ts` (from `exportScene`). `buildBaseImage` serializes an
   element by **deleting** a fixed set of structural keys (id, key, type, parentId/Key, children,
   composition, scripts, bindings, properties, states, label) and JSON-stringifying the rest. So
   **new visual props auto-persist** — no change needed. Component `composition` primitives are baked
   into each state's `image` as a `composition:[descriptor]` array; only `children` become nested nodes.
   `buildShapeDescriptor` explicitly re-adds the primitive's `scripts`/`bindings`/`properties` to the
   descriptor (they'd otherwise be deleted by `buildBaseImage` and silently lost on round-trip).
-- **Load** — `src/lib/transformElements.ts` (from `loadScene`). Flattens the tree, **unbakes**
+- **Load** — `src/core/scene/serialization/transformElements.ts` (from `loadScene`). Flattens the tree, **unbakes**
   `image.composition` back into flat primitives re-parented into the component, strips structural
   keys from overrides. Base x/y/w/h come from the unstripped default image. The unbake restores
   `scripts`/`bindings`/`properties` from the descriptor and strips them from visual overrides —
@@ -373,7 +373,7 @@ unbounded.
 |---|---|
 | Store (assembly + undo config) / actions by zone | `src/modules/editor/model/editorStore.ts` / `model/slices/*.slice.ts`; pure helpers in `model/elementTree.ts`, `model/elementStates.ts`, `model/editorStoreInternals.ts` |
 | Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
-| Rendered element (base + active overrides) | `src/lib/getRenderedElement.ts` |
+| Rendered element (base + active overrides) | `src/core/scene/render/getRenderedElement.ts` |
 | Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
 | Leaf dispatch + generic fallback | `src/components/editor/canvas/shapes/ShapeElement.tsx` |
 | Group/component recursion | `src/components/editor/canvas/shapes/GroupNode.tsx` |
@@ -382,8 +382,8 @@ unbounded.
 | Registry + property schemas | `src/constants/propertiesPanel.ts` |
 | Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |
 | Drop handling | `src/app/editor/EditorClient.tsx` |
-| Save / load serialization | `src/lib/buildComponentTree.ts`, `src/lib/transformElements.ts` |
-| Snapping/GRID | `src/lib/utils.ts` |
+| Save / load serialization | `src/core/scene/serialization/buildComponentTree.ts`, `src/core/scene/serialization/transformElements.ts` |
+| Snapping/GRID | `src/core/scene/geometry/grid.ts` |
 
 ## Gotchas checklist (fast recall)
 

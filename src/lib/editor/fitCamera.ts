@@ -1,6 +1,5 @@
-import { clampZoom } from "@/lib/editor/zoomLimits";
-import type { Camera } from "@/lib/editor/revealCamera";
-import type { SheetSize } from "@/lib/editor/sheet";
+import { clampZoom } from "@/core/scene";
+import type {Camera, SheetSize} from "@/core/scene";
 
 /** Запас вокруг листа, экранных пикселей. */
 const DEFAULT_PAD = 40;

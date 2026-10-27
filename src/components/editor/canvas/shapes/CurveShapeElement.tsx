@@ -3,8 +3,7 @@
 import React from "react";
 import { Group, Arrow, Line } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElementWith } from "@/lib/getRenderedElement";
-import { parseDashArray } from "@/lib/editor/dashArray";
+import {getRenderedElementWith, parseDashArray} from "@/core/scene";
 import { parseCurvePoints, CURVE_POINTS_LENGTH, curvePointsBounds } from "@/lib/editor/curvePoints";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";

@@ -18,7 +18,7 @@ import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs} fr
 import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
 import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
 import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement} from "@/core/scene";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
 
 const EVENT_LABEL: Record<ElementEventName, string> = {

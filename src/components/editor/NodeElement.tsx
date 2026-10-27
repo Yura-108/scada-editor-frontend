@@ -11,7 +11,7 @@ import Circle from "@/components/ui/SVGComponents/Circle";
 import Rectangle from "@/components/ui/SVGComponents/Rectangle";
 import Polygon from "@/components/ui/SVGComponents/Polygon";
 import Path from "@/components/ui/SVGComponents/Path";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement} from "@/core/scene";
 
 
 type Props = {

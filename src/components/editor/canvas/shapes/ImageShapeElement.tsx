@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect, Text, Image as KonvaImage } from "react-konva";
 import { useImage } from "react-konva-utils";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/core/scene";
 import { pickImageFile, fitImageSize } from "@/lib/pickImageFile";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";

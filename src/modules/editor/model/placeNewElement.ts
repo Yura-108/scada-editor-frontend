@@ -1,7 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {getElementIndex} from "@/lib/editor/elementIndex";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
-import {getAbsoluteRenderedPos} from "@/lib/editor/getAbsoluteRenderedPos";
+import {getElementIndex, shiftElementPositions, getAbsoluteRenderedPos} from "@/core/scene";
 import {isComponentEl, isGroup, isLeafPrimitive, recomputeAncestorBounds} from "./elementTree";
 import {syncMemberStates} from "./elementStates";
 

@@ -4,14 +4,13 @@ import React from "react";
 import { Group, Rect, Text } from "react-konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import {getRenderedElementWith, measureText} from "@/core/scene";
 import { useEditorStore } from "@/modules/editor";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";
 import { SelectionOutline } from "./SelectionOutline";
 import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
-import { measureText } from "@/lib/editor/measureText";
 
 export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, stateId, runtime }: ShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;

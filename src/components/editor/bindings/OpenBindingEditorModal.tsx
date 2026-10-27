@@ -18,7 +18,7 @@ import {
 } from "@/lib/runtime/bindingScope";
 import {compileBinding, executeBinding, type BindingIntent} from "@/lib/runtime/executeBinding";
 import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement} from "@/core/scene";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 
 interface BindingEditorProps {

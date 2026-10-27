@@ -1,5 +1,5 @@
-import { clampZoom } from "@/lib/editor/zoomLimits";
-import type { Camera } from "@/lib/editor/revealCamera";
+import { clampZoom } from "@/core/scene";
+import type { Camera } from "@/core/scene";
 
 /**
  * Положение камеры по сценам — в localStorage браузера.
