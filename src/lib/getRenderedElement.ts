@@ -1,8 +1,8 @@
 import {DiagramElement} from "@/types/editorElement.type";
-// Стор — через ссылку, а не импортом: этот файл подтягивает геометрия слайсов стора
-// (camera.slice → getElementBounds → сюда), и импорт стора замкнул бы цикл — стор вызвал бы
-// createCameraSlice раньше, чем camera.slice догрузился (`Cannot access … before initialization`).
-import {editorStore} from "@/modules/editor/model/editorStoreRef";
+// Активные состояния — через регистрацию, а не импортом стора: этот файл подтягивает геометрия
+// слайсов стора (camera.slice → getElementBounds → сюда), и импорт стора замкнул бы цикл
+// (`Cannot access … before initialization`); к тому же core не знает модулей.
+import {readActiveStates} from "@/core/scene/activeStates";
 import {useRuntimeOverlayStore} from "@/core/scene";
 
 type Overrides = Record<string, unknown>;
@@ -74,7 +74,7 @@ export function getRenderedElementWith(
  * Годится для расчётов вне рендера (геометрия, сериализация, направляющие).
  */
 export function getRenderedElement(el: DiagramElement): DiagramElement {
-  const {currentComponentStateByElementKey} = editorStore().getState();
+  const currentComponentStateByElementKey = readActiveStates();
   return getRenderedElementWith(
     el,
     currentComponentStateByElementKey[el.key],
