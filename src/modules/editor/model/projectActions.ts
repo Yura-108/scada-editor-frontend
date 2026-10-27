@@ -1,4 +1,4 @@
-import type {ProjectRuntimeInfo} from "@/lib/editor/releasesApi";
+import type {ProjectRuntimeInfo} from "@/core/project";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import type {EditorState} from "./editorStore";
 import {hasUnsavedWork} from "./editorStoreInternals";

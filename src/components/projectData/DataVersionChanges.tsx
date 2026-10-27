@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {loadVersionContent} from "@/lib/editor/versionContentCache";
+import {loadVersionContent} from "@/core/project";
 import {
   type DataVersionDiff,
   diffDataVersions,

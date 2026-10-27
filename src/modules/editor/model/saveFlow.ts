@@ -1,6 +1,6 @@
 import type {SceneType} from "@/types/editorElement.type";
 // переедет в core/scene вместе с остальным lib (шаг 8)
-import {putScene} from "@/lib/editor/sceneCache";
+import {putScene} from "@/core/project";
 import type {EditorState} from "./editorStore";
 import {editorSession} from "./editorSession";
 import {editorStore} from "./editorStoreRef";

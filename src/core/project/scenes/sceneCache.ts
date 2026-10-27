@@ -1,4 +1,4 @@
-import {fetchCurrentVersion} from "@/lib/editor/versionsApi";
+import {fetchCurrentVersion} from "../versions/versionsApi";
 
 /**
  * Кэш сцен в памяти вкладки: переход между схемами не должен каждый раз ждать, пока

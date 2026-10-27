@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from "react";
 import {Undo2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
-import {loadVersionContent} from "@/lib/editor/versionContentCache";
+import {loadVersionContent} from "@/core/project";
 import {compactButton} from "@/components/automation/formStyles";
 import {
   type AutomationVersionDiff,

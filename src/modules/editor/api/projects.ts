@@ -1,6 +1,6 @@
 import type {AutobindReport} from "@/types/autobind.types";
 // переедет в core/project вместе с остальным lib (шаг 8)
-import {parseRuntimeInfo, type ProjectRuntimeInfo} from "@/lib/editor/releasesApi";
+import {parseRuntimeInfo, type ProjectRuntimeInfo} from "@/core/project";
 
 /**
  * Ответ запроса: данные или отказ сервера (статус и текст тела). Текст ошибки для

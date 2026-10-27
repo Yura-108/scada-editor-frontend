@@ -1,6 +1,6 @@
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {releaseVersionOf, type SceneSource} from "@/lib/editor/sceneCache";
+import {releaseVersionOf, type SceneSource} from "@/core/project";
 
 export interface SceneListItem {
   id: number;

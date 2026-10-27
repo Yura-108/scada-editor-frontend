@@ -7,7 +7,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore, useInvalidateRecipes} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
-import {fetchVersions} from "@/lib/editor/versionsApi";
+import {fetchVersions} from "@/core/project";
 import {readBackendError} from "@/core/access";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import type {Recipe} from "@/types/recipe.types";

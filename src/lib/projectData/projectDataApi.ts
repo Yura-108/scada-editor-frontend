@@ -4,7 +4,7 @@ import type {
   ProjectDataValidationError,
 } from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
-import {fetchVersions} from "@/lib/editor/versionsApi";
+import {fetchVersions} from "@/core/project";
 import {errorTextFromJson} from "@/core/access";
 
 /** Ошибка сохранения таблиц: список нарушений проверки или конфликт версий. */

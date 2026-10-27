@@ -1,5 +1,5 @@
 import type {VersionDocType} from "@/types/editorVersion.types";
-import {fetchVersionContent} from "@/lib/editor/versionsApi";
+import {fetchVersionContent} from "./versionsApi";
 
 /**
  * Содержимое версий для просмотра истории. Версия неизменна, поэтому кэш живёт всё время

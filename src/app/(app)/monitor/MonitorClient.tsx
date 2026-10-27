@@ -21,7 +21,7 @@ import {SceneTabs} from "@/components/editor/SceneTabs";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {restoreLastProject} from "@/lib/editor/lastProject";
-import {lastMonitorScene, rememberMonitorScene} from "@/lib/editor/projectMemory";
+import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;

@@ -2,7 +2,7 @@
 
 import React from "react";
 import {FolderOpen, Lock} from "lucide-react";
-import type {EditorProject} from "@/lib/pickProjectsFromComponents";
+import type {EditorProject} from "@/core/project";
 
 interface Props {
   listLoaded: boolean;

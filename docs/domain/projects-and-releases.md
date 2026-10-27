@@ -40,7 +40,7 @@ Pinned tabs live in the project's `image` as `pinnedScenes: {v: 1, ids, recipesI
 every user of the project. The image is **read from the project list only**
 (`GET /api/editor/components/projects` returns `image` per project, always present, `null` when
 empty) and **written** with `PUT /api/editor/projects/{id}/image` — an opaque JSON, no document
-versions, no release (`src/lib/editor/projectSettingsApi.ts`). The backend keeps it in its own
+versions, no release (`src/core/project/settings/projectSettingsApi.ts`). The backend keeps it in its own
 column (`editor.project_runtime.image`), not in the project's states, so it is **not** in
 `GET /components/{projectId}` nor in a release tree. Limit: 16 KB serialized (400 above that).
 

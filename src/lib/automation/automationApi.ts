@@ -5,7 +5,7 @@ import type {
   AutomationValidationError,
 } from "@/types/automation.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
-import {fetchVersions} from "@/lib/editor/versionsApi";
+import {fetchVersions} from "@/core/project";
 import {errorTextFromJson} from "@/core/access";
 
 /** Ошибка сохранения набора: список нарушений проверки или конфликт версий. */

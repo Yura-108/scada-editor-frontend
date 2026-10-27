@@ -1,6 +1,6 @@
 import {create} from "zustand/react";
 import {temporal} from "zundo";
-import type {EditorProject} from "@/lib/pickProjectsFromComponents";
+import type {EditorProject} from "@/core/project";
 import {bindEditorStore} from "./editorStoreRef";
 import {bindActiveStateReader, bindSceneViewStore} from "@/core/scene";
 import {bindCurrentProjectStore} from "@/core/access";

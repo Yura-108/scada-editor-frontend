@@ -5,7 +5,7 @@ import type {
   VersionListQuery,
   VersionSummary,
 } from "@/types/editorVersion.types";
-import {rootComponentsOf} from "@/lib/editor/documentComponents";
+import {rootComponentsOf} from "./documentComponents";
 
 /**
  * Клиент истории версий документа (сцены и шаблоны) — тонкая обёртка над нашими

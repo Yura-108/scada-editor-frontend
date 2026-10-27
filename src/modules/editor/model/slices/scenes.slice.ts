@@ -2,11 +2,7 @@ import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {
-  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, SceneLoadError,
-  type SceneSource,
-} from "@/lib/editor/sceneCache";
-import {fetchCurrentVersion} from "@/lib/editor/versionsApi";
+import {dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, SceneLoadError, type SceneSource, fetchCurrentVersion} from "@/core/project";
 import {promptModal} from "@/components/ui/ConfirmModal";
 import {requestCreateScene, requestSceneList} from "../../api/scenes";
 import {editorSession} from "../editorSession";

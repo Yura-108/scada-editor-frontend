@@ -43,7 +43,7 @@ app/api  →  server  →  shared
 | `shared/api` | `fetchJson`, разбор ошибок | Транспорт без конкретных эндпоинтов |
 | `core/scene` | `DiagramElement`, `getRenderedElement`, геометрия, лист, `buildComponentTree`/`transformElements` — без React и Konva | Нужно и редактору, и монитору |
 | `core/canvas` | фигуры Konva, `CanvasNode`, `useElementRenderState`, тренды | Холст, общий для редактора и монитора |
-| `core/project` | проект, список сцен, `sceneSource`, кэш сцен | Общая «открытая сцена» |
+| `core/project` | список проектов, кэш сцен, версии, выпуски, закреплённые сцены, настройки проекта | Общая «открытая сцена» |
 | `core/access` | `grantOf`, `projectAccess`, `accessErrors`, `actionAccess`, `sessionUser` | Права, общие для всех модулей |
 | `modules/editor` | панели, палитра, инструменты, выделение, сохранение и версии | Только редактор |
 | `modules/monitor` | `useRuntimeEngine`, WS, процедуры, архив, тренды-модалки | Только монитор |
@@ -253,7 +253,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 12 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | готово для модуля редактора: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace` (`modules/editor/ui/`) и все слайсы стора. Крупные файлы других областей (`useRuntimeEngine`, `AutomationClient`, `DataClient`, …) — вместе с их переездом на шаге 8 |
-| 8 | Перенести модули в `src/modules/*` | в работе: `core/scene` — отображаемый вид, геометрия, лист и вид, сериализация, чистые данные элементов (активные состояния — `bindActiveStateReader`, срез сцены — `bindSceneViewStore`); `core/canvas` — фигуры Konva (React/Konva только здесь, стор их не тянет); `core/access` — права (текущий проект — `bindCurrentProjectStore`). Дальше: `core/project`, области |
+| 8 | Перенести модули в `src/modules/*` | в работе: `core/scene` — отображаемый вид, геометрия, лист и вид, сериализация, чистые данные элементов (активные состояния — `bindActiveStateReader`, срез сцены — `bindSceneViewStore`); `core/canvas` — фигуры Konva (React/Konva только здесь, стор их не тянет); `core/access` — права (текущий проект — `bindCurrentProjectStore`); `core/project` — проекты, кэш сцен, версии, выпуски, закреплённые сцены, настройки. Не перенесены (завязаны на редактор): `lastProject`, `openScene`, `usePinnedScenesStore`. Дальше: области |
 
 ### Что осталось после шага 3
 
