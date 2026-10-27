@@ -21,6 +21,7 @@ import {
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
 import {resolvePendingPropertyRefs} from "../propertyRefs";
+import {checkBeforeSave} from "../saveGuards";
 import {requestSaveScene} from "../../api/saveScene";
 import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
 import {
@@ -28,13 +29,11 @@ import {
   canWriteCurrentProject,
   enterVersionPreview,
   getErrorMessage,
-  invalidProperties,
   markSceneSaved,
   parseBackendErrorMessage,
   rebaseHistoryIds,
   refuseViewOnly,
   reportMergedChanges,
-  sceneBelongsToCurrentProject,
   VERSIONS_PAGE_SIZE,
 } from "../editorStoreInternals";
 
@@ -163,46 +162,11 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     const run = (async (): Promise<boolean> => {
       set({isSaving: true});
       try {
-        const {elements, scene, currentProject, versionPreview, sceneVersion} = get();
+        const {elements, scene, currentProject, sceneVersion} = get();
 
-        if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-          if (!opts?.silent) toast.error("Сцена не принадлежит выбранному проекту");
-          return false;
-        }
-
-        // Свойства теперь уезжают вместе со сценой, поэтому одно незаполненное
-        // роняет сохранение ЦЕЛИКОМ («Property value_type is required for '…'»).
-        // Бэкенд называет только имя свойства — говорим сами, у какого элемента
-        // искать, и не тратим круг до сервера.
-        const invalid = invalidProperties(elements);
-        if (invalid.length) {
-          if (!opts?.silent) {
-            toast.error("Свойство заполнено не полностью", {
-              description: invalid.slice(0, 5).join("; ")
-                + (invalid.length > 5 ? ` и ещё ${invalid.length - 5}` : ""),
-              duration: 8_000,
-            });
-          }
-          return false;
-        }
-
-        // В режиме просмотра на холсте лежит СТАРАЯ версия. Сохранить её значит
-        // затереть текущую сцену чужим прошлым — молча и необратимо. Автосейв сюда
-        // приходит без участия человека, поэтому проверка именно здесь, а не в UI.
-        if (versionPreview) {
-          if (!opts?.silent) toast.error("Идёт просмотр версии — сохранение недоступно");
-          return false;
-        }
-
-        // `scene_id` обязателен в конверте `PUT`: тело описывает состав ИМЕННО этой
-        // сцены. Без числового id сохранять нельзя — сервер не поймёт, чей состав
-        // ему прислали, а угадывать здесь опаснее всего: тело читается как «вот
-        // сцена целиком», и промах адресом стёр бы чужую сцену.
-        const sceneId = Number(scene?.id);
-        if (!Number.isSafeInteger(sceneId)) {
-          if (!opts?.silent) toast.error("Сцена не сохранена на сервере — сохранять состав нечему");
-          return false;
-        }
+        // Сцена из проекта, свойства заполнены, не просмотр версии, есть числовой id.
+        const sceneId = checkBeforeSave(get(), opts?.silent);
+        if (sceneId == null) return false;
 
         const components = buildComponentTree(elements, String(scene?.id));
         const basedOnVersion = opts?.basedOnVersion ?? sceneVersion;
