@@ -1,6 +1,6 @@
 import type {ProjectGrant} from "@/types/access.types";
-import {levelRequiredText} from "@/lib/access/accessErrors";
-import {DIRECT_WRITE_LEVEL, operateLevelOf, requiredLevelOf} from "@/lib/access/grants";
+import {levelRequiredText} from "./accessErrors";
+import {DIRECT_WRITE_LEVEL, operateLevelOf, requiredLevelOf} from "./grants";
 
 /**
  * Можно ли оператору запустить действие в мониторе. Сервер проверяет то же самое (по

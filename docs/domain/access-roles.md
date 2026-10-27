@@ -11,13 +11,13 @@ here is convenience, never protection.
 
 - **Where rights come from.** `EditorProject.access` from the project list (the list itself only
   contains projects with at least one right; admins get full `access`). `grantOf(project, admin)`
-  (`lib/access/grants.ts`) is the only reader; hooks `useCurrentProjectGrant` /
-  `getCurrentProjectGrant` live in `lib/access/projectAccess.ts`. The admin flag is the JWT claim,
+  (`core/access/grants.ts`) is the only reader; hooks `useCurrentProjectGrant` /
+  `getCurrentProjectGrant` live in `core/access/projectAccess.ts`. The admin flag is the JWT claim,
   decoded server-side in `(app)/layout.tsx` and handed to `useSessionUserStore` by
   `SessionUserBootstrap` (the cookie is httpOnly). Rights change without a new token — never
   read them from the token.
 - **Denial bodies** are `{error: "FORBIDDEN", reason, requiredLevel?}` with no `message`;
-  `describeDenial` / `errorTextFromBody` / `errorTextFromJson` (`lib/access/accessErrors.ts`)
+  `describeDenial` / `errorTextFromBody` / `errorTextFromJson` (`core/access/accessErrors.ts`)
   translate them. Any new fetch error path must go through them or the toast shows «FORBIDDEN».
   `ACCESS_NOT_READY` (403) means "server is starting" — retry, not a denial.
 - **Global logout**: `authInterceptor.ts` wraps `window.fetch` at module load (in `providers.tsx`,

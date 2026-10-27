@@ -16,8 +16,7 @@ import {
   startProcedure,
 } from "@/lib/runtime/procedures";
 import {useProcedureLevels} from "@/modules/monitor";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
-import {actionDenialText} from "@/lib/runtime/actionAccess";
+import {useCurrentProjectGrant, actionDenialText} from "@/core/access";
 import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.types";
 
 /**

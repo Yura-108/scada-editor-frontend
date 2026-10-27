@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {readBackendError} from "@/lib/access/accessErrors";
+import {readBackendError} from "@/core/access";
 
 /** Те же пределы, что проверяет auth (`ChangePasswordDto`). */
 export const PASSWORD_MIN = 6;

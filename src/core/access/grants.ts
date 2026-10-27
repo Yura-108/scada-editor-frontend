@@ -1,5 +1,4 @@
 import {ADMIN_GRANT, NO_GRANT, type ProjectGrant} from "@/types/access.types";
-import type {EditorProject} from "@/lib/pickProjectsFromComponents";
 
 /**
  * Права текущего пользователя в проекте. Источник — поле `access` в списке проектов
@@ -9,7 +8,7 @@ import type {EditorProject} from "@/lib/pickProjectsFromComponents";
  *
  * Всё, что здесь спрятано, — удобство: отказывает бэкенд.
  */
-export const grantOf = (project: EditorProject | null | undefined, admin: boolean): ProjectGrant => {
+export const grantOf = (project: {access?: ProjectGrant} | null | undefined, admin: boolean): ProjectGrant => {
   if (admin) return ADMIN_GRANT;
   return project?.access ?? NO_GRANT;
 };

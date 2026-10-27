@@ -11,7 +11,7 @@ import {Button, ModalFooter} from "@/shared/ui/Button";
 import {pickFile} from "@/shared/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 import {openImportReportModal} from "@/components/channels/OpenImportReportModal";
-import {errorTextFromJson} from "@/lib/access/accessErrors";
+import {errorTextFromJson} from "@/core/access";
 
 const inputClass = cn(
   "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",

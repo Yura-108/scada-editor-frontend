@@ -1,4 +1,4 @@
-import {isAccessDenial} from "@/lib/access/accessErrors";
+import {isAccessDenial} from "./accessErrors";
 
 /**
  * Глобальная реакция на «вас больше нет»: 401 от любого `/api/*` или 403 `USER_DISABLED`

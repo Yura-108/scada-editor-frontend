@@ -12,7 +12,7 @@ import {setStepValueAt, stepValueText, stepsChanged} from "@/lib/editor/recipeSt
 import {validateRecipe} from "@/lib/editor/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/core/access";
 
 /**
  * Процедурные рецепты открытого проекта. Рецепт не принадлежит ни компоненту, ни сцене —

@@ -6,7 +6,7 @@ import type {
 } from "@/types/automation.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {fetchVersions} from "@/lib/editor/versionsApi";
-import {errorTextFromJson} from "@/lib/access/accessErrors";
+import {errorTextFromJson} from "@/core/access";
 
 /** Ошибка сохранения набора: список нарушений проверки или конфликт версий. */
 export class AutomationSaveError extends Error {

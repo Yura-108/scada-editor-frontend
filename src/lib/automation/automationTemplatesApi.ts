@@ -1,6 +1,6 @@
 import {AutomationSaveError} from "@/lib/automation/automationApi";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
-import {errorTextFromJson} from "@/lib/access/accessErrors";
+import {errorTextFromJson} from "@/core/access";
 
 /**
  * Палитра шаблонов задач. Ошибки приходят в той же форме, что у набора задач

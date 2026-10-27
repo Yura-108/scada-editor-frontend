@@ -1,5 +1,5 @@
 import {useShallow} from "zustand/react/shallow";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/core/access";
 import {useEditorStore} from "../../../model/editorStore";
 
 export interface ToolbarAccess {

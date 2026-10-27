@@ -1,7 +1,7 @@
 "use client";
 
 import {useLayoutEffect} from "react";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
+import {useSessionUserStore} from "@/core/access";
 
 /**
  * Переносит логин и флаг админа из серверного layout в клиентский стор.

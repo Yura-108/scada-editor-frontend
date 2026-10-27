@@ -26,9 +26,7 @@ import {
   type ScreenPoint,
 } from "@/lib/runtime/runtimeEventBus";
 import {toast} from "sonner";
-import {describeDenial} from "@/lib/access/accessErrors";
-import {getCurrentProjectGrant} from "@/lib/access/projectAccess";
-import {actionDenialText} from "@/lib/runtime/actionAccess";
+import {describeDenial, getCurrentProjectGrant, actionDenialText} from "@/core/access";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
 import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore, setTrendClock, setTrendWatch, useTrendStore} from "@/core/canvas";

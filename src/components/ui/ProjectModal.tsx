@@ -12,8 +12,7 @@ import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
 import {openReleasesModal} from "@/components/editor/releases/ReleasesModal";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {openProcedureLevelsModal} from "@/components/editor/ProcedureLevelsModal";
-import {canOpenInEditor, grantOf} from "@/lib/access/projectAccess";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
+import {canOpenInEditor, grantOf, useSessionUserStore} from "@/core/access";
 
 async function selectProjectAndOpenScenes(
   projectId: number,

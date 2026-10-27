@@ -1,5 +1,5 @@
 import type {ProjectGrant} from "@/types/access.types";
-import {readBackendError} from "@/lib/access/accessErrors";
+import {readBackendError} from "@/core/access";
 
 /**
  * Админка auth (`/api/auth/admin/**`, только администратору — иначе 403 NOT_ADMIN).

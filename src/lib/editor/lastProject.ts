@@ -2,8 +2,7 @@
 
 import {useEffect, useMemo, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-import {canOpenInEditor, grantOf} from "@/lib/access/grants";
+import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
 import type {EditorProject} from "@/lib/pickProjectsFromComponents";
 import {lastProjectId} from "@/lib/editor/projectMemory";
 

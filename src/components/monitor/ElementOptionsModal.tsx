@@ -10,7 +10,7 @@ import {shortTagPath} from "@/lib/editor/tagPath";
 import {isBooleanValueType, isNumericValueType} from "@/lib/editor/valueTypes";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
+import {describeDenial, isAccessDenial} from "@/core/access";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {PropertyCreateDto} from "@/types/tags.types";
 import {
