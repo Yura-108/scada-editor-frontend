@@ -184,7 +184,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       const projectId = currentProject.id;
 
       // Попадание в кэш — показываем сразу, свежесть проверяем в фоне (см.
-      // lib/editor/sceneCache.ts). Перечитывание после сохранения (keepHistory) в
+      // core/project/scenes/sceneCache.ts). Перечитывание после сохранения (keepHistory) в
       // кэш не смотрит: ему нужно именно состояние сервера после записи.
       // Выпуск неизменяем: свежесть не проверяем (смену prod приносит TREE_CHANGED, и
       // тогда кэш выпуска сбрасывается целиком), номер версии сцены не нужен.

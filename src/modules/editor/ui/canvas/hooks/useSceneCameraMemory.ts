@@ -30,7 +30,7 @@ export function useSceneCameraMemory(scope: CameraScope) {
   const restoredKeyRef = useRef<string | null>(null);
 
   // Вид, зафиксированный инженером, — только для монитора: в редакторе замок камеру не
-  // трогает. Он важнее запомненной камеры браузера (см. lib/editor/monitorView.ts).
+  // трогает. Он важнее запомненной камеры браузера (см. core/scene/sheet/monitorView.ts).
   const lockedView = scope === "monitor" ? resolveMonitorView(elements) : null;
 
   useEffect(() => {

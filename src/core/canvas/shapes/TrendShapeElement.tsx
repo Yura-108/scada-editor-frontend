@@ -13,7 +13,7 @@ import { SelectionOutline } from "./SelectionOutline";
 const EMPTY_SERIES: Record<string, readonly TrendPoint[] | undefined> = {};
 
 /**
- * Тренд: перья — тег-свойства элемента, оформление — `el.trend` (см. lib/editor/trendSettings.ts).
+ * Тренд: перья — тег-свойства элемента, оформление — `el.trend` (см. core/scene/element/trendSettings.ts).
  *
  * В редакторе данных нет — рисуются оси, сетка и легенда. В мониторе серии приходят из
  * useTrendStore (история архива + живые точки), а окно `[now − window, now]` сдвигается

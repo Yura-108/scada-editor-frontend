@@ -113,7 +113,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   /** Лист сцены. Считается из elements (кэш по ссылке на массив), в сторе не хранится. */
   const sheet = useMemo(() => resolveSheet(elements), [elements]);
   // Вид, зафиксированный для монитора (замок в панели зума). В редакторе — рамка и
-  // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. lib/editor/monitorView.ts).
+  // нажатая кнопка, в мониторе — камера и запрет зума/пана (см. core/scene/sheet/monitorView.ts).
   const monitorView = useMemo(() => resolveMonitorView(elements), [elements]);
 
   const closeMenu = useCallback(() => setContextMenu(null), []);

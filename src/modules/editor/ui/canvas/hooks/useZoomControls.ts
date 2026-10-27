@@ -25,7 +25,7 @@ export function stepZoomPercent(zoom: number, direction: 1 | -1): number {
 /**
  * Логика zoom-панели: приближение вокруг центра видимой области и fit-to-content.
  *
- * Замок вида (lib/editor/monitorView.ts) здесь не проверяется: в редакторе масштаб
+ * Замок вида (core/scene/sheet/monitorView.ts) здесь не проверяется: в редакторе масштаб
  * свободен всегда, а в мониторе с зафиксированным видом панели с этими кнопками нет.
  */
 export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {

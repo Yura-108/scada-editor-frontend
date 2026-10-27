@@ -13,7 +13,7 @@ interface ZoomControlsProps {
   onReset: () => void;
   /** Монитор: там замок не ставят — его выставляет инженер в редакторе. */
   readOnly: boolean;
-  /** У сцены есть зафиксированный для монитора вид (см. lib/editor/monitorView.ts). */
+  /** У сцены есть зафиксированный для монитора вид (см. core/scene/sheet/monitorView.ts). */
   viewLocked: boolean;
   /** Редактор: зафиксировать текущий вид для монитора или снять фиксацию. */
   onToggleViewLock: () => void;

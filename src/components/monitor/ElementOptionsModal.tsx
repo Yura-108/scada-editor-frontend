@@ -32,7 +32,7 @@ interface ContentProps extends Props {
 /** Как часто перечитываем живые значения, пока окно открыто. */
 const VALUE_POLL_MS = 1000;
 
-/** Общая проверка с инспектором объектов — см. lib/editor/valueTypes.ts. */
+/** Общая проверка с инспектором объектов — см. core/scene/tags/valueTypes.ts. */
 const isNumericType = isNumericValueType;
 
 /** Имя свойства для оператора: `label`, а без него — технический `name` из скриптов. */

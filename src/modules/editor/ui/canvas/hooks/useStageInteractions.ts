@@ -24,7 +24,7 @@ const normalizeWheelDelta = (e: WheelEvent): {deltaX: number; deltaY: number} =>
 };
 
 /**
- * Монитор с зафиксированным видом (lib/editor/monitorView.ts): камера стоит, как её
+ * Монитор с зафиксированным видом (core/scene/sheet/monitorView.ts): камера стоит, как её
  * выставил инженер, а оператору доступна только прокрутка колесом по вертикали.
  * В редакторе замок на камеру не действует — всегда null.
  */
