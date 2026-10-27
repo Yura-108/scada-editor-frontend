@@ -5,7 +5,7 @@ import type {
 } from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {fetchVersions} from "@/lib/editor/versionsApi";
-import {errorTextFromJson} from "@/lib/access/accessErrors";
+import {errorTextFromJson} from "@/core/access";
 
 /** Ошибка сохранения таблиц: список нарушений проверки или конфликт версий. */
 export class ProjectDataSaveError extends Error {

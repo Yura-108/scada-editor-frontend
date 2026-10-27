@@ -1,9 +1,7 @@
 import type {ProjectGrant} from "@/types/access.types";
-import {grantOf} from "@/lib/access/grants";
-import {currentProjectStore} from "@/core/access/currentProject";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-
-export * from "@/lib/access/grants";
+import {grantOf} from "./grants";
+import {currentProjectStore} from "./currentProject";
+import {useSessionUserStore} from "./sessionUser";
 
 /** Права в текущем проекте редактора/монитора (реактивно). */
 export const useCurrentProjectGrant = (): ProjectGrant => {

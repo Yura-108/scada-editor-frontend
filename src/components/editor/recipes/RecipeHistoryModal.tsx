@@ -8,7 +8,7 @@ import {useEditorStore, useInvalidateRecipes} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {fetchVersions} from "@/lib/editor/versionsApi";
-import {readBackendError} from "@/lib/access/accessErrors";
+import {readBackendError} from "@/core/access";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import type {Recipe} from "@/types/recipe.types";
 

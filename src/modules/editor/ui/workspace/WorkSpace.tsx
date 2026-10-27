@@ -2,7 +2,7 @@ import React, {useRef} from "react";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 import {EditorPanel} from "@/components/editor/panels/EditorPanel";
 import {RecipesPanel} from "@/components/editor/panels/RecipesPanel";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/core/access";
 import {ToolsPanel} from "../tools-panel";
 import {usePanelResize} from "./hooks/usePanelResize";
 import {usePersistedLayout} from "./hooks/usePersistedLayout";

@@ -1,5 +1,5 @@
 import type {ProcedureStatus} from "@/types/recipe.types";
-import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
+import {describeDenial, isAccessDenial} from "@/core/access";
 
 /**
  * Клиент семи ручек управления процедурой.

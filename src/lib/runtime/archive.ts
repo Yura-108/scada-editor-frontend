@@ -1,4 +1,4 @@
-import {describeDenial, isAccessDenial} from "@/lib/access/accessErrors";
+import {describeDenial, isAccessDenial} from "@/core/access";
 
 /**
  * Клиент архива тегов (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 3).

@@ -1,7 +1,6 @@
 import { DiagramElement } from "@/types/editorElement.type";
 import { emitRuntimeScript, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
-import { getCurrentProjectGrant } from "@/lib/access/projectAccess";
-import { actionDenialText, canWriteDirectly } from "@/lib/runtime/actionAccess";
+import {getCurrentProjectGrant, actionDenialText, canWriteDirectly} from "@/core/access";
 import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
 import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";

@@ -6,9 +6,8 @@ import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
-import {readBackendError} from "@/lib/access/accessErrors";
+import {readBackendError, parseProcedureLevels} from "@/core/access";
 import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
-import {parseProcedureLevels} from "@/lib/access/procedureLevels";
 
 export const PROCEDURE_OPERATION_LABELS: Record<ProcedureOperation, string> = {
   start: "Запуск",

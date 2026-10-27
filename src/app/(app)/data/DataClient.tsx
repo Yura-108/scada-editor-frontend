@@ -8,7 +8,7 @@ import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useEditorStore} from "@/modules/editor";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/core/access";
 import {useEditableProject} from "@/lib/editor/lastProject";
 import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
 import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";

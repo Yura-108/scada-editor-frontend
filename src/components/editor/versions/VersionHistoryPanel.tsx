@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Clock, Eye, Loader2, RotateCcw, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "@/modules/editor";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
+import {useCurrentProjectGrant} from "@/core/access";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   formatVersionTime,

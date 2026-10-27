@@ -2,7 +2,7 @@ import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
 import type {AutomationTaskStatus} from "@/types/automation.types";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/lib/gatewayOrigin";
-import {describeDenial, isAccessDenial, isAccessNotReady} from "@/lib/access/accessErrors";
+import {describeDenial, isAccessDenial, isAccessNotReady} from "@/core/access";
 import type {AccessDenial} from "@/types/access.types";
 
 /**

@@ -12,7 +12,7 @@ import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenC
 import {openGatewayExportModal} from "@/components/channels/OpenGatewayExportModal";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
-import {describeDenial, errorTextFromJson, isAccessDenial} from "@/lib/access/accessErrors";
+import {describeDenial, errorTextFromJson, isAccessDenial} from "@/core/access";
 
 /**
  * Разбирает ответ и бросает ошибку с сообщением бэкенда при не-2xx.

@@ -6,7 +6,7 @@ import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
 import { useEditingDevices } from "@/lib/useIsEditingDevice";
 import { useDeviceStore } from "@/store/useDeviceStore";
-import { useSessionUserStore } from "@/store/useSessionUserStore";
+import { useSessionUserStore } from "@/core/access";
 import { PARAM_IMPORT_SOURCE } from "@/types/cdbxImport.types";
 
 const ContextMenu = <T extends string = string>({

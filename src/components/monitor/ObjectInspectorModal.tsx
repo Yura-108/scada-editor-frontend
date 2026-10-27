@@ -19,7 +19,7 @@ import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,
   normalizeTagWriteResults, tagWriteOutcome, tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
-import {errorTextFromJson} from "@/lib/access/accessErrors";
+import {errorTextFromJson} from "@/core/access";
 
 /** Как часто перечитываем значения: они лежат в рефах движка, а не в сторе (как в «Опциях»). */
 const VALUE_POLL_MS = 1000;

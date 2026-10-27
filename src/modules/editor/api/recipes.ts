@@ -1,7 +1,7 @@
 import {useCallback} from "react";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {toast} from "sonner";
-import {readBackendError} from "@/lib/access/accessErrors"; // переедет в core/access (шаг 8)
+import {readBackendError} from "@/core/access"; // переедет в core/access (шаг 8)
 import type {Recipe, RecipeCreatePayload} from "@/types/recipe.types";
 
 /**

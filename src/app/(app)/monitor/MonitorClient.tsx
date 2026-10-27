@@ -19,8 +19,7 @@ import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
 import {SceneTabs} from "@/components/editor/SceneTabs";
 import {toast} from "sonner";
-import {useCurrentProjectGrant} from "@/lib/access/projectAccess";
-import {canWriteDirectly} from "@/lib/runtime/actionAccess";
+import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {restoreLastProject} from "@/lib/editor/lastProject";
 import {lastMonitorScene, rememberMonitorScene} from "@/lib/editor/projectMemory";
 

@@ -4,7 +4,7 @@ import { CSSProperties, ReactNode, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { installAuthInterceptor } from '@/lib/access/authInterceptor';
+import { installAuthInterceptor } from "@/core/access";
 import { createQueryClient } from '@/shared/api/queryClient';
 
 // На уровне модуля — до первых запросов страниц (см. installAuthInterceptor).

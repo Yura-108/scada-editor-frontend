@@ -5,8 +5,7 @@ import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
 import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifications";
 import {useEditorStore, WorkSpace} from "@/modules/editor";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-import {canOpenInEditor, grantOf} from "@/lib/access/grants";
+import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
 import {restoreLastProject} from "@/lib/editor/lastProject";
 import {toast} from "sonner";
 
