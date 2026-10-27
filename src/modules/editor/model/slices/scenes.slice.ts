@@ -3,13 +3,16 @@ import type {EditorState} from "../editorStore";
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {
-  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, releaseVersionOf, SceneLoadError,
+  dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, SceneLoadError,
   type SceneSource,
 } from "@/lib/editor/sceneCache";
 import {fetchCurrentVersion} from "@/lib/editor/versionsApi";
 import {promptModal} from "@/components/ui/ConfirmModal";
+import {requestCreateScene, requestSceneList} from "../../api/scenes";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
+import {draftStashPatch, takeDraftStash} from "../draftStash";
+import {emptyDocument, noVersions} from "../scenePatches";
 import {
   applyLoadedScene, canWriteCurrentProject, deleteComponentsRequest, discardVersionPreview, getErrorMessage,
   logSceneTiming, refuseViewOnly, revalidateCachedScene, scheduleScenePrefetch,
@@ -22,7 +25,8 @@ import {
  *
  * Слайс — часть единого `useEditorStore` (docs/architecture.md, шаг 6). Загрузка сцены
  * подменяет документ и версии, переключение источника прячет документ в стеш, — поэтому
- * зависимости здесь весь `EditorState`. Код перенесён без изменений.
+ * зависимости здесь весь `EditorState`. Запросы — `api/scenes.ts`, стеш черновика —
+ * `model/draftStash.ts`, повторяющиеся сбросы — `model/scenePatches.ts`.
  */
 export interface ScenesSlice {
   scene: SceneType | null;
@@ -57,6 +61,24 @@ type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
 ) => void;
 
+/**
+ * После смены источника схем: перечитать список проекта и снова открыть ту же схему,
+ * если она в нём есть. Пока список грузился, источник могли сменить ещё раз — тогда
+ * схему не открываем.
+ */
+const reopenFromList = (
+  get: () => EditorState,
+  projectId: number | undefined,
+  sceneId: number | undefined,
+  source: SceneSource,
+) => {
+  if (projectId == null) return;
+  void get().loadSceneList(projectId).then(list => {
+    if (sceneId == null || get().sceneSource !== source) return;
+    if (list?.some(x => x.id === Number(sceneId))) void get().loadScene(Number(sceneId));
+  });
+};
+
 export const createScenesSlice = (set: EditorSet, get: () => EditorState): ScenesSlice => ({
   scene: null,
   sceneList: [],
@@ -76,29 +98,13 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // стеш легла бы версия вместо правок.
       if (state.versionPreview) state.exitVersionPreview();
       const s = get();
-      editorSession.draftStash = {
-        projectId: s.currentProject?.id ?? null,
-        scene: s.scene,
-        sceneList: s.sceneList,
-        elements: s.elements,
-        selectedIds: s.selectedIds,
-        activeGroupKey: s.activeGroupKey,
-        currentComponentStateByElementKey: s.currentComponentStateByElementKey,
-        isDirty: s.isDirty,
-        sceneVersion: s.sceneVersion,
-        savedSnapshot: editorSession.savedElementsSnapshot,
-      };
+      editorSession.draftStash = takeDraftStash(s);
       set({sceneSource: "release", releaseVersionNo: null, releaseError: null, selectedIds: []});
       // Показанная схема — черновик; в мониторе её место занимает та же схема из выпуска.
       const projectId = s.currentProject?.id;
       const sceneId = s.scene?.id;
       set({scene: null, elements: [], sceneList: []});
-      if (projectId != null) {
-        void get().loadSceneList(projectId).then(list => {
-          if (sceneId == null || get().sceneSource !== "release") return;
-          if (list?.some(x => x.id === Number(sceneId))) void get().loadScene(Number(sceneId));
-        });
-      }
+      reopenFromList(get, projectId, sceneId, "release");
       return;
     }
 
@@ -108,17 +114,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     const projectId = state.currentProject?.id ?? null;
     set({sceneSource: "draft", releaseVersionNo: null, releaseError: null});
     if (stash && stash.projectId === projectId) {
-      set({
-        scene: stash.scene,
-        sceneList: stash.sceneList,
-        elements: stash.elements,
-        selectedIds: stash.selectedIds,
-        activeGroupKey: stash.activeGroupKey,
-        selectedTableCell: null,
-        currentComponentStateByElementKey: stash.currentComponentStateByElementKey,
-        isDirty: stash.isDirty,
-        sceneVersion: stash.sceneVersion,
-      });
+      set(draftStashPatch(stash));
       // Снимок «что на сервере» — тоже прежний, иначе isDirty пересчитался бы от выпуска.
       editorSession.savedElementsSnapshot = stash.savedSnapshot;
       return;
@@ -127,12 +123,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     // сейчас, перечитывается из черновика: выпуск в редакторе показывать нельзя.
     const sceneId = state.scene?.id;
     set({scene: null, elements: [], sceneList: []});
-    if (projectId != null) {
-      void get().loadSceneList(projectId).then(list => {
-        if (sceneId == null || get().sceneSource !== "draft") return;
-        if (list?.some(x => x.id === Number(sceneId))) void get().loadScene(Number(sceneId));
-      });
-    }
+    reopenFromList(get, projectId ?? undefined, sceneId, "draft");
   },
   reloadRelease: async (versionNo) => {
     const {currentProject, sceneSource} = get();
@@ -156,33 +147,19 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     const source = get().sceneSource;
     try {
       // Монитор — схемы prod-выпуска; редактор — черновика.
-      const res = await fetch(source === "release"
-        ? `/api/runtime/projects/${projectId}/scenes`
-        : `/api/editor/scene?project_id=${projectId}`);
-
-      // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
-      if (source === "release" && res.status === 409) {
-        if (get().sceneSource !== "release") return;
-        const body = await res.json().catch(() => null) as {message?: string} | null;
-        set({
-          sceneList: [], scene: null, elements: [], releaseVersionNo: null,
-          releaseError: body?.message || "Проект не в эксплуатации — выпуск не исполняется",
-        });
-        return [];
-      }
-      if (!res.ok) {
-        throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
-      }
-
-      const json = await res.json();
+      const result = await requestSceneList(projectId, source);
       // Ответ устарел: пока шёл запрос, ушли из монитора (или вернулись в него).
       if (get().sceneSource !== source) return;
-      const list = Array.isArray(json) ? json : [];
-      set({sceneList: list, ...(source === "release" ? {releaseError: null} : {})});
-      if (source === "release") {
-        const release = releaseVersionOf(res);
-        if (release != null) get().setReleaseVersionNo(release);
+
+      // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
+      if (result.kind === "notInOperation") {
+        set({sceneList: [], scene: null, elements: [], releaseVersionNo: null, releaseError: result.message});
+        return [];
       }
+
+      const {list} = result;
+      set({sceneList: list, ...(source === "release" ? {releaseError: null} : {})});
+      if (result.releaseVersion != null) get().setReleaseVersionNo(result.releaseVersion);
       scheduleScenePrefetch(projectId, list, source);
       return list;
     } catch (err: unknown) {
@@ -205,7 +182,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       const {currentProject} = get();
       if (!currentProject) {
         toast.error("Сначала выберите проект");
-        set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
+        set(emptyDocument());
         return;
       }
       const projectId = currentProject.id;
@@ -264,7 +241,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       }
       toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
       // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
-      set({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
+      set(emptyDocument());
     } finally {
       // Загрузка сцены — новая точка отсчёта: чистим историю undo, иначе Ctrl+Z
       // «воскресит» элементы прошлой сцены (с чужим parentKey и id:null → дубли на сервере).
@@ -301,40 +278,18 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       }))?.trim();
       if (!sceneName) return;
 
-      const payload = {name: sceneName, project_id: currentProject.id};
-
-      const res = await fetch("/api/editor/scene", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Ошибка ${res.status}: ${text}`);
-      }
-
-      const newScene = await res.json();
+      const newScene = await requestCreateScene(sceneName, currentProject.id);
 
       set({
-        scene: newScene,
         // Новая сцена пуста: сбрасываем элементы предыдущей сцены, иначе они
         // останутся на холсте с parentKey от СТАРОЙ сцены (неверная вложенность,
         // а при сохранении окажутся отфильтрованы и потеряны).
-        elements: [],
+        ...emptyDocument(),
+        scene: newScene,
         sceneList: [...get().sceneList, {id: newScene.id, name: newScene.name}],
-        selectedIds: [],
-        activeGroupKey: null,
-        selectedTableCell: null,
-        currentComponentStateByElementKey: {},
         // У новой сцены версий ещё нет: первое сохранение уйдёт без
         // based_on_version, а история прошлой сцены к ней не относится.
-        sceneVersion: null,
-        versions: [],
-        versionsExhausted: false,
-        saveConflict: null,
-        staleBaseVersion: null,
-        autosaveError: null,
+        ...noVersions(),
       });
 
       // Новая сцена — новая точка отсчёта для undo, и просмотр версии прошлой
@@ -376,13 +331,8 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       set(state => ({
         sceneList: state.sceneList.filter(s => s.id !== id),
         ...(state.scene?.id === id
-          ? {
-              scene: null, elements: [], selectedIds: [], activeGroupKey: null,
-              selectedTableCell: null, currentComponentStateByElementKey: {},
-              // Версии удалённой сцены больше ни к чему не относятся.
-              sceneVersion: null, versions: [], versionsExhausted: false,
-              saveConflict: null, staleBaseVersion: null, autosaveError: null,
-            }
+          // Версии удалённой сцены больше ни к чему не относятся.
+          ? {...emptyDocument(), ...noVersions()}
           : {}),
       }));
 
