@@ -251,7 +251,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 12 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
-| 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | в работе: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel` и `WorkSpace` (`modules/editor/ui/`), `addElementAt` и остаток `elements.slice` |
+| 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | готово для модуля редактора: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace` (`modules/editor/ui/`) и все слайсы стора. Крупные файлы других областей (`useRuntimeEngine`, `AutomationClient`, `DataClient`, …) — вместе с их переездом на шаге 8 |
 | 8 | Перенести модули в `src/modules/*` | — |
 
 ### Что осталось после шага 3
