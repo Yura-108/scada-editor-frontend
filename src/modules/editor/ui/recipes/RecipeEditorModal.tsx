@@ -9,7 +9,7 @@ import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations} from "../../api/recipes";
 import {ChooseManifestTagsModal} from "./ChooseManifestTagsModal";
 import {actionValueText, coerceActionValue, validateRecipe} from "../../lib/recipeValidation";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {shortTagPath} from "@/core/scene";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {
   RECIPE_VALUE_TYPES,

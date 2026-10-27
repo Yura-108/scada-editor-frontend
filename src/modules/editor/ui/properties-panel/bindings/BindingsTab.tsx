@@ -10,7 +10,7 @@ import {buildDirectBinding, buildDirectTagBinding} from "@/lib/runtime/directBin
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 import {ChooseTagModal} from "./ChooseTagModal";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {shortTagPath} from "@/core/scene";
 
 interface BindingsTabProps {
   element: DiagramElement;

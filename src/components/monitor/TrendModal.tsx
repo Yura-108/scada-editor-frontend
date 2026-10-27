@@ -7,9 +7,8 @@ import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/modules/editor";
 import {useTrendStore} from "@/core/canvas";
-import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming} from "@/core/scene";
+import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming, shortTagPath} from "@/core/scene";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {shortTagPath} from "@/lib/editor/tagPath";
 import {ARCHIVE_DEPTH_MS, fetchArchiveValues, type TrendPoint} from "@/lib/runtime/archive";
 
 interface Props {

@@ -92,7 +92,7 @@ export interface TableCellData {
  * более лёгкий контракт, чем PropertyCreateDto (у той требуются id/component_id,
  * которых ещё нет на этапе черновика в модалке привязки). Хранится прямо в
  * element.properties (никакого отдельного поля rowBindings). Номер строки — в
- * поле position самого PropertyCreateDto (см. src/lib/editor/rowBinding.ts),
+ * поле position самого PropertyCreateDto (см. src/core/scene/element/rowBinding.ts),
  * а не закодирован в property_type: тот теперь обычная классификация
  * ("Тег" | "Локальный"), как у всех остальных свойств. tag_id === null — строка
  * без тега (локальный параметр, значение живёт в сессии, а не в ПЛК).
@@ -136,7 +136,7 @@ export type ComponentCreateDto = {
    * больше нет. Список задаёт весь набор: чего в нём нет, то бэкенд удаляет
    * (сопоставление сначала по `id`, затем по `name`). Отсутствие поля — «не трогать».
    *
-   * У строк таблицы номер строки лежит в `position` (см. src/lib/editor/rowBinding.ts).
+   * У строк таблицы номер строки лежит в `position` (см. src/core/scene/element/rowBinding.ts).
    */
   properties?: PropertyCreateDto[];
 };

@@ -8,7 +8,7 @@ import {
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,
 } from "@/components/journal/journalUi";
 import {useEditorStore} from "@/modules/editor";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {shortTagPath} from "@/core/scene";
 import {
   ACTION_KIND_LABEL, fetchActionLog, type ActionKind, type ActionLogFilter, type ActionLogRecord,
 } from "@/lib/runtime/actionLog";

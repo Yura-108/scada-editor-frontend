@@ -11,7 +11,7 @@ import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElement
 import {NON_TRANSFORMABLE, CanvasNode, useThemeColors} from "@/core/canvas";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
-import "@/lib/editor/konvaConfig";
+import "./lib/konvaConfig";
 
 import { TextEditorOverlay } from "./TextEditorOverlay";
 import { ZoomControls } from "./ZoomControls";

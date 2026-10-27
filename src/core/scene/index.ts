@@ -21,6 +21,12 @@ export * from "./element/tableLayout";
 export * from "./element/zOrder";
 export * from "./element/trendGeometry";
 export * from "./element/pickImageFile";
+export * from "./element/rowBinding";
+export * from "./element/templateRoot";
+
+// Теги
+export * from "./tags/tagPath";
+export * from "./tags/valueTypes";
 
 // Геометрия
 export {default as getAbsolutePosition} from "./geometry/getAbsolutePosition";

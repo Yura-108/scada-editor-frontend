@@ -5,10 +5,7 @@ import {Pencil, Plus, Trash2} from "lucide-react";
 import {NumberInput} from "@/components/ui/NumberInput";
 import OpenAddPropertyModal from "@/components/ui/OpenChooseTagModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
-import {shortTagPath} from "@/lib/editor/tagPath";
-import {
-  TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming,
-} from "@/core/scene";
+import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
 
 interface Props {

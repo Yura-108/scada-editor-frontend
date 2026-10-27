@@ -1,9 +1,8 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {PaletteItemType} from "@/types/palette.types";
 import {createUuid} from "@/shared/lib/createUuid";
-import {snap, getElementBoundsRendered, shiftElementPositions, DEFAULT_DASH} from "@/core/scene";
+import {snap, getElementBoundsRendered, shiftElementPositions, DEFAULT_DASH, findTemplateRoot} from "@/core/scene";
 import {instantiateTemplate} from "../model/templateInstance";
-import {findTemplateRoot} from "@/lib/editor/templateRoot";
 import {transformSelection, type TransformOp} from "../model/transformSelection";
 
 /**

@@ -5,7 +5,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
 import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
-import {getRenderedElement, trendPens, trendTiming, cellRuntimeKey, cellBindings, isLiveField, propertyByName} from "@/core/scene";
+import {getRenderedElement, trendPens, trendTiming, cellRuntimeKey, cellBindings, isLiveField, propertyByName, isBooleanValueType} from "@/core/scene";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
 import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
@@ -31,7 +31,6 @@ import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from 
 import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore, setTrendClock, setTrendWatch, useTrendStore} from "@/core/canvas";
 import {fetchArchiveValues, toTrendValue} from "@/lib/runtime/archive";
-import {isBooleanValueType} from "@/lib/editor/valueTypes";
 import type {ElementEventName} from "@/types/binding.types";
 import type {DiagramElement} from "@/types/editorElement.type";
 

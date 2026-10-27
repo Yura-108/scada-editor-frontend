@@ -10,7 +10,7 @@ import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {shortTagPath} from "@/core/scene";
 
 /**
  * Выбор ОДНОГО тега — для прямой привязки «значение элемента ← тег».

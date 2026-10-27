@@ -11,7 +11,7 @@ import openRecipeEditorModal from "./RecipeEditorModal";
 import {openRecipeHistoryModal} from "./RecipeHistoryModal";
 import {setStepValueAt, stepValueText, stepsChanged} from "../../lib/recipeSteps";
 import {validateRecipe} from "../../lib/recipeValidation";
-import {shortTagPath} from "@/lib/editor/tagPath";
+import {shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {useCurrentProjectGrant} from "@/core/access";
 
