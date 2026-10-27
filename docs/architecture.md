@@ -252,7 +252,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 12 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | готово для модуля редактора: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace` (`modules/editor/ui/`) и все слайсы стора. Крупные файлы других областей (`useRuntimeEngine`, `AutomationClient`, `DataClient`, …) — вместе с их переездом на шаге 8 |
-| 8 | Перенести модули в `src/modules/*` | — |
+| 8 | Перенести модули в `src/modules/*` | в работе: `core/scene` — отображаемый вид, геометрия, лист и вид, сериализация (24 файла из `lib`; активные состояния — через `bindActiveStateReader`). Дальше: фигуры Konva, `core/project`, `core/access`, области |
 
 ### Что осталось после шага 3
 
@@ -263,7 +263,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | `components/ui/NumberInput`, `TextInput`, `ColorField` | зависят от `lib/editor/historyGroup` (группировка undo редактора) | передавать начало/конец правки через пропсы — тогда в `shared/ui` |
 | `components/ui/ReadOnlyBanner`, `AccessLevelSelect` | тексты и типы прав проекта | `core/access` |
 | `components/ui/Open*Modal`, `ProjectModal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
-| `lib/utils.ts` (`GRID`, `snap`), `lib/pickImageFile` | сетка редактора | `core/scene` |
+| `lib/pickImageFile` | выбор картинки для элемента | `core/scene` (`GRID`/`snap` уже там: `geometry/grid.ts`) |
 
 ### Зоны `useEditorStore` (для шага 6)
 

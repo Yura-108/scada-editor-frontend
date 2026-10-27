@@ -8,7 +8,7 @@ The lock is **set in the editor and acts in the monitor**. Pressing it stores wh
 currently sees — `monitorView = {x, y, w, h}` in world units — in the sheet's meta element
 (`isMetaElement`, next to `canvas`), so it is scene data: undo, dirty flag, saved with the
 scene, visible on any machine. The editor camera is never restricted; the editor only draws a
-dashed frame of the locked area. `src/lib/editor/monitorView.ts` holds all the math.
+dashed frame of the locked area. `src/core/scene/sheet/monitorView.ts` holds all the math.
 
 - **Width-fit, not the same camera**: the monitor canvas is a different size from the editor's,
   so the monitor zooms to fit `w` into its full width and aligns the left and top edges
@@ -92,7 +92,7 @@ modal) is set in the editor on the «Свойства» tab via `MonitorMenuSett
 renders a live preview through the same `ContextMenuPanel` the monitor uses. It rides inside
 `states[].image` like `zIndex`: it is in `BASE_ONLY_KEYS` (never written to overrides) and in
 `STRUCTURAL_KEYS` of `transformElements` (stripped from overrides, restored into the base from the
-default image — for `composition` primitives too). `readMonitorMenu` (`src/lib/editor/monitorMenu.ts`)
+default image — for `composition` primitives too). `readMonitorMenu` (`src/core/scene/element/monitorMenu.ts`)
 clamps it on every read. The settings come from the element that **owns** the menu — the ancestor
 `handleMonitorContextMenu` climbs to — and editor menus never get any. `optionsWindow` is a dead
 predecessor (sized the modal for a day): it is only stripped on load, never restored.
