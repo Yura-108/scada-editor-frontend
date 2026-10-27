@@ -2,7 +2,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import Konva from "konva";
 import { readMonitorMenu } from "@/core/scene";
 import { isRuntimeLive, setRuntimeMenuHandler } from "@/lib/runtime/runtimeEventBus";
-import { buildChoiceMenu } from "@/components/editor/canvas/buildMonitorMenu";
+import { buildChoiceMenu } from "../lib/buildMonitorMenu";
 import { useEditorStore } from "../../../model/editorStore";
 import type { SetCanvasMenu } from "../types";
 import { useMonitorPointer } from "./useMonitorPointer";

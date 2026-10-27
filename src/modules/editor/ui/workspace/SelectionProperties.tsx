@@ -1,8 +1,8 @@
 "use client";
 
 import {useMemo} from "react";
-import {MultiPropertiesPanel} from "@/components/editor/MultiPropertiesPanel";
-import {ScenePropertiesPanel} from "@/components/editor/ScenePropertiesPanel";
+import {MultiPropertiesPanel} from "../properties-panel/MultiPropertiesPanel";
+import {ScenePropertiesPanel} from "../properties-panel/ScenePropertiesPanel";
 import {useEditorStore} from "../../model/editorStore";
 import {PropertiesPanel} from "../properties-panel";
 

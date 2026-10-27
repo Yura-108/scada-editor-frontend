@@ -5,7 +5,7 @@ import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, Searc
 import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
 import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
 import {closeFloatingWindows} from "@/store/useFloatingWindowsStore";
-import {Canvas, useEditorStore} from "@/modules/editor";
+import {Canvas, useEditorStore, useSceneCameraMemory, SceneTabs} from "@/modules/editor";
 import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
 import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
 import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
@@ -16,8 +16,6 @@ import {ProcedureHud} from "@/components/monitor/ProcedureHud";
 import {AutomationTaskPanel, countTaskProblems} from "@/components/monitor/AutomationTaskPanel";
 import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
 import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
-import {useSceneCameraMemory} from "@/components/editor/canvas/hooks/useSceneCameraMemory";
-import {SceneTabs} from "@/components/editor/SceneTabs";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {restoreLastProject} from "@/lib/editor/lastProject";

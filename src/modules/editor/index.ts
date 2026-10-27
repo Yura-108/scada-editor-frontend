@@ -56,3 +56,8 @@ export {PropertiesPanel} from "./ui/properties-panel";
 export {Canvas} from "./ui/canvas";
 export {ToolsPanel} from "./ui/tools-panel";
 export {WorkSpace} from "./ui/workspace";
+export {SceneTabs} from "./ui/scene-tabs/SceneTabs";
+export {useSceneCameraMemory} from "./ui/canvas/hooks/useSceneCameraMemory";
+export {openReleasesModal} from "./ui/project/ReleasesModal";
+export {openProcedureLevelsModal} from "./ui/project/ProcedureLevelsModal";
+export type {PickedProperty} from "./ui/properties-panel/bindings/OpenChooseObjectPropertyModal";

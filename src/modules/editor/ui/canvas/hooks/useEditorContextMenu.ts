@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type Konva from "konva";
-import { buildItemMenu } from "@/components/editor/canvas/buildItemMenu";
+import { buildItemMenu } from "../lib/buildItemMenu";
 import type { DiagramElement } from "@/types/editorElement.type";
 import { useEditorStore } from "../../../model/editorStore";
 import type { SetCanvasMenu } from "../types";

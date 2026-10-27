@@ -3,8 +3,8 @@
 import React, {useState, useMemo} from "react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {getRenderedElement} from "@/core/scene";
-import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
-import {EventsTab} from "@/components/editor/events/EventsTab";
+import {BindingsTab} from "./bindings/BindingsTab";
+import {EventsTab} from "./events/EventsTab";
 import {useEditorStore} from "../../model/editorStore";
 import {PanelHeader} from "./PanelHeader";
 import {PanelTabs, type TabType} from "./PanelTabs";
