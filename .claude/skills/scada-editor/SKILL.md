@@ -1,6 +1,6 @@
 ---
 name: scada-editor
-description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/modules/editor/model/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
+description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/core/canvas/**, src/modules/editor/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
 ---
 
 # SCADA Editor — architecture & gotchas
@@ -75,7 +75,7 @@ leaves whose live position sits in overrides.
   (into base for groups), clamps w/h to `MIN_SIZE`, and calls `recomputeAncestorBounds` when a
   positional key changed. `updateElement` writes structural fields (scripts, properties, …).
 
-## Konva render tree (`src/components/editor/`)
+## Konva render tree (`src/core/canvas/` — shapes; `src/modules/editor/ui/canvas/` — editor Canvas)
 
 - `Canvas.tsx` (now `src/modules/editor/ui/canvas/`, layers in `layers/`, click/menu hooks in `hooks/`) — thin orchestrator: the `<Stage>` sized to the **viewport**
   (`canvasRect` from the store — NEVER a fixed 5000×5000; Konva allocates w×h×DPR canvases per
@@ -91,10 +91,10 @@ leaves whose live position sits in overrides.
   `getRenderedElement` reads it non-reactively via `getState()`; (b) `useThemeColors` memoizes
   `themeColors` — keep it stable; (c) anchor/handle `onDragMove` handlers write to the store
   **only when the snapped value changes** (grid-step guard), not per mousemove pixel.
-- `canvas/shapes/ShapeElement.tsx` — **leaf dispatcher**: `if (rendered.type === "…")` branches →
+- `core/canvas/shapes/ShapeElement.tsx` — **leaf dispatcher**: `if (rendered.type === "…")` branches →
   a dedicated component, else a generic `<Rect>` fallback (covers rectangle/path/unknown).
-- `canvas/shapes/GroupNode.tsx` — recursive group/component; renders `[...composition, ...children]`.
-- Dedicated leaf components (all take `ShapeElementProps` from `canvas/types.ts`):
+- `GroupNode` (inside `core/canvas/shapes/CanvasNode.tsx`) — recursive group/component; renders `[...composition, ...children]`.
+- Dedicated leaf components (all take `ShapeElementProps` from `core/canvas/types.ts`):
   `TextShapeElement`, `CheckboxShapeElement`, `ProgressBarShapeElement`, `ButtonShapeElement`,
   `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`.
 - Handles: `Anchor.tsx` (vertex/resize, needs `themeColors`), `CircleResizeHandle.tsx`,
@@ -111,7 +111,7 @@ leaves whose live position sits in overrides.
   line/circle groups have no controlled x/y, React wouldn't reset them). Every resize/vertex
   handle MUST carry `name="resize-handle"` — that's what excludes it from starting a session.
 - **Z-order**: `zIndex` on `BaseCanvasElement` (CSS-like, **scoped to siblings** — same
-  `parentKey`), applied by `src/lib/editor/zOrder.ts` (`sortByZIndex`/`sortKeysByZIndex`,
+  `parentKey`), applied by `src/core/scene/element/zOrder.ts` (`sortByZIndex`/`sortKeysByZIndex`,
   missing == 0). The sort is **stable**, so equal z falls back to the old positional order —
   flat-array order at the top level, `composition`+`children` concatenation inside a container
   (that's why legacy scenes look identical). Two render sites: `Canvas.tsx` root list (sorted
@@ -163,7 +163,7 @@ leaves whose live position sits in overrides.
   in the Layer (group frame for groups, rendered bounds for leaves). Deliberately NOT passed
   through ctx/shape props — that would re-render the whole memoized scene on every mouse move.
   Any future per-element hover effect must follow the same single-overlay pattern.
-- **Transformer** (`canvas/shapes/SelectionTransformer.tsx`): single selection of box types only
+- **Transformer** (`core/canvas/shapes/SelectionTransformer.tsx`): single selection of box types only
   (`NON_TRANSFORMABLE` in Canvas = group/text/circle/line/polygon keep specialized handles).
   On transformend scale is converted to w/h and RESET to 1; rotation commits to `rotate` —
   every transformable shape's root Group MUST render `rotation={rendered.rotate || 0}` or the
@@ -215,7 +215,7 @@ convert screen→world before placing.
 A table's tag properties belong to the **whole element** (`element.properties`, edited on the
 ordinary «Свойства» tab like any other element). Which field of which property lands in which
 cell is described by **`bindings[].cell`** (`{row, col, propertyName, field}`), and the single
-place that knows the rule is `src/lib/editor/tableBindings.ts` (`resolveCellText`,
+place that knows the rule is `src/core/scene/element/tableBindings.ts` (`resolveCellText`,
 `cellBindingAt`, `cellBindings`, `CELL_SOURCE_FIELDS`).
 
 - **Only `field: "value"` goes through the runtime.** `name`/`tag_id`/`value_type`/
@@ -256,7 +256,7 @@ Example to copy: the "Управление" controls (`button/toggle/slider/drop
    parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`)
    comes from `baseElement`; `addElementAt` calls `buildNewElement`, then `placeNewElement` puts it into
    the entered container.
-5. **`src/components/editor/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
+5. **`src/core/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
    a dispatch branch in `ShapeElement.tsx`. Include: Group at `rendered.x/y`, selection dashed Rect,
    live-snap drag (with the `e.target===e.currentTarget` guard if it has a resize handle), and a
    `ResizeHandleSE` where resizing makes sense.
@@ -375,9 +375,9 @@ unbounded.
 | Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
 | Rendered element (base + active overrides) | `src/core/scene/render/getRenderedElement.ts` |
 | Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
-| Leaf dispatch + generic fallback | `src/components/editor/canvas/shapes/ShapeElement.tsx` |
-| Group/component recursion | `src/components/editor/canvas/shapes/GroupNode.tsx` |
-| Render context / ShapeElementProps / MIN_SIZE | `src/components/editor/canvas/types.ts` |
+| Leaf dispatch + generic fallback | `src/core/canvas/shapes/ShapeElement.tsx` |
+| Group/component recursion | `GroupNode` in `src/core/canvas/shapes/CanvasNode.tsx` |
+| Render context / ShapeElementProps / MIN_SIZE | `src/core/canvas/types.ts` |
 | Palette items | `src/constants/palette.ts` |
 | Registry + property schemas | `src/constants/propertiesPanel.ts` |
 | Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |

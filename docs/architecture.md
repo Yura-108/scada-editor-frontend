@@ -41,7 +41,8 @@ app/api  →  server  →  shared
 | `shared/ui` | `Button`, `Modal`, `TextInput`, `NumberInput`, `select`, `ContextMenu` | Не знает слов «сцена», «тег», «проект» |
 | `shared/lib` | `cn`, `createUuid`, `downloadJson`, `formatLocalDateTime`, `devLog` | Чистые функции общего назначения |
 | `shared/api` | `fetchJson`, разбор ошибок | Транспорт без конкретных эндпоинтов |
-| `core/scene` | `DiagramElement`, `getRenderedElement`, геометрия, `buildComponentTree`/`transformElements`, Konva-фигуры | Нужно и редактору, и монитору |
+| `core/scene` | `DiagramElement`, `getRenderedElement`, геометрия, лист, `buildComponentTree`/`transformElements` — без React и Konva | Нужно и редактору, и монитору |
+| `core/canvas` | фигуры Konva, `CanvasNode`, `useElementRenderState`, тренды | Холст, общий для редактора и монитора |
 | `core/project` | проект, список сцен, `sceneSource`, кэш сцен | Общая «открытая сцена» |
 | `core/access` | `grantOf`, `projectAccess`, `accessErrors` | Права, общие для всех модулей |
 | `modules/editor` | панели, палитра, инструменты, выделение, сохранение и версии | Только редактор |
@@ -252,7 +253,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 12 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
 | 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | готово для модуля редактора: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace` (`modules/editor/ui/`) и все слайсы стора. Крупные файлы других областей (`useRuntimeEngine`, `AutomationClient`, `DataClient`, …) — вместе с их переездом на шаге 8 |
-| 8 | Перенести модули в `src/modules/*` | в работе: `core/scene` — отображаемый вид, геометрия, лист и вид, сериализация (24 файла из `lib`; активные состояния — через `bindActiveStateReader`). Дальше: фигуры Konva, `core/project`, `core/access`, области |
+| 8 | Перенести модули в `src/modules/*` | в работе: `core/scene` — отображаемый вид, геометрия, лист и вид, сериализация, чистые данные элементов (активные состояния — `bindActiveStateReader`, срез сцены — `bindSceneViewStore`); `core/canvas` — фигуры Konva (React/Konva только здесь, стор их не тянет). Дальше: `core/project`, `core/access`, области |
 
 ### Что осталось после шага 3
 
@@ -263,7 +264,6 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | `components/ui/NumberInput`, `TextInput`, `ColorField` | зависят от `lib/editor/historyGroup` (группировка undo редактора) | передавать начало/конец правки через пропсы — тогда в `shared/ui` |
 | `components/ui/ReadOnlyBanner`, `AccessLevelSelect` | тексты и типы прав проекта | `core/access` |
 | `components/ui/Open*Modal`, `ProjectModal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
-| `lib/pickImageFile` | выбор картинки для элемента | `core/scene` (`GRID`/`snap` уже там: `geometry/grid.ts`) |
 
 ### Зоны `useEditorStore` (для шага 6)
 
