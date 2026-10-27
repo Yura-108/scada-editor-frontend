@@ -38,7 +38,7 @@ app/api  →  server  →  shared
 
 | Слой | Примеры | Признак |
 |---|---|---|
-| `shared/ui` | `Button`, `Modal`, `TextInput`, `NumberInput`, `select`, `ContextMenu` | Не знает слов «сцена», «тег», «проект» |
+| `shared/ui` | `Button`, `Modal`, `TextInput`, `NumberInput`, `select`, `PickerSelect`, `ContextMenu` | Не знает слов «сцена», «тег», «проект» |
 | `shared/lib` | `cn`, `createUuid`, `downloadJson`, `formatLocalDateTime`, `devLog` | Чистые функции общего назначения |
 | `shared/api` | `fetchJson`, разбор ошибок | Транспорт без конкретных эндпоинтов |
 | `core/scene` | `DiagramElement`, `getRenderedElement`, геометрия, `buildComponentTree`/`transformElements`, Konva-фигуры | Нужно и редактору, и монитору |
@@ -251,7 +251,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 | 4 | Вынести runtime-состояние монитора из `useEditorStore` | готово: `core/scene/runtimeOverlayStore`; переключения состояний остались в редакторе (общее поле) |
 | 5 | Вернуть `QueryClientProvider`, перевести первый маленький стор на Query | готово: шаблоны задач, рецепты редактора, уровни и рецепты монитора, журнал (форма — zustand, записи — Query: образец разделения клиентского и серверного состояния, `src/modules/logs`). Отложены: `usePaletteStore` (вызывается вне React — нужен общий клиент Query), `useDeviceStore` (сначала разрезать, вместе с переносом «Каналов») |
 | 6 | Разрезать `useEditorStore` на слайсы по зонам | готово: стор собирается в `src/modules/editor/model/editorStore.ts` из 11 слайсов (`model/slices/`), импорт — `@/modules/editor`. Длинные функции внутри слайсов (`addElementAt`, `exportScene`, группировка) — шаг 7 |
-| 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | в работе: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel` и `WorkSpace` (`modules/editor/ui/`), `addElementAt` и остаток `elements.slice` |
+| 7 | Разбить крупные компоненты: `PropertiesPanel`, `Canvas`, `ToolsPanel`, `WorkSpace`, … | в работе: разрезаны `PropertiesPanel`, `Canvas`, `ToolsPanel` и `WorkSpace` (`modules/editor/ui/`); выбор проекта и схемы — полоса `ui/project-bar/` вместо модалок `ProjectModal`/`OpenChooseSceneModal`, `addElementAt` и остаток `elements.slice` |
 | 8 | Перенести модули в `src/modules/*` | — |
 
 ### Что осталось после шага 3
@@ -262,7 +262,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 |---|---|---|
 | `components/ui/NumberInput`, `TextInput`, `ColorField` | зависят от `lib/editor/historyGroup` (группировка undo редактора) | передавать начало/конец правки через пропсы — тогда в `shared/ui` |
 | `components/ui/ReadOnlyBanner`, `AccessLevelSelect` | тексты и типы прав проекта | `core/access` |
-| `components/ui/Open*Modal`, `ProjectModal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
+| `components/ui/Open*Modal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
 | `lib/utils.ts` (`GRID`, `snap`), `lib/pickImageFile` | сетка редактора | `core/scene` |
 
 ### Зоны `useEditorStore` (для шага 6)
