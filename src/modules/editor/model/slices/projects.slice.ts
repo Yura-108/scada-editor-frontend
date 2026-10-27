@@ -4,7 +4,7 @@ import type {AutobindReport} from "@/types/autobind.types";
 // переедут в core/project вместе с остальным lib (шаг 8)
 import {normalizeProjectList, toEditorProject, type EditorProject} from "@/lib/pickProjectsFromComponents";
 import {
-  createRelease, NoProdReleaseError, parseRuntimeInfo, putInOperation, setProdRelease, type CreatedRelease,
+  createRelease, NoProdReleaseError, putInOperation, setProdRelease, type CreatedRelease,
 } from "@/lib/editor/releasesApi";
 import {clearCanvasPointerWorld} from "@/lib/editor/canvasPointer";
 import {rememberProject} from "@/lib/editor/projectMemory";
@@ -175,7 +175,7 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    * предыдущей версии, а не повторным запросом.
    */
   autobindProject: async (projectId: number, channelRoot: string) => {
-    const {scene, currentProject} = get();
+    const {currentProject} = get();
 
     // Автопривязка пишет новую версию сцены: несохранённая правка после неё упрётся в
     // расхождение версий (слияние или 409). Поэтому спрашиваем ДО запроса.
