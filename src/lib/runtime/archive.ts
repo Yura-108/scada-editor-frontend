@@ -14,20 +14,9 @@ const TAGS_PER_REQUEST = 20;
 export const ARCHIVE_DEPTH_MS = 30 * 24 * 3600_000 - 60_000;
 export const MAX_POINTS_LIMIT = 5000;
 
-/** Точка тренда. `value: null` — разрыв (недостоверное значение, обрыв связи). */
-export interface TrendPoint {
-  ts: number;
-  value: number | null;
-}
-
-export interface ArchiveSeries {
-  tag: string;
-  /** Значение на момент `from` — с него линия начинается у левого края; null — его нет. */
-  initial: TrendPoint | null;
-  points: TrendPoint[];
-  /** Числовой тег прорежен до min/max по корзинам. */
-  aggregated: boolean;
-}
+// Точка и серия тренда — в core/canvas: их рисует фигура тренда, общая для редактора и монитора.
+import type {ArchiveSeries, TrendPoint} from "@/core/canvas";
+export type {ArchiveSeries, TrendPoint};
 
 type RawPoint = {ts: string; value: unknown; good: boolean};
 type RawSeries = {tag: string; initial: RawPoint | null; points: RawPoint[]; aggregated?: boolean};

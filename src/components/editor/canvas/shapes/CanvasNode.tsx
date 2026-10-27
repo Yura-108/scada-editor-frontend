@@ -6,7 +6,7 @@ import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { GroupElement } from "@/types/editorElement.type";
 import { getRenderedElementWith } from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 import { EditorRenderContext, MIN_SIZE } from "../types";
 import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";
 import { ShapeElement } from "./ShapeElement";
@@ -201,7 +201,7 @@ interface GroupFrameProps {
  * числе того же синего. `strokeScaleEnabled={false}` держит толщину в экранных px.
  */
 function GroupFrame({ w, h, color, haloColor }: GroupFrameProps) {
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
   // Ось линии — на половину её толщины дальше зазора: тогда между содержимым и
   // внутренним краем синей линии ровно FRAME_GAP_PX.
   const inset = (FRAME_GAP_PX + FRAME_WIDTH_PX / 2) / zoom;

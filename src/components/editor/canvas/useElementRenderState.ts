@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 import {useRuntimeOverlayStore, getElementIndex} from "@/core/scene";
 import { DiagramElement, GroupElement } from "@/types/editorElement.type";
 import { sortKeysByZIndex } from "@/lib/editor/zOrder";
@@ -57,7 +57,7 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
   // пересчитывать селекторы стора редактора. Ссылка на объект меняется только когда
   // меняются оверрайды ЭТОГО элемента, поэтому useMemo ниже держит identity стабильной.
   const runtime = useRuntimeOverlayStore(s => s.overridesByKey[elementKey]);
-  const base = useEditorStore(useShallow((s): Omit<ElementRenderState, "runtime"> => {
+  const base = useSceneView(useShallow((s): Omit<ElementRenderState, "runtime"> => {
     // Индекс кэширован по ссылке на массив — это O(1) поиск, а не проход по нему.
     const el = getElementIndex(s.elements).byKey[elementKey];
     const isSelected = s.selectedIds.includes(elementKey);
@@ -93,7 +93,7 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
  * по умолчанию — при равных `zIndex` стабильная сортировка сохраняет порядок конкатенации.
  */
 export function useOrderedMemberKeys(group: GroupElement): string[] {
-  return useEditorStore(useShallow(s =>
+  return useSceneView(useShallow(s =>
     sortKeysByZIndex(
       [...(group.composition ?? []), ...group.children],
       getElementIndex(s.elements).byKey,
@@ -118,7 +118,7 @@ export function useOrderedMemberKeys(group: GroupElement): string[] {
  * перерисовывает только те группы, у которых флаг реально изменился.
  */
 export function useMembersInteractive(groupKey: string): boolean {
-  return useEditorStore(s => {
+  return useSceneView(s => {
     const active = s.activeGroupKey;
     if (!active) return false;
     if (active === groupKey) return true;

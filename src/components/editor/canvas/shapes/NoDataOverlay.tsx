@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect, Circle, Text } from "react-konva";
 import { DiagramElement } from "@/types/editorElement.type";
 import {getRenderedElementWith, useRuntimeOverlayStore, getAbsoluteRenderedPos, getElementBoundsRendered} from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 
 interface NoDataOverlayProps {
   noDataElementKeys: Set<string>;
@@ -25,7 +25,7 @@ export function NoDataOverlay({ noDataElementKeys, elements, elementsMap }: NoDa
   // Габариты считаются по активному состоянию, а его меняют теги (applyRuntimeBatch),
   // не трогая `elements`. Без подписки бейдж «нет данных» остался бы от прошлого
   // состояния — там, где компонент стоял до переключения.
-  const stateByKey = useEditorStore(s => s.currentComponentStateByElementKey);
+  const stateByKey = useSceneView(s => s.currentComponentStateByElementKey);
   const runtimeByKey = useRuntimeOverlayStore(s => s.overridesByKey);
 
   if (!noDataElementKeys.size) return null;

@@ -5,7 +5,7 @@ import { Rect } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
 import { snap } from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 import { MIN_TRACK, resizeTrackAt, sameTracks, trackOffsets } from "@/lib/editor/tableLayout";
 import { MIN_SIZE, type ThemeColors } from "../types";
 
@@ -53,7 +53,7 @@ export function TableResizeHandles({
 }: TableResizeHandlesProps) {
   // Экранно-постоянный размер ручек. Подписка локальная — при зуме перерисовываются
   // только ручки выделенной таблицы, а не вся сцена (см. Anchor/CircleResizeHandle).
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
   const size = 8 / zoom;
   const grip = 8 / zoom;
   const stroke = 1.5 / zoom;

@@ -4,7 +4,7 @@ import React from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 import type { ThemeColors } from "../types";
 
 interface AnchorProps {
@@ -21,7 +21,7 @@ interface AnchorProps {
  * ре-рендерится только сама ручка (только у выделенных элементов), не сцена.
  */
 export function Anchor({ x, y, onDragMove, themeColors }: AnchorProps) {
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
 
   return (
     <Circle

@@ -5,7 +5,7 @@ import { Transformer } from "react-konva";
 import Konva from "konva";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import {getRenderedElement, snap} from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import { useSceneView } from "@/core/canvas";
 import { MIN_SIZE } from "../types";
 import { useThemeColors } from "../useThemeColors";
 
@@ -29,7 +29,7 @@ export function SelectionTransformer({ element, stageRef, updateElementVisual, z
   const { themeColors } = useThemeColors();
   // Состояние меняет размеры фигуры (overrides), но не сам элемент: без подписки
   // рамка Transformer'а осталась бы от прошлого состояния, пока элемент не перевыделят.
-  const stateId = useEditorStore(s => s.currentComponentStateByElementKey[element.key]);
+  const stateId = useSceneView(s => s.currentComponentStateByElementKey[element.key]);
 
   useEffect(() => {
     const stage = stageRef.current;
