@@ -1,7 +1,7 @@
 "use client";
 
 import {create} from "zustand";
-import type {ArchiveSeries, TrendPoint} from "@/lib/runtime/archive";
+import type {ArchiveSeries, TrendPoint} from "@/core/scene";
 
 /**
  * Серии трендов монитора: история из архива + точки, дописанные из живого WS.

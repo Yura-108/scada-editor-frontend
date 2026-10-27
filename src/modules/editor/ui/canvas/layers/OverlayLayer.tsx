@@ -5,10 +5,9 @@ import type Konva from "konva";
 import { Layer, Line, Rect } from "react-konva";
 import type { DiagramElement } from "@/types/editorElement.type";
 import type {MonitorView, SheetSize} from "@/core/scene";
-import type { SelectionRect, ThemeColors } from "@/components/editor/canvas/types";
+import type { SelectionRect, ThemeColors } from "@/core/canvas";
 import type { HoverHighlight } from "@/components/editor/canvas/hooks/useHoverHighlight";
-import { NoDataOverlay } from "@/components/editor/canvas/shapes/NoDataOverlay";
-import { SelectionTransformer } from "@/components/editor/canvas/shapes/SelectionTransformer";
+import {NoDataOverlay, SelectionTransformer} from "@/core/canvas";
 import { HoverHighlightShape } from "./HoverHighlightShape";
 
 interface OverlayLayerProps {

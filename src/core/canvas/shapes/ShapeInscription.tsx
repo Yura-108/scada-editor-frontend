@@ -3,8 +3,8 @@
 import React from "react";
 import { Text } from "react-konva";
 import Konva from "konva";
-import { useEditorStore } from "@/modules/editor";
-import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
+import { useSceneView } from "@/core/scene";
+import { isTextVisibleAtZoom } from "../textLod";
 
 /** Ниже этого кегля надпись всё равно нечитаема — лучше обрезать, чем сжимать дальше. */
 const MIN_FONT_SIZE = 6;
@@ -54,7 +54,7 @@ export function ShapeInscription({
 }: ShapeInscriptionProps) {
   const available = Math.max(w - 2 * inset, 1);
   // Подписка на зум локальная (как у `Anchor`): нужна только для порога отрисовки ниже.
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
 
   // Кегль подбираем измерением: Konva умеет только переносить и обрезать, а нам нужно
   // сжать. Узел временный — в сцену не попадает.

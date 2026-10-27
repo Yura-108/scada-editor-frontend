@@ -2,7 +2,7 @@ import {devLog, isDev} from "@/shared/lib/devLog";
 import type {DiagramElement} from "@/types/editorElement.type";
 import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
 import {compileBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
-import {cellBindings, isLiveField, propertyByName} from "@/lib/editor/tableBindings";
+import {cellBindings, isLiveField, propertyByName} from "@/core/scene";
 
 /** Ячейка таблицы, в которую пишется живое значение свойства (см. tableBindings.ts). */
 export interface TableCellTarget {

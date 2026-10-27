@@ -23,7 +23,7 @@ returns a bare array with no total, so "more" means "the last page was full").
   no longer read, so they disappear from a scene on its next save. `k` of 0 or non-numeric means 1;
   `b` of 0 is not stored.
 - **Drawn as steps**, never sloped lines: the archive stores only changes, so the value holds until
-  the next point. `null` is a gap (bad quality). `lib/editor/trendGeometry.ts` is the single pure
+  the next point. `null` is a gap (bad quality). `core/scene/element/trendGeometry.ts` is the single pure
   implementation, shared by the Konva shape and the monitor's SVG `TrendModal`.
 - **Monitor data**: `useTrendStore` holds series only for tags in `watched` (pens of the open
   scene). `useRuntimeEngine` sets `watched` and loads `[now − window, now]` from

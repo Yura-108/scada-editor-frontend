@@ -1,4 +1,4 @@
-import { useEditorStore } from "@/modules/editor";
+import { getSceneView } from "@/core/scene";
 
 /**
  * Возвращает курсор «покоя» для холста.
@@ -9,7 +9,7 @@ import { useEditorStore } from "@/modules/editor";
  * повторного клика по палитре.
  */
 export const restingCanvasCursor = (): string =>
-  useEditorStore.getState().pendingPlacement ? "crosshair" : "default";
+  getSceneView().pendingPlacement ? "crosshair" : "default";
 
 /** Сбрасывает курсор контейнера холста с учётом «вооружённого» инструмента. */
 export const resetCanvasCursor = (container: HTMLElement | undefined | null) => {

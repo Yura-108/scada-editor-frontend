@@ -1,4 +1,4 @@
-import type { CanvasMenuItem } from "@/components/editor/canvas/types";
+import type { CanvasMenuItem } from "@/core/canvas";
 import type { MonitorMenuSettings } from "@/types/editorElement.type";
 
 /** Открытое контекстное меню холста: где, какие пункты и (в мониторе) вид меню. */

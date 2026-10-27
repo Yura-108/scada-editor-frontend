@@ -2,15 +2,14 @@
 
 import React from "react";
 import { Group, Rect, Text } from "react-konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
+import { resetCanvasCursor } from "../canvasCursor";
 import { LeafElement } from "@/types/editorElement.type";
-import {getRenderedElementWith, measureText} from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import {getRenderedElementWith, measureText, useSceneView} from "@/core/scene";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";
 import { SelectionOutline } from "./SelectionOutline";
-import { isTextVisibleAtZoom } from "@/lib/editor/textLod";
+import { isTextVisibleAtZoom } from "../textLod";
 
 export function TextShapeElement({ el, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, stateId, runtime }: ShapeElementProps) {
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
@@ -21,7 +20,7 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
   // Мелкий текст не рисуем вовсе: ниже ~5 px на экране строки сливаются в кашу, а стоят
   // полной отрисовки глифов. Рамкой выделения элемент при этом ловится по-прежнему —
   // она считает по габаритам из стора. Подписка на зум локальная, как у ручек (`Anchor`).
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
 
   const pad = 4;
 
@@ -119,7 +118,7 @@ function TextWidthHandle({ boxW, boxH, elKey, currentW, isAutoWidth, snap, updat
   snap: (v: number) => number;
   updateElementVisual: (key: string, props: Record<string, unknown>) => void;
 }) {
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
   const { themeColors } = useThemeColors();
   const size = 8 / zoom;
 

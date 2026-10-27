@@ -1,7 +1,7 @@
 import type { CellBinding, CellSourceField, TagBinding } from "@/types/binding.types";
 import type { DiagramElement } from "@/types/editorElement.type";
 import type { PropertyCreateDto } from "@/types/tags.types";
-import { cellRuntimeKey, getCellData } from "@/lib/editor/tableCells";
+import { cellRuntimeKey, getCellData } from "./tableCells";
 
 /**
  * Привязки ячеек таблицы: какое поле какого свойства попадает в какую ячейку.

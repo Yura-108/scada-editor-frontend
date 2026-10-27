@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CanvasMenuItem } from "./types";
+import type { CanvasMenuItem } from "@/core/canvas";
 import type { MonitorMenuSettings } from "@/types/editorElement.type";
 import { monitorMenuStyles } from "@/core/scene";
 

@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import type {CellSourceField} from "@/types/binding.types";
 import {TextInput} from "@/components/ui/TextInput";
-import {cellSourceFieldsFor} from "@/lib/editor/tableBindings";
+import {cellSourceFieldsFor} from "@/core/scene";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableCellModel} from "../../hooks/useTableCell";
 import {propertyKey} from "../../lib/propertyOrder";

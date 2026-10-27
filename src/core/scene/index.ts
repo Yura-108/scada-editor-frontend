@@ -3,6 +3,8 @@
 // через этот index — иначе index замкнул бы цикл сам на себя.
 export {useRuntimeOverlayStore} from "./runtimeOverlayStore";
 export {bindActiveStateReader, readActiveStates} from "./activeStates";
+export {bindSceneViewStore, getSceneView, useSceneView, type SceneViewState, type SceneViewStore} from "./sceneView";
+export type {ArchiveSeries, TrendPoint} from "./trendTypes";
 
 // Отображаемый вид
 export * from "./render/getRenderedElement";
@@ -12,6 +14,13 @@ export * from "./element/elementIndex";
 export * from "./element/dashArray";
 export * from "./element/monitorMenu";
 export * from "./element/trendSettings";
+export * from "./element/curvePoints";
+export * from "./element/tableBindings";
+export * from "./element/tableCells";
+export * from "./element/tableLayout";
+export * from "./element/zOrder";
+export * from "./element/trendGeometry";
+export * from "./element/pickImageFile";
 
 // Геометрия
 export {default as getAbsolutePosition} from "./geometry/getAbsolutePosition";

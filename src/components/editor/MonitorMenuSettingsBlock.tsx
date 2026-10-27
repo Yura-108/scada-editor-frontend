@@ -6,7 +6,7 @@ import type {DiagramElement, MonitorMenuSettings} from "@/types/editorElement.ty
 import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/core/scene";
 import {isOpenableTrend, monitorActions, tagProperties} from "@/components/editor/canvas/buildMonitorMenu";
 import {ContextMenuPanel} from "@/components/editor/canvas/CanvasContextMenu";
-import type {CanvasMenuItem} from "@/components/editor/canvas/types";
+import type {CanvasMenuItem} from "@/core/canvas";
 
 interface Props {
   element: DiagramElement;

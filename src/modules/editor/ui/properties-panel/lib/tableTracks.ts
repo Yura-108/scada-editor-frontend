@@ -1,4 +1,4 @@
-import {headerHeight, resolveTracks} from "@/lib/editor/tableLayout";
+import {headerHeight, resolveTracks} from "@/core/scene";
 import {getNumberValue} from "./getNumberValue";
 
 export interface TableTracks {

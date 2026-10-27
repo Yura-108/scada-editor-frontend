@@ -8,7 +8,7 @@ import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorMo
 import { openTrendModal } from "@/components/monitor/TrendModal";
 import { trendPens } from "@/core/scene";
 import type { MenuChoice } from "@/lib/runtime/eventScript";
-import type { CanvasMenuItem } from "./types";
+import type { CanvasMenuItem } from "@/core/canvas";
 
 /**
  * Свойства элемента, привязанные к тегу — их и переназначают через «Опции».

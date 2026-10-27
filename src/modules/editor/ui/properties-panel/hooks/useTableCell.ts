@@ -1,9 +1,7 @@
 import {DiagramElement, TableCellData} from "@/types/editorElement.type";
 import type {CellSourceField} from "@/types/binding.types";
 import {createUuid} from "@/shared/lib/createUuid";
-import {cellRuntimeKey, getCellData, mergeCellPatch} from "@/lib/editor/tableCells";
-import {cellBindingAt} from "@/lib/editor/tableBindings";
-import {setTrackSize} from "@/lib/editor/tableLayout";
+import {cellRuntimeKey, getCellData, mergeCellPatch, cellBindingAt, setTrackSize} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import {getTableTracks} from "../lib/tableTracks";
 

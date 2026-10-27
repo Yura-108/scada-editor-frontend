@@ -5,8 +5,7 @@ import {ChevronDown, ChevronRight, ChevronsDownUp, Boxes, Folder, Square, Circle
 import {useEditorStore} from "@/modules/editor";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/shared/lib/cn";
-import {sortByZIndex, sortKeysByZIndex} from "@/lib/editor/zOrder";
-import {getElementIndex} from "@/core/scene";
+import {sortByZIndex, sortKeysByZIndex, getElementIndex} from "@/core/scene";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   rectangle: <Square size={13} />,

@@ -3,9 +3,8 @@
 import React, { useRef } from "react";
 import { Circle } from "react-konva";
 import Konva from "konva";
-import { resetCanvasCursor } from "@/lib/editor/canvasCursor";
-import { GRID } from "@/core/scene";
-import { useEditorStore } from "@/modules/editor";
+import { resetCanvasCursor } from "../canvasCursor";
+import {GRID, useSceneView} from "@/core/scene";
 
 interface CircleResizeHandleProps {
   /** Центр круга в координатах родителя (у элемента в модели лежит левый верхний угол габарита). */
@@ -40,7 +39,7 @@ interface CircleResizeHandleProps {
 export function CircleResizeHandle({ cx, cy, r, elKey, snap, updateElementVisual, circleRef }: CircleResizeHandleProps) {
   const handleRef = useRef<Konva.Circle>(null);
   // Экранно-постоянный размер ручки (см. Anchor).
-  const zoom = useEditorStore(s => s.camera.zoom);
+  const zoom = useSceneView(s => s.camera.zoom);
 
   /** Радиус по позиции ручки: горизонталь от центра, шаг сетки, не меньше клетки. */
   const radiusAt = (handleX: number) => Math.max(GRID, snap(handleX - cx));

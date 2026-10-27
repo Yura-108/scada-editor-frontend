@@ -4,7 +4,7 @@ import { getDescendants } from "@/lib/getDescendants";
 import { handleAddProperty } from "@/lib/handleAddProperty";
 import { OpenCreateFaceplateModal } from "@/components/ui/OpenCreateFaceplateModal";
 import { promptModal } from "@/components/ui/ConfirmModal";
-import type { CanvasMenuItem } from "./types";
+import type { CanvasMenuItem } from "@/core/canvas";
 
 export interface BuildItemMenuDeps {
   elements: DiagramElement[];

@@ -1,4 +1,4 @@
-import {snap} from "@/core/scene";
+import {snap} from "../geometry/grid";
 
 /**
  * Открывает системный проводник для выбора картинки и возвращает её как data URL
