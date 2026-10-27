@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {purgePropertyRefs} from "@/lib/editor/propertyDependents";
+import {purgePropertyRefs} from "../propertyDependents";
 import {toast} from "sonner";
 import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
 import {TagBinding} from "@/types/binding.types";

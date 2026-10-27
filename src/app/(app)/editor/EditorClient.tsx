@@ -3,10 +3,8 @@
 import {useEffect} from "react";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
-import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifications";
-import {useEditorStore, WorkSpace} from "@/modules/editor";
+import {useSceneChangedNotifications, useEditorStore, WorkSpace, restoreLastProject} from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
-import {restoreLastProject} from "@/lib/editor/lastProject";
 import {toast} from "sonner";
 
 export default function EditorPage() {

@@ -5,7 +5,7 @@ import {SortableContext, rectSortingStrategy} from "@dnd-kit/sortable";
 import {AlertTriangle, Plus} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {handleAddProperty} from "@/lib/handleAddProperty";
-import {confirmDeleteProperty} from "@/lib/editor/confirmDeleteProperty";
+import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {MonitorMenuSettingsBlock} from "../blocks/MonitorMenuSettingsBlock";
 import {TrendSettingsBlock} from "../blocks/TrendSettingsBlock";

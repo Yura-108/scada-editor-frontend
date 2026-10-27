@@ -1,5 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { useEditorStore } from "@/modules/editor";
+import {useEditorStore} from "./editorStore";
 
 /**
  * Склейка серии правок в ОДИН шаг истории undo.

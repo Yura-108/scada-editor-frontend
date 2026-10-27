@@ -1,9 +1,9 @@
 import { RefObject, useCallback, useRef, useState } from "react";
 import Konva from "konva";
 import {snap, getElementBoundsRendered} from "@/core/scene";
-import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "@/lib/editor/smartGuides";
+import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "../../../lib/smartGuides";
 import { DiagramElement } from "@/types/editorElement.type";
-import { beginHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";
+import { beginHistoryGroup, endHistoryGroup } from "../../../model/historyGroup";
 
 interface MultiDragAndGuidesDeps {
   stageRef: RefObject<Konva.Stage | null>;

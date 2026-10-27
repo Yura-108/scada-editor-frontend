@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import {useEditorStore} from "../../../model/editorStore";
 import {resolveSheet, cameraForMonitorView, resolveMonitorView} from "@/core/scene";
-import { cameraForSheet } from "@/lib/editor/fitCamera";
-import { CameraScope, readSceneCamera, writeSceneCamera } from "@/lib/editor/sceneCamera";
+import { cameraForSheet } from "../../../lib/fitCamera";
+import { CameraScope, readSceneCamera, writeSceneCamera } from "../../../lib/sceneCamera";
 
 /** Задержка отложенной записи — как у раскладки редактора (WorkSpace). */
 const SAVE_DELAY = 300;

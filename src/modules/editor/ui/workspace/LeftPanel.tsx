@@ -5,7 +5,7 @@ import {ChevronLeft, PanelLeft} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {LayersPanel} from "../layers-panel/LayersPanel";
 import Palette from "../palette/Palette";
-import {handleTabListKey} from "@/lib/editor/tabListKeys";
+import {handleTabListKey} from "../../lib/tabListKeys";
 import {LEFT_COLLAPSE, LEFT_MAX, LEFT_TABS, type LeftTabType} from "./lib/workspaceLayout";
 import {ResizeHandle} from "./ResizeHandle";
 

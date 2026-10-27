@@ -8,7 +8,7 @@ import {CSS} from "@dnd-kit/utilities";
 import {cn} from "@/shared/lib/cn";
 import {useEditorStore} from "../../model/editorStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
-import {handleTabListKey} from "@/lib/editor/tabListKeys";
+import {handleTabListKey} from "../../lib/tabListKeys";
 
 /**
  * Оболочка закреплённой вкладки: перетаскивание порядка.

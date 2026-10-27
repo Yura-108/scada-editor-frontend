@@ -8,7 +8,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations} from "../../api/recipes";
 import {ChooseManifestTagsModal} from "./ChooseManifestTagsModal";
-import {actionValueText, coerceActionValue, validateRecipe} from "@/lib/editor/recipeValidation";
+import {actionValueText, coerceActionValue, validateRecipe} from "../../lib/recipeValidation";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {

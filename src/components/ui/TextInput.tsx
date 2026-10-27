@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { beginHistoryGroup, cancelHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";
+import { beginHistoryGroup, cancelHistoryGroup, endHistoryGroup } from "@/modules/editor";
 
 interface TextInputProps {
   id?: string;

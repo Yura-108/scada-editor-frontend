@@ -5,11 +5,11 @@ import {
   detachServerEventIds,
   detachServerScriptIds,
   detachServerStateIds,
-} from "@/lib/editor/detachServerIds";
-import {instantiateTemplate} from "@/lib/editor/templateInstance";
+} from "../detachServerIds";
+import {instantiateTemplate} from "../templateInstance";
 import {toast} from "sonner";
 import type {ConturImportStats} from "@/core/scene";
-import {getCanvasPointerWorld} from "@/lib/editor/canvasPointer";
+import {getCanvasPointerWorld} from "../../lib/canvasPointer";
 import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";
 import {normalizeImportedElements} from "../importElements";

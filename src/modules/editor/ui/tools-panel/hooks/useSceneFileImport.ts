@@ -1,6 +1,6 @@
 import React, {useRef} from "react";
 import {toast} from "sonner";
-import {isDeviceLayoutFile} from "@/lib/editor/deviceLayoutImport";
+import {isDeviceLayoutFile} from "../../../lib/deviceLayoutImport";
 import {useEditorStore} from "../../../model/editorStore";
 import {SCENE_EXPORT_FORMAT} from "../../../model/editorStoreInternals";
 import {askImportMode} from "../lib/askImportMode";

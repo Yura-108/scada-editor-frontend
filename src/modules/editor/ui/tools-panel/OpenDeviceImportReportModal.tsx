@@ -6,7 +6,7 @@ import {CheckCircle2} from "lucide-react";
 import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {Collapsible} from "@/shared/ui/codeModalParts";
-import type {DeviceLayoutReport} from "@/lib/editor/deviceLayoutImport";
+import type {DeviceLayoutReport} from "../../lib/deviceLayoutImport";
 
 /**
  * Итог импорта плана устройств. Показывается только когда есть о чём сказать:

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { GRID } from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import { useModalStore } from "@/store/modalStore";
-import { beginHistoryGroup, endHistoryGroup } from "@/lib/editor/historyGroup";
+import { beginHistoryGroup, endHistoryGroup } from "../../../model/historyGroup";
 
 /**
  * Должно ли нажатие быть проигнорировано редактором.

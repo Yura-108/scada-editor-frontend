@@ -1,4 +1,4 @@
-import {openSceneGuarded} from "@/lib/editor/openScene";
+import {openSceneGuarded} from "../../../model/openScene";
 import {useEditorStore} from "../../../model/editorStore";
 import type {TabType} from "../lib/workspaceLayout";
 

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import {getElementBoundsRendered, clampZoom, resolveSheet} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
-import { cameraForSheet } from "@/lib/editor/fitCamera";
+import { cameraForSheet } from "../../../lib/fitCamera";
 
 interface ZoomControlsDeps {
   canvasRect: { width: number; height: number } | null;

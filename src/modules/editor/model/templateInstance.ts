@@ -9,7 +9,7 @@ import {
   detachServerScriptIds,
   detachServerStateIds,
   remapPropertyRefs,
-} from "@/lib/editor/detachServerIds";
+} from "./detachServerIds";
 
 export interface TemplateInstanceOptions {
   /** Куда встаёт корень, в МИРОВЫХ координатах. Снап к сетке делается здесь. */

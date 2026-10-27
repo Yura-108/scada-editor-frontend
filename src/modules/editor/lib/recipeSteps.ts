@@ -1,5 +1,5 @@
 import type {RecipeStep, RecipeTag} from "@/types/recipe.types";
-import {actionValueText, coerceActionValue} from "@/lib/editor/recipeValidation";
+import {actionValueText, coerceActionValue} from "./recipeValidation";
 
 /**
  * Правка значений тегов внутри шага.

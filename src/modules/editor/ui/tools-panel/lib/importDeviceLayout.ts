@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import {buildDeviceLayout, type DeviceLayoutFile} from "@/lib/editor/deviceLayoutImport";
+import {buildDeviceLayout, type DeviceLayoutFile} from "../../../lib/deviceLayoutImport";
 import {openDeviceImportReportModal} from "../OpenDeviceImportReportModal";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useEditorStore} from "../../../model/editorStore";

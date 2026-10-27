@@ -10,7 +10,7 @@ import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useDeviceStore} from "@/store/useDeviceStore";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
-import {buildManifestTags} from "@/lib/editor/tagMeta";
+import {buildManifestTags} from "../../lib/tagMeta";
 import {shortTagPath} from "@/lib/editor/tagPath";
 import type {RecipeTag} from "@/types/recipe.types";
 

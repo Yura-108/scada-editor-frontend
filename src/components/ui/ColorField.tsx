@@ -3,7 +3,7 @@
 import React, {useEffect, useRef, useState} from "react";
 import {Ban} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {beginHistoryGroup, endHistoryGroup} from "@/lib/editor/historyGroup";
+import {beginHistoryGroup, endHistoryGroup} from "@/modules/editor";
 
 interface ColorFieldProps {
   id: string;
