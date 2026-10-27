@@ -92,7 +92,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
       aria-label="История версий"
       // fixed, а не absolute: панель монтируется из тулбара (он сам fixed и высотой в
       // одну строку), но должна занимать всю высоту рабочей области под шапкой.
-      className="fixed right-0 top-(--app-header-h) bottom-0 z-panel flex w-[360px] flex-col border-l
+      className="fixed right-0 top-[calc(var(--app-header-h)+3rem)] bottom-0 z-panel flex w-[360px] flex-col border-l
                  border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/95 backdrop-blur-md"
     >
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-neutral-200 dark:border-neutral-800 px-3">

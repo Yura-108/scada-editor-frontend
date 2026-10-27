@@ -55,7 +55,7 @@ export default function VersionPreviewBanner() {
     <div
       role="status"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
-      className="fixed top-14 z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none"
+      className="fixed top-26 z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none"
     >
       <div
         className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-amber-500/40

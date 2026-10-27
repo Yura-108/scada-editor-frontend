@@ -7,7 +7,6 @@ import {ArrangeButtons} from "./ArrangeButtons";
 import {HistoryButtons} from "./HistoryButtons";
 import {SaveButton} from "./SaveButton";
 import {SceneButtons} from "./SceneButtons";
-import {SceneStatus} from "../project-bar/SceneStatus";
 import {ToolbarDivider} from "./TooltipBtn";
 import VersionHistoryPanel from "@/components/editor/versions/VersionHistoryPanel";
 import SaveConflictDialog from "@/components/editor/versions/SaveConflictDialog";
@@ -39,17 +38,15 @@ export function ToolsPanel() {
         left: "var(--ws-left-m, 0px)",
         right: "var(--ws-right-m, 0px)",
       }}
-      className="fixed top-26 z-toolbar grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
+      className="fixed top-38 z-toolbar grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      {/* Проект и сцена: отдельная колонка слева, не влияет на центрирование тулбара */}
-      <div className="min-w-0 flex justify-start">
-        <SceneStatus canWrite={canWrite} />
-      </div>
+      {/* Пустая левая колонка держит тулбар по центру: проект и схема — в полосе над редактором. */}
+      <div />
 
       <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto justify-self-center">
 
-        <SceneButtons canEdit={canEdit} canWrite={canWrite} onImport={handleImport} />
+        <SceneButtons canEdit={canEdit} onImport={handleImport} />
 
         <ToolbarDivider />
 

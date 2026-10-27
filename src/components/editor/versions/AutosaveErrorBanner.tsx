@@ -22,7 +22,7 @@ import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
  * плашка появится опять.
  */
 /** Места плашек сверху вниз; классы целиком, чтобы Tailwind их нашёл. */
-const TOP_SLOTS = ["top-14", "top-28", "top-42"];
+const TOP_SLOTS = ["top-26", "top-40", "top-54"];
 
 export default function AutosaveErrorBanner() {
   const {autosaveError, staleBaseVersion, versionPreview} = useEditorStore(

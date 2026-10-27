@@ -3,7 +3,7 @@
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 
-/** Левая колонка тулбара: проект, схема, право просмотра и статус сохранения. */
+/** Правый край полосы редактора: право просмотра и статус сохранения. Имена — в списках слева. */
 export function SceneStatus({canWrite}: {canWrite: boolean}) {
   const {currentProject, scene, versionPreview, isSaving, isDirty, lastSavedAt, sceneVersion} = useEditorStore(
     useShallow(s => ({
@@ -15,17 +15,7 @@ export function SceneStatus({canWrite}: {canWrite: boolean}) {
   if (!currentProject && !scene) return null;
 
   return (
-    <div className="min-w-0 flex items-center gap-3 text-xs font-medium text-neutral-400 pointer-events-auto">
-      {currentProject && (
-        <span className="truncate">
-          Проект: <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentProject.name}</span>
-        </span>
-      )}
-      {scene && (
-        <span className="truncate">
-          Схема: <span className="text-gray-900 dark:text-gray-100 font-semibold">{scene.name}</span>
-        </span>
-      )}
+    <div className="min-w-0 flex items-center gap-3 text-xs font-medium text-neutral-400">
       {/* Статус сохранения: автосейв тихий и раз в 10 минут, поэтому без
           этой подписи пользователь не знал, в безопасности ли его работа.
           В режиме просмотра версии статус не показываем — там говорит плашка,

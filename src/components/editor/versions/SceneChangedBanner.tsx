@@ -44,7 +44,7 @@ export default function SceneChangedBanner() {
     <div
       role="status"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
-      className={`fixed ${versionPreview ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
+      className={`fixed ${versionPreview ? "top-40" : "top-26"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
       <div
         className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-sky-500/40
