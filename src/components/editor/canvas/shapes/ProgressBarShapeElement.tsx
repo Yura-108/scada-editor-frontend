@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { Group, Rect, Text } from "react-konva";
 import { LeafElement } from "@/types/editorElement.type";
-import { getRenderedElementWith } from "@/lib/getRenderedElement";
+import { getRenderedElementWith } from "@/core/scene";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";
 

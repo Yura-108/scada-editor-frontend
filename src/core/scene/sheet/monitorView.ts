@@ -1,8 +1,8 @@
 import type { DiagramElement } from "@/types/editorElement.type";
-import type { Camera } from "@/lib/editor/revealCamera";
-import type { SheetSize } from "@/lib/editor/sheet";
-import { isMetaElement } from "@/lib/editor/sheet";
-import { clampZoom } from "@/lib/editor/zoomLimits";
+import type { Camera } from "./revealCamera";
+import type { SheetSize } from "./sheet";
+import { isMetaElement } from "./sheet";
+import { clampZoom } from "./zoomLimits";
 
 /**
  * Вид сцены для монитора, зафиксированный инженером (замок в панели зума редактора).

@@ -1,7 +1,7 @@
 import type {DiagramElement} from "@/types/editorElement.type";
 import type {PropertyRef} from "@/types/binding.types";
 // переедет в core/scene вместе с остальным lib (шаг 8)
-import {getElementIndex} from "@/lib/editor/elementIndex";
+import {getElementIndex} from "@/core/scene";
 
 /**
  * Проставляет номера свойств тем ссылкам, что их ждали.

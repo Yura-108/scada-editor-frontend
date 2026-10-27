@@ -1,4 +1,4 @@
-import { ElementBounds } from "@/lib/getElementBounds";
+import { ElementBounds } from "../geometry/getElementBounds";
 
 export interface Camera {
   x: number;

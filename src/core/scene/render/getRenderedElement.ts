@@ -2,8 +2,8 @@ import {DiagramElement} from "@/types/editorElement.type";
 // Активные состояния — через регистрацию, а не импортом стора: этот файл подтягивает геометрия
 // слайсов стора (camera.slice → getElementBounds → сюда), и импорт стора замкнул бы цикл
 // (`Cannot access … before initialization`); к тому же core не знает модулей.
-import {readActiveStates} from "@/core/scene/activeStates";
-import {useRuntimeOverlayStore} from "@/core/scene";
+import {readActiveStates} from "../activeStates";
+import {useRuntimeOverlayStore} from "../runtimeOverlayStore";
 
 type Overrides = Record<string, unknown>;
 

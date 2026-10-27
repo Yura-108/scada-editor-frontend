@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import Konva from "konva";
-import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
-import { getElementBoundsRendered } from "@/lib/getElementBounds";
-import { getRenderedElement } from "@/lib/getRenderedElement";
+import {getAbsoluteRenderedPos, getElementBoundsRendered, getRenderedElement} from "@/core/scene";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 
 interface HoverHighlightDeps {

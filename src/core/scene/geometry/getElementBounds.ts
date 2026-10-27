@@ -1,8 +1,8 @@
-import {absolutePosition} from "@/lib/getAbsolutePosition";
+import {absolutePosition} from "./getAbsolutePosition";
 import {DiagramElement, LeafElement} from "@/types/editorElement.type";
-import {getRenderedElement} from "@/lib/getRenderedElement";
-import {ElementIndex, getChildElements, getElementIndex} from "@/lib/editor/elementIndex";
-import {measureText} from "@/lib/editor/measureText";
+import {getRenderedElement} from "../render/getRenderedElement";
+import {ElementIndex, getChildElements, getElementIndex} from "../element/elementIndex";
+import {measureText} from "./measureText";
 
 /**
  * Габарит элемента И его начало координат — это РАЗНЫЕ вещи, и путать их нельзя.

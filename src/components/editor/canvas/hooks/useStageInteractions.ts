@@ -5,12 +5,8 @@ import { useEditorStore } from "@/modules/editor";
 import { setCanvasPointerWorld } from "@/lib/editor/canvasPointer";
 import { DiagramElement } from "@/types/editorElement.type";
 import isIntersecting from "@/shared/lib/isIntersecting";
-import { getSelectionBounds } from "@/lib/editor/getSelectionBounds";
-import { ZOOM_MIN, ZOOM_MAX } from "@/lib/editor/zoomLimits";
-import { getElementIndex } from "@/lib/editor/elementIndex";
+import {getSelectionBounds, ZOOM_MIN, ZOOM_MAX, getElementIndex, cameraForMonitorView, resolveMonitorView, resolveSheet} from "@/core/scene";
 import { pickMonitorTarget } from "@/lib/editor/pickMonitorTarget";
-import { cameraForMonitorView, resolveMonitorView } from "@/lib/editor/monitorView";
-import { resolveSheet } from "@/lib/editor/sheet";
 import type { SelectionRect } from "../types";
 
 

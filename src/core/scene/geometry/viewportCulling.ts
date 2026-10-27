@@ -1,6 +1,6 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { ElementIndex } from "@/lib/editor/elementIndex";
-import { elementBoundsRendered } from "@/lib/getElementBounds";
+import { ElementIndex } from "../element/elementIndex";
+import { elementBoundsRendered } from "./getElementBounds";
 
 /**
  * Схемы меньше этого размера отдаём целиком: отсечение само по себе стоит

@@ -1,13 +1,10 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {PaletteItemType} from "@/types/palette.types";
 import {createUuid} from "@/shared/lib/createUuid";
-import {snap} from "@/lib/utils";
+import {snap, getElementBoundsRendered, shiftElementPositions, DEFAULT_DASH} from "@/core/scene";
 import {instantiateTemplate} from "@/lib/editor/templateInstance";
 import {findTemplateRoot} from "@/lib/editor/templateRoot";
 import {transformSelection, type TransformOp} from "@/lib/editor/transformSelection";
-import {getElementBoundsRendered} from "@/lib/getElementBounds";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
-import {DEFAULT_DASH} from "@/lib/editor/dashArray";
 
 /**
  * Импорт плана устройств: «какой шаблон взять и в какие координаты поставить».

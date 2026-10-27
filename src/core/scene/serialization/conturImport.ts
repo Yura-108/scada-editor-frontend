@@ -1,5 +1,5 @@
 import {createUuid} from "@/shared/lib/createUuid";
-import {DEFAULT_DASH} from "@/lib/editor/dashArray";
+import {DEFAULT_DASH} from "../element/dashArray";
 
 /**
  * Приведение выгрузки CONTUR (`visualization_export_hmi*.json`) к модели редактора.

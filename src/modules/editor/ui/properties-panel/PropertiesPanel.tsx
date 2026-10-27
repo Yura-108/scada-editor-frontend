@@ -2,7 +2,7 @@
 
 import React, {useState, useMemo} from "react";
 import {DiagramElement} from "@/types/editorElement.type";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement} from "@/core/scene";
 import {BindingsTab} from "@/components/editor/bindings/BindingsTab";
 import {EventsTab} from "@/components/editor/events/EventsTab";
 import {useEditorStore} from "../../model/editorStore";

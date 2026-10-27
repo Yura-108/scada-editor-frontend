@@ -1,6 +1,6 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {getRenderedElement} from "@/lib/getRenderedElement";
-import {ElementIndex, getElementIndex, resolveParentElement} from "@/lib/editor/elementIndex";
+import {getRenderedElement} from "../render/getRenderedElement";
+import {ElementIndex, getElementIndex, resolveParentElement} from "../element/elementIndex";
 
 /**
  * Абсолютные координаты элемента на холсте (с учётом цепочки parentKey).

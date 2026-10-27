@@ -1,9 +1,7 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/shared/lib/createUuid";
-import {snap} from "@/lib/utils";
+import {snap, getElementBoundsRendered, shiftElementPositions} from "@/core/scene";
 import {findTemplateRoot} from "@/lib/editor/templateRoot";
-import {getElementBoundsRendered} from "@/lib/getElementBounds";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
 import {
   detachPropertyIds,
   detachServerBindingIds,

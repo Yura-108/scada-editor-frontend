@@ -2,8 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useEditorStore } from "@/modules/editor";
-import { getRenderedElement } from "@/lib/getRenderedElement";
-import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
+import {getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
 import { DiagramElement, LeafElement } from "@/types/editorElement.type";
 import { useThemeColors } from "../useThemeColors";
 

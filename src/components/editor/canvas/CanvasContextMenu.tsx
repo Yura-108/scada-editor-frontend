@@ -3,7 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanvasMenuItem } from "./types";
 import type { MonitorMenuSettings } from "@/types/editorElement.type";
-import { monitorMenuStyles } from "@/lib/editor/monitorMenu";
+import { monitorMenuStyles } from "@/core/scene";
 
 interface CanvasContextMenuProps {
   /** settings — вид меню компонента в мониторе; у меню редактора их нет. */

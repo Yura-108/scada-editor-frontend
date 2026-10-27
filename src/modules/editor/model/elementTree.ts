@@ -5,13 +5,7 @@
  * правила обхода (`children` / `composition` / `parentKey`) — docs/domain/editor-model.md.
  */
 import {DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
-import {
-  GROUP_PADDING,
-  resolveParentAbsoluteIndexed,
-} from "@/lib/groupLayout";
-import {ElementIndex, getElementIndex} from "@/lib/editor/elementIndex";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
-import {isBoundsContributor} from "@/lib/editor/boundsContributor";
+import {GROUP_PADDING, resolveParentAbsoluteIndexed, ElementIndex, getElementIndex, shiftElementPositions, isBoundsContributor, elementBoundsRendered} from "@/core/scene";
 import {
   detachServerBindingIds,
   detachServerEventIds,
@@ -20,7 +14,6 @@ import {
 } from "@/lib/editor/detachServerIds";
 import {elementRegistry} from "@/constants/propertiesPanel";
 import {createUuid} from "@/shared/lib/createUuid";
-import {elementBoundsRendered} from "@/lib/getElementBounds";
 
 export const isGroup = (el: DiagramElement) => el.type === "group";
 

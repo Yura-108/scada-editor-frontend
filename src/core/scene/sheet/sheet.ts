@@ -1,6 +1,6 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { isConturMeta } from "@/lib/editor/conturImport";
-import { GRID } from "@/lib/utils";
+import { isConturMeta } from "../serialization/conturImport";
+import { GRID } from "../geometry/grid";
 
 /**
  * Лист сцены.

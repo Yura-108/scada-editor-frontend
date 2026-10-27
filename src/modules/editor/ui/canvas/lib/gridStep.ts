@@ -1,4 +1,4 @@
-import { GRID } from "@/lib/utils";
+import { GRID } from "@/core/scene";
 import { GRID_MAJOR, FINE_GRID_MIN_ZOOM, MAJOR_GRID_MIN_ZOOM } from "@/lib/editor/gridPattern";
 
 /**

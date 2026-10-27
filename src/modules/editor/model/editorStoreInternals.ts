@@ -9,12 +9,11 @@ import {toast} from "sonner";
 import type {DiagramElement, SceneType} from "@/types/editorElement.type";
 import type {PropertyCreateRequestDto} from "@/types/tags.types";
 import type {MergeReport, VersionPreview} from "@/types/editorVersion.types";
-import {useRuntimeOverlayStore} from "@/core/scene";
+import {useRuntimeOverlayStore, transformElements} from "@/core/scene";
 import {useSessionUserStore} from "@/store/useSessionUserStore";
 // переедут в core/scene и core/access вместе с остальным lib (шаг 8)
 import {errorTextFromBody} from "@/lib/access/accessErrors";
 import {grantOf} from "@/lib/access/grants";
-import transformElements from "@/lib/transformElements";
 import {rootComponentsOf} from "@/lib/editor/documentComponents";
 import {dropScene, fetchSceneWithVersion, prefetchScenes, type SceneSource} from "@/lib/editor/sceneCache";
 import {readPinnedTabs} from "@/lib/editor/pinnedScenes";

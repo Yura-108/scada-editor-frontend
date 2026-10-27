@@ -5,7 +5,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
 import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
-import {getRenderedElement} from "@/lib/getRenderedElement";
+import {getRenderedElement, trendPens, trendTiming} from "@/core/scene";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
 import type {CompiledBinding} from "@/lib/runtime/executeBinding";
 import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
@@ -34,7 +34,6 @@ import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {cellRuntimeKey} from "@/lib/editor/tableCells";
 import {fetchArchiveValues, toTrendValue} from "@/lib/runtime/archive";
 import {isBooleanValueType} from "@/lib/editor/valueTypes";
-import {trendPens, trendTiming} from "@/lib/editor/trendSettings";
 import {
   appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore,
   setTrendClock, setTrendWatch, useTrendStore,

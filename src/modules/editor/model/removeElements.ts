@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {getElementIndex} from "@/lib/editor/elementIndex";
+import {getElementIndex} from "@/core/scene";
 import {getDescendantKeys, recomputeAncestorBounds} from "./elementTree";
 
 /**

@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import getAbsolutePosition from "@/lib/getAbsolutePosition";
+import {getAbsolutePosition} from "@/core/scene";
 
 export default function getParentAbsolutePosition(
   element: DiagramElement,

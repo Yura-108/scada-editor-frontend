@@ -1,6 +1,6 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { getRenderedElement } from "@/lib/getRenderedElement";
-import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
+import { getRenderedElement } from "../render/getRenderedElement";
+import { getAbsoluteRenderedPos } from "./getAbsoluteRenderedPos";
 
 /**
  * Абсолютный bbox элемента для проверки попадания в рамку выделения (marquee).

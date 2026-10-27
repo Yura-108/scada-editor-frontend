@@ -1,4 +1,4 @@
-import { GRID } from "@/lib/utils";
+import { GRID } from "@/core/scene";
 
 /** Крупный шаг сетки — 10 клеток. На малых зумах мелкий шаг сливается в поле. */
 export const GRID_MAJOR = GRID * 10;

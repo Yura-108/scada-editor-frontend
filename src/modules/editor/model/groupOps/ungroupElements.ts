@@ -1,5 +1,5 @@
 import {DiagramElement} from "@/types/editorElement.type";
-import {shiftElementPositions} from "@/lib/editor/shiftPositions";
+import {shiftElementPositions} from "@/core/scene";
 import {isComponentEl, resplitContainer} from "../elementTree";
 import {syncMemberStates} from "../elementStates";
 

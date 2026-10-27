@@ -1,7 +1,5 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { ElementIndex, getChildElements } from "@/lib/editor/elementIndex";
-import { getRenderedElement } from "@/lib/getRenderedElement";
-import { getAbsoluteRenderedPos } from "@/lib/editor/getAbsoluteRenderedPos";
+import {ElementIndex, getChildElements, getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
 import { sortKeysByZIndex } from "@/lib/editor/zOrder";
 
 /**

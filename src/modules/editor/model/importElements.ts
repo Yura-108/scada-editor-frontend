@@ -1,9 +1,7 @@
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/shared/lib/createUuid";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {readSheetFromRaw} from "@/lib/editor/sheet";
-import {normalizeProperty} from "@/lib/transformElements";
-import {isConturExport, normalizeConturElements, type ConturImportStats} from "@/lib/editor/conturImport";
+import {readSheetFromRaw, normalizeProperty, isConturExport, normalizeConturElements, type ConturImportStats} from "@/core/scene";
 
 /**
  * Элементы из файла импорта — в элементы схемы `sceneId`: новые ключи с пересчётом ссылок

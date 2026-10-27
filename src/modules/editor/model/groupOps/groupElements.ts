@@ -6,7 +6,7 @@ import {
   snapshotBounds,
   unionBounds,
   resolveParentAbsolute,
-} from "@/lib/groupLayout";
+} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {isComplex, isComponentEl, isGroup, resplitContainer} from "../elementTree";
 import {syncMemberStates} from "../elementStates";

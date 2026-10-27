@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import { Layer, Rect } from "react-konva";
-import { GRID } from "@/lib/utils";
+import { GRID } from "@/core/scene";
 import { createGridPattern } from "@/lib/editor/gridPattern";
-import type { SheetSize } from "@/lib/editor/sheet";
+import type { SheetSize } from "@/core/scene";
 import type { ThemeColors } from "@/components/editor/canvas/types";
 import { gridStepForZoom } from "../lib/gridStep";
 
