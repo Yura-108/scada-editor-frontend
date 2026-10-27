@@ -12,10 +12,7 @@ import type {MergeReport, VersionPreview} from "@/types/editorVersion.types";
 import {useRuntimeOverlayStore, transformElements} from "@/core/scene";
 import {useSessionUserStore, errorTextFromBody, grantOf} from "@/core/access";
 // переедут в core/scene и core/access вместе с остальным lib (шаг 8)
-import {rootComponentsOf} from "@/lib/editor/documentComponents";
-import {dropScene, fetchSceneWithVersion, prefetchScenes, type SceneSource} from "@/lib/editor/sceneCache";
-import {readPinnedTabs} from "@/lib/editor/pinnedScenes";
-import {fetchCurrentVersion} from "@/lib/editor/versionsApi";
+import {rootComponentsOf, dropScene, fetchSceneWithVersion, prefetchScenes, type SceneSource, readPinnedTabs, fetchCurrentVersion} from "@/core/project";
 import {editorSession} from "./editorSession";
 import {editorStore} from "./editorStoreRef";
 

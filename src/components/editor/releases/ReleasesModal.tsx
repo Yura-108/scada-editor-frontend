@@ -8,7 +8,7 @@ import {useModalStore} from "@/store/modalStore";
 import {useEditorStore} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {fetchReleases} from "@/lib/editor/releasesApi";
+import {fetchReleases} from "@/core/project";
 import type {VersionSummary} from "@/types/editorVersion.types";
 
 const PAGE = 30;

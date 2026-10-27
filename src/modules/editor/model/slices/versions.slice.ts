@@ -7,14 +7,7 @@ import {
   type VersionSummary,
 } from "@/types/editorVersion.types";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {dropScene} from "@/lib/editor/sceneCache";
-import {
-  fetchCurrentVersion,
-  fetchVersionAt,
-  fetchVersionContent,
-  fetchVersions,
-  restoreVersionRequest,
-} from "@/lib/editor/versionsApi";
+import {dropScene, fetchCurrentVersion, fetchVersionAt, fetchVersionContent, fetchVersions, restoreVersionRequest} from "@/core/project";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
 import {replaceCanvasFromServer, withSaveLock} from "../saveFlow";

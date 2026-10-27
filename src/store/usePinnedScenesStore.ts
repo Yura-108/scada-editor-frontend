@@ -1,9 +1,5 @@
 import {create} from "zustand";
-import {
-  hasPinnedSettings, MAX_PINS, PINNED_SETTINGS_KEY, PinnedScene, PinnedTabs, pinsToSettings, RECIPES_TAB_KEY,
-  readPinnedTabs, readPinsFromSettings, writePinnedTabs,
-} from "@/lib/editor/pinnedScenes";
-import {fetchProjectSettings, ProjectSettingsUnsupported, saveProjectSetting} from "@/lib/editor/projectSettingsApi";
+import {hasPinnedSettings, MAX_PINS, PINNED_SETTINGS_KEY, PinnedScene, PinnedTabs, pinsToSettings, RECIPES_TAB_KEY, readPinnedTabs, readPinsFromSettings, writePinnedTabs, fetchProjectSettings, ProjectSettingsUnsupported, saveProjectSetting} from "@/core/project";
 import {canWriteCurrentProject, useEditorStore} from "@/modules/editor";
 import {toast} from "sonner";
 

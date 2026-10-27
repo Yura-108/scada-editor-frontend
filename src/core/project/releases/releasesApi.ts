@@ -1,4 +1,4 @@
-import {fetchVersions} from "@/lib/editor/versionsApi";
+import {fetchVersions} from "../versions/versionsApi";
 import type {VersionSummary} from "@/types/editorVersion.types";
 
 /**

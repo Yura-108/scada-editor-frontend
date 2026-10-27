@@ -5,7 +5,7 @@ import {hasUnsavedWork, useEditorStore} from "@/modules/editor";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useSceneChangeStore, useVisibleSceneChange} from "@/store/useSceneChangeStore";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {dropScene} from "@/lib/editor/sceneCache";
+import {dropScene} from "@/core/project";
 
 /**
  * Плашка «сцену сохранил другой инженер» по STOMP-уведомлению `SCENE_CHANGED`

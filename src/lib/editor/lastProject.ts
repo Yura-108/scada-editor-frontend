@@ -3,8 +3,8 @@
 import {useEffect, useMemo, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
-import type {EditorProject} from "@/lib/pickProjectsFromComponents";
-import {lastProjectId} from "@/lib/editor/projectMemory";
+import type {EditorProject} from "@/core/project";
+import {lastProjectId} from "@/core/project";
 
 /**
  * Выбрать запомненный проект, если сейчас никакой не выбран и он есть среди `projects` —
