@@ -1,7 +1,5 @@
 import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {PropertyRef} from "@/types/binding.types";
 import {
   isSaveConflictBody,
   type MergeReport,
@@ -13,7 +11,6 @@ import {
   type VersionSummary,
 } from "@/types/editorVersion.types";
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {getElementIndex} from "@/lib/editor/elementIndex";
 import {buildComponentTree} from "@/lib/buildComponentTree";
 import {dropScene, putScene} from "@/lib/editor/sceneCache";
 import {
@@ -25,6 +22,8 @@ import {
 } from "@/lib/editor/versionsApi";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";
+import {resolvePendingPropertyRefs} from "../propertyRefs";
+import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
 import {
   applyServerComponents,
   canWriteCurrentProject,
@@ -126,63 +125,6 @@ export interface VersionsSlice {
   /** Пересохранить поверх чужой версии: based_on_version = current_version из 409. */
   saveOverConflict: () => Promise<boolean>;
 }
-
-/**
- * Проставляет номера свойств тем ссылкам, что их ждали.
- *
- * Ссылка на свойство соседа адресует его парой «`componentKey` + `propertyName`», а
- * маршрутизирует рантайм по `propertyId`. Номера у свойства нет, пока сцена не сохранена
- * (свойства заводятся вместе с ней), и ссылка, созданная до первого сохранения, приходит
- * без него. Здесь она его и получает — из дерева, вернувшегося в ответе сохранения.
- *
- * Ссылка без номера появляется и у экземпляра шаблона: `addTemplate` снимает чужие
- * номера, оставляя ту же пару.
- */
-const resolvePendingPropertyRefs = (elements: DiagramElement[]): DiagramElement[] => {
-  const {byKey} = getElementIndex(elements);
-
-  const idOf = (componentKey: string, propertyName: string): number | undefined =>
-    (byKey[componentKey]?.properties ?? [])
-      .find(p => p.name === propertyName && typeof p.id === "number")?.id;
-
-  const fill = <T extends {propertyRefs?: PropertyRef[]}>(owner: T): T => {
-    const refs = owner.propertyRefs;
-    if (!refs?.length) return owner;
-    let changed = false;
-    const next = refs.map(ref => {
-      if (ref.propertyId != null) return ref;
-      const id = idOf(ref.componentKey, ref.propertyName);
-      if (id == null) return ref;
-      changed = true;
-      return {...ref, propertyId: id};
-    });
-    return changed ? {...owner, propertyRefs: next} : owner;
-  };
-
-  let touched = false;
-  const next = elements.map(el => {
-    let changed = false;
-    const bindings = (el.bindings ?? []).map(b => {
-      const filled = fill(b);
-      if (filled !== b) changed = true;
-      return filled;
-    });
-    const events = (el.events ?? []).map(e => {
-      if (!e.handler) return e;
-      const filled = fill(e.handler);
-      if (filled === e.handler) return e;
-      changed = true;
-      return {...e, handler: filled};
-    });
-    if (!changed) return el;
-    touched = true;
-    return {...el, bindings, ...(el.events ? {events} : {})} as DiagramElement;
-  });
-
-  // Ссылку на массив сохраняем, если ничего не изменилось: по ней завязаны equality
-  // истории undo и флаг несохранённых правок.
-  return touched ? next : elements;
-};
 
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
@@ -682,24 +624,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         }
         void get().loadVersions();
 
-        // `restored_from` называет версию, которую сервер ВЗЯЛ за источник. Расхождение
-        // с запрошенной означает, что восстановлено не то, — и без этой проверки такой
-        // ответ неотличим от успеха: тост бодро называет запрошенный номер, а на холсте
-        // чужое содержимое.
-        if (restored.restored_from != null && restored.restored_from !== versionNo) {
-          toast.warning(`Сервер восстановил версию ${restored.restored_from}, а не ${versionNo}`, {
-            description: "На холсте содержимое версии " + restored.restored_from +
-              ". Если это повторяется, история версий на сервере отдаёт не тот снимок.",
-            duration: 12_000,
-          });
-        } else if (!trustResponse) {
-          toast.warning(`Версия ${versionNo} восстановлена, схема перечитана с сервера`, {
-            description: "Ответ восстановления пришёл в неожиданном виде, поэтому холсту он не доверен.",
-            duration: 10_000,
-          });
-        } else {
-          toast.success(`Восстановлена версия ${versionNo}`);
-        }
+        reportRestoreOutcome(versionNo, restored.restored_from, trustResponse);
         return true;
       } catch (err) {
         console.error(err);
@@ -721,29 +646,9 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     if (!canWriteCurrentProject()) return refuseViewOnly();
 
     try {
-      // Тянем ВСЕ виды, а не только MANUAL: чтобы понять, «предыдущее» относительно
-      // чего искать, надо увидеть и записи RESTORE. Список отфильтрованный по MANUAL
-      // после восстановления не меняется вовсе — по нему шаг назад всегда упирался
-      // в одну и ту же версию, и повторные нажатия возвращали то же самое состояние.
+      // Все виды, а не только MANUAL — см. findPreviousManualVersion.
       const all = await fetchVersions("scenes", Number(sceneId), {limit: VERSIONS_PAGE_SIZE});
-
-      if (!all.length) {
-        toast.info("Предыдущего ручного сохранения нет");
-        return false;
-      }
-
-      // Что лежит на холсте сейчас. sceneVersion может отставать (бэкенд не всегда
-      // отдаёт version_no) — тогда берём самую свежую запись истории.
-      const current = get().sceneVersion;
-      const head = all.find(v => v.version_no === current) ?? all[0];
-
-      // Для RESTORE содержимое равно версии-источнику: шаг назад надо делать от неё,
-      // иначе «отменить отмену» вернуло бы ту же самую версию по кругу.
-      const contentVersion =
-        head.kind === "RESTORE" && head.restored_from != null ? head.restored_from : head.version_no;
-
-      // Список свежие-первыми, поэтому первая подходящая строка — ближайшая старшая.
-      const previous = all.find(v => v.kind === "MANUAL" && v.version_no < contentVersion);
+      const previous = findPreviousManualVersion(all, get().sceneVersion);
 
       if (!previous) {
         toast.info("Предыдущего ручного сохранения нет");
