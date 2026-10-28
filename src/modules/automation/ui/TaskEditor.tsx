@@ -6,10 +6,10 @@ import {javascript} from "@codemirror/lang-javascript";
 import {BookmarkPlus, Save, Undo2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {IoTable} from "@/components/automation/IoTable";
-import {TagTreeSidebar} from "@/components/automation/TagTreeSidebar";
-import {compactButton, fieldInput as input, fieldLabel as label} from "@/components/automation/formStyles";
-import type {TaskDraftState} from "@/lib/automation/automationDraft";
+import {IoTable} from "./IoTable";
+import {TagTreeSidebar} from "./TagTreeSidebar";
+import {compactButton, fieldInput as input, fieldLabel as label} from "./formStyles";
+import type {TaskDraftState} from "../lib/automationDraft";
 import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/types/automation.types";
 
 interface Props {

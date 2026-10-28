@@ -7,11 +7,11 @@ import {javascript} from "@codemirror/lang-javascript";
 import {X} from "lucide-react";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
-import {useCreateTemplate, useUpdateTemplate} from "@/modules/automation";
-import {AutomationSaveError} from "@/lib/automation/automationApi";
-import {templateBody} from "@/lib/automation/automationTemplates";
-import {fieldInput, fieldLabel} from "@/components/automation/formStyles";
-import {IoTable} from "@/components/automation/IoTable";
+import {useCreateTemplate, useUpdateTemplate} from "../api/templates";
+import {AutomationSaveError} from "@/core/automation";
+import {templateBody} from "../lib/automationTemplates";
+import {fieldInput, fieldLabel} from "./formStyles";
+import {IoTable} from "./IoTable";
 import type {AutomationIo, AutomationValidationError} from "@/types/automation.types";
 import type {AutomationTaskTemplate, AutomationTemplateIo} from "@/types/automationTemplate.types";
 

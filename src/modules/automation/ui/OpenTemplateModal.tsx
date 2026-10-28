@@ -1,5 +1,5 @@
 import {useModalStore} from "@/store/modalStore";
-import {TemplateEditor} from "@/components/automation/TemplateEditor";
+import {TemplateEditor} from "./TemplateEditor";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 
 interface Options {

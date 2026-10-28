@@ -19,37 +19,18 @@ import {
   republishAutomation,
   restoreAutomationVersion,
   saveAutomation,
-} from "@/lib/automation/automationApi";
+} from "@/core/automation";
 import {TASK_STATE_VIEW} from "@/modules/monitor";
-import {TaskEditor} from "@/components/automation/TaskEditor";
-import {WatchdogEditor} from "@/components/automation/WatchdogEditor";
-import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
 import {
-  AutomationDiffView,
-  AutomationVersionChanges,
-  loadAutomationVersion,
-} from "@/components/automation/AutomationVersionChanges";
-import {TemplatePalette} from "@/components/automation/TemplatePalette";
-import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
-import {compactButton} from "@/components/automation/formStyles";
+  AutomationDiffView, AutomationVersionChanges, compactButton, diffVersions, findSavedTask, freeTaskName,
+  isSetDirty, loadAutomationVersion, missingVariables, openTemplateModal, sameWatchdog, stripIoHints,
+  taskDraftState, TaskEditor, tasksWith, taskToTemplate, TemplatePalette, templateToDraftTask,
+  WatchdogEditor,
+} from "@/modules/automation";
+import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {confirmLeave, useUnsavedGuard} from "@/lib/unsavedGuard";
-import {
-  missingVariables,
-  stripIoHints,
-  taskToTemplate,
-  templateToDraftTask,
-} from "@/lib/automation/automationTemplates";
-import {
-  diffVersions,
-  findSavedTask,
-  freeTaskName,
-  isSetDirty,
-  sameWatchdog,
-  taskDraftState,
-  tasksWith,
-} from "@/lib/automation/automationDraft";
 import type {
   AutomationSet,
   AutomationTask,

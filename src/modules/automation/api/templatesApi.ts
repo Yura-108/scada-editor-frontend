@@ -1,4 +1,4 @@
-import {AutomationSaveError} from "@/lib/automation/automationApi";
+import {AutomationSaveError} from "@/core/automation";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 import {errorTextFromJson} from "@/core/access";
 

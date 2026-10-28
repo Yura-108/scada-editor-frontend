@@ -4,14 +4,14 @@ import React, {useEffect, useState} from "react";
 import {Undo2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {loadVersionContent} from "@/core/project";
-import {compactButton} from "@/components/automation/formStyles";
+import {compactButton} from "./formStyles";
 import {
   type AutomationVersionDiff,
   diffVersions,
   setOfVersionContent,
   taskFieldChanges,
   taskSummary,
-} from "@/lib/automation/automationDraft";
+} from "../lib/automationDraft";
 import type {AutomationSet, AutomationTask} from "@/types/automation.types";
 
 export type VersionSet = Pick<AutomationSet, "tasks" | "variables" | "watchdog">;

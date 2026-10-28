@@ -1,5 +1,5 @@
 import type {AutomationSet, AutomationTask, AutomationWatchdog} from "@/types/automation.types";
-import {stripIoHints} from "@/lib/automation/automationTemplates";
+import {stripIoHints} from "./automationTemplates";
 
 /**
  * Черновик набора automation против сохранённого на сервере.
