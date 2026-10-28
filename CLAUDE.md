@@ -21,7 +21,7 @@ npm run check:store-cycles  # нет ли цикла импортов обрат
 - **Хук коммита не работает:** `lint-staged` описан в `package.json`, но файла `.husky/pre-commit`
   нет, поэтому при коммите ничего не запускается. Проверяйте сами: `npm run lint`.
 - Алиас путей: `@/*` → `src/*`.
-- У `tsc --noEmit` есть **стабильный базовый набор старых ошибок** — 26 (union `ElementType` не
+- У `tsc --noEmit` есть **стабильный базовый набор старых ошибок** — 22 (union `ElementType` не
   включает `button`/`rectangle`/`checkbox`/`progress_bar`/`path`, хотя они используются). `next dev`
   и `next build` (`ignoreBuildErrors` в `next.config.ts`) их терпят. Правило: **не добавлять новых
   ошибок** — сравнивайте число и список до и после правки.
