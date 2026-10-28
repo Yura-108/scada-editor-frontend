@@ -5,8 +5,8 @@ import {Plus} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "@/components/projectData/ColumnsEditor";
-import {RowsGrid} from "@/components/projectData/RowsGrid";
+import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "./ColumnsEditor";
+import {RowsGrid} from "./RowsGrid";
 import type {ProjectDataTable, ProjectDataValidationError} from "@/types/projectData.types";
 
 interface Props {

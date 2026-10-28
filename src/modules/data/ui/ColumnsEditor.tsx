@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {dropColumnFromRows, renameColumnInRows, retypeColumnInRows} from "@/lib/projectData/values";
+import {dropColumnFromRows, renameColumnInRows, retypeColumnInRows} from "../lib/values";
 import {
   PROJECT_DATA_NAME_RE,
   PROJECT_DATA_VALUE_TYPES,

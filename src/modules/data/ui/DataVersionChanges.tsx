@@ -7,8 +7,8 @@ import {
   diffDataVersions,
   isEmptyDataDiff,
   tablesOfVersionContent,
-} from "@/lib/projectData/dataVersionDiff";
-import {formatCell} from "@/lib/projectData/values";
+} from "../lib/dataVersionDiff";
+import {formatCell} from "../lib/values";
 import type {ProjectDataTable} from "@/types/projectData.types";
 
 export const loadDataVersion = async (projectId: number, versionNo: number): Promise<ProjectDataTable[] | null> =>
