@@ -4,10 +4,9 @@ import React, {useRef} from "react";
 import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
-import { useEditingDevices } from "@/lib/useIsEditingDevice";
+import {useEditingDevices, useDeviceTreeStore} from "@/core/devices";
 import { useSessionUserStore } from "@/core/access";
 import { PARAM_IMPORT_SOURCE } from "@/types/cdbxImport.types";
-import {useDeviceTreeStore} from "@/core/devices";
 
 const ContextMenu = <T extends string = string>({
   menu,

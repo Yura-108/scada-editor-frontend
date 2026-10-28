@@ -5,3 +5,5 @@ export {useDeviceTreeStore} from "./model/deviceTreeStore";
 export {useDeviceLocksStore} from "./model/deviceLocksStore";
 export {useDeviceDictionaries} from "./model/deviceDictionaries";
 export * from "./model/deviceActions";
+export {useEditingDevices} from "./model/useIsEditingDevice";
+export {useUnlockEditingOnUnload} from "./model/useUnlockEditingOnUnload";

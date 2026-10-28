@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import {useDeviceLocksStore} from "@/core/devices";
+import {useDeviceLocksStore} from "./deviceLocksStore";
 
 /**
  * Снимает блокировки (unlock) при ВЫГРУЗКЕ страницы: перезагрузка, закрытие вкладки,

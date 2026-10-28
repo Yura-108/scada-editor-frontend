@@ -1,4 +1,4 @@
-import {useDeviceLocksStore} from "@/core/devices";
+import {useDeviceLocksStore} from "./deviceLocksStore";
 
 /**
  * Реактивный признак «узел сейчас редактируется».

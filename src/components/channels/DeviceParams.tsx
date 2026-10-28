@@ -13,13 +13,14 @@ import {
 } from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
-import { useEditingDevices } from "@/lib/useIsEditingDevice";
+import {
+  handleContextParamAction, removeParam, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore,
+  useEditingDevices, useUnlockEditingOnUnload,
+} from "@/core/devices";
 import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
-import {useUnlockEditingOnUnload} from "@/lib/useUnlockEditingOnUnload";
 import {resolveParamWidget, isParamChecked} from "@/lib/paramWidget";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
-import {handleContextParamAction, removeParam, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore} from "@/core/devices";
 
 const DeviceParams = () => {
   const {

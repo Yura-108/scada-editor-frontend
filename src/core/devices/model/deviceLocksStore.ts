@@ -3,7 +3,7 @@
 import {create} from 'zustand/react';
 import {devtools} from 'zustand/middleware';
 import {toast} from "sonner";
-import {treeSearch} from "@/lib/treeSearch";
+import {treeSearch} from "../lib/treeSearch";
 import {errorMessage, lockDevices, unlockDevices} from "../api/devicesApi";
 import {useDeviceTreeStore} from "./deviceTreeStore";
 
