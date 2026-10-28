@@ -2,10 +2,10 @@
 
 import React, {useEffect, useMemo, useRef} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
+import DeviceTreePanel from "../DeviceTreePanel";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
-import {useDeviceTreeStore} from "@/core/devices";
+import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 
 interface Options {
   title?: string;

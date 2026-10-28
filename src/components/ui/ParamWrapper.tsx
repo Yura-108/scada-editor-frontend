@@ -2,7 +2,7 @@ import {clsx} from "clsx";
 import React, {ReactNode} from "react";
 import {DeviceParamsType} from "@/types/nodeTypes";
 import {X} from "lucide-react";
-import {resolveParamWidget} from "@/lib/paramWidget";
+import {resolveParamWidget} from "@/core/devices";
 
 interface IParamWrapper {
   param: DeviceParamsType;

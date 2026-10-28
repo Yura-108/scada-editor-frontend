@@ -1,6 +1,6 @@
 import type {NodeParamType} from "@/types/channelsTypes";
 import type {RecipeTag, RecipeValueType} from "@/types/recipe.types";
-import {isParamChecked} from "@/lib/paramWidget";
+import {isParamChecked} from "@/core/devices";
 
 /**
  * Данные тега из базы каналов — то, чем заполняется манифест рецепта (`tags[]`).

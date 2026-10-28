@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/shared/lib/cn";
 import { Type } from "lucide-react";
 import { Button, ModalFooter } from "@/shared/ui/Button";
-import {addDevice} from "@/core/devices";
+import {addDevice} from "../../model/deviceActions";
 
 interface Props {
   title: string;

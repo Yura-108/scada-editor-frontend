@@ -1,9 +1,9 @@
 import {toast} from "sonner";
 import type {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import type {NodeParamType} from "@/types/channelsTypes";
-import {OpenCreateDeviveModal} from "@/components/ui/OpenCreateDeviceModal";
-import {OpenCreateProjectModal, OpenCreateSiteModal} from "@/components/ui/OpenCreateContainerModal";
-import {openGatewayExportModal} from "@/components/channels/OpenGatewayExportModal";
+import {OpenCreateDeviveModal} from "../ui/modals/OpenCreateDeviceModal";
+import {OpenCreateProjectModal, OpenCreateSiteModal} from "../ui/modals/OpenCreateContainerModal";
+import {openGatewayExportModal} from "../ui/modals/OpenGatewayExportModal";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {
   createDeviceRequest, createParamRequest, deleteDeviceRequest, deleteImportedProjectRequest,

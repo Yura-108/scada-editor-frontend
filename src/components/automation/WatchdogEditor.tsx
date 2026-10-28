@@ -3,7 +3,7 @@
 import React from "react";
 import {FolderTree} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
-import {pickTag} from "@/components/ui/TagPickerModal";
+import {pickTag} from "@/core/devices";
 import {compactButton, fieldInput as input, fieldLabel as label} from "@/components/automation/formStyles";
 import type {AutomationValidationError, AutomationWatchdog} from "@/types/automation.types";
 

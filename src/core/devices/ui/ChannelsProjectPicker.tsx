@@ -4,7 +4,8 @@ import {Building2, Download, FolderOpen, RefreshCw} from 'lucide-react';
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {MultiSelect} from "@/shared/ui/MultiSelect";
-import {useDeviceDictionaries, useDeviceTreeStore} from "@/core/devices";
+import {useDeviceDictionaries} from "../model/deviceDictionaries";
+import {useDeviceTreeStore} from "../model/deviceTreeStore";
 
 const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
 

@@ -8,11 +8,10 @@ import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
+import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo, useDeviceTreeStore} from "@/core/devices";
 import {buildManifestTags} from "../../lib/tagMeta";
 import {shortTagPath} from "@/core/scene";
 import type {RecipeTag} from "@/types/recipe.types";
-import {useDeviceTreeStore} from "@/core/devices";
 
 /**
  * Выбор тегов для манифеста рецепта (`tags[]`).

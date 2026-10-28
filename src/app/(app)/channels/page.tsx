@@ -3,9 +3,8 @@
 import { useEffect } from 'react';
 import { Building2, FolderOpen } from 'lucide-react';
 import ChannelsToolbar from '@/components/channels/ChannelsToolbar';
-import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
+import {DeviceTreePanel, useDeviceTreeStore} from "@/core/devices";
 import DeviceParams from '@/components/channels/DeviceParams';
-import {useDeviceTreeStore} from "@/core/devices";
 
 /** Пусто, пока ничего не загружено: подсказываем, где выбрать, вместо пустых панелей. */
 function EmptyState() {

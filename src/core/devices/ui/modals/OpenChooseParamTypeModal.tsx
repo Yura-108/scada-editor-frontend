@@ -12,7 +12,9 @@ import {
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
 import { Button, ModalFooter } from "@/shared/ui/Button";
-import {addParam, useDeviceDictionaries, useDeviceTreeStore} from "@/core/devices";
+import {addParam} from "../../model/deviceActions";
+import {useDeviceDictionaries} from "../../model/deviceDictionaries";
+import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 
 interface Props {
   onLoadAction: (param: { id: number; value: string; parentKey: string }) => void;

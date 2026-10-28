@@ -12,7 +12,8 @@ import {
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
 import { Button, ModalFooter } from "@/shared/ui/Button";
-import {addDevice, useDeviceDictionaries} from "@/core/devices";
+import {addDevice} from "../../model/deviceActions";
+import {useDeviceDictionaries} from "../../model/deviceDictionaries";
 
 interface Props {
   onLoadAction: (node: {

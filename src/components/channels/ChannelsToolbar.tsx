@@ -1,6 +1,6 @@
 import {FileUp} from 'lucide-react';
 import {Button} from "@/shared/ui/Button";
-import ChannelsProjectPicker from "@/components/channels/ChannelsProjectPicker";
+import {ChannelsProjectPicker} from "@/core/devices";
 import {openImportCdbxModal} from "@/components/channels/OpenImportCdbxModal";
 
 const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";

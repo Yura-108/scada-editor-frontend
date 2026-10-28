@@ -13,7 +13,8 @@ import {
   contextMenuTriggerFromKey,
   isContextMenuKey,
 } from '@/types/contextMenu.type';
-import {useDeviceLocksStore, useDeviceTreeStore} from "@/core/devices";
+import {useDeviceLocksStore} from "../model/deviceLocksStore";
+import {useDeviceTreeStore} from "../model/deviceTreeStore";
 
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
