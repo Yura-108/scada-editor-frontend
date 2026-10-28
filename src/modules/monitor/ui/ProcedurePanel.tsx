@@ -5,10 +5,10 @@ import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, Refr
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {useMonitorRecipes} from "../api/procedures";
-import {useEditorStore} from "@/modules/editor";
 import {useProcedureStore} from "../model/useProcedureStore";
 import {useProcedureControls} from "../model/procedures/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat";
+import {useOpenScene} from "@/core/project";
 
 /**
  * Выполнение процедурного рецепта — подробный вид во вкладке «Процедуры».
@@ -24,8 +24,8 @@ import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat"
  * в редакторе, но не выпущенный рецепт мойка не знает, и показывать его нельзя.
  */
 export function ProcedurePanel() {
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
-  const {recipes, isLoading, loadError, reload} = useMonitorRecipes(projectId, useEditorStore(s => s.releaseVersionNo));
+  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
+  const {recipes, isLoading, loadError, reload} = useMonitorRecipes(projectId, useOpenScene(s => s.releaseVersionNo));
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 

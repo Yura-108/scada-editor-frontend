@@ -3,7 +3,6 @@
 import {useCallback, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "../useProcedureStore";
-import {useEditorStore} from "@/modules/editor";
 import {getRuntimeSessionId} from "@/core/runtime";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
@@ -18,6 +17,7 @@ import {
 import {useProcedureLevels} from "../../api/procedures";
 import {useCurrentProjectGrant, actionDenialText} from "@/core/access";
 import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.types";
+import {useOpenScene} from "@/core/project";
 
 /**
  * Действия над процедурой: запустить, подтвердить шаг, перейти на шаг, прервать.
@@ -29,10 +29,10 @@ import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.type
  */
 export function useProcedureControls() {
   const [busy, setBusy] = useState(false);
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
   const grant = useCurrentProjectGrant();
   // Подписка, а не эффект: запрос на ключ один, сколько бы мест ни звали хук.
-  const levels = useProcedureLevels(projectId, useEditorStore(s => s.releaseVersionNo));
+  const levels = useProcedureLevels(projectId, useOpenScene(s => s.releaseVersionNo));
 
   /**
    * Почему операция недоступна (null — доступна): нет «управления» или уровень ниже

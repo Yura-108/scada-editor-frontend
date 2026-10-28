@@ -4,6 +4,7 @@ import type {EditorProject} from "@/core/project";
 import {bindEditorStore} from "./editorStoreRef";
 import {bindActiveStateReader, bindSceneViewStore} from "@/core/scene";
 import {bindCurrentProjectStore} from "@/core/access";
+import {bindOpenSceneStore} from "@/core/project";
 import {editorSession} from "./editorSession";
 import {createCameraSlice, type CameraSlice} from "./slices/camera.slice";
 import {createSelectionSlice, type SelectionSlice} from "./slices/selection.slice";
@@ -64,6 +65,8 @@ bindActiveStateReader(() => useEditorStore.getState().currentComponentStateByEle
 bindSceneViewStore(useEditorStore);
 // Права (core/access) читают текущий проект и список проектов через эту регистрацию.
 bindCurrentProjectStore(useEditorStore);
+// Монитор читает открытый проект и сцену и загружает схемы через эту регистрацию (core/project).
+bindOpenSceneStore(useEditorStore);
 
 /**
  * Подчищает выделение, когда выделенных элементов больше нет в `elements`.

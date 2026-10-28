@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useMonitorRecipes} from "../api/procedures";
-import {useEditorStore} from "@/modules/editor";
 import {useProcedureStore} from "../model/useProcedureStore";
 import {useProcedureControls} from "../model/procedures/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat";
@@ -14,6 +13,7 @@ import {
   clampHudPosition, DEFAULT_HUD_PREFS, isRightAligned, readHudPrefs, writeHudPrefs,
   type HudPrefs,
 } from "../lib/procedureHudPrefs";
+import {useOpenScene} from "@/core/project";
 
 /**
  * Ведение процедуры ПОВЕРХ мнемосхемы.
@@ -33,7 +33,7 @@ const MARGIN = 8;
 const SAVE_DELAY_MS = 300;
 
 export function ProcedureHud() {
-  const {recipes} = useMonitorRecipes(useEditorStore(s => s.currentProject?.id ?? null), useEditorStore(s => s.releaseVersionNo));
+  const {recipes} = useMonitorRecipes(useOpenScene(s => s.currentProject?.id ?? null), useOpenScene(s => s.releaseVersionNo));
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
 

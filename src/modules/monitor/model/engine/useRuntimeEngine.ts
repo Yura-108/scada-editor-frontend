@@ -2,10 +2,12 @@
 
 import {devLog} from "@/shared/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {useEditorStore} from "@/modules/editor";
 import {adoptProcedureStatuses, pushProcedureEvents} from "../useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "../useAutomationTasksStore";
-import {getRenderedElement, trendPens, trendTiming, cellRuntimeKey, cellBindings, isLiveField, propertyByName, isBooleanValueType} from "@/core/scene";
+import {
+  cellBindings, cellRuntimeKey, getRenderedElement, getSceneView, isBooleanValueType, isLiveField, propertyByName,
+  trendPens, trendTiming, useSceneView,
+} from "@/core/scene";
 import {buildBindingIndex, type BindingIndex} from "./bindingIndex";
 import type {CompiledBinding} from "@/core/runtime";
 import {hasKnownTrigger, runBindings} from "./runBindings";
@@ -19,6 +21,7 @@ import {appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, 
 import {fetchArchiveValues, toTrendValue} from "../archive/archive";
 import type {ElementEventName} from "@/types/binding.types";
 import type {DiagramElement} from "@/types/editorElement.type";
+import {useOpenScene, getOpenScene} from "@/core/project";
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */
 const FLUSH_INTERVAL_MS = 200;
@@ -133,8 +136,8 @@ export interface RuntimeEngineState {
  * рантайм не видят.
  */
 export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): RuntimeEngineState {
-  const elements = useEditorStore(s => s.elements);
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const elements = useSceneView(s => s.elements);
+  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
 
   const [status, setStatus] = useState<RuntimeStatus>("closed");
   const [runtimeErrors, setRuntimeErrors] = useState<Map<string, string>>(new Map());
@@ -181,7 +184,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     }
     return [...all].sort();
   }, [index]);
-  const sceneId = useEditorStore(s => (s.scene?.id == null ? null : Number(s.scene.id)));
+  const sceneId = useOpenScene(s => (s.scene?.id == null ? null : Number(s.scene.id)));
   const extraTags = useRuntimeTagInterest();
 
   // Коалесинг-буфер тика (tag_id → последнее значение) и последние известные
@@ -288,7 +291,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
     if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
-    const store = useEditorStore.getState();
+    const store = getSceneView();
     const byKey = new Map(store.elements.map(el => [el.key, el] as const));
 
     // Тот же прогон, что и при смене схемы (см. эффект ниже) — одна трактовка ошибок
@@ -395,7 +398,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!active) return;
     const idx = indexRef.current;
     if (!idx) return;
-    for (const el of useEditorStore.getState().elements) {
+    for (const el of getSceneView().elements) {
       for (const p of el.properties ?? []) {
         if (typeof p.id === "number" && idx.propertyIds.has(p.id) && !valuesByPropRef.current.has(p.id)) {
           valuesByPropRef.current.set(p.id, String(p.default_value ?? ""));
@@ -413,7 +416,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // они иначе пустые, хотя значение лежит в valuesRef. Неизвестного тега не касаемся —
     // до первого кадра элемент под оверлеем «нет данных».
     const propsByKey: Record<string, Record<string, unknown>> = {};
-    for (const el of useEditorStore.getState().elements) {
+    for (const el of getSceneView().elements) {
       if (el.type !== "table") continue;
       for (const {cell} of cellBindings(el)) {
         if (!isLiveField(cell.field)) continue;
@@ -457,7 +460,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // исполняет только биндинги ИЗМЕНИВШИХСЯ тегов — очередной кадр приносит то же
     // значение, страж no-op его отсекает, и биндинг не выполняется. Ровно этот путь
     // проходит оператор, применивший рецепт на одной схеме и перешедший на другую.
-    const byKey = new Map(useEditorStore.getState().elements.map(el => [el.key, el] as const));
+    const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
     const toRun = idx.all.filter(cb => hasKnownTrigger(cb, valuesRef.current, valuesByPropRef.current));
     const {stateNameByKey, propsByKey: nextProps, errors, fired} = runBindings(toRun, {
       valuesByTagId: valuesRef.current,
@@ -485,7 +488,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     noDataKeysRef.current = initialNoData;
 
     // Один батч на всё открытие схемы — один ре-рендер холста.
-    useEditorStore.getState().applyRuntimeBatch({
+    getSceneView().applyRuntimeBatch({
       stateNameByKey,
       propsByKey: nextProps,
       noDataKeys: initialNoData,
@@ -532,7 +535,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   // Пункт меню монитора: запуск скрипта по ключу элемента и имени скрипта.
   const runScriptByKey = useCallback((elementKey: string, scriptName: string, args?: ActionArgs, point?: ScreenPoint) => {
-    const el = useEditorStore.getState().elements.find(e => e.key === elementKey);
+    const el = getSceneView().elements.find(e => e.key === elementKey);
     if (!el) return;
     runScriptOn(el, scriptName, args, point);
   }, [runScriptOn]);
@@ -541,7 +544,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   // компилирует и исполняет element.events[event], пишет свойства в общий буфер
   // и применяет self-интенты. Использует стабильные ref-ы — deps пустые.
   const runEvent = useCallback((elementKey: string, event: ElementEventName, point?: ScreenPoint) => {
-    const store = useEditorStore.getState();
+    const store = getSceneView();
     const el = store.elements.find(e => e.key === elementKey);
     const handler = el?.events?.find(e => e.event_type === event)?.handler;
     if (!el || !handler || !handler.code?.trim()) return;
@@ -671,7 +674,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     trendHistoryAbortRef.current = controller;
     const {watched, retentionMs} = useTrendStore.getState();
     // Проект — из стора, а не из замыкания: колбэк общий для эффектов и не должен пересоздаваться.
-    const projectId = useEditorStore.getState().currentProject?.id;
+    const projectId = getOpenScene().currentProject?.id;
     if (projectId == null) return controller;
     fetchArchiveValues([...watched], at - retentionMs, at, {projectId, signal: controller.signal})
       .then(series => {
@@ -704,7 +707,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     tagMetaRef.current = new Map();
     qualityDirtyRef.current = false;
     noDataKeysRef.current = new Set();
-    useEditorStore.getState().clearRuntime();
+    getSceneView().clearRuntime();
     resetTrendStore();
   }, []);
 
@@ -727,7 +730,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
        * индекс, а следом за TREE_CHANGED приходит SNAPSHOT.
        */
       onRelease: (versionNo, changed) => {
-        const store = useEditorStore.getState();
+        const store = getOpenScene();
         const shown = store.releaseVersionNo;
         // TREE_CHANGED снял подписку на сервере: дальше снова идут все теги, а новую
         // подписку эффект подписки пошлёт, когда схема выпуска перерисуется.
@@ -875,7 +878,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!active || !index) return;
     const tags = new Set<string>();
     let windowSec = 0;
-    for (const el of useEditorStore.getState().elements) {
+    for (const el of getSceneView().elements) {
       if (el.type !== "trend") continue;
       const pens = trendPens(el);
       if (!pens.length) continue;
@@ -915,7 +918,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     noDataKeysRef.current = new Set();
     errorCountRef.current = new Map();
     disabledRef.current = new Set();
-    useEditorStore.getState().clearRuntime();
+    getSceneView().clearRuntime();
 
     clearTrendSeries();
     setTrendClock(at);

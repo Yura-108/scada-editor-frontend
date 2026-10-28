@@ -2,6 +2,7 @@
 // Общее для редактора и монитора. Внутри core/project файлы импортируют друг друга
 // относительно, а не через этот index.
 export * from "./projects";
+export * from "./openScene";
 export * from "./projectMemory";
 export * from "./scenes/sceneCache";
 export * from "./scenes/pinnedScenes";

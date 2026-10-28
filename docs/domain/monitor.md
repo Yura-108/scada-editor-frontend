@@ -2,6 +2,18 @@
 
 > Перенесено из CLAUDE.md без изменений. Держите в актуальном состоянии при правках этой области.
 
+## Where the monitor reads the scene from
+
+- The open project, scene, scene list and release number live in the **editor store** (loading a
+  scene writes the document, undo history and draft, so they stay together). The monitor module does
+  not import `@/modules/editor`: it reads them through `useOpenScene` / `getOpenScene`
+  (`core/project/openScene.ts`, registered by `bindOpenSceneStore(useEditorStore)`), and elements
+  plus the runtime writes (`applyRuntimeBatch`, `clearRuntime`) through `useSceneView` /
+  `getSceneView` (`core/scene/sceneView.ts`). Same store, same selectors — re-renders do not change.
+- The binding happens when `@/modules/editor` is first imported. `MonitorClient` imports it (it
+  renders the editor `Canvas`), so the store exists before any monitor hook runs; a page that renders
+  monitor hooks without loading the editor module throws "bindOpenSceneStore не вызывался".
+
 ## Monitor view lock (the lock in the zoom panel)
 
 The lock is **set in the editor and acts in the monitor**. Pressing it stores what the engineer
