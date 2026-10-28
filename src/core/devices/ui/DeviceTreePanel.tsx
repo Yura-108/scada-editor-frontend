@@ -4,15 +4,16 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Tree from 'rc-tree';
 import {Key} from 'rc-tree/es/interface';
 import {ChevronDown, ChevronUp, Router, Search, X} from 'lucide-react';
-import TitleRenderer from '@/components/ui/TitleRenderer';
+import TitleRenderer from "./TitleRenderer";
 import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/shared/ui/SwitcherIcon';
-import ContextMenu from "@/components/ui/ContextMenu";
+import ContextMenu from "./DeviceContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
-import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "@/lib/editor/deviceTreeData";
-import ChannelsProjectPicker from "@/components/channels/ChannelsProjectPicker";
-import {handleContextAction, useDeviceTreeStore} from "@/core/devices";
+import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "../lib/deviceTreeData";
+import ChannelsProjectPicker from "./ChannelsProjectPicker";
+import {handleContextAction} from "../model/deviceActions";
+import {useDeviceTreeStore} from "../model/deviceTreeStore";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -89,7 +90,7 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const activeMatch = matches.length ? matches[Math.min(matchIndex, matches.length - 1)] : null;
 
   // Дерево строит общий билдер: то же знание «ключ = путь через точку» использует
-  // модалка выбора тегов для рецепта (src/lib/editor/deviceTreeData.ts).
+  // модалка выбора тегов для рецепта (src/core/devices/lib/deviceTreeData.ts).
   const treeData = useMemo(
     () => buildDeviceTreeData(nodes, (info) => (
       <TitleRenderer

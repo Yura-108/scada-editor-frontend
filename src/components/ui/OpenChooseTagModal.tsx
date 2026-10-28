@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { ChevronDown, List, TextCursorInput, Trash2, Type, Waypoints } from "lucide-react";
-import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
+import {DeviceTreePanel, useDeviceTreeStore} from "@/core/devices";
 import SelectItem from "@/shared/ui/SelectItem";
 import { selectContentClassName, selectIconClassName, selectTriggerClassName } from "@/shared/ui/selectStyles";
 import { cn } from "@/shared/lib/cn";
@@ -16,7 +16,6 @@ import { Button, ModalFooter } from "@/shared/ui/Button";
 import {fetchAutomation} from "@/lib/automation/automationApi";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
 import {checkScriptSyntax} from "@/core/runtime";
-import {useDeviceTreeStore} from "@/core/devices";
 
 interface Props {
   /**

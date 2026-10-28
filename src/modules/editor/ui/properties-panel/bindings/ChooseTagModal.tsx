@@ -8,9 +8,8 @@ import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
+import {buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo, useDeviceTreeStore} from "@/core/devices";
 import {shortTagPath} from "@/core/scene";
-import {useDeviceTreeStore} from "@/core/devices";
 
 /**
  * Выбор ОДНОГО тега — для прямой привязки «значение элемента ← тег».

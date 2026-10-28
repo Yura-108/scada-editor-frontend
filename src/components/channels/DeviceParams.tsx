@@ -4,7 +4,11 @@ import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
-import ContextMenu from "@/components/ui/ContextMenu";
+import {
+  DeviceContextMenu as ContextMenu, handleContextParamAction, isParamChecked, openChooseParamTypeModal, removeParam,
+  resolveParamWidget, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore, useEditingDevices,
+  useUnlockEditingOnUnload,
+} from "@/core/devices";
 import {
   ContextMenuTrigger,
   ContextMenuType,
@@ -13,12 +17,6 @@ import {
 } from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
-import {
-  handleContextParamAction, removeParam, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore,
-  useEditingDevices, useUnlockEditingOnUnload,
-} from "@/core/devices";
-import {openChooseParamTypeModal} from "@/components/ui/OpenChooseParamTypeModal";
-import {resolveParamWidget, isParamChecked} from "@/lib/paramWidget";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
 

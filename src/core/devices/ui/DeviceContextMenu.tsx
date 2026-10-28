@@ -4,7 +4,8 @@ import React, {useRef} from "react";
 import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
-import {useEditingDevices, useDeviceTreeStore} from "@/core/devices";
+import {useEditingDevices} from "../model/useIsEditingDevice";
+import {useDeviceTreeStore} from "../model/deviceTreeStore";
 import { useSessionUserStore } from "@/core/access";
 import { PARAM_IMPORT_SOURCE } from "@/types/cdbxImport.types";
 
