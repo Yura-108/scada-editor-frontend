@@ -5,15 +5,15 @@ import {
   AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play,
 } from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useMonitorRecipes} from "@/modules/monitor";
+import {useMonitorRecipes} from "../api/procedures";
 import {useEditorStore} from "@/modules/editor";
-import {useProcedureStore} from "@/store/useProcedureStore";
-import {useProcedureControls} from "@/lib/runtime/useProcedureControls";
-import {CLOCK_TICK_MS, formatElapsed} from "@/lib/runtime/procedureFormat";
+import {useProcedureStore} from "../model/useProcedureStore";
+import {useProcedureControls} from "../model/procedures/useProcedureControls";
+import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat";
 import {
   clampHudPosition, DEFAULT_HUD_PREFS, isRightAligned, readHudPrefs, writeHudPrefs,
   type HudPrefs,
-} from "@/lib/editor/procedureHudPrefs";
+} from "../lib/procedureHudPrefs";
 
 /**
  * Ведение процедуры ПОВЕРХ мнемосхемы.

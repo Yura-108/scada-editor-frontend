@@ -11,7 +11,7 @@ import {useEditorStore} from "@/modules/editor";
 import {shortTagPath} from "@/core/scene";
 import {
   ACTION_KIND_LABEL, fetchActionLog, type ActionKind, type ActionLogFilter, type ActionLogRecord,
-} from "@/lib/runtime/actionLog";
+} from "@/modules/monitor";
 
 const PAGE_SIZE = 100;
 

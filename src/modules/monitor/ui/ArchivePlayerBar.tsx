@@ -2,9 +2,9 @@
 
 import React, {useEffect, useState} from "react";
 import {Info, Loader2, Pause, Play} from "lucide-react";
-import {REPLAY_SPEEDS, useArchiveReplayStore} from "@/store/useArchiveReplayStore";
-import type {ArchiveReplayControls} from "@/lib/runtime/useArchiveReplay";
-import {ARCHIVE_DEPTH_MS} from "@/lib/runtime/archive";
+import {REPLAY_SPEEDS, useArchiveReplayStore} from "../model/useArchiveReplayStore";
+import type {ArchiveReplayControls} from "../model/archive/useArchiveReplay";
+import {ARCHIVE_DEPTH_MS} from "../model/archive/archive";
 
 /** `datetime-local` работает в местном времени без пояса. */
 const toLocalInput = (ts: number) =>

@@ -2,24 +2,17 @@
 
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
-import {openObjectInspectorModal} from "@/components/monitor/ObjectInspectorModal";
-import {FloatingWindowsLayer} from "@/components/monitor/FloatingWindowsLayer";
-import {closeFloatingWindows} from "@/store/useFloatingWindowsStore";
+import {
+  ArchivePlayerBar, AutomationTaskPanel, closeFloatingWindows, countTaskProblems, FloatingWindowsLayer,
+  openObjectInspectorModal, ProcedureHud, ProcedurePanel, registerMonitorDialogs, useArchiveReplay,
+  useAutomationTasksStore, useProcedureSync, useRuntimeEngine, type RuntimeMode,
+} from "@/modules/monitor";
 import {Canvas, useEditorStore, useSceneCameraMemory, SceneTabs, restoreLastProject} from "@/modules/editor";
-import {useRuntimeEngine, type RuntimeMode} from "@/lib/runtime/useRuntimeEngine";
-import {useArchiveReplay} from "@/lib/runtime/useArchiveReplay";
-import {ArchivePlayerBar} from "@/components/monitor/ArchivePlayerBar";
-import type {RuntimeStatus} from "@/lib/runtime/runtimeConnection";
+import type {RuntimeStatus} from "@/modules/monitor";
 import {cn} from "@/shared/lib/cn";
-import {ProcedurePanel} from "@/components/monitor/ProcedurePanel";
-import {ProcedureHud} from "@/components/monitor/ProcedureHud";
-import {AutomationTaskPanel, countTaskProblems} from "@/components/monitor/AutomationTaskPanel";
-import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
-import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
-import {registerMonitorDialogs} from "@/modules/monitor";
 
 // Окна монитора для меню элемента на холсте.
 registerMonitorDialogs();

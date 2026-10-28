@@ -20,7 +20,7 @@ import {
   restoreAutomationVersion,
   saveAutomation,
 } from "@/lib/automation/automationApi";
-import {TASK_STATE_VIEW} from "@/components/monitor/AutomationTaskPanel";
+import {TASK_STATE_VIEW} from "@/modules/monitor";
 import {TaskEditor} from "@/components/automation/TaskEditor";
 import {WatchdogEditor} from "@/components/automation/WatchdogEditor";
 import {VersionHistoryList} from "@/components/automation/VersionHistoryList";

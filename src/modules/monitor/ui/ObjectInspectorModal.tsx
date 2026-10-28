@@ -4,7 +4,7 @@ import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "r
 import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
+import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
 import {useEditorStore} from "@/modules/editor";
 import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/components/ui/ConfirmModal";
@@ -12,7 +12,7 @@ import {
   getRuntimePropertyValue, getRuntimeSessionId, getRuntimeTagQuality, getRuntimeTagValue,
   notifyRuntimeTagsWritten,
 } from "@/core/runtime";
-import {clearRuntimeTagInterest, setRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
+import {clearRuntimeTagInterest, setRuntimeTagInterest} from "../model/engine/runtimeTagInterest";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,

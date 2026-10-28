@@ -34,7 +34,7 @@ returns a bare array with no total, so "more" means "the last page was full").
 - **The operator's changes are local**: `TrendModal` (opened by «Открыть тренд» in the monitor
   menu; trends get no «Опции») keeps window, scale, hidden pens and the rewind position in its own
   state and issues its own archive requests. Nothing is saved.
-- `fetchArchiveValues` (`lib/runtime/archive.ts`) splits tags into batches of 20 and clamps `from`
+- `fetchArchiveValues` (`modules/monitor/model/archive/archive.ts`) splits tags into batches of 20 and clamps `from`
   to the 30-day archive depth — the backend answers 400 to the whole request otherwise.
 - **Every archive request carries the monitor's `projectId` in the query** (contract
   `docs/contract/2026-10-19-archive-project-id-contract.md`) — `values` and `replay` alike, and for
@@ -52,7 +52,7 @@ returns a bare array with no total, so "more" means "the last page was full").
 opened, no bus handlers are registered (clicks run nothing), and `Canvas archive` skips
 `MonitorInteractionLayer` and reduces the menu to «Открыть тренд». The player
 (`useArchiveReplay`, mounted **once** in `MonitorClient`; state in `useArchiveReplayStore`,
-pure buffer logic in `lib/runtime/replayBuffer.ts`) feeds `engine.archive.reset/apply`, which
+pure buffer logic in `modules/monitor/model/archive/replayBuffer.ts`) feeds `engine.archive.reset/apply`, which
 go through `pendingRef` + synchronous `flush` exactly like `onSnapshot` — so bindings draw the
 scheme as usual.
 
