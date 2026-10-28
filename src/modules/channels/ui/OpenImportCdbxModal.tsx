@@ -9,7 +9,7 @@ import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {pickFile} from "@/shared/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
-import {openImportReportModal} from "@/components/channels/OpenImportReportModal";
+import {openImportReportModal} from "./OpenImportReportModal";
 import {errorTextFromJson} from "@/core/access";
 import {useDeviceTreeStore} from "@/core/devices";
 
