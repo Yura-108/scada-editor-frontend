@@ -5,7 +5,7 @@ import {Loader2, Save} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
-import {useEditorStore} from "@/modules/editor";
+import {useOpenScene} from "@/core/project";
 import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
 import {fetchUserGrants, putUserGrant, type UserGrants} from "../api/adminApi";
 
@@ -15,8 +15,8 @@ const sameGrant = (a: ProjectGrant, b: ProjectGrant) =>
 
 /** Права пользователя по проектам: строка — проект, сохраняется построчно. */
 export function GrantsTable({userId}: {userId: number}) {
-  const projectList = useEditorStore(s => s.projectList);
-  const loadProjectList = useEditorStore(s => s.loadProjectList);
+  const projectList = useOpenScene(s => s.projectList);
+  const loadProjectList = useOpenScene(s => s.loadProjectList);
   const [saved, setSaved] = useState<UserGrants | null>(null);
   const [drafts, setDrafts] = useState<UserGrants>({});
   const [error, setError] = useState<string | null>(null);

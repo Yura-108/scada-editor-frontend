@@ -5,14 +5,14 @@ import {Save} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {useEditorStore} from "@/modules/editor";
+import {useOpenScene} from "@/core/project";
 import {fetchBranches, putBranches} from "../api/adminApi";
 import {inputClass} from "./adminStyles";
 
 /** Ветки каталога проекта: какие узлы базы каналов видят и правят его пользователи. */
 export function BranchesTab() {
-  const projectList = useEditorStore(s => s.projectList);
-  const loadProjectList = useEditorStore(s => s.loadProjectList);
+  const projectList = useOpenScene(s => s.projectList);
+  const loadProjectList = useOpenScene(s => s.loadProjectList);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [savedText, setSavedText] = useState("");
