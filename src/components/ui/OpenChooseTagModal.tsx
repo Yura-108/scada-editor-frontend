@@ -16,7 +16,7 @@ import { PropertyCreateDto } from "@/types/tags.types";
 import { Button, ModalFooter } from "@/shared/ui/Button";
 import {fetchAutomation} from "@/lib/automation/automationApi";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
-import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
+import {checkScriptSyntax} from "@/core/runtime";
 
 interface Props {
   /**

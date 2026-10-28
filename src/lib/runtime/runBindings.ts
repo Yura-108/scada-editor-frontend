@@ -1,4 +1,4 @@
-import {executeBinding, type CompiledBinding} from "@/lib/runtime/executeBinding";
+import {executeBinding, type CompiledBinding} from "@/core/runtime";
 
 /**
  * Прогон набора биндингов по текущим значениям — общая часть тика движка и повторного

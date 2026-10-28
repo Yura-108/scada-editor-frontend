@@ -1,12 +1,12 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { emitRuntimeScript, type ScreenPoint } from "@/lib/runtime/runtimeEventBus";
+import { emitRuntimeScript, type ScreenPoint } from "@/core/runtime";
 import {getCurrentProjectGrant, actionDenialText, canWriteDirectly} from "@/core/access";
-import { confirmMonitorAction } from "@/lib/runtime/confirmMonitorAction";
+import { confirmMonitorAction } from "./confirmMonitorAction";
 import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
 import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
 import { openTrendModal } from "@/components/monitor/TrendModal";
 import { trendPens } from "@/core/scene";
-import type { MenuChoice } from "@/lib/runtime/eventScript";
+import type { MenuChoice } from "@/core/runtime";
 import type { CanvasMenuItem } from "@/core/canvas";
 
 /**

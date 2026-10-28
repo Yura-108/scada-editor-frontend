@@ -2,7 +2,7 @@
 
 import React, {useEffect, useRef, useState} from "react";
 import {ShieldAlert} from "lucide-react";
-import {setRuntimeNoticeHandler, type RuntimeNotice} from "@/lib/runtime/runtimeEventBus";
+import {setRuntimeNoticeHandler, type RuntimeNotice} from "@/core/runtime";
 
 /** Сколько висит сообщение: прочитать «Нужен уровень доступа 5» хватает с запасом. */
 const NOTICE_MS = 3_000;

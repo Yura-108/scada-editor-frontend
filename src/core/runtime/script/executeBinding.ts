@@ -1,5 +1,5 @@
 import type {TagBinding} from "@/types/binding.types";
-import {modernizeScopeCode, type TagScope} from "@/lib/runtime/bindingScope";
+import {modernizeScopeCode, type TagScope} from "./bindingScope";
 
 /**
  * Компиляция и исполнение биндингов — чистый модуль без зависимостей от стора

@@ -7,24 +7,10 @@ import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureS
 import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
 import {getRenderedElement, trendPens, trendTiming, cellRuntimeKey, cellBindings, isLiveField, propertyByName, isBooleanValueType} from "@/core/scene";
 import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
-import type {CompiledBinding} from "@/lib/runtime/executeBinding";
+import type {CompiledBinding} from "@/core/runtime";
 import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
-import {collectTagScope, withPropertyRefs} from "@/lib/runtime/bindingScope";
-import {compileEventScript, executeEventScript, type ActionArgs} from "@/lib/runtime/eventScript";
+import {collectTagScope, withPropertyRefs, compileEventScript, executeEventScript, type ActionArgs, setRuntimeEventHandler, setRuntimeLive, setRuntimeScriptHandler, setRuntimeSessionGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, setRuntimePropertyValueGetter, setRuntimeTagQualityGetter, showRuntimeMenu, showRuntimeNotice, type ScreenPoint} from "@/core/runtime";
 import {openSceneFromScript} from "@/lib/runtime/openSceneFromScript";
-import {
-  setRuntimeEventHandler,
-  setRuntimeLive,
-  setRuntimeScriptHandler,
-  setRuntimeSessionGetter,
-  setRuntimeTagWriteHandler,
-  setRuntimeValueGetter,
-  setRuntimePropertyValueGetter,
-  setRuntimeTagQualityGetter,
-  showRuntimeMenu,
-  showRuntimeNotice,
-  type ScreenPoint,
-} from "@/lib/runtime/runtimeEventBus";
 import {toast} from "sonner";
 import {describeDenial, getCurrentProjectGrant, actionDenialText} from "@/core/access";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";

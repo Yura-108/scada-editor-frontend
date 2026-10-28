@@ -1,4 +1,4 @@
-import type {SceneTarget} from "@/lib/runtime/eventScript";
+import type {SceneTarget} from "./eventScript";
 
 /**
  * Какая схема имеется в виду в `openScene(...)` из обработчика события.

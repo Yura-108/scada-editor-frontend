@@ -10,14 +10,7 @@ import {Collapsible, TitleWithHint} from "@/shared/ui/codeModalParts";
 import {createUuid} from "@/shared/lib/createUuid";
 import {DiagramElement} from "@/types/editorElement.type";
 import {PropertyRef, TagBinding} from "@/types/binding.types";
-import {
-  collectTagScope,
-  modernizeScopeCode,
-  uniqueVarName,
-  withPropertyRefs,
-} from "@/lib/runtime/bindingScope";
-import {compileBinding, executeBinding, type BindingIntent} from "@/lib/runtime/executeBinding";
-import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
+import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs, compileBinding, executeBinding, type BindingIntent, checkScriptSyntax} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 

@@ -6,9 +6,8 @@ import type Konva from "konva";
 import {DiagramElement} from "@/types/editorElement.type";
 import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/types/binding.types";
 import {getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
-import {emitRuntimeEvent, type ScreenPoint} from "@/lib/runtime/runtimeEventBus";
-import {confirmMonitorAction} from "@/lib/runtime/confirmMonitorAction";
-import {isNonWritingScript} from "@/lib/runtime/eventScript";
+import {emitRuntimeEvent, type ScreenPoint, isNonWritingScript} from "@/core/runtime";
+import {confirmMonitorAction} from "../lib/confirmMonitorAction";
 
 const hasScript = (h?: ElementEventHandler): boolean => Boolean(h && h.code && h.code.trim());
 

@@ -1,5 +1,5 @@
 import type {ElementEventName} from "@/types/binding.types";
-import type {ActionArgs, MenuChoice} from "@/lib/runtime/eventScript";
+import type {ActionArgs, MenuChoice} from "./script/eventScript";
 
 /**
  * Мост «клик по фигуре в мониторе → движок рантайма». Слой интеракции в Canvas

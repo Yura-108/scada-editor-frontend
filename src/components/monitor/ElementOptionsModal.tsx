@@ -7,7 +7,7 @@ import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
 import {useEditorStore} from "@/modules/editor";
 import {shortTagPath, isBooleanValueType, isNumericValueType} from "@/core/scene";
-import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/lib/runtime/runtimeEventBus";
+import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/core/runtime";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {describeDenial, isAccessDenial} from "@/core/access";
 import {Button, ModalFooter} from "@/shared/ui/Button";

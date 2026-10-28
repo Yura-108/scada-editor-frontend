@@ -8,7 +8,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useEditorStore } from "../../model/editorStore";
 import {useRuntimeOverlayStore, snap, resolveSheet, getChildElements, getElementIndex, selectVisibleRootKeys, monitorViewFromCamera, resolveMonitorView, sortByZIndex} from "@/core/scene";
-import {NON_TRANSFORMABLE, CanvasNode, useThemeColors} from "@/core/canvas";
+import {NON_TRANSFORMABLE, CanvasNode, useThemeColors, RuntimeNoticeLayer} from "@/core/canvas";
 // Импорт ради побочного эффекта: глобальные настройки Konva (порог начала drag'а)
 // должны примениться до создания Stage.
 import "./lib/konvaConfig";
@@ -24,7 +24,6 @@ import { useZoomControls } from "./hooks/useZoomControls";
 import { useHoverHighlight } from "./hooks/useHoverHighlight";
 import { usePendingPlacement } from "./hooks/usePendingPlacement";
 import { MonitorInteractionLayer } from "./layers/MonitorInteractionLayer";
-import RuntimeNoticeLayer from "@/components/monitor/RuntimeNoticeLayer";
 import type { EditorRenderContext } from "@/core/canvas";
 import type { CanvasMenuState } from "./types";
 import { CanvasModals } from "./CanvasModals";

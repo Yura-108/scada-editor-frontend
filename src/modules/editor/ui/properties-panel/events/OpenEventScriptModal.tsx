@@ -14,10 +14,7 @@ import {
   ElementEvents,
   PropertyRef,
 } from "@/types/binding.types";
-import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs} from "@/lib/runtime/bindingScope";
-import {compileEventScript, executeEventScript} from "@/lib/runtime/eventScript";
-import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
-import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
+import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs, compileEventScript, executeEventScript, checkScriptSyntax, describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
 

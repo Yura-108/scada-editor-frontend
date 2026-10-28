@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import Konva from "konva";
 import { readMonitorMenu } from "@/core/scene";
-import { isRuntimeLive, setRuntimeMenuHandler } from "@/lib/runtime/runtimeEventBus";
+import { isRuntimeLive, setRuntimeMenuHandler } from "@/core/runtime";
 import { buildChoiceMenu } from "../lib/buildMonitorMenu";
 import { useEditorStore } from "../../../model/editorStore";
 import type { SetCanvasMenu } from "../types";

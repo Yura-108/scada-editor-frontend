@@ -9,6 +9,7 @@ export * from "./useThemeColors";
 export * from "./useElementRenderState";
 export * from "./canvasCursor";
 export * from "./textLod";
+export {default as RuntimeNoticeLayer} from "./RuntimeNoticeLayer";
 
 // Фигуры
 export * from "./shapes/Anchor";

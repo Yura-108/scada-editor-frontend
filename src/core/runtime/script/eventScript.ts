@@ -1,6 +1,6 @@
 import type {ElementEventHandler} from "@/types/binding.types";
-import {modernizeScopeCode, type TagScope} from "@/lib/runtime/bindingScope";
-import {buildRawScope, toScopeValue, type BindingIntent} from "@/lib/runtime/executeBinding";
+import {modernizeScopeCode, type TagScope} from "./bindingScope";
+import {buildRawScope, toScopeValue, type BindingIntent} from "./executeBinding";
 
 /**
  * Компиляция и исполнение обработчиков событий (onClick/onDoubleClick) — чистый

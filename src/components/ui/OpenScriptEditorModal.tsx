@@ -7,7 +7,7 @@ import {Wand2} from "lucide-react";
 import {formatCode} from "@/shared/lib/formatCode";
 import {TitleWithHint} from "@/shared/ui/codeModalParts";
 import { Button, ModalFooter } from "@/shared/ui/Button";
-import {checkScriptSyntax} from "@/lib/runtime/scriptSyntax";
+import {checkScriptSyntax} from "@/core/runtime";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 
 interface ScriptModalProps {
