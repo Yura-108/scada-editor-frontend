@@ -3,8 +3,8 @@ import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/shared/lib/cn";
 import { Type } from "lucide-react";
-import { useDeviceStore } from "@/store/useDeviceStore";
 import { Button, ModalFooter } from "@/shared/ui/Button";
+import {addDevice} from "@/core/devices";
 
 interface Props {
   title: string;
@@ -88,7 +88,6 @@ export function CreateNamedNodeContent({ title, description, placeholder, onConf
 // Площадка — узел верхнего уровня (без родителя).
 export function OpenCreateSiteModal() {
   const { openModal } = useModalStore.getState();
-  const { addDevice } = useDeviceStore.getState();
 
   openModal(
     <CreateNamedNodeContent
@@ -103,7 +102,6 @@ export function OpenCreateSiteModal() {
 // Проект — узел под площадкой (parentKey — ключ площадки).
 export function OpenCreateProjectModal(parentKey: string) {
   const { openModal } = useModalStore.getState();
-  const { addDevice } = useDeviceStore.getState();
 
   openModal(
     <CreateNamedNodeContent

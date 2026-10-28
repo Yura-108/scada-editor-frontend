@@ -8,11 +8,11 @@ import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
 import {buildManifestTags} from "../../lib/tagMeta";
 import {shortTagPath} from "@/core/scene";
 import type {RecipeTag} from "@/types/recipe.types";
+import {useDeviceTreeStore} from "@/core/devices";
 
 /**
  * Выбор тегов для манифеста рецепта (`tags[]`).
@@ -46,8 +46,8 @@ function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
 }
 
 export function ChooseManifestTagsModal({open, onClose, takenNames, onPick}: Props) {
-  const nodes = useDeviceStore((s) => s.nodes);
-  const params = useDeviceStore((s) => s.params);
+  const nodes = useDeviceTreeStore((s) => s.nodes);
+  const params = useDeviceTreeStore((s) => s.params);
 
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [query, setQuery] = useState("");

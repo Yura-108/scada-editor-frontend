@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 import { Building2, FolderOpen } from 'lucide-react';
 import ChannelsToolbar from '@/components/channels/ChannelsToolbar';
 import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
-import { useDeviceStore } from '@/store/useDeviceStore';
 import DeviceParams from '@/components/channels/DeviceParams';
+import {useDeviceTreeStore} from "@/core/devices";
 
 /** Пусто, пока ничего не загружено: подсказываем, где выбрать, вместо пустых панелей. */
 function EmptyState() {
@@ -29,16 +29,16 @@ function EmptyState() {
 }
 
 export default function Workspace() {
-  const nodes = useDeviceStore(s => s.nodes);
-  const isLoadingNodes = useDeviceStore(s => s.isLoadingNodes);
-  const nodesError = useDeviceStore(s => s.nodesError);
-  const loadedRootPath = useDeviceStore(s => s.loadedRootPath);
+  const nodes = useDeviceTreeStore(s => s.nodes);
+  const isLoadingNodes = useDeviceTreeStore(s => s.isLoadingNodes);
+  const nodesError = useDeviceTreeStore(s => s.nodesError);
+  const loadedRootPath = useDeviceTreeStore(s => s.loadedRootPath);
   const loaded = nodes.length > 0 || isLoadingNodes || nodesError != null || (loadedRootPath?.length ?? 0) > 0;
 
   // При входе в базу каналов подхватываем изменения (например, отмену действия в логах),
   // если данные были помечены устаревшими.
   useEffect(() => {
-    void useDeviceStore.getState().refreshIfStale();
+    void useDeviceTreeStore.getState().refreshIfStale();
   }, []);
 
   return (

@@ -4,14 +4,14 @@
 import { useRouter } from 'next/navigation';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useDeviceStore } from "@/store/useDeviceStore";
 import { confirmLeave } from "@/lib/unsavedGuard";
+import {useDeviceLocksStore} from "@/core/devices";
 
 export default function LogoutButton() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const stopEditing = useDeviceStore(s => s.stopEditing);
-  const editingDevices = useDeviceStore(s => s.editingDevices);
+  const stopEditing = useDeviceLocksStore(s => s.stopEditing);
+  const editingDevices = useDeviceLocksStore(s => s.editingDevices);
 
   const handleLogout = async () => {
     // Выход уводит со страницы так же, как переход по шапке: черновик раздела пропал бы молча.

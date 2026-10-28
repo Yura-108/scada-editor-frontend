@@ -3,9 +3,9 @@
 import React from "react";
 import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
 import {cellInput, compactButton, iconButton} from "@/components/automation/formStyles";
+import {useDeviceTreeStore} from "@/core/devices";
 
 interface Props {
   title: string;
@@ -22,7 +22,7 @@ interface Props {
  * (AutomationSetValidator.checkIo) — скрипт читает переменные через `vars`, пишет через `setVar`.
  */
 export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
-  const selectedDevice = useDeviceStore(s => s.selectedDevice);
+  const selectedDevice = useDeviceTreeStore(s => s.selectedDevice);
 
   const patch = (index: number, value: Partial<AutomationIo>) =>
     onChange(rows.map((row, i) => (i === index ? {...row, ...value} : row)));

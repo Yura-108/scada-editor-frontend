@@ -5,9 +5,9 @@ import {useEffect} from "react";
 import clsx from "clsx";
 import {ContextMenuProps} from "@/types/contextMenu.type";
 import { useEditingDevices } from "@/lib/useIsEditingDevice";
-import { useDeviceStore } from "@/store/useDeviceStore";
 import { useSessionUserStore } from "@/core/access";
 import { PARAM_IMPORT_SOURCE } from "@/types/cdbxImport.types";
+import {useDeviceTreeStore} from "@/core/devices";
 
 const ContextMenu = <T extends string = string>({
   menu,
@@ -107,7 +107,7 @@ const ContextMenu = <T extends string = string>({
   // Проект, созданный импортом .cdbx, помечен параметром «Источник импорта» — по нему
   // бэкенд и разрешает удалять базу целиком. Ищем ПО ИМЕНИ, а не по id типа: id справочника
   // на разных стендах разные, бэкенд сам сопоставляет их по имени.
-  const isImportedProject = useDeviceStore(
+  const isImportedProject = useDeviceTreeStore(
     (s) => Boolean(menuKey) && s.params.some(
       (p) => p.parentKey === menuKey && p.name === PARAM_IMPORT_SOURCE,
     ),

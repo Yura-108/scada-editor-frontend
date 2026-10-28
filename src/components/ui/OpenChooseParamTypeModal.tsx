@@ -11,8 +11,8 @@ import {
   selectIconClassName,
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
-import { useDeviceStore } from "@/store/useDeviceStore";
 import { Button, ModalFooter } from "@/shared/ui/Button";
+import {addParam, useDeviceDictionaries, useDeviceTreeStore} from "@/core/devices";
 
 interface Props {
   onLoadAction: (param: { id: number; value: string; parentKey: string }) => void;
@@ -21,7 +21,7 @@ interface Props {
 
 export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) {
   const { closeModal } = useModalStore.getState();
-  const { selectedDevice } = useDeviceStore.getState();
+  const { selectedDevice } = useDeviceTreeStore.getState();
 
   // Состояния для селекта и инпута
   const [selectedValue, setSelectedValue] = useState<string>(paramTypesList[0].id);
@@ -131,7 +131,7 @@ export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) 
 
 export function openChooseParamTypeModal() {
   const {openModal} = useModalStore.getState();
-  const {addParam, paramsTypes} = useDeviceStore.getState();
+  const { paramsTypes } = useDeviceDictionaries.getState();
 
   if (paramsTypes.length > 0) {
     openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />);

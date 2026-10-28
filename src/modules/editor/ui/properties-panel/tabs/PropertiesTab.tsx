@@ -6,7 +6,6 @@ import {AlertTriangle, Plus} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {handleAddProperty} from "@/lib/handleAddProperty";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {MonitorMenuSettingsBlock} from "../blocks/MonitorMenuSettingsBlock";
 import {TrendSettingsBlock} from "../blocks/TrendSettingsBlock";
 import {hasMonitorMenu} from "../../canvas/lib/buildMonitorMenu";
@@ -15,6 +14,7 @@ import {usePropertyOrder} from "../hooks/usePropertyOrder";
 import {propertyKey} from "../lib/propertyOrder";
 import {baseAddButtonClasses, baseInputClasses} from "../panelClasses";
 import {SortablePropertyPill} from "../SortablePropertyPill";
+import {useDeviceTreeStore} from "@/core/devices";
 
 const addPropertyHint =
   "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
@@ -24,7 +24,7 @@ export function PropertiesTab({element}: {element: DiagramElement}) {
   const updateElementVisual = useEditorStore(s => s.updateElementVisual);
   // База каналов подгружена, если в дереве устройств есть узлы (глобальный стор,
   // наполняется при заходе в раздел «База каналов»). Без неё не из чего выбрать тег.
-  const isChannelBaseLoaded = useDeviceStore(s => s.nodes.length > 0);
+  const isChannelBaseLoaded = useDeviceTreeStore(s => s.nodes.length > 0);
   const {sortedProperties, dndSensors, handlePropertyDragEnd} = usePropertyOrder(element);
 
   // Требование «сначала сохраните схему» снято: свойства едут вместе со сценой, и

@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import DeviceTreePanel from "@/components/channels/DeviceTreePanel";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
-import {useDeviceStore} from "@/store/useDeviceStore";
+import {useDeviceTreeStore} from "@/core/devices";
 
 interface Options {
   title?: string;
@@ -22,7 +22,7 @@ interface ContentProps extends Options {
  * Площадка, проект и устройство — папки, писать в них нечего.
  */
 const useIsChannel = (key: string | null): boolean => {
-  const nodes = useDeviceStore(s => s.nodes);
+  const nodes = useDeviceTreeStore(s => s.nodes);
   return useMemo(() => {
     if (!key || key.split(".").length < 4) return false;
     return !nodes.some(n => n.parentKey === key || n.key.startsWith(`${key}.`));
@@ -31,7 +31,7 @@ const useIsChannel = (key: string | null): boolean => {
 
 function TagPickerContent({title = "Выбор тега ПЛК", description, resolve}: ContentProps) {
   const closeModal = useModalStore(s => s.closeModal);
-  const selected = useDeviceStore(s => s.selectedDevice);
+  const selected = useDeviceTreeStore(s => s.selectedDevice);
   const isChannel = useIsChannel(selected);
   const resolved = useRef(false);
 

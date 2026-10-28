@@ -1,7 +1,6 @@
 'use client';
 
 import React, {useState, useEffect, useMemo, useCallback} from 'react';
-import {useDeviceStore} from '@/store/useDeviceStore';
 import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "@/components/ui/ParamWrapper";
@@ -20,19 +19,17 @@ import {useUnlockEditingOnUnload} from "@/lib/useUnlockEditingOnUnload";
 import {resolveParamWidget, isParamChecked} from "@/lib/paramWidget";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {toast} from "sonner";
+import {handleContextParamAction, removeParam, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore} from "@/core/devices";
 
 const DeviceParams = () => {
   const {
     nodes,
     selectedDevice,
     getParams,
-    updateParam,
-    handleContextParamAction,
     params,
-    removeParam,
-    toggleEditing,
-    getParamsTypes,
-  } = useDeviceStore();
+  } = useDeviceTreeStore();
+  const { toggleEditing } = useDeviceLocksStore();
+  const { getParamsTypes } = useDeviceDictionaries();
 
   // Реактивный признак блокировки: раньше читался через getState() прямо в
   // рендере, поэтому подпись кнопки и блокировка формы не обновлялись, пока
@@ -68,7 +65,7 @@ const DeviceParams = () => {
 
   useEffect(() => {
     return () => {
-      const { editingDevices, stopEditing } = useDeviceStore.getState();
+      const { editingDevices, stopEditing } = useDeviceLocksStore.getState();
       if (editingDevices.length === 0) return;
 
       (async () => {
