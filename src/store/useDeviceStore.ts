@@ -3,7 +3,6 @@
 import {create} from 'zustand/react';
 import {DeviceParamsType, DeviceParamsLayoutType} from '@/types/nodeTypes';
 import {devtools} from 'zustand/middleware';
-import {ContextMenuType} from "@/types/contextMenu.type";
 import {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
 import {treeSearch} from "@/lib/treeSearch";
 import {NodeParamType, NodeType} from "@/types/channelsTypes";
@@ -57,12 +56,10 @@ interface DeviceStoreState {
   markStale: () => void;
   refreshIfStale: () => Promise<void>;
 
-  contextMenu: ContextMenuType | null;
   editingDevices: Array<string>;
   startEditing: (keys: string[]) => Promise<void>;
   stopEditing: (keys: string[]) => Promise<void>;
   toggleEditing: (key: string) => Promise<void>;
-  setContextMenu: (menu: ContextMenuType | null) => void;
   selectedDevice: string | null;
 
   getParams(deviceKey: string | null): DeviceParamsType[];
@@ -101,13 +98,11 @@ export const useDeviceStore = create<DeviceStoreState>()(
       isStale: false,
       isLoadingNodes: false,
       nodesError: null,
-      contextMenu: null,
       paramsTypes: [],
       // Тип — объект с полем templates; пустой массив здесь ронял
       // OpenCreateDeviceModal (`deviceTemplateList.templates.length`) с TypeError.
       deviceTemplateList: {templates: []},
       editingDevices: [],
-      setContextMenu: (menu) => set({contextMenu: menu}),
       selectedDevice: null,
       markStale: () => set({isStale: true}),
       refreshIfStale: async () => {
@@ -507,7 +502,6 @@ export const useDeviceStore = create<DeviceStoreState>()(
             await get().removeImportedProject(nodeKey);
           }
         }
-        get().setContextMenu(null);
       },
       handleContextParamAction: async (action, paramKey) => {
         if (action === 'delete') {
