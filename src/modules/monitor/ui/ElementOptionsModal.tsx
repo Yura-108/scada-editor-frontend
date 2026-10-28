@@ -5,8 +5,7 @@ import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
-import {useEditorStore} from "@/modules/editor";
-import {shortTagPath, isBooleanValueType, isNumericValueType} from "@/core/scene";
+import {shortTagPath, isBooleanValueType, isNumericValueType, useSceneView, getSceneView} from "@/core/scene";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/core/runtime";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {describeDenial, isAccessDenial} from "@/core/access";
@@ -19,6 +18,7 @@ import {
   tagWriteOutcome,
   tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
+import {useOpenScene} from "@/core/project";
 
 interface Props {
   elementKey: string;
@@ -55,8 +55,8 @@ const plural = (n: number, one: string, few: string, many: string) => {
 };
 
 function ElementOptionsContent({elementKey, onClose}: ContentProps) {
-  const element = useEditorStore((s) => s.elements.find(el => el.key === elementKey));
-  const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
+  const element = useSceneView((s) => s.elements.find(el => el.key === elementKey));
+  const projectId = useOpenScene((s) => s.currentProject?.id ?? null);
 
   const tagProps = (element?.properties ?? []).filter(p => p.property_type === "Тег");
 
@@ -420,7 +420,7 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
  */
 export function openElementOptionsModal(props: Props) {
   const id = `options:${props.elementKey}`;
-  const element = useEditorStore.getState().elements.find(el => el.key === props.elementKey);
+  const element = getSceneView().elements.find(el => el.key === props.elementKey);
   openFloatingWindow({
     id,
     kind: "options",

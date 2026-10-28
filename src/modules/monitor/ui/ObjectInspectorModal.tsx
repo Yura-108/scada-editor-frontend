@@ -5,7 +5,6 @@ import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoint
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
-import {useEditorStore} from "@/modules/editor";
 import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
@@ -19,6 +18,7 @@ import {
   normalizeTagWriteResults, tagWriteOutcome, tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
 import {errorTextFromJson} from "@/core/access";
+import {useOpenScene} from "@/core/project";
 
 /** Как часто перечитываем значения: они лежат в рефах движка, а не в сторе (как в «Опциях»). */
 const VALUE_POLL_MS = 1000;
@@ -152,8 +152,8 @@ function ObjectPicker({objects, selected, loading, onSelect, inputClass}: {
  * окно показывает то, что на самом деле лежит в runtime.
  */
 function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: number; onClose: () => void}) {
-  const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
-  const releaseVersionNo = useEditorStore((s) => s.releaseVersionNo);
+  const projectId = useOpenScene((s) => s.currentProject?.id ?? null);
+  const releaseVersionNo = useOpenScene((s) => s.releaseVersionNo);
 
   const [objects, setObjects] = useState<InspectorObjectDto[]>([]);
   const [loading, setLoading] = useState(true);

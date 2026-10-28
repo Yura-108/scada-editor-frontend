@@ -1,7 +1,7 @@
 import {toast} from "sonner";
-import {useEditorStore} from "@/modules/editor";
 import type {SceneTarget} from "@/core/runtime";
 import {describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
+import {getOpenScene} from "@/core/project";
 
 /**
  * `openScene(...)` из обработчика события в мониторе: найти схему в текущем проекте и
@@ -15,7 +15,7 @@ import {describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
  * `loadScene` ещё раз сверит, что схема принадлежит текущему проекту.
  */
 export const openSceneFromScript = async (target: SceneTarget, sourceLabel: string): Promise<void> => {
-  const {sceneList, scene, loadScene} = useEditorStore.getState();
+  const {sceneList, scene, loadScene} = getOpenScene();
   const res = resolveSceneTarget(target, sceneList);
 
   if (res.kind !== "found") {

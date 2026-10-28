@@ -3,8 +3,8 @@
 import {useEffect} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "../useProcedureStore";
-import {useEditorStore} from "@/modules/editor";
 import {fetchProcedureStatus, NoActiveProcedureError} from "./procedures";
+import {useOpenScene} from "@/core/project";
 
 /**
  * Фоновая часть процедуры: сверка состояния и уведомления об отказах.
@@ -24,7 +24,7 @@ const STATUS_POLL_MS = 5000;
 export function useProcedureSync(): void {
   const recipeId = useProcedureStore(s => s.recipeId);
   const lastAlert = useProcedureStore(s => s.lastAlert);
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
   // Уровни операций и рецепты prod-выпуска грузит TanStack Query (src/modules/monitor):
   // номер выпуска в ключе, TREE_CHANGED перечитывает их сам — эффект здесь не нужен.
 

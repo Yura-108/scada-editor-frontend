@@ -5,11 +5,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useEditorStore} from "@/modules/editor";
 import {useTrendStore} from "@/core/canvas";
-import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming, shortTagPath} from "@/core/scene";
+import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming, shortTagPath, useSceneView} from "@/core/scene";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {ARCHIVE_DEPTH_MS, fetchArchiveValues, type TrendPoint} from "../model/archive/archive";
+import {useOpenScene} from "@/core/project";
 
 interface Props {
   elementKey: string;
@@ -53,8 +53,8 @@ const formatDateTime = (ts: number) => {
  */
 function TrendModalContent({elementKey}: Props) {
   const closeModal = useModalStore(s => s.closeModal);
-  const element = useEditorStore(s => s.elements.find(e => e.key === elementKey));
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const element = useSceneView(s => s.elements.find(e => e.key === elementKey));
+  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
 
   const pens = useMemo(() => (element ? trendPens(element) : []), [element]);
   const timing = trendTiming(element?.trend);
