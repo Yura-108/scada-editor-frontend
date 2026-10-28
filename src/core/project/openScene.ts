@@ -2,7 +2,7 @@ import type {SceneType} from "@/types/editorElement.type";
 import type {EditorProject} from "./projects";
 
 /**
- * Открытый проект и сцена — то, что о них читает монитор, и действия, которые он вызывает.
+ * Открытый проект и сцена — то, что о них читают монитор и админка, и действия, которые они вызывают.
  *
  * Состояние живёт в сторе редактора: загрузка сцены пишет документ, историю, выделение и
  * черновик, и разносить это по двум сторам — правка логики сохранения ради одного чтения.
@@ -12,6 +12,9 @@ import type {EditorProject} from "./projects";
  */
 export interface OpenSceneState {
   currentProject: EditorProject | null;
+  /** Проекты, доступные пользователю (администратору — все). */
+  projectList: EditorProject[];
+  loadProjectList: () => Promise<EditorProject[] | void>;
   scene: SceneType | null;
   sceneList: {id: number; name: string}[];
   /** Номер выпуска, который показывает монитор; null — выпуск ещё не получен. */
