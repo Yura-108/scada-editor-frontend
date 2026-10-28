@@ -23,7 +23,7 @@ import {
   updateUser,
   type AdminUser,
   type UserGrants,
-} from "@/lib/access/adminApi";
+} from "@/modules/admin";
 import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
 
 type Tab = "users" | "branches";
