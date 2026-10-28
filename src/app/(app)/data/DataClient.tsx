@@ -11,7 +11,7 @@ import {useEditorStore, useEditableProject} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/core/access";
 import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
 import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
-import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/lib/automation/automationApi";
+import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/core/automation";
 import {
   fetchProjectData,
   fetchProjectDataVersions,
@@ -26,7 +26,7 @@ import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {useUnsavedGuard} from "@/lib/unsavedGuard";
 import {VariablesEditor} from "@/components/automation/VariablesEditor";
-import {VersionHistoryList} from "@/components/automation/VersionHistoryList";
+import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import {DataDiffView, DataVersionChanges, loadDataVersion} from "@/components/projectData/DataVersionChanges";
 import {diffDataVersions} from "@/lib/projectData/dataVersionDiff";
 import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";

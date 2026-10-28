@@ -8,7 +8,7 @@ import {X} from "lucide-react";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useModalStore} from "@/store/modalStore";
 import {useCreateTemplate, useUpdateTemplate} from "@/modules/automation";
-import {AutomationSaveError} from "@/lib/automation/automationApi";
+import {AutomationSaveError} from "@/core/automation";
 import {templateBody} from "@/lib/automation/automationTemplates";
 import {fieldInput, fieldLabel} from "@/components/automation/formStyles";
 import {IoTable} from "@/components/automation/IoTable";
