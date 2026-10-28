@@ -13,22 +13,14 @@ import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
 import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/core/automation";
 import {
-  fetchProjectData,
-  fetchProjectDataVersions,
-  ProjectDataSaveError,
-  reloadProjectData,
-  restoreProjectDataVersion,
-  saveProjectData,
-} from "@/lib/projectData/projectDataApi";
-import {confirmRemoveTable, TablesEditor} from "@/components/projectData/TablesEditor";
-import {compactButton} from "@/components/projectData/ColumnsEditor";
+  compactButton, confirmRemoveTable, DataDiffView, DataVersionChanges, diffDataVersions, fetchProjectData,
+  fetchProjectDataVersions, loadDataVersion, ProjectDataSaveError, reloadProjectData,
+  restoreProjectDataVersion, saveProjectData, TablesEditor, VariablesEditor,
+} from "@/modules/data";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {useUnsavedGuard} from "@/lib/unsavedGuard";
-import {VariablesEditor} from "@/components/automation/VariablesEditor";
 import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
-import {DataDiffView, DataVersionChanges, loadDataVersion} from "@/components/projectData/DataVersionChanges";
-import {diffDataVersions} from "@/lib/projectData/dataVersionDiff";
 import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";
 import type {ProjectDataSet, ProjectDataValidationError} from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
