@@ -12,6 +12,9 @@ export function useThemeColors(): { resolvedTheme: string | undefined; isDark: b
   // в фигурах, и выделение существовало в двух разных синих (#3b82f6 у обводки
   // и #0096ff у рамки-протяжки) — оба видны одновременно при протяжке рамки.
   const themeColors: ThemeColors = useMemo(() => {
+    // selection и activeGroup совпадают с токенами --selection и --active-group
+    // (globals.css), которыми интерфейс красит то же самое вне холста («Слои»,
+    // рамки). Меняйте в обоих местах.
     const selection = isDark ? "#60a5fa" : "#3b82f6";
 
     return {

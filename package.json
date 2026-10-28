@@ -9,6 +9,7 @@
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
     "check:store-cycles": "node scripts/check-store-cycles.mjs",
+    "check:ui-colors": "node scripts/check-ui-colors.mjs",
     "prepare": "husky install"
   },
   "lint-staged": {
