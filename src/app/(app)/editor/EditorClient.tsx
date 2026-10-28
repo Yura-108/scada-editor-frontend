@@ -5,7 +5,11 @@ import {usePaletteStore} from "@/store/usePaletteStore";
 import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
 import {useSceneChangedNotifications, useEditorStore, WorkSpace, restoreLastProject} from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
+import {registerMonitorDialogs} from "@/modules/monitor";
 import {toast} from "sonner";
+
+// Меню монитора открывается и здесь — при просмотре версии (холст только для чтения).
+registerMonitorDialogs();
 
 export default function EditorPage() {
   // Точечный селектор: подписка на весь стор палитры перерисовывала страницу

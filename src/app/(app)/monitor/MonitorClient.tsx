@@ -19,6 +19,10 @@ import {useProcedureSync} from "@/lib/runtime/useProcedureSync";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
+import {registerMonitorDialogs} from "@/modules/monitor";
+
+// Окна монитора для меню элемента на холсте.
+registerMonitorDialogs();
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;

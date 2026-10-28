@@ -1,10 +1,7 @@
 import { DiagramElement } from "@/types/editorElement.type";
-import { emitRuntimeScript, type ScreenPoint } from "@/core/runtime";
+import { emitRuntimeScript, monitorDialogs, type ScreenPoint } from "@/core/runtime";
 import {getCurrentProjectGrant, actionDenialText, canWriteDirectly} from "@/core/access";
 import { confirmMonitorAction } from "./confirmMonitorAction";
-import { openElementOptionsModal } from "@/components/monitor/ElementOptionsModal";
-import { openObjectInspectorModal } from "@/components/monitor/ObjectInspectorModal";
-import { openTrendModal } from "@/components/monitor/TrendModal";
 import { trendPens } from "@/core/scene";
 import type { MenuChoice } from "@/core/runtime";
 import type { CanvasMenuItem } from "@/core/canvas";
@@ -68,7 +65,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
       label: "Открыть тренд",
       onClick: () => {
         closeMenu();
-        openTrendModal({ elementKey: el.key });
+        monitorDialogs().openTrend({ elementKey: el.key });
       },
     });
   }
@@ -82,7 +79,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
       disabled: !isLive,
       onClick: () => {
         closeMenu();
-        openElementOptionsModal({ elementKey: el.key });
+        monitorDialogs().openElementOptions({ elementKey: el.key });
       },
     });
   }
@@ -96,7 +93,7 @@ export function buildMonitorMenu(el: DiagramElement, deps: BuildMonitorMenuDeps)
       label: "Инспектор",
       onClick: () => {
         closeMenu();
-        openObjectInspectorModal({ initialObjectId: objectId });
+        monitorDialogs().openObjectInspector({ initialObjectId: objectId });
       },
     });
   }
