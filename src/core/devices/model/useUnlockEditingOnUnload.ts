@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useDeviceStore } from "@/store/useDeviceStore";
+import {useDeviceLocksStore} from "./deviceLocksStore";
 
 /**
  * Снимает блокировки (unlock) при ВЫГРУЗКЕ страницы: перезагрузка, закрытие вкладки,
@@ -17,7 +17,7 @@ import { useDeviceStore } from "@/store/useDeviceStore";
 export function useUnlockEditingOnUnload() {
   useEffect(() => {
     const flushUnlock = () => {
-      const { editingDevices } = useDeviceStore.getState();
+      const { editingDevices } = useDeviceLocksStore.getState();
       if (!editingDevices.length) return;
 
       const url = "/api/unlock/";

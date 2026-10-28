@@ -1,4 +1,4 @@
-import { useDeviceStore } from "@/store/useDeviceStore";
+import {useDeviceLocksStore} from "./deviceLocksStore";
 
 /**
  * Реактивный признак «узел сейчас редактируется».
@@ -9,8 +9,8 @@ import { useDeviceStore } from "@/store/useDeviceStore";
  * у уже разблокированного узла).
  */
 export const useEditingDevices = (): string[] =>
-  useDeviceStore((s) => s.editingDevices);
+  useDeviceLocksStore((s) => s.editingDevices);
 
 /** Нереактивная проверка — только вне рендера (обработчики, экшены сторов). */
 export const isEditingDevice = (deviceKey: string) =>
-  useDeviceStore.getState().editingDevices.includes(deviceKey);
+  useDeviceLocksStore.getState().editingDevices.includes(deviceKey);

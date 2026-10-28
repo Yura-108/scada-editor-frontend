@@ -10,13 +10,13 @@ import { selectContentClassName, selectIconClassName, selectTriggerClassName } f
 import { cn } from "@/shared/lib/cn";
 import {shortTagPath, isBooleanValueType} from "@/core/scene";
 import { useModalStore } from "@/store/modalStore";
-import { useDeviceStore } from "@/store/useDeviceStore";
 import {useEditorStore, confirmDeleteProperty} from "@/modules/editor";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { Button, ModalFooter } from "@/shared/ui/Button";
 import {fetchAutomation} from "@/lib/automation/automationApi";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
 import {checkScriptSyntax} from "@/core/runtime";
+import {useDeviceTreeStore} from "@/core/devices";
 
 interface Props {
   /**
@@ -66,7 +66,7 @@ export function AddPropertyContent({ elementKey, property, preset }: Props) {
   // Источник начальных значений формы: правимое свойство либо заготовка нового.
   const init = property ?? preset;
   const closeModal = useModalStore((s) => s.closeModal);
-  const selectedDevice = useDeviceStore((s) => s.selectedDevice);
+  const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
   const addProperty = useEditorStore((s) => s.addProperty);
   const editProperty = useEditorStore((s) => s.editProperty);
 

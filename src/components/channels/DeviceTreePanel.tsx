@@ -4,7 +4,6 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Tree from 'rc-tree';
 import {Key} from 'rc-tree/es/interface';
 import {ChevronDown, ChevronUp, Router, Search, X} from 'lucide-react';
-import {useDeviceStore} from '@/store/useDeviceStore';
 import TitleRenderer from '@/components/ui/TitleRenderer';
 import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/shared/ui/SwitcherIcon';
@@ -13,6 +12,7 @@ import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
 import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "@/lib/editor/deviceTreeData";
 import ChannelsProjectPicker from "@/components/channels/ChannelsProjectPicker";
+import {handleContextAction, useDeviceTreeStore} from "@/core/devices";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -27,12 +27,11 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const {
     nodes,
     selectedDevice,
-    handleContextAction,
     isLoadingNodes,
     nodesError,
     loadedRootPath,
     loadNodes,
-  } = useDeviceStore();
+  } = useDeviceTreeStore();
 
   // Раскрытие управляемое: поиск должен раскрывать предков найденного узла, не сворачивая
   // того, что пользователь уже раскрыл руками.
@@ -49,11 +48,11 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
 
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
-    if (key) useDeviceStore.setState({selectedDevice: key});
+    if (key) useDeviceTreeStore.setState({selectedDevice: key});
   }, []);
 
   const handleNodeClick = (nodeKey: string) => {
-    useDeviceStore.setState({selectedDevice: nodeKey});
+    useDeviceTreeStore.setState({selectedDevice: nodeKey});
   };
 
   const handleContextMenu = useCallback(

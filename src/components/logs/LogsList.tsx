@@ -1,7 +1,6 @@
 'use client';
 
 import { useLogsSearch } from '@/modules/logs';
-import { useDeviceStore } from '@/store/useDeviceStore';
 import { LogEntry } from '@/types/logs.type';
 import LogDetailsModal from '@/components/ui/LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
@@ -9,6 +8,7 @@ import { toast } from "sonner";
 import {
   formatTs, journalBadge, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
 } from '@/components/journal/journalUi';
+import {useDeviceTreeStore} from "@/core/devices";
 
 const COLUMNS = 7;
 
@@ -49,7 +49,7 @@ export default function LogsList() {
       toast.success(`Действие #${log.id} успешно отменено!`);
       await refresh();
       // Помечаем базу каналов устаревшей — при следующем входе в /channels она пере-синхронизируется.
-      useDeviceStore.getState().markStale();
+      useDeviceTreeStore.getState().markStale();
 
     } catch (err) {
       toast.error((err instanceof Error && err.message) || 'Не удалось выполнить отмену');

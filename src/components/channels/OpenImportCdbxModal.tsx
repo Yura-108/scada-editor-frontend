@@ -6,12 +6,12 @@ import {FileUp, FolderPlus} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/store/modalStore";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {pickFile} from "@/shared/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 import {openImportReportModal} from "@/components/channels/OpenImportReportModal";
 import {errorTextFromJson} from "@/core/access";
+import {useDeviceTreeStore} from "@/core/devices";
 
 const inputClass = cn(
   "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",
@@ -120,7 +120,7 @@ function ImportCdbxContent() {
       // Новый проект не входит в загруженные, и сам по себе в дереве не появится —
       // подгружаем его рядом с уже открытыми, иначе инженеру пришлось бы искать его
       // через выбор проектов.
-      const {loadedRootPath, loadNodes} = useDeviceStore.getState();
+      const { loadedRootPath, loadNodes } = useDeviceTreeStore.getState();
       await loadNodes([...(loadedRootPath ?? []), report.root]).catch(() => {});
 
       openImportReportModal(report);

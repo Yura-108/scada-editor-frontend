@@ -8,9 +8,9 @@ import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "@/lib/editor/deviceTreeData";
 import {shortTagPath} from "@/core/scene";
+import {useDeviceTreeStore} from "@/core/devices";
 
 /**
  * Выбор ОДНОГО тега — для прямой привязки «значение элемента ← тег».
@@ -19,7 +19,7 @@ import {shortTagPath} from "@/core/scene";
  * `ChooseObjectPropertyModal`: панель свойств уже живёт внутри своего окна, а
  * `useModalStore` одноместный и подменил бы её.
  *
- * Выбор одиночный и НЕ трогает `useDeviceStore.selectedDevice`: тот глобальный и общий
+ * Выбор одиночный и НЕ трогает `useDeviceTreeStore.selectedDevice`: тот глобальный и общий
  * со страницей «База каналов» — выбор тега здесь не должен менять выделение там.
  */
 interface Props {
@@ -40,7 +40,7 @@ function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
 }
 
 export function ChooseTagModal({open, onClose, onPick}: Props) {
-  const nodes = useDeviceStore((s) => s.nodes);
+  const nodes = useDeviceTreeStore((s) => s.nodes);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");

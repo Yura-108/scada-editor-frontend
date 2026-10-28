@@ -11,8 +11,8 @@ import {
   selectIconClassName,
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
-import { useDeviceStore } from "@/store/useDeviceStore";
 import { Button, ModalFooter } from "@/shared/ui/Button";
+import {addDevice, useDeviceDictionaries} from "@/core/devices";
 
 interface Props {
   onLoadAction: (node: {
@@ -141,7 +141,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
 export function OpenCreateDeviveModal(nodeKey: string) {
   const {openModal} = useModalStore.getState();
-  const {addDevice, deviceTemplateList} = useDeviceStore.getState();
+  const { deviceTemplateList } = useDeviceDictionaries.getState();
 
   const templates = deviceTemplateList?.templates ?? [];
 

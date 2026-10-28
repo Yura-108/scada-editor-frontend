@@ -8,12 +8,12 @@ import {
   Box,
   Pencil
 } from 'lucide-react';
-import { useDeviceStore } from '@/store/useDeviceStore';
 import {
   ContextMenuTrigger,
   contextMenuTriggerFromKey,
   isContextMenuKey,
 } from '@/types/contextMenu.type';
+import {useDeviceLocksStore, useDeviceTreeStore} from "@/core/devices";
 
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
@@ -53,8 +53,8 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
   onContextMenu,
   highlighted = false,
 }) => {
-  const selectedDevice = useDeviceStore((s) => s.selectedDevice);
-  const editingDevices = useDeviceStore((s) => s.editingDevices);
+  const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
+  const editingDevices = useDeviceLocksStore((s) => s.editingDevices);
 
   const isSelected = selectedDevice === node.key;
   const isEditing = editingDevices.includes(node.key);

@@ -2,9 +2,9 @@ import {useEffect, useId, useState} from "react";
 import {toast} from "sonner";
 import {Building2, Download, FolderOpen, RefreshCw} from 'lucide-react';
 import {cn} from "@/shared/lib/cn";
-import {useDeviceStore} from "@/store/useDeviceStore";
 import {Button} from "@/shared/ui/Button";
 import {MultiSelect} from "@/shared/ui/MultiSelect";
+import {useDeviceDictionaries, useDeviceTreeStore} from "@/core/devices";
 
 const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
 
@@ -22,7 +22,8 @@ interface Props {
  * текст «выберите площадку и проект ниже», а ниже ничего не было.
  */
 export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
-  const {loadNodes, getParamsTypes, loadedRootPath} = useDeviceStore();
+  const { loadNodes, loadedRootPath } = useDeviceTreeStore();
+  const { getParamsTypes } = useDeviceDictionaries();
 
   // Возвращаясь в раздел, видим то, что уже загружено, а не пустые поля.
   const [selectedProjects, setSelectedProjects] = useState<string[]>(() => loadedRootPath ?? []);
@@ -113,7 +114,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
     try {
       await loadNodes(selectedProjects);
       await getParamsTypes();
-      const {nodesError} = useDeviceStore.getState();
+      const { nodesError } = useDeviceTreeStore.getState();
       if (!nodesError) toast.success(selectedProjects.length > 1 ? `Загружено проектов: ${selectedProjects.length}` : 'Проект загружен');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
