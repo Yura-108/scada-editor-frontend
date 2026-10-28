@@ -5,9 +5,9 @@ import {ChevronDown, Pencil, Search, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/components/ui/ConfirmModal";
-import {useDeleteTemplate, useTemplates} from "@/modules/automation";
-import {groupTemplates} from "@/lib/automation/automationTemplates";
-import {openTemplateModal} from "@/components/automation/OpenTemplateModal";
+import {useDeleteTemplate, useTemplates} from "../api/templates";
+import {groupTemplates} from "../lib/automationTemplates";
+import {openTemplateModal} from "./OpenTemplateModal";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 
 /** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */

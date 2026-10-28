@@ -5,7 +5,7 @@ import {
   deleteTemplate,
   fetchTemplates,
   updateTemplate,
-} from "@/lib/automation/automationTemplatesApi"; // переедет в модуль вместе с разделом (шаг 8)
+} from "./templatesApi"; // переедет в модуль вместе с разделом (шаг 8)
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 
 /**
