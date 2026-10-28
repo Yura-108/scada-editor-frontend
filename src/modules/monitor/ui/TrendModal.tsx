@@ -9,7 +9,7 @@ import {useEditorStore} from "@/modules/editor";
 import {useTrendStore} from "@/core/canvas";
 import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming, shortTagPath} from "@/core/scene";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {ARCHIVE_DEPTH_MS, fetchArchiveValues, type TrendPoint} from "@/lib/runtime/archive";
+import {ARCHIVE_DEPTH_MS, fetchArchiveValues, type TrendPoint} from "../model/archive/archive";
 
 interface Props {
   elementKey: string;

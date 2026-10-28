@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {closeFloatingWindow, openFloatingWindow} from "@/store/useFloatingWindowsStore";
+import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
 import {useEditorStore} from "@/modules/editor";
 import {shortTagPath, isBooleanValueType, isNumericValueType} from "@/core/scene";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/core/runtime";

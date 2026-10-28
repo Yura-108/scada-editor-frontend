@@ -5,8 +5,8 @@ import {GripVertical, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {
   closeFloatingWindow, focusFloatingWindow, useFloatingWindowsStore, type FloatingWindow,
-} from "@/store/useFloatingWindowsStore";
-import {clampHudPosition, readFloatingWindowPos, writeFloatingWindowPos} from "@/lib/editor/procedureHudPrefs";
+} from "../model/useFloatingWindowsStore";
+import {clampHudPosition, readFloatingWindowPos, writeFloatingWindowPos} from "../lib/procedureHudPrefs";
 
 const MARGIN = 8;
 /** Сдвиг каждого следующего окна того же вида — чтобы второе не легло ровно поверх первого. */

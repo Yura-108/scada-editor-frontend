@@ -1,4 +1,4 @@
-import type {ReplayChange} from "@/lib/runtime/archive";
+import type {ReplayChange} from "./archive";
 
 /**
  * Буфер ленты воспроизведения архива — чистые функции без React, чтобы логику плеера

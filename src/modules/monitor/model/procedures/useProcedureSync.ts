@@ -2,9 +2,9 @@
 
 import {useEffect} from "react";
 import {toast} from "sonner";
-import {useProcedureStore} from "@/store/useProcedureStore";
+import {useProcedureStore} from "../useProcedureStore";
 import {useEditorStore} from "@/modules/editor";
-import {fetchProcedureStatus, NoActiveProcedureError} from "@/lib/runtime/procedures";
+import {fetchProcedureStatus, NoActiveProcedureError} from "./procedures";
 
 /**
  * Фоновая часть процедуры: сверка состояния и уведомления об отказах.

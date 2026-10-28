@@ -3,7 +3,7 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useAutomationTasksStore} from "@/store/useAutomationTasksStore";
+import {useAutomationTasksStore} from "../model/useAutomationTasksStore";
 import type {AutomationTaskState, AutomationTaskStatus} from "@/types/automation.types";
 
 export const TASK_STATE_VIEW: Record<AutomationTaskState, {label: string; className: string}> = {

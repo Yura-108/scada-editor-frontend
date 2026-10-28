@@ -3,20 +3,20 @@
 import {devLog} from "@/shared/lib/devLog";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useEditorStore} from "@/modules/editor";
-import {adoptProcedureStatuses, pushProcedureEvents} from "@/store/useProcedureStore";
-import {pushTaskStatuses, resetTaskStatuses} from "@/store/useAutomationTasksStore";
+import {adoptProcedureStatuses, pushProcedureEvents} from "../useProcedureStore";
+import {pushTaskStatuses, resetTaskStatuses} from "../useAutomationTasksStore";
 import {getRenderedElement, trendPens, trendTiming, cellRuntimeKey, cellBindings, isLiveField, propertyByName, isBooleanValueType} from "@/core/scene";
-import {buildBindingIndex, type BindingIndex} from "@/lib/runtime/bindingIndex";
+import {buildBindingIndex, type BindingIndex} from "./bindingIndex";
 import type {CompiledBinding} from "@/core/runtime";
-import {hasKnownTrigger, runBindings} from "@/lib/runtime/runBindings";
+import {hasKnownTrigger, runBindings} from "./runBindings";
 import {collectTagScope, withPropertyRefs, compileEventScript, executeEventScript, type ActionArgs, setRuntimeEventHandler, setRuntimeLive, setRuntimeScriptHandler, setRuntimeSessionGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, setRuntimePropertyValueGetter, setRuntimeTagQualityGetter, showRuntimeMenu, showRuntimeNotice, type ScreenPoint} from "@/core/runtime";
-import {openSceneFromScript} from "@/lib/runtime/openSceneFromScript";
+import {openSceneFromScript} from "./openSceneFromScript";
 import {toast} from "sonner";
 import {describeDenial, getCurrentProjectGrant, actionDenialText} from "@/core/access";
-import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "@/lib/runtime/runtimeConnection";
-import {useRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
+import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "./runtimeConnection";
+import {useRuntimeTagInterest} from "./runtimeTagInterest";
 import {appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore, setTrendClock, setTrendWatch, useTrendStore} from "@/core/canvas";
-import {fetchArchiveValues, toTrendValue} from "@/lib/runtime/archive";
+import {fetchArchiveValues, toTrendValue} from "../archive/archive";
 import type {ElementEventName} from "@/types/binding.types";
 import type {DiagramElement} from "@/types/editorElement.type";
 

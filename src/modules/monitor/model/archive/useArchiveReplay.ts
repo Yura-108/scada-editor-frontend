@@ -1,13 +1,13 @@
 "use client";
 
 import {useCallback, useEffect, useRef} from "react";
-import {archiveValueToWire, fetchReplayPage, ARCHIVE_DEPTH_MS, type ReplayChange} from "@/lib/runtime/archive";
+import {archiveValueToWire, fetchReplayPage, ARCHIVE_DEPTH_MS, type ReplayChange} from "./archive";
 import {
   advanceCursor, appendPage, canSeekInBuffer, emptyBuffer, needsPrefetch, takeUntil, type ReplayBuffer,
-} from "@/lib/runtime/replayBuffer";
-import type {ArchiveTagChange, RuntimeArchiveInput} from "@/lib/runtime/useRuntimeEngine";
+} from "./replayBuffer";
+import type {ArchiveTagChange, RuntimeArchiveInput} from "../engine/useRuntimeEngine";
 import {setTrendClock} from "@/core/canvas";
-import {initialReplayState, useArchiveReplayStore} from "@/store/useArchiveReplayStore";
+import {initialReplayState, useArchiveReplayStore} from "../useArchiveReplayStore";
 import {devLog} from "@/shared/lib/devLog";
 
 /** Тик плеера. interval, а не rAF: в фоновой вкладке rAF замерзает. */
