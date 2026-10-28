@@ -4,7 +4,7 @@ import {useCallback, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {useProcedureStore} from "@/store/useProcedureStore";
 import {useEditorStore} from "@/modules/editor";
-import {getRuntimeSessionId} from "@/lib/runtime/runtimeEventBus";
+import {getRuntimeSessionId} from "@/core/runtime";
 import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   abortProcedure,

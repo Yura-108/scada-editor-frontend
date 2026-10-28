@@ -11,7 +11,7 @@ import {confirmModal} from "@/components/ui/ConfirmModal";
 import {
   getRuntimePropertyValue, getRuntimeSessionId, getRuntimeTagQuality, getRuntimeTagValue,
   notifyRuntimeTagsWritten,
-} from "@/lib/runtime/runtimeEventBus";
+} from "@/core/runtime";
 import {clearRuntimeTagInterest, setRuntimeTagInterest} from "@/lib/runtime/runtimeTagInterest";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {

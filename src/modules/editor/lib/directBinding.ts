@@ -1,7 +1,7 @@
 import {createUuid} from "@/shared/lib/createUuid";
-import {uniqueVarName} from "@/lib/runtime/bindingScope";
+import {uniqueVarName} from "@/core/runtime";
 import type {TagBinding} from "@/types/binding.types";
-import type {PickedProperty} from "@/modules/editor";
+import type {PickedProperty} from "../ui/properties-panel/bindings/OpenChooseObjectPropertyModal";
 
 /**
  * Строит прямую привязку «target ← свойство»: `setProp(target, var)`, без кода/имени

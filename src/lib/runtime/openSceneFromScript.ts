@@ -1,7 +1,7 @@
 import {toast} from "sonner";
 import {useEditorStore} from "@/modules/editor";
-import type {SceneTarget} from "@/lib/runtime/eventScript";
-import {describeSceneTarget, resolveSceneTarget} from "@/lib/runtime/sceneTarget";
+import type {SceneTarget} from "@/core/runtime";
+import {describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
 
 /**
  * `openScene(...)` из обработчика события в мониторе: найти схему в текущем проекте и

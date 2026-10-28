@@ -64,5 +64,4 @@ export {SceneTabs} from "./ui/scene-tabs/SceneTabs";
 export {useSceneCameraMemory} from "./ui/canvas/hooks/useSceneCameraMemory";
 export {openReleasesModal} from "./ui/project/ReleasesModal";
 export {openProcedureLevelsModal} from "./ui/project/ProcedureLevelsModal";
-export type {PickedProperty} from "./ui/properties-panel/bindings/OpenChooseObjectPropertyModal";
 export {useSceneChangedNotifications} from "./ui/hooks/useSceneChangedNotifications";

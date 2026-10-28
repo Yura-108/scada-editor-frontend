@@ -51,7 +51,7 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
 - **Hit-testing is ours, not Konva's** — `src/modules/editor/lib/pickMonitorTarget.ts` walks the members of
   the current level (`activeGroupKey` ?? scene root) top-down by `zIndex` and returns the element
   whose absolute bbox contains the point. Same semantics as the editor's `resolveClickTarget`, only
-  downward. Right-click builds the menu from it (`canvas/buildMonitorMenu.ts`), double-click enters
+  downward. Right-click builds the menu from it (`modules/editor/ui/canvas/lib/buildMonitorMenu.ts`), double-click enters
   the container (`enterGroup`) — unless a `MonitorInteractionLayer` rect consumed the event, which
   is how existing `onClick`/`onDoubleClick` schemes keep working at any depth.
 - **Menu items**: «Опции» when the element has `property_type === "Тег"` properties, plus one item
@@ -60,6 +60,12 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   **server** id — an unsaved script cannot run. `ElementScript.displayed` rides in the script DTO
   (`{id?, name, script, displayed}`) and is emitted **always**, false included, because the backend
   treats the script list as complete.
+- **Menu dialogs are registered, not imported.** «Открыть тренд», «Опции» and «Инспектор» live in
+  the monitor, but the menu is built by the editor canvas, and modules do not import each other.
+  The menu calls `monitorDialogs()` (`core/runtime/monitorDialogs.ts`); the monitor module fills it
+  with `registerMonitorDialogs()`, which **every page with a canvas** calls at module level —
+  the monitor and the editor (the monitor menu also opens in version preview, and «Открыть тренд»
+  must work there). A page that forgets it throws on the first menu click.
 - **Left click and tap open the same menu** when nothing consumed them (`Canvas.handleMonitorClick`,
   Stage `onClick`/`onTap`): a rect with an `onClick` script sets `cancelBubble`, so the menu only
   appears for a click without an `onClick` — including on an `onDoubleClick`-only element. Touch
@@ -70,7 +76,7 @@ of Konva's hit graph and `e.target` is always the Stage. Hence two monitor-only 
   `preventDefault` a touch, so the browser's emulated `mousedown` would close the menu and its
   emulated `click` would pass for a second click (ignored via `lastTapAtRef`). A second click
   inside the window, or any dblclick, cancels the pending menu.
-- **Scene navigation skips the confirmation.** `isNonWritingScript` (`lib/runtime/eventScript.ts`)
+- **Scene navigation skips the confirmation.** `isNonWritingScript` (`core/runtime/script/eventScript.ts`)
   is a static check: `openScene(` present and no mention of `runScript`/`setProperty` anywhere,
   comments included — so any doubt keeps the dialog. `setProp`/`setState` only restyle the element
   and do not count. Menu actions (server scripts) always confirm.
