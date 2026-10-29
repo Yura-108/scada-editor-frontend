@@ -99,5 +99,5 @@ function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
 }
 
 export function openRecipeHistoryModal(props: Props) {
-  useModalStore.getState().openModal(<RecipeHistoryContent {...props} />);
+  useModalStore.getState().openModal(<RecipeHistoryContent {...props} />, {legacyLayout: true});
 }

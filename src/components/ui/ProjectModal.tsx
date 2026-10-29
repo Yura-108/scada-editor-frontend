@@ -289,5 +289,5 @@ export function ProjectContent() {
 
 export function openProjectModal() {
   const {openModal} = useModalStore.getState();
-  openModal(<ProjectContent />);
+  openModal(<ProjectContent />, {legacyLayout: true});
 }

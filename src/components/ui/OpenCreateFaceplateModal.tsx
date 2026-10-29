@@ -233,6 +233,7 @@ export function OpenCreateFaceplateModal(faceplate: DiagramElement[]) {
       onLoadAction={createPaletteItem}
       onUpdateAction={updatePaletteItem}
       faceplate={faceplate}
-    />
+    />,
+    {legacyLayout: true},
   );
 }

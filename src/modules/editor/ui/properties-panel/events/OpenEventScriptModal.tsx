@@ -405,5 +405,5 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
 
 export function openEventScriptModal(props: EventScriptProps) {
   const {openModal} = useModalStore.getState();
-  openModal(<EventScriptModalContent {...props} />, {size: "fullscreen"});
+  openModal(<EventScriptModalContent {...props} />, {size: "fullscreen", legacyLayout: true});
 }

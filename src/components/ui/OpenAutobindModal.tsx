@@ -242,5 +242,6 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
 export function openAutobindModal(projectId: number, projectName: string) {
   useModalStore.getState().openModal(
     <AutobindContent projectId={projectId} projectName={projectName} />,
+    {legacyLayout: true},
   );
 }

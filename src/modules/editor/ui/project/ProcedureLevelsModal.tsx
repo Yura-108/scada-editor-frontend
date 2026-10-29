@@ -105,5 +105,6 @@ function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: 
 export function openProcedureLevelsModal(projectId: number, projectName: string, editable: boolean) {
   useModalStore.getState().openModal(
     <ProcedureLevelsContent projectId={projectId} projectName={projectName} editable={editable} />,
+    {legacyLayout: true},
   );
 }

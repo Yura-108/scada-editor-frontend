@@ -103,5 +103,5 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
 }
 
 export function openImportReportModal(report: CdbxImportReport) {
-  useModalStore.getState().openModal(<ImportReportContent report={report} />);
+  useModalStore.getState().openModal(<ImportReportContent report={report} />, {legacyLayout: true});
 }

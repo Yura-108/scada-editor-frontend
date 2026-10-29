@@ -522,5 +522,5 @@ export function AddPropertyContent({ elementKey, property, preset }: Props) {
 
 export default function OpenAddPropertyModal(props: Props) {
   const { openModal } = useModalStore.getState();
-  openModal(<AddPropertyContent {...props} />);
+  openModal(<AddPropertyContent {...props} />, {legacyLayout: true});
 }

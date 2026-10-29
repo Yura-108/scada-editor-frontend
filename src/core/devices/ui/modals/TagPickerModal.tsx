@@ -99,6 +99,6 @@ function TagPickerContent({title = "Выбор тега ПЛК", description, re
  */
 export function pickTag(options: Options = {}): Promise<string | null> {
   return new Promise(resolve => {
-    useModalStore.getState().openModal(<TagPickerContent {...options} resolve={resolve} />);
+    useModalStore.getState().openModal(<TagPickerContent {...options} resolve={resolve} />, {legacyLayout: true});
   });
 }

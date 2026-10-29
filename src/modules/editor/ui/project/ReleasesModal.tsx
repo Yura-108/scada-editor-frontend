@@ -176,5 +176,5 @@ function ReleasesContent({projectId, projectName}: Props) {
 }
 
 export function openReleasesModal(projectId: number, projectName: string) {
-  useModalStore.getState().openModal(<ReleasesContent projectId={projectId} projectName={projectName} />);
+  useModalStore.getState().openModal(<ReleasesContent projectId={projectId} projectName={projectName} />, {legacyLayout: true});
 }

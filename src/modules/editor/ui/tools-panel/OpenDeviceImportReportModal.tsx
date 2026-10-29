@@ -99,5 +99,5 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
 }
 
 export function openDeviceImportReportModal(report: DeviceLayoutReport) {
-  useModalStore.getState().openModal(<DeviceImportReportContent report={report} />);
+  useModalStore.getState().openModal(<DeviceImportReportContent report={report} />, {legacyLayout: true});
 }

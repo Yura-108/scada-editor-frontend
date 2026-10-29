@@ -45,7 +45,7 @@ export default function UserMenu({login}: {login: string}) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => { setOpen(false); openModal(<ChangePasswordModal />); }}
+            onClick={() => { setOpen(false); openModal(<ChangePasswordModal />, {legacyLayout: true}); }}
             className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-600 dark:text-gray-400 hover:bg-gray-900/5 dark:hover:bg-white/5 rounded-xl"
           >
             <KeyRound className="w-5 h-5" />

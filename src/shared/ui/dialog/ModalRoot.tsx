@@ -1,5 +1,6 @@
 "use client";
 
+import {Fragment} from "react";
 import {DialogFrame} from "./DialogFrame";
 import {useModalStore} from "./modalStore";
 import {ModalEntryContext} from "./useCloseModal";
@@ -15,8 +16,8 @@ import {ModalEntryContext} from "./useCloseModal";
  * Готовые заготовки: `DialogHeader` (`DialogParts.tsx`), `TitleWithHint`
  * (`ui/codeModalParts.tsx`) для окон с редактором кода, либо собственный `Dialog.Title`.
  *
- * Содержимое пока рисуется в прежней прокручиваемой области с отступами: окна ещё
- * собраны без `DialogHeader`/`DialogBody`/`DialogFooter`.
+ * Содержимое собирается из `DialogHeader`/`DialogBody`/`DialogFooter`. Ещё не
+ * переведённые окна (`legacyLayout`) стоят в прежней прокручиваемой области с отступами.
  */
 export function ModalRoot() {
   const stack = useModalStore((s) => s.stack);
@@ -30,7 +31,9 @@ export function ModalRoot() {
         depth={depth}
         closeOnOverlay={entry.closeOnOverlay}
       >
-        {entry.size === "fullscreen" ? (
+        {!entry.legacyLayout ? (
+          <Fragment key={entry.contentKey}>{entry.content}</Fragment>
+        ) : entry.size === "fullscreen" ? (
           // Полноэкранный режим: контент сам управляет своей раскладкой (flex h-full),
           // чтобы редактор кода растянулся на всю доступную высоту.
           <div key={entry.contentKey} className="flex min-h-0 flex-1 flex-col p-6 sm:p-8">

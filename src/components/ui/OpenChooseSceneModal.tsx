@@ -243,6 +243,7 @@ export function openChooseSceneModal() {
       readOnly={!canWrite}
       sceneList={sceneList}
       projectName={currentProject?.name}
-    />
+    />,
+    {legacyLayout: true},
   );
 }

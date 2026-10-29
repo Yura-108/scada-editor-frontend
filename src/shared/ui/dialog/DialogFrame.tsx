@@ -2,11 +2,14 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { createContext, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-/** Есть ли в окне крестик — шапке, чтобы оставить под него место справа. */
-export const DialogFrameContext = createContext({ showClose: true });
+/**
+ * Что окно сообщает своему содержимому: есть ли крестик (шапке — оставить под него место)
+ * и на какой ступени слоя оно стоит (окну, открытому изнутри, — встать на ступень выше).
+ */
+export const DialogFrameContext = createContext({ showClose: true, depth: -1 });
 
 /**
  * Ширина окна. Окно не придумывает свою ширину — берёт одну из этих:
@@ -36,6 +39,10 @@ type DialogFrameProps = {
   onClose: () => void;
   size?: DialogSize;
   layer?: DialogLayer;
+  /**
+   * Ступень в слое. Не задана — на одну выше окна, внутри которого рендерится (выбор
+   * свойства из полноэкранного редактора привязки), или 0, если такого нет.
+   */
   depth?: number;
   /** false — клик по затемнению не закрывает окно (формы с несохранёнными данными). */
   closeOnOverlay?: boolean;
@@ -55,11 +62,13 @@ export function DialogFrame({
   onClose,
   size = "xl",
   layer = "modal",
-  depth = 0,
+  depth: ownDepth,
   closeOnOverlay = true,
   showClose = true,
   children,
 }: DialogFrameProps) {
+  const parent = useContext(DialogFrameContext);
+  const depth = ownDepth ?? parent.depth + 1;
   const style: CSSProperties = { zIndex: `calc(var(--z-${layer}) + ${depth})` };
 
   return (
@@ -94,7 +103,7 @@ export function DialogFrame({
               </button>
             </Dialog.Close>
           )}
-          <DialogFrameContext.Provider value={{ showClose }}>{children}</DialogFrameContext.Provider>
+          <DialogFrameContext.Provider value={{ showClose, depth }}>{children}</DialogFrameContext.Provider>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

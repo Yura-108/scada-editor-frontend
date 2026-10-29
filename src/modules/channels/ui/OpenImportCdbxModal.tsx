@@ -223,5 +223,5 @@ function ImportCdbxContent() {
 }
 
 export function openImportCdbxModal() {
-  useModalStore.getState().openModal(<ImportCdbxContent />);
+  useModalStore.getState().openModal(<ImportCdbxContent />, {legacyLayout: true});
 }

@@ -465,5 +465,5 @@ function RecipeEditorContent({recipe}: Props) {
 
 export default function openRecipeEditorModal(props: Props = {}) {
   const {openModal} = useModalStore.getState();
-  openModal(<RecipeEditorContent {...props} />, {size: "fullscreen"});
+  openModal(<RecipeEditorContent {...props} />, {size: "fullscreen", legacyLayout: true});
 }

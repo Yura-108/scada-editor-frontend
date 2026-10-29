@@ -95,7 +95,8 @@ export function OpenCreateSiteModal() {
       description="Введите название новой площадки."
       placeholder="Название площадки"
       onConfirm={(name) => addDevice({ type: 0, idNode: name, parentKey: "" })}
-    />
+    />,
+    {legacyLayout: true},
   );
 }
 
@@ -109,6 +110,7 @@ export function OpenCreateProjectModal(parentKey: string) {
       description="Введите название нового проекта."
       placeholder="Название проекта"
       onConfirm={(name) => addDevice({ type: 0, idNode: name, parentKey })}
-    />
+    />,
+    {legacyLayout: true},
   );
 }

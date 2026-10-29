@@ -136,7 +136,7 @@ export function openChooseParamTypeModal() {
   const { paramsTypes } = useDeviceDictionaries.getState();
 
   if (paramsTypes.length > 0) {
-    openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />);
+    openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />, {legacyLayout: true});
   }
 }
 

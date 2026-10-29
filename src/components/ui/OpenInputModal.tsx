@@ -89,7 +89,7 @@ export function InputModalContent({
 export function openInputModal(props: InputModalProps) {
   const {openModal} = useModalStore.getState();
 
-  openModal(<InputModalContent {...props} />)
+  openModal(<InputModalContent {...props} />, {legacyLayout: true})
 }
 
 
