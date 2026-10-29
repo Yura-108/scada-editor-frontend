@@ -1,15 +1,11 @@
-import React, {useMemo, useRef, useState} from "react";
-import type {EditorView} from "@uiw/react-codemirror";
+import React from "react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {useEditorStore} from "../../../model/editorStore";
 import {cn} from "@/shared/lib/cn";
 import {TitleWithHint} from "@/shared/ui/codeModalParts";
-import {createUuid} from "@/shared/lib/createUuid";
 import {DiagramElement} from "@/types/editorElement.type";
-import {PropertyRef, TagBinding} from "@/types/binding.types";
-import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs, compileBinding, executeBinding, type BindingIntent, checkScriptSyntax} from "@/core/runtime";
-import {getRenderedElement} from "@/core/scene";
-import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
+import {TagBinding} from "@/types/binding.types";
+import {ChooseObjectPropertyModal} from "./OpenChooseObjectPropertyModal";
+import {useBindingEditor} from "./useBindingEditor";
 import {ScriptCodeField} from "../script/ScriptCodeField";
 import {ScriptTestRun} from "../script/ScriptTestRun";
 import {PropertyRefChips, TagChips} from "../script/ScopeChips";
@@ -21,156 +17,12 @@ interface BindingEditorProps {
   binding?: TagBinding;
 }
 
-const buildTemplate = (tagName: string | undefined, stateNames: string[]) => {
-  const name = tagName ?? "ИМЯ_ТЕГА";
-  const alarm = stateNames.find(s => s !== "Нормальное") ?? "Авария";
-  const normal = stateNames.includes("Нормальное") ? "Нормальное" : (stateNames[0] ?? "Нормальное");
-  return `if (${name} > 100) {\n  setState("${alarm}")\n} else {\n  setState("${normal}")\n}\n`;
-};
-
-type TestResult =
-  | {kind: "ok"; intents: BindingIntent[]}
-  | {kind: "error"; message: string}
-  | null;
-
-const describeIntents = (intents: BindingIntent[]) =>
-  intents.length
-    ? intents
-        .map(i => i.kind === "state"
-          ? `setState("${i.stateName}")`
-          : `setProp("${i.key}", ${JSON.stringify(i.value)})`)
-        .join("\n")
-    : "Код выполнен, интентов нет (ни setState, ни setProp не вызваны)";
-
 function BindingEditorModalContent({element, binding}: BindingEditorProps) {
-  const closeModal = useModalStore(s => s.closeModal);
-
-  const [name, setName] = useState(binding?.name ?? "");
-  const [propertyRefs, setPropertyRefs] = useState<PropertyRef[]>(binding?.propertyRefs ?? []);
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  const stateNames = useMemo(() => element.states.map(s => s.name), [element.states]);
-  // Скоуп = свойства-теги элемента + ссылки на свойства других компонентов.
-  const scope = useMemo(
-    () => withPropertyRefs(collectTagScope(element.properties), propertyRefs),
-    [element.properties, propertyRefs],
-  );
-  // Биндингу нужно свойство-хозяин: для биндинга-тега — свойство типа «Тег», для
-  // биндинга на чужие свойства годится любое. Сохранённость больше не при чём —
-  // свойство уезжает той же сценой, и бэкенд привязывает биндинг по имени.
-  const canSave = useMemo(
-    () =>
-      (element.properties ?? []).some(p => p.property_type === "Тег") ||
-      (propertyRefs.length > 0 && (element.properties?.length ?? 0) > 0),
-    [element.properties, propertyRefs.length],
-  );
-
-  // Код старых схем показываем уже в новом синтаксисе («Имя.V» → «Имя»): рантайм всё равно
-  // переводит его при компиляции, и пусть человек видит ровно то, что исполнится, — а при
-  // сохранении привязки перевод осядет на сервере, и переводить будет уже нечего.
-  const [code, setCode] = useState(() =>
-    binding?.code != null
-      ? modernizeScopeCode(binding.code, scope.names)
-      : buildTemplate(scope.names[0], stateNames),
-  );
-  const [mockValues, setMockValues] = useState<Record<string, string>>({});
-  const [testResult, setTestResult] = useState<TestResult>(null);
-
-  const viewRef = useRef<EditorView | null>(null);
-
-  const insertAtCursor = (text: string) => {
-    const view = viewRef.current;
-    if (!view) {
-      setCode(c => c + text);
-      return;
-    }
-    const {from, to} = view.state.selection.main;
-    view.dispatch({
-      changes: {from, to, insert: text},
-      selection: {anchor: from + text.length},
-    });
-    view.focus();
-  };
-
-  const addPropertyRef = (picked: PickedProperty) => {
-    setPickerOpen(false);
-    const existing = propertyRefs.find(r => r.propertyId === picked.propertyId);
-    if (existing) {
-      // Свойство уже добавлено — просто вставим его переменную в код.
-      insertAtCursor(existing.varName);
-      return;
-    }
-    const taken = new Set<string>([...scope.names, ...propertyRefs.map(r => r.varName)]);
-    const varName = uniqueVarName(picked.propertyName, taken);
-    setPropertyRefs(prev => [
-      ...prev,
-      {
-        varName,
-        propertyId: picked.propertyId,
-        componentKey: picked.componentKey,
-        componentId: picked.componentId,
-        componentLabel: picked.componentLabel,
-        propertyName: picked.propertyName,
-        valueType: picked.valueType,
-      },
-    ]);
-    insertAtCursor(varName);
-  };
-
-  const removePropertyRef = (propertyId: number) =>
-    setPropertyRefs(prev => prev.filter(r => r.propertyId !== propertyId));
-
-  const runTest = () => {
-    const draft: TagBinding = {
-      v: 1,
-      id: binding?.id ?? "test",
-      name: name || "тест",
-      enabled: true,
-      code,
-      propertyRefs,
-    };
-    const compiled = compileBinding(element.key, draft, scope);
-    if ("error" in compiled) {
-      setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
-      return;
-    }
-    const valuesByTagId = new Map<string, string>();
-    const valuesByPropertyId = new Map<number, string>();
-    for (const varName of scope.names) {
-      const raw = mockValues[varName];
-      if (raw === undefined || raw === "") continue;
-      if (varName in scope.tagIdByName) valuesByTagId.set(scope.tagIdByName[varName], raw);
-      else valuesByPropertyId.set(scope.propertyIdByName[varName], raw);
-    }
-    const res = executeBinding(compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element));
-    if ("error" in res) {
-      setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
-    } else {
-      setTestResult({kind: "ok", intents: res.intents});
-    }
-  };
-
-  // Бэкенд отклонит всю сцену со скриптом, который не разбирается (контракт 25.09.2026):
-  // показываем ошибку сразу и не даём сохранить — см. checkScriptSyntax.
-  const syntaxError = useMemo(() => checkScriptSyntax(code), [code]);
-
-  const handleSave = () => {
-    if (!name.trim() || !code.trim() || !canSave || syntaxError) return;
-    const store = useEditorStore.getState();
-    if (binding) {
-      store.updateBinding(element.key, binding.id, {name: name.trim(), code, propertyRefs});
-    } else {
-      store.addBinding(element.key, {
-        v: 1,
-        id: createUuid(),
-        name: name.trim(),
-        enabled: true,
-        code,
-        propertyRefs,
-      });
-    }
-    closeModal();
-  };
+  const {
+    name, setName, stateNames, canSave, scope, propertyRefs, code, setCode, viewRef, insertAtCursor,
+    pickerOpen, setPickerOpen, addPropertyRef, removePropertyRef, mockValues, setMockValues,
+    syntaxError, runTest, outcome, handleSave, closeModal,
+  } = useBindingEditor(element, binding);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -261,9 +113,7 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
           mockValues={mockValues}
           setMockValues={setMockValues}
           onRun={runTest}
-          outcome={testResult && (testResult.kind === "error"
-            ? {kind: "error", text: testResult.message}
-            : {kind: "ok", text: describeIntents(testResult.intents)})}
+          outcome={outcome}
         />
       )}
 

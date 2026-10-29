@@ -1,20 +1,12 @@
-import React, {useMemo, useRef, useState} from "react";
-import type {EditorView} from "@uiw/react-codemirror";
+import React from "react";
 import {ExternalLink, Terminal} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {useEditorStore} from "../../../model/editorStore";
 import {cn} from "@/shared/lib/cn";
 import {TitleWithHint} from "@/shared/ui/codeModalParts";
 import {DiagramElement} from "@/types/editorElement.type";
-import {
-  ElementEventHandler,
-  ElementEventName,
-  ElementEvents,
-  PropertyRef,
-} from "@/types/binding.types";
-import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs, compileEventScript, executeEventScript, checkScriptSyntax, describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
-import {getRenderedElement} from "@/core/scene";
-import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
+import {ElementEventName} from "@/types/binding.types";
+import {ChooseObjectPropertyModal} from "../bindings/OpenChooseObjectPropertyModal";
+import {useEventScriptEditor} from "./useEventScriptEditor";
 import {ScriptCodeField} from "../script/ScriptCodeField";
 import {ScriptTestRun} from "../script/ScriptTestRun";
 import {PropertyRefChips, TagChips} from "../script/ScopeChips";
@@ -30,150 +22,12 @@ interface EventScriptProps {
   event: ElementEventName;
 }
 
-type TestResult =
-  | {kind: "ok"; text: string}
-  | {kind: "error"; message: string}
-  | null;
-
 function EventScriptModalContent({element, event}: EventScriptProps) {
-  const closeModal = useModalStore(s => s.closeModal);
-  const existing = element.events?.find(e => e.event_type === event)?.handler;
-
-  const [propertyRefs, setPropertyRefs] = useState<PropertyRef[]>(existing?.propertyRefs ?? []);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // Старый синтаксис «Имя.V» показываем уже переведённым — см. OpenBindingEditorModal.
-  // Скоуп для перевода собираем прямо здесь: `scope` ниже зависит от состояния, а
-  // инициализатор useState выполняется раньше него ровно один раз.
-  const [code, setCode] = useState(() =>
-    modernizeScopeCode(
-      existing?.code ?? "",
-      withPropertyRefs(collectTagScope(element.properties), existing?.propertyRefs).names,
-    ),
-  );
-  const [mockValues, setMockValues] = useState<Record<string, string>>({});
-  const [testResult, setTestResult] = useState<TestResult>(null);
-  // Схемы текущего проекта — для чипов openScene и для тест-прогона. Текущую не
-  // предлагаем: переход на саму себя монитор просто пропустит.
-  const sceneList = useEditorStore(s => s.sceneList);
-  const currentSceneId = useEditorStore(s => s.scene?.id ?? null);
-  const otherScenes = useMemo(
-    () => sceneList.filter(s => s.id !== currentSceneId),
-    [sceneList, currentSceneId],
-  );
-
-  const scope = useMemo(
-    () => withPropertyRefs(collectTagScope(element.properties), propertyRefs),
-    [element.properties, propertyRefs],
-  );
-
-  const viewRef = useRef<EditorView | null>(null);
-
-  const insertAtCursor = (text: string) => {
-    const view = viewRef.current;
-    if (!view) {
-      setCode(c => c + text);
-      return;
-    }
-    const {from, to} = view.state.selection.main;
-    view.dispatch({changes: {from, to, insert: text}, selection: {anchor: from + text.length}});
-    view.focus();
-  };
-
-  const addPropertyRef = (picked: PickedProperty) => {
-    setPickerOpen(false);
-    const found = propertyRefs.find(r => r.propertyId === picked.propertyId);
-    if (found) {
-      insertAtCursor(`setProperty("${found.varName}", ${found.varName} + 1)`);
-      return;
-    }
-    const taken = new Set<string>([...scope.names, ...propertyRefs.map(r => r.varName)]);
-    const varName = uniqueVarName(picked.propertyName, taken);
-    setPropertyRefs(prev => [
-      ...prev,
-      {
-        varName,
-        propertyId: picked.propertyId,
-        componentKey: picked.componentKey,
-        componentId: picked.componentId,
-        componentLabel: picked.componentLabel,
-        propertyName: picked.propertyName,
-        valueType: picked.valueType,
-      },
-    ]);
-    insertAtCursor(`setProperty("${varName}", ${varName} + 1)`);
-  };
-
-  const removePropertyRef = (propertyId: number) =>
-    setPropertyRefs(prev => prev.filter(r => r.propertyId !== propertyId));
-
-  const runTest = () => {
-    const handler: ElementEventHandler = {code, propertyRefs};
-    const compiled = compileEventScript(element.key, handler, scope);
-    if ("error" in compiled) {
-      setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
-      return;
-    }
-    const valuesByTagId = new Map<string, string>();
-    const valuesByPropertyId = new Map<number, string>();
-    for (const varName of scope.names) {
-      const raw = mockValues[varName];
-      if (raw === undefined || raw === "") continue;
-      if (varName in scope.tagIdByName) valuesByTagId.set(scope.tagIdByName[varName], raw);
-      else valuesByPropertyId.set(scope.propertyIdByName[varName], raw);
-    }
-    // runScript в тест-прогоне ничего не отправляет — только показывает, что ушло бы.
-    const scriptCalls: string[] = [];
-    const recordRunScript = (name: string, args?: Record<string, unknown>) =>
-      scriptCalls.push(`runScript(${JSON.stringify(name)}${args ? `, ${JSON.stringify(args)}` : ""})`);
-    const res = executeEventScript(
-      compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element), recordRunScript,
-    );
-    if ("error" in res) {
-      setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
-      return;
-    }
-    const parts = [
-      ...res.writes.map(w => `setProperty(#${w.propertyId}) ← ${JSON.stringify(w.value)}`),
-      ...res.intents.map(i =>
-        i.kind === "state" ? `setState("${i.stateName}")` : `setProp("${i.key}", ${JSON.stringify(i.value)})`,
-      ),
-      ...scriptCalls,
-    ];
-    if (res.menu) {
-      parts.push(`showMenu → пунктов: ${res.menu.length}`);
-      for (const item of res.menu) {
-        const known = element.scripts?.some(sc => sc.name === item.script);
-        parts.push(`  «${item.label}» → ${item.script}${item.args ? ` ${JSON.stringify(item.args)}` : ""}${known ? "" : " (нет такого скрипта)"}`);
-      }
-    }
-    if (res.openScene !== undefined) {
-      // Тот же разбор, что в мониторе, — иначе тест обещал бы переход, которого не будет.
-      const target = resolveSceneTarget(res.openScene, sceneList);
-      parts.push(
-        target.kind === "found"
-          ? `openScene → «${target.scene.name}» (#${target.scene.id})`
-          : target.kind === "ambiguous"
-            ? `openScene → несколько схем ${describeSceneTarget(res.openScene)}, перехода не будет`
-            : `openScene → не найдена: ${describeSceneTarget(res.openScene)}`,
-      );
-    }
-    setTestResult({kind: "ok", text: parts.length ? parts.join("\n") : "Код выполнен, действий нет"});
-  };
-
-  // Бэкенд отклонит всю сцену со скриптом, который не разбирается (контракт 25.09.2026):
-  // показываем ошибку сразу и не даём сохранить — см. checkScriptSyntax.
-  const syntaxError = useMemo(() => checkScriptSyntax(code), [code]);
-
-  const handleSave = () => {
-    if (!code.trim() || syntaxError) return;
-    const nextHandler: ElementEventHandler = {code, propertyRefs};
-    const nextEvents: ElementEvents = [
-      ...(element.events ?? []).filter(e => e.event_type !== event),
-      {event_type: event, handler: nextHandler},
-    ];
-    useEditorStore.getState().updateElement(element.key, {events: nextEvents});
-    closeModal();
-  };
+  const {
+    scope, propertyRefs, code, setCode, viewRef, insertAtCursor, pickerOpen, setPickerOpen,
+    addPropertyRef, removePropertyRef, mockValues, setMockValues, syntaxError, otherScenes,
+    setPropertyCall, runTest, outcome, handleSave, closeModal,
+  } = useEventScriptEditor(element, event);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -203,7 +57,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         <PropertyRefChips
           refs={propertyRefs}
           titleOf={ref => `${ref.componentLabel} · ${ref.propertyName} — клик вставит setProperty`}
-          onInsert={ref => insertAtCursor(`setProperty("${ref.varName}", ${ref.varName} + 1)`)}
+          onInsert={ref => insertAtCursor(setPropertyCall(ref.varName))}
           onRemove={removePropertyRef}
           onPick={() => setPickerOpen(true)}
         />
@@ -262,9 +116,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
           mockValues={mockValues}
           setMockValues={setMockValues}
           onRun={runTest}
-          outcome={testResult && (testResult.kind === "error"
-            ? {kind: "error", text: testResult.message}
-            : {kind: "ok", text: testResult.text})}
+          outcome={outcome}
         />
       )}
 
