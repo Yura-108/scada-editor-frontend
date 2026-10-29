@@ -1,26 +1,15 @@
 import {NextRequest, NextResponse} from "next/server";
 import {cookies} from "next/headers";
+import {resolveSession} from "@/server/auth/sessionRefresh";
+import {ACCESS_COOKIE, REFRESH_COOKIE, clearSessionCookies, setSessionCookies} from "@/server/auth/setTokenCookies";
+import {decodeJwtClaims} from "@/server/auth/jwtClaims";
+
+export {decodeJwtClaims};
 
 type Handler<T = any> = (
   request: NextRequest,
   ctx: {token: string, params: any}
 ) => Promise<NextResponse<T>>;
-
-/**
- * Клеймы JWT без проверки подписи: разбираем средний сегмент (base64url) сами —
- * новой зависимости на JWT-библиотеку не заводим. Подпись проверяет бэкенд; нам
- * клеймы нужны только для служебных вещей (имя пользователя, срок жизни cookie).
- */
-export function decodeJwtClaims(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(Buffer.from(normalized, "base64").toString("utf-8"));
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Имя пользователя из JWT-клейма (для заголовка X-Username, нужного бэкенду при
@@ -35,13 +24,33 @@ export function decodeJwtUsername(token: string): string {
   return typeof claim === "string" ? claim : "";
 }
 
+/**
+ * Обёртка маршрута BFF: достаёт access-токен из cookie и отдаёт обработчику. Нет его или он вот-вот
+ * истечёт — сначала обновляет пару по `refresh_token` (`resolveSession`) и ставит обе cookie
+ * на ответ: cookie, выставленные через `cookies()`, Next дописывает к ответу обработчика сам.
+ */
 export function protectedRoute(handler: Handler) {
   return async (request: NextRequest, {params}: {params: Promise<any>}) => {
     const cookieStore = await cookies();
-    const token = cookieStore.get("access_token")?.value;
+    const access = cookieStore.get(ACCESS_COOKIE)?.value;
+    const refresh = cookieStore.get(REFRESH_COOKIE)?.value;
+    const session = await resolveSession(access, refresh);
 
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    let token: string;
+    if (session.kind === "valid") {
+      token = session.token;
+    } else if (session.kind === "refreshed") {
+      setSessionCookies(cookieStore, session.pair, request);
+      token = session.pair.token;
+    } else if (session.kind === "unavailable" && session.token) {
+      token = session.token;
+    } else if (session.kind === "unavailable") {
+      return NextResponse.json({ message: "Сервис входа недоступен, повторите позже" }, { status: 503 });
+    } else {
+      // Клиентский authInterceptor уводит на /login по 401.
+      const response = NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      if (access || refresh) clearSessionCookies(response.cookies, request);
+      return response;
     }
 
     const resolvedParams = await params;

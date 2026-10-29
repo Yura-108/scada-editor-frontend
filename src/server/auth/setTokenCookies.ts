@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { decodeJwtClaims } from '@/server/auth/protected';
+import { decodeJwtClaims } from '@/server/auth/jwtClaims';
 
 export const ACCESS_COOKIE = 'access_token';
 export const REFRESH_COOKIE = 'refresh_token';
