@@ -7,6 +7,7 @@ import OpenAddPropertyModal from "@/components/ui/OpenChooseTagModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
+import {historyEditing} from "../../../model/historyGroup";
 
 interface Props {
   element: DiagramElement;
@@ -75,7 +76,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
         </div>
         <div className="space-y-1.5">
           <label htmlFor="trend-step" className={labelClass}>Шаг сетки, с</label>
-          <NumberInput
+          <NumberInput {...historyEditing}
             id="trend-step"
             className={inputClassName}
             value={settings?.step}
@@ -111,7 +112,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                 </button>
               )}
             </div>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id={`trend-scale-${key}`}
               className={inputClassName}
               value={settings?.[key]}
@@ -193,7 +194,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                       </button>
                     )}
                   </div>
-                  <NumberInput
+                  <NumberInput {...historyEditing}
                     id={`trend-${pen.name}-k`}
                     className={inputClassName}
                     value={style?.k}
@@ -216,7 +217,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                       </button>
                     )}
                   </div>
-                  <NumberInput
+                  <NumberInput {...historyEditing}
                     id={`trend-${pen.name}-b`}
                     className={inputClassName}
                     value={style?.b}
@@ -226,7 +227,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                 </div>
                 <div className="space-y-1">
                   <label htmlFor={`trend-${pen.name}-width`} className={labelClass}>Толщина</label>
-                  <NumberInput
+                  <NumberInput {...historyEditing}
                     id={`trend-${pen.name}-width`}
                     className={inputClassName}
                     value={style?.width}

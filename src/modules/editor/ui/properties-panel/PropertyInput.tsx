@@ -8,6 +8,7 @@ import {TextInput} from "@/shared/ui/field/TextInput";
 import {useEditorStore} from "../../model/editorStore";
 import {getNumberValue} from "./lib/getNumberValue";
 import {baseInputClasses} from "./panelClasses";
+import {historyEditing} from "../../model/historyGroup";
 
 interface PropertyInputProps {
   elementKey: string;
@@ -75,7 +76,7 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
           {/* Коммит по blur/Enter, а не на каждый символ: иначе каждое нажатие
               клавиши — новый массив elements, то есть шаг undo на символ и
               полный пересчёт схемы с перерисовкой холста. */}
-          <TextInput
+          <TextInput {...historyEditing}
             id={`prop-${property.key}`}
             className={baseInputClasses}
             value={textValue}
@@ -89,7 +90,7 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
       return (
         <div className="space-y-1.5">
           {label}
-          <NumberInput
+          <NumberInput {...historyEditing}
             id={`prop-${property.key}`}
             className={baseInputClasses}
             value={numberValue}
@@ -103,7 +104,7 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
 
     case "color":
       return (
-        <ColorField
+        <ColorField {...historyEditing}
          
           id={`prop-${property.key}`}
           label={property.label}

@@ -7,6 +7,7 @@ import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/cor
 import {isOpenableTrend, monitorActions, tagProperties} from "../../canvas/lib/buildMonitorMenu";
 import {ContextMenuPanel} from "../../canvas/CanvasContextMenu";
 import type {CanvasMenuItem} from "@/core/canvas";
+import {historyEditing} from "../../../model/historyGroup";
 
 interface Props {
   element: DiagramElement;
@@ -55,7 +56,7 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
             >
               {f.label}
             </label>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id={`monitor-menu-${f.key}`}
               className={inputClassName}
               value={value?.[f.key]}

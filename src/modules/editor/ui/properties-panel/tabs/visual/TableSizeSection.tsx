@@ -6,6 +6,7 @@ import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableTracks} from "../../lib/tableTracks";
 import {baseInputClasses} from "../../panelClasses";
+import {historyEditing} from "../../../../model/historyGroup";
 
 /**
  * Размеры таблицы, не привязанные к конкретной ячейке. «Выровнять»
@@ -28,7 +29,7 @@ export function TableSizeSection({elementKey, tableTracks}: {elementKey: string;
             >
               Высота заголовка
             </label>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id="table-header-h"
               className={baseInputClasses}
               value={Math.round(tableTracks.headerH)}

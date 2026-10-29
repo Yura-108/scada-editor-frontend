@@ -3,9 +3,9 @@
 import React, {useEffect, useRef, useState} from "react";
 import {Ban} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {beginHistoryGroup, endHistoryGroup} from "@/modules/editor";
+import type {EditSession} from "./editSession";
 
-interface ColorFieldProps {
+interface ColorFieldProps extends EditSession {
   id: string;
   label: string;
   /** Текущее значение ("#rrggbb" | "transparent" | undefined — значения различаются). */
@@ -23,7 +23,7 @@ const CHECKER = "repeating-conic-gradient(#c9c9c9 0% 25%, #ffffff 0% 50%) 50% / 
  * Поле цвета: пикер + hex-ввод + кнопка «прозрачный».
  * Hex принимает #rgb/#rrggbb (решётку можно не печатать) и слово transparent.
  */
-export function ColorField({id, label, value, onChange, inputClassName}: ColorFieldProps) {
+export function ColorField({id, label, value, onChange, inputClassName, onEditStart, onEditEnd}: ColorFieldProps) {
   // Черновик hex-ввода: пока пользователь печатает невалидное значение, не сбрасываем ввод.
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -34,12 +34,12 @@ export function ColorField({id, label, value, onChange, inputClassName}: ColorFi
   const beginGrouping = () => {
     if (groupingRef.current) return;
     groupingRef.current = true;
-    beginHistoryGroup();
+    onEditStart?.();
   };
   const endGrouping = () => {
     if (!groupingRef.current) return;
     groupingRef.current = false;
-    endHistoryGroup();
+    onEditEnd?.();
   };
   // Страховка: элемент могли снять с выделения прямо во время ведения —
   // без этого история осталась бы на паузе навсегда.

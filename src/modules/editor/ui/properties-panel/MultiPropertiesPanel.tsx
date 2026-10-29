@@ -8,6 +8,7 @@ import {useEditorStore} from "../../model/editorStore";
 import {getRenderedElement} from "@/core/scene";
 import {ColorField} from "@/shared/ui/field/ColorField";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
+import {historyEditing} from "../../model/historyGroup";
 
 interface MultiPropertiesPanelProps {
   elements: DiagramElement[];
@@ -70,7 +71,7 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
         return (
           <div key={prop.key} className="space-y-1.5">
             {label(prop.label, id)}
-            <NumberInput
+            <NumberInput {...historyEditing}
               id={id} className={baseInputClasses}
               value={typeof shared === "number" ? shared : undefined}
               placeholder={shared === undefined ? "разные" : ""}
@@ -92,7 +93,7 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
         );
       case "color":
         return (
-          <ColorField
+          <ColorField {...historyEditing}
             key={prop.key}
             id={id}
             label={prop.label}
@@ -158,7 +159,7 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               {label("Ширина", "multi-w")}
-              <NumberInput
+              <NumberInput {...historyEditing}
                 id="multi-w" className={baseInputClasses}
                 value={typeof sharedW === "number" ? sharedW : undefined}
                 placeholder={sharedW === undefined ? "разные" : ""}
@@ -167,7 +168,7 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
             </div>
             <div className="space-y-1.5">
               {label("Высота", "multi-h")}
-              <NumberInput
+              <NumberInput {...historyEditing}
                 id="multi-h" className={baseInputClasses}
                 value={typeof sharedH === "number" ? sharedH : undefined}
                 placeholder={sharedH === undefined ? "разные" : ""}

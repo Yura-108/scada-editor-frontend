@@ -14,6 +14,7 @@ import {useEditorStore} from "../../../../model/editorStore";
 import type {TableCellModel} from "../../hooks/useTableCell";
 import {baseAddButtonClasses, baseInputClasses} from "../../panelClasses";
 import {TableCellBindingFields} from "./TableCellBindingFields";
+import {historyEditing} from "../../../../model/historyGroup";
 
 interface TableCellSectionProps {
   element: DiagramElement;
@@ -52,14 +53,14 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
 
       <TableCellBindingFields element={element} cell={cell}/>
 
-      <ColorField
+      <ColorField {...historyEditing}
         id="cell-bg"
         label="Цвет фона ячейки"
         value={cellData?.backgroundColor || "transparent"}
         onChange={(v) => patchCell({backgroundColor: v})}
         inputClassName={baseInputClasses}
       />
-      <ColorField
+      <ColorField {...historyEditing}
         id="cell-text-color"
         label="Цвет текста ячейки"
         value={cellData?.textColor || (values.textColor as string) || "#000000"}
@@ -93,7 +94,7 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
             >
               Ширина столбца
             </label>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id="cell-col-width"
               className={baseInputClasses}
               value={Math.round(tableTracks.colWs[cellFocus.col] ?? 0)}
@@ -108,7 +109,7 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
             >
               Высота строки
             </label>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id="cell-row-height"
               className={baseInputClasses}
               value={Math.round(tableTracks.rowHs[cellFocus.row] ?? 0)}
