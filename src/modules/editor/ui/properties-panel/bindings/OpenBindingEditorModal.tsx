@@ -414,5 +414,5 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
 
 export function openBindingEditorModal(props: BindingEditorProps) {
   const {openModal} = useModalStore.getState();
-  openModal(<BindingEditorModalContent {...props} />, {variant: "fullscreen"});
+  openModal(<BindingEditorModalContent {...props} />, {size: "fullscreen"});
 }

@@ -151,5 +151,5 @@ function GatewayExportContent({root}: {root: string}) {
 }
 
 export function openGatewayExportModal(root: string) {
-  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {variant: "fullscreen"});
+  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {size: "fullscreen"});
 }

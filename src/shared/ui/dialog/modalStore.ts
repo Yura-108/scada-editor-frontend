@@ -1,33 +1,64 @@
 import {create} from "zustand/react";
 import {ReactNode} from "react";
-
-export type ModalVariant = "default" | "fullscreen";
+import type {DialogSize} from "./DialogFrame";
 
 interface ModalOptions {
-  /** "fullscreen" — модалка почти во весь экран (редакторы кода). */
-  variant?: ModalVariant;
+  /** Ширина окна (`DialogFrame`). По умолчанию `xl`. */
+  size?: DialogSize;
+  /** false — клик по затемнению не закрывает окно. */
+  closeOnOverlay?: boolean;
+}
+
+export interface ModalEntry {
+  /** Место окна в стеке. Не меняется, когда `openModal` подменяет в нём содержимое. */
+  id: number;
+  /** Ключ содержимого: подменили — содержимое монтируется заново, со своим состоянием. */
+  contentKey: number;
+  content: ReactNode;
+  size: DialogSize;
+  closeOnOverlay: boolean;
 }
 
 interface ModalState {
-  open: boolean;
-  content: ReactNode | null;
-  variant: ModalVariant;
-  openKey: number;
+  /** Открытые окна, снизу вверх. Рисует `ModalRoot`. */
+  stack: ModalEntry[];
+  /**
+   * Открыть окно ВМЕСТО верхнего (или первым, если окон нет). Так стор работал, пока был
+   * одноместным, и на это опираются вызывающие: «Выпуски» и «Уровни процедур» заменяют
+   * собой окно проектов.
+   */
   openModal: (content: ReactNode, options?: ModalOptions) => void;
+  /** Открыть окно ПОВЕРХ верхнего: закрыли — снова видно нижнее, с тем, что в нём набрано. */
+  pushModal: (content: ReactNode, options?: ModalOptions) => void;
+  /** Закрыть верхнее окно. */
   closeModal: () => void;
+  /** Закрыть конкретное окно стека — им пользуется `useCloseModal`. */
+  closeModalById: (id: number) => void;
 }
 
+let nextKey = 0;
+
+const entryOf = (id: number, content: ReactNode, options?: ModalOptions): ModalEntry => ({
+  id,
+  contentKey: nextKey++,
+  content,
+  size: options?.size ?? "xl",
+  closeOnOverlay: options?.closeOnOverlay ?? true,
+});
+
 export const useModalStore = create<ModalState>((set) => ({
-  open: false,
-  content: null,
-  variant: "default",
-  openKey: 0,
+  stack: [],
   openModal: (content, options) =>
-    set((s) => ({
-      open: true,
-      content,
-      variant: options?.variant ?? "default",
-      openKey: s.openKey + 1,
-    })),
-  closeModal: () => set({open: false, content: null, variant: "default"}),
+    set((s) => {
+      const top = s.stack.at(-1);
+      if (!top) return {stack: [entryOf(nextKey++, content, options)]};
+      return {stack: [...s.stack.slice(0, -1), entryOf(top.id, content, options)]};
+    }),
+  pushModal: (content, options) =>
+    set((s) => ({stack: [...s.stack, entryOf(nextKey++, content, options)]})),
+  closeModal: () => set((s) => ({stack: s.stack.slice(0, -1)})),
+  closeModalById: (id) => set((s) => ({stack: s.stack.filter((e) => e.id !== id)})),
 }));
+
+/** Открыто ли хоть одно окно стека (для кода вне React — горячие клавиши редактора). */
+export const isModalOpen = (): boolean => useModalStore.getState().stack.length > 0;
