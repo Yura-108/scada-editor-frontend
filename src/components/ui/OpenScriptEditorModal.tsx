@@ -180,5 +180,5 @@ export function ScriptEditorModalContent({
 export function openScriptEditorModal(props: ScriptModalProps) {
   const {openModal} = useModalStore.getState();
 
-  openModal(<ScriptEditorModalContent {...props} />, {size: "fullscreen"})
+  openModal(<ScriptEditorModalContent {...props} />, {size: "fullscreen", closeOnOverlay: false})
 }
