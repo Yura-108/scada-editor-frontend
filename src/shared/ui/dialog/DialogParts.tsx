@@ -1,7 +1,8 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useContext, type ReactNode } from "react";
+import { HelpCircle } from "lucide-react";
+import { useContext, useState, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import { DialogFrameContext } from "./DialogFrame";
 
@@ -21,6 +22,7 @@ export function DialogHeader({
   title,
   description,
   icon,
+  hint = false,
   separated = true,
   className,
 }: {
@@ -28,10 +30,17 @@ export function DialogHeader({
   description?: ReactNode;
   /** Значок слева от заголовка (например, у подтверждений). */
   icon?: ReactNode;
+  /**
+   * Описание спрятано под значок «?» рядом с заголовком — у редакторов кода оно длинное
+   * (справка по API скрипта) и нужно не каждый раз. В DOM оно есть всегда.
+   */
+  hint?: boolean;
   separated?: boolean;
   className?: string;
 }) {
   const { showClose } = useContext(DialogFrameContext);
+  const [hintOpen, setHintOpen] = useState(false);
+  const shown = Boolean(description) && (!hint || hintOpen);
 
   return (
     <div
@@ -46,13 +55,36 @@ export function DialogHeader({
     >
       {icon}
       <div className="min-w-0 flex-1">
-        <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
+        <div className="flex items-center gap-2">
+          <Dialog.Title className="text-lg font-semibold leading-snug">{title}</Dialog.Title>
+          {hint && description && (
+            <button
+              type="button"
+              onClick={() => setHintOpen(o => !o)}
+              aria-label="Показать описание"
+              aria-expanded={hintOpen}
+              title="Показать описание"
+              className={cn(
+                "rounded-full p-1 transition-colors",
+                hintOpen ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-primary/10 hover:text-primary",
+              )}
+            >
+              <HelpCircle size={18} />
+            </button>
+          )}
+        </div>
         {/* `asChild` + `div`, а не абзац по умолчанию: описание бывает с разметкой — список
             записываемых в ПЛК тегов, перечень мест в коде. `<ul>`/`<div>` внутри `<p>`
             браузер закрывает досрочно, и разметка сервера расходится с клиентской
             (ошибка гидрации). */}
         <Dialog.Description asChild>
-          <div className={description ? "mt-1 text-sm text-muted-foreground" : "sr-only"}>
+          <div
+            className={cn(
+              !shown && "sr-only",
+              shown && "mt-1 text-sm text-muted-foreground",
+              shown && hint && "mt-2 rounded-lg border bg-muted px-3 py-2",
+            )}
+          >
             {description ?? title}
           </div>
         </Dialog.Description>
