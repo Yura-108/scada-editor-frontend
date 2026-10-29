@@ -11,3 +11,12 @@
 export const refreshSessionCookie = async (): Promise<void> => {
   await fetch("/api/auth/refresh", {method: "POST", credentials: "include"});
 };
+
+/**
+ * Выйти и уйти на страницу входа. Нужно, когда сеансы погашены своими руками (смена пароля,
+ * «Завершить сеансы» себе): не ждём, пока это обнаружит `401` следующего запроса.
+ */
+export const logoutToLogin = async (): Promise<void> => {
+  await fetch("/api/auth/logout", {method: "POST", credentials: "include"}).catch(() => undefined);
+  window.location.replace("/login");
+};

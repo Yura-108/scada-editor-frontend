@@ -5,7 +5,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/store/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {readBackendError} from "@/core/access";
+import {logoutToLogin, readBackendError} from "@/core/access";
+
+const RELOGIN_DELAY_MS = 1500;
 
 /** Те же пределы, что проверяет auth (`ChangePasswordDto`). */
 export const PASSWORD_MIN = 6;
@@ -51,8 +53,11 @@ export function ChangePasswordModal() {
         setError(await readBackendError(res));
         return;
       }
-      toast.success("Пароль изменён");
+      // Смена пароля гасит все сеансы, и текущий тоже: на вход сразу, не дожидаясь 401.
+      // Пауза — чтобы тост успел показаться до перезагрузки страницы.
+      toast.success("Пароль изменён, войдите заново");
       closeModal();
+      setTimeout(() => void logoutToLogin(), RELOGIN_DELAY_MS);
     } catch (err) {
       setError((err as Error).message);
     } finally {

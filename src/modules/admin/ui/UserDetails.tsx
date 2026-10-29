@@ -1,16 +1,18 @@
 "use client";
 
 import React, {useState} from "react";
-import {KeyRound, Trash2} from "lucide-react";
+import {KeyRound, LogOut, Trash2} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
 import {passwordProblem} from "@/components/auth/ChangePasswordModal";
-import {deleteUser, resetUserPassword, updateUser, type AdminUser} from "../api/adminApi";
+import {logoutToLogin, useSessionUserStore} from "@/core/access";
+import {deleteUser, resetUserPassword, revokeUserSessions, updateUser, type AdminUser} from "../api/adminApi";
 import {GrantsTable} from "./GrantsTable";
 
 export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onChanged: (u: AdminUser) => void; onDeleted: () => void}) {
   const [busy, setBusy] = useState(false);
+  const myLogin = useSessionUserStore(s => s.login);
 
   const patch = async (next: {enabled: boolean; admin: boolean}) => {
     setBusy(true);
@@ -40,6 +42,26 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
     try {
       await resetUserPassword(user.id, password);
       toast.success("Пароль сброшен");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleRevokeSessions = async () => {
+    const self = user.login === myLogin;
+    const ok = await confirmModal({
+      title: `Завершить сеансы «${user.login}»?`,
+      description: self
+        ? "Все ваши входы, включая этот, закончатся сразу — придётся войти заново."
+        : "Все входы пользователя закончатся сразу, на всех устройствах: ему придётся войти заново.",
+      confirmLabel: "Завершить сеансы",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await revokeUserSessions(user.id);
+      toast.success("Сеансы завершены");
+      if (self) await logoutToLogin();
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -78,6 +100,7 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
         </label>
         <div className="flex-1" />
         <Button className="px-3 py-1.5" onClick={() => void handleResetPassword()}><KeyRound size={14} />Сбросить пароль</Button>
+        <Button className="px-3 py-1.5" onClick={() => void handleRevokeSessions()}><LogOut size={14} />Завершить сеансы</Button>
         <Button variant="danger" className="px-3 py-1.5" onClick={() => void handleDelete()}><Trash2 size={14} />Удалить</Button>
       </div>
       {user.admin
