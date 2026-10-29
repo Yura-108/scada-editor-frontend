@@ -3,6 +3,7 @@ import CodeMirror, {EditorView} from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {Wand2} from "lucide-react";
 import {formatCode} from "@/shared/lib/formatCode";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 
 /** Поле кода редактора скрипта: подпись, «Форматировать» и CodeMirror на всю оставшуюся высоту. */
 export function ScriptCodeField({code, setCode, viewRef}: {
@@ -14,9 +15,7 @@ export function ScriptCodeField({code, setCode, viewRef}: {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex items-center justify-between mb-1 ml-1">
-        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Код (JavaScript)
-        </label>
+        <span className={fieldLabelClass}>Код (JavaScript)</span>
         <button
           type="button"
           onClick={() => setCode(c => formatCode(c))}

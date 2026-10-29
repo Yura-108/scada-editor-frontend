@@ -1,10 +1,10 @@
 import React from "react";
 import {Trash2} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {shortTagPath} from "@/core/scene";
 import {actionValueText, coerceActionValue} from "../../../lib/recipeValidation";
 import type {RecipeStepAction, RecipeTag} from "@/types/recipe.types";
-import {inputClass} from "./styles";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 
 /**
  * Запись одного тега: тег из манифеста, значение, путь и «убрать». Одна и та же строка —
@@ -21,18 +21,18 @@ export function TagWriteRow({action, tags, onChange, onRemove}: {
     <div className="flex items-center gap-2">
       {/* Тег выбирается ИЗ МАНИФЕСТА, а не вводится: бэкенд проверяет записи одним
           `checkAction`, и свободный ввод — главный источник 400 «tag not declared in manifest». */}
-      <select
-        className={cn(inputClass, "max-w-[45%]")}
+      <Select
+        size="sm"
+        className="max-w-[45%]"
         value={action.tag}
-        onChange={(e) => {
-          const picked = tags.find(t => t.name === e.target.value);
-          onChange({tag: e.target.value, value: coerceActionValue(actionValueText(action.value), picked?.value_type)});
+        onValueChange={(v) => {
+          const picked = tags.find(t => t.name === v);
+          onChange({tag: v, value: coerceActionValue(actionValueText(action.value), picked?.value_type)});
         }}
-      >
-        {tags.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-      </select>
-      <input
-        className={inputClass}
+        options={tags.map(t => ({value: t.name, label: t.name}))}
+      />
+      <Input
+        size="sm"
         value={actionValueText(action.value)}
         placeholder={tag?.value_type === "bool" ? "true / false" : "значение"}
         onChange={(e) => onChange({...action, value: coerceActionValue(e.target.value, tag?.value_type)})}

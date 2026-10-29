@@ -1,6 +1,7 @@
 import React from "react";
 import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
+import {Input} from "@/shared/ui/field/Input";
 import {TREND_WINDOW_PRESETS} from "@/core/scene";
 import {ARCHIVE_DEPTH_MS} from "../../model/archive/archive";
 import {toLocalInput} from "../../lib/trendTime";
@@ -49,7 +50,9 @@ export function TrendPeriodBar({windowSec, setWindowSec, shift, follow, to, cloc
 
       <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
         Конец периода
-        <input
+        <Input
+          size="sm"
+          className="w-auto"
           type="datetime-local"
           value={toLocalInput(to)}
           max={toLocalInput(clockNow())}
@@ -58,7 +61,6 @@ export function TrendPeriodBar({windowSec, setWindowSec, shift, follow, to, cloc
             if (Number.isNaN(ts)) return;
             setEndTs(ts >= clockNow() ? null : Math.max(ts, Date.now() - ARCHIVE_DEPTH_MS + windowSec * 1000));
           }}
-          className="rounded-md border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-xs"
         />
       </label>
 

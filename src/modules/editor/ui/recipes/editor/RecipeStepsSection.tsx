@@ -1,9 +1,10 @@
 import React, {type Dispatch, type SetStateAction} from "react";
 import {ChevronDown, ChevronUp, Plus, Trash2} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {coerceActionValue} from "../../../lib/recipeValidation";
 import type {RecipeStep, RecipeTag} from "@/types/recipe.types";
-import {inputClass, sectionTitle} from "./styles";
+import {Input} from "@/shared/ui/field/Input";
+import {Textarea} from "@/shared/ui/field/Textarea";
+import {sectionTitle} from "./styles";
 import {TagWriteRow} from "./TagWriteRow";
 
 export const emptyStep = (): RecipeStep => ({
@@ -51,8 +52,8 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
               <span className="shrink-0 w-7 h-7 grid place-items-center rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
                 {index + 1}
               </span>
-              <input
-                className={inputClass}
+              <Input
+                size="sm"
                 value={step.name}
                 placeholder="Название шага"
                 onChange={(e) => patchStep(index, {name: e.target.value})}
@@ -111,8 +112,8 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 Условие перехода (JavaScript; пусто — сразу после действия)
               </span>
-              <textarea
-                className={cn(inputClass, "font-mono text-xs min-h-20 resize-y")}
+              <Textarea
+                className="font-mono text-xs"
                 value={step.condition_script ?? ""}
                 placeholder="return elapsedMs >= 2000;"
                 onChange={(e) => patchStep(index, {condition_script: e.target.value})}
@@ -127,10 +128,11 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
               <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
                 Таймаут «зависания», мс
               </span>
-              <input
+              <Input
+                size="sm"
                 type="number"
                 min={1}
-                className={cn(inputClass, "max-w-40")}
+                className="max-w-40"
                 value={step.timeout_ms ?? ""}
                 placeholder="не задан"
                 onChange={(e) => patchStep(index, {

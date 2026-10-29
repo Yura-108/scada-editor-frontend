@@ -11,7 +11,8 @@ import {Button} from "@/shared/ui/Button";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import type {Recipe, RecipeStep, RecipeTag} from "@/types/recipe.types";
-import {inputClass, sectionTitle} from "./editor/styles";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
 import {RecipeManifestSection} from "./editor/RecipeManifestSection";
 import {RecipePauseSection} from "./editor/RecipePauseSection";
 import {emptyStep, RecipeStepsSection} from "./editor/RecipeStepsSection";
@@ -93,21 +94,12 @@ function RecipeEditorContent({recipe}: Props) {
       />
 
       <DialogBody className="space-y-6">
-        <div className="space-y-2">
-          <label className={sectionTitle}>Название</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Мойка щёлочью, линия 1"
-            className={inputClass}
-          />
-          {recipe && (
-            <p className="text-xs text-gray-500 dark:text-gray-500">
-              Идентификатор <code>{recipe.id}</code> при переименовании не меняется.
-            </p>
-          )}
-        </div>
+        <Field
+          label="Название"
+          hint={recipe && <>Идентификатор <code>{recipe.id}</code> при переименовании не меняется.</>}
+        >
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Мойка щёлочью, линия 1" />
+        </Field>
 
         <RecipeManifestSection
           tags={tags}
