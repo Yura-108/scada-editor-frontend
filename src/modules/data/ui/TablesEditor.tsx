@@ -5,9 +5,12 @@ import {Plus} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "./ColumnsEditor";
+import {ColumnsEditor, compactButton, nameHint} from "./ColumnsEditor";
 import {RowsGrid} from "./RowsGrid";
 import type {ProjectDataTable, ProjectDataValidationError} from "@/types/projectData.types";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {Textarea} from "@/shared/ui/field/Textarea";
 
 interface Props {
   tables: ProjectDataTable[];
@@ -85,43 +88,37 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange, se
         ) : (
           <div className="p-4 pb-28 space-y-6 max-w-6xl">
             <div className="grid grid-cols-1 md:grid-cols-[18rem_1fr] gap-4">
-              <div>
-                <label className={fieldTitle} htmlFor="table-name">Имя таблицы</label>
-                <input
-                  id="table-name"
-                  className={cn(cellInput, "font-mono", tableNameHint && "border-red-400 dark:border-red-500")}
-                  value={table.name}
-                  onChange={e => patch({name: e.target.value})}
-                />
-                {tableNameHint
-                  ? <p className="text-xs text-red-600 mt-1">{tableNameHint}</p>
-                  : <p className={fieldHint}>Для скриптов: <code className="font-mono">data(&apos;{table.name}&apos;)</code>. Латиница, цифры и _.</p>}
-              </div>
-              <div>
-                <label className={fieldTitle} htmlFor="table-title">Заголовок</label>
-                <input
-                  id="table-title"
-                  className={cellInput}
+              <Field
+                size="sm"
+                label="Имя таблицы"
+                error={tableNameHint}
+                hint={<>Для скриптов: <code className="font-mono">data(&apos;{table.name}&apos;)</code>. Латиница, цифры и _.</>}
+              >
+                <Input size="sm" className="font-mono" value={table.name} onChange={e => patch({name: e.target.value})} />
+              </Field>
+              <Field
+                size="sm"
+                label="Заголовок"
+                hint="Понятное людям название — так таблица подписана в списке слева. На работу скриптов не влияет."
+              >
+                <Input
+                  size="sm"
                   value={table.title ?? ""}
                   placeholder="например: Уставки насосов"
                   onChange={e => patch({title: e.target.value === "" ? null : e.target.value})}
                 />
-                <p className={fieldHint}>Понятное людям название — так таблица подписана в списке слева. На работу скриптов не влияет.</p>
-              </div>
+              </Field>
             </div>
-            <div>
-              <label className={fieldTitle} htmlFor="table-description">Описание</label>
-              <textarea
-                id="table-description"
-                className={cn(cellInput, "min-h-16")}
+            <Field size="sm" label="Описание" hint="Заметка для коллег. Ни на что не влияет — только поясняет таблицу.">
+              <Textarea
+                className="min-h-16"
                 value={table.description ?? ""}
                 placeholder="что хранит таблица, кто и когда её заполняет"
                 onChange={e => patch({description: e.target.value === "" ? null : e.target.value})}
               />
-              <p className={fieldHint}>Заметка для коллег. Ни на что не влияет — только поясняет таблицу.</p>
-            </div>
+            </Field>
             {tableErrors.filter(e => e.field === "name").map((e, i) => (
-              <p key={i} className="text-xs text-red-600">{e.message}</p>
+              <p key={i} className="text-xs text-destructive">{e.message}</p>
             ))}
 
             <ColumnsEditor

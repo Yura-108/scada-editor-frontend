@@ -4,13 +4,15 @@ import React, {useCallback, useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {cellInput, compactButton, fieldHint, iconButton} from "./ColumnsEditor";
+import {compactButton, fieldHint, iconButton} from "./ColumnsEditor";
 import {formatCell, parseCell, setCellValue} from "../lib/values";
 import type {
   ProjectDataColumn,
   ProjectDataRow,
   ProjectDataValidationError,
 } from "@/types/projectData.types";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 
 interface Props {
   columns: ProjectDataColumn[];
@@ -58,26 +60,28 @@ function Cell({column, value, missingRequired, onCommit, onInvalid}: {
     }
   };
 
-  const className = cn(
-    cellInput,
-    "font-mono min-w-24",
-    error ? "border-red-400 dark:border-red-500" : missingRequired && "border-amber-400 dark:border-amber-500",
-  );
+  // Ошибка — красная рамка (aria-invalid), обязательная без значения — рамка предупреждения.
+  const className = cn("font-mono min-w-24", !error && missingRequired && "border-warning");
   const title = error ?? (missingRequired ? "Обязательная колонка без значения по умолчанию" : undefined);
 
   if (column.value_type === "bool") {
     return (
-      <select className={className} value={text} title={title} onChange={e => apply(e.target.value)}>
-        <option value="">—</option>
-        <option value="true">true</option>
-        <option value="false">false</option>
-      </select>
+      <Select
+        size="sm"
+        className={className}
+        value={text}
+        title={title}
+        onValueChange={apply}
+        options={[{value: "", label: "—"}, {value: "true", label: "true"}, {value: "false", label: "false"}]}
+      />
     );
   }
 
   return (
-    <input
+    <Input
+      size="sm"
       className={className}
+      aria-invalid={Boolean(error) || undefined}
       value={text}
       title={title}
       inputMode={column.value_type === "int" || column.value_type === "float" ? "decimal" : undefined}
@@ -171,8 +175,10 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
                 return (
                   <tr key={rowKey(ri)}>
                     <td className="align-top">
-                      <input
-                        className={cn(cellInput, "font-mono", keyHint && "border-red-400 dark:border-red-500")}
+                      <Input
+                        size="sm"
+                        className="font-mono"
+                        aria-invalid={Boolean(keyHint) || undefined}
                         value={row.key}
                         title={keyHint ?? undefined}
                         onChange={e => patchRow(ri, {...row, key: e.target.value})}

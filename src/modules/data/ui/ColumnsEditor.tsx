@@ -14,17 +14,15 @@ import {
   type ProjectDataValidationError,
   type ProjectDataValueType,
 } from "@/types/projectData.types";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 
-export const cellInput = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm";
-
-/** Подпись поля: заметная на сером фоне страницы, а не бледная мелочь капслоком. */
-export const fieldTitle = "block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1";
-
-/** Пояснение под полем: что это и на что влияет. */
-export const fieldHint = "text-xs text-neutral-500 dark:text-neutral-400 mt-1";
+/** Пояснение под блоком (не под полем — у поля это `Field hint`). */
+export const fieldHint = "text-xs text-muted-foreground mt-1";
 
 /** Компактные кнопки строк: размер `Button` по умолчанию рассчитан на подвал модалки. */
-export const compactButton = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+export const compactButton = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
 export const iconButton = "h-8 w-8 px-0 shadow-none";
 
 /** Локальная подсказка к имени (таблицы или колонки) — до того, как это скажет бэкенд. */
@@ -68,14 +66,16 @@ function ColumnNameInput({name, taken, onCommit}: {name: string; taken: (name: s
 
   return (
     <div>
-      <input
-        className={cn(cellInput, "font-mono", hint && "border-red-400 dark:border-red-500")}
+      <Input
+        size="sm"
+        className="font-mono"
+        aria-invalid={Boolean(hint) || undefined}
         value={text}
         onChange={e => { setText(e.target.value); setCollision(false); }}
         onBlur={commit}
         onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
       />
-      {hint && <p className="text-[11px] text-red-600 mt-0.5">{hint}</p>}
+      {hint && <p className="text-[11px] text-destructive mt-0.5">{hint}</p>}
     </div>
   );
 }
@@ -139,16 +139,23 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
       {columns.map((c, i) => (
         <div key={i} className={cn(GRID, "items-start")}>
           <ColumnNameInput name={c.name} taken={name => columns.some((o, j) => j !== i && o.name === name)} onCommit={name => rename(i, name)} />
-          <input className={cellInput} value={c.title ?? ""} placeholder="как назвать для людей" onChange={e => patch(i, {title: e.target.value === "" ? null : e.target.value})} />
-          <label className="flex items-center gap-2 h-[30px] px-2 text-sm cursor-pointer" title={HEADERS[2].hint}>
-            <input type="checkbox" checked={c.required} onChange={e => patch(i, {required: e.target.checked})} />
-            {c.required ? "да" : "нет"}
-          </label>
-          <select className={cellInput} value={c.value_type} onChange={e => retype(i, e.target.value as ProjectDataValueType)}>
-            {PROJECT_DATA_VALUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <input
-            className={cn(cellInput, "font-mono")}
+          <Input size="sm" value={c.title ?? ""} placeholder="как назвать для людей" onChange={e => patch(i, {title: e.target.value === "" ? null : e.target.value})} />
+          <Checkbox
+            className="h-8 px-2"
+            title={HEADERS[2].hint}
+            checked={c.required}
+            onChange={e => patch(i, {required: e.target.checked})}
+            label={c.required ? "да" : "нет"}
+          />
+          <Select
+            size="sm"
+            value={c.value_type}
+            onValueChange={v => retype(i, v as ProjectDataValueType)}
+            options={PROJECT_DATA_VALUE_TYPES.map(t => ({value: t, label: t}))}
+          />
+          <Input
+            size="sm"
+            className="font-mono"
             value={c.default_value ?? ""}
             placeholder={c.value_type === "json" ? "{}" : ""}
             onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})}
@@ -156,7 +163,7 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
           <Button className={iconButton} onClick={() => remove(i)} title="Удалить колонку и её значения во всех строках"><Trash2 size={14} /></Button>
         </div>
       ))}
-      {columns.length === 0 && <p className="text-xs text-neutral-500">Колонок нет — у строк будет только ключ.</p>}
+      {columns.length === 0 && <p className="text-xs text-muted-foreground">Колонок нет — у строк будет только ключ.</p>}
       {errors.filter(e => e.field.startsWith("columns")).map((e, i) => (
         <p key={i} className="text-xs text-red-600">{e.field}: {e.message}</p>
       ))}
