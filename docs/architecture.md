@@ -52,7 +52,7 @@ app/api  →  server  →  shared
 | `core/access` | `grantOf`, `projectAccess`, `accessErrors`, `actionAccess`, `sessionUser` | Права, общие для всех модулей |
 | `modules/editor` | панели, палитра, инструменты, выделение, сохранение и версии | Только редактор |
 | `modules/monitor` | `useRuntimeEngine`, WS, процедуры, архив, тренды-модалки | Только монитор |
-| `core/devices` | база каналов: дерево и параметры (`useDeviceTreeStore`), блокировки правки (`useDeviceLocksStore`), справочники (`useDeviceDictionaries`), правка (`deviceActions`), запросы (`api/devicesApi`); UI — `DeviceTreePanel` с меню правки и выбором проекта, модалки меню, `pickTag` | Дерево устройств показывают «Каналы», редактор (выбор тегов) и «Автоматизация» |
+| `core/devices` | база каналов: дерево и параметры (`useDeviceTreeStore`), блокировки правки (`useDeviceLocksStore`), справочники (`useDeviceDictionaries`), правка (`deviceActions`), запросы (`api/devicesApi`); UI — `DeviceTreePanel` с меню правки и выбором проекта, модалки меню; выбор тега — `TagTree`, `pickTag`/`pickTags` (`ui/tag-picker`) | Дерево устройств показывают «Каналы», редактор (выбор тегов) и «Автоматизация» |
 | `modules/data` | таблицы данных проекта, переменные, история версий | Только «Данные» |
 | `modules/admin` | пользователи, права в проектах, ветки каталога | Только администрирование |
 | `modules/channels` | страница каналов: панель параметров, тулбар, импорт `.cdbx` | Только каналы |
@@ -168,7 +168,8 @@ ui/properties-panel/
 | Да/нет перед действием | `await confirmModal({title, description, danger})` |
 | Ввести одну строку (имя) | `await promptModal({title, label})` |
 | Больше двух исходов (заменить / добавить / отмена) | `await choiceModal({title, options})` |
-| Окно, которое принадлежит компоненту и открыто его состоянием (выбор свойства или тега для привязки) | `<Modal open onClose title footer size>` |
+| Окно, которое принадлежит компоненту и открыто его состоянием (выбор свойства объекта для привязки) | `<Modal open onClose title footer size>` |
+| Выбрать тег (канал) или несколько | `await pickTag({title, confirmLabel})` / `await pickTags({title, note})` из `@/core/devices` — открываются поверх вызвавшего окна; дерево внутри формы — `TagTree` |
 
 - `openModal` открывает окно **вместо** верхнего («Проекты» → выбор схемы); `pushModal` — **поверх**.
   `closeModal` закрывает верхнее; содержимое окна закрывает себя через `useCloseModal()` — оно
@@ -189,9 +190,11 @@ ui/properties-panel/
 - У редакторов кода длинная справка по API скрипта прячется под «?» рядом с заголовком —
   `DialogHeader hint`. Полноэкранное тело — `DialogBody className="flex flex-col gap-4"`: поле кода
   (`flex-1 min-h-0`) занимает всё, что осталось от остальных блоков.
-- Пока не переведён один `OpenChooseTagModal` — открывается с `legacyLayout: true` (свои
-  `Dialog.Title` и `ModalFooter`, прежняя прокручиваемая область с отступами); его заменит общий
-  выбор тега (ветка `tag-picker`). Тогда флаг и старая обёртка в `ModalRoot` удаляются.
+- Выбор тега всегда со своим выделением: общее выделение страницы «База каналов» (`selectedDevice`)
+  он не трогает. Дерево пусто — прямо в окне выбор площадки и проекта (загруженный проект станет
+  текущим и в «Базе каналов»).
+- `ModalFooter` (`Button.tsx`) остался только у двух плавающих окон монитора («Опции», инспектор) —
+  они не диалоги стека.
 
 ### UI-kit: поля
 
@@ -220,8 +223,7 @@ ui/properties-panel/
   сообщают `onEditStart`/`onEditEnd`/`onEditCancel` (`EditSession`); редактор склеивает правку в один
   шаг undo через `historyEditing` (`modules/editor/model/historyGroup`).
 - ESLint (`no-restricted-syntax`, warn) отмечает свой `<select>`/`<textarea>` и прямой импорт Radix Select вне
-  `shared/ui/field`. Исключения: `OpenChooseTagModal` со своим Radix Select (`SelectItem`, `selectStyles`) —
-  до ветки `tag-picker`; редактор текста на холсте (`TextEditorOverlay`) — насовсем, он обязан выглядеть
+  `shared/ui/field`. Исключение одно — редактор текста на холсте (`TextEditorOverlay`): он обязан выглядеть
   как текст фигуры.
 
 ## 4. Состояние
