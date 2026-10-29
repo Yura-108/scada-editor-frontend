@@ -2,6 +2,7 @@
 
 import React, {createContext, useContext, useId, type ReactNode} from "react";
 import {cn} from "@/shared/lib/cn";
+import {fieldLabelClass} from "./fieldStyles";
 
 interface FieldContextValue {
   /** id поля — на него ссылается подпись. */
@@ -38,7 +39,7 @@ export function Field({label, hint, error, className, children}: {
   return (
     <FieldContext.Provider value={{id, labelId, describedBy: note ? noteId : undefined, invalid: Boolean(error)}}>
       <div className={cn("space-y-1.5", className)}>
-        <label id={labelId} htmlFor={id} className="block text-sm font-medium text-foreground">
+        <label id={labelId} htmlFor={id} className={fieldLabelClass}>
           {label}
         </label>
         {children}

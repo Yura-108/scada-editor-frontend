@@ -1,23 +1,17 @@
 "use client";
 
-import React, {useId, useState} from "react";
+import React, {useState} from "react";
 import {Check, Copy, Download, FileDown} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {copyText, downloadText} from "@/shared/lib/downloadText";
 import {safeFileName} from "@/shared/lib/downloadJson";
-
-const inputClass = cn(
-  "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",
-  "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-hidden",
-  "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
-);
-
-const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider";
 
 /**
  * Блок тегов проекта для `controllers.yaml` шлюза.
@@ -34,8 +28,6 @@ function GatewayExportContent({root}: {root: string}) {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const controllerIdField = useId();
-  const endpointField = useId();
 
   const handleBuild = async () => {
     if (!controllerId.trim() || !endpoint.trim()) return;
@@ -86,30 +78,18 @@ function GatewayExportContent({root}: {root: string}) {
 
       <DialogBody className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label htmlFor={controllerIdField} className={labelClass}>Идентификатор контроллера</label>
-            <input
-              id={controllerIdField}
-              value={controllerId}
-              onChange={(e) => setControllerId(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor={endpointField} className={labelClass}>Адрес</label>
-            <input
-              id={endpointField}
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
-              className={inputClass}
-            />
-          </div>
+          <Field label="Идентификатор контроллера">
+            <Input value={controllerId} onChange={(e) => setControllerId(e.target.value)} />
+          </Field>
+          <Field label="Адрес">
+            <Input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
+          </Field>
         </div>
 
         {yaml && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className={labelClass}>Блок для controllers.yaml</span>
+              <span className={fieldLabelClass}>Блок для controllers.yaml</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

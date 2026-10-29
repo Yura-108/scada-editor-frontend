@@ -9,6 +9,7 @@ import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
 import {Button} from "@/shared/ui/Button";
+import {Input} from "@/shared/ui/field/Input";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {canOpenInEditor, grantOf, useSessionUserStore} from "@/core/access";
@@ -253,27 +254,18 @@ export function ProjectContent() {
 
         {/* Создавать проект может только администратор (иначе 403 NOT_ADMIN). */}
         {admin && <div className="mt-4 flex items-center gap-2">
-          <input
-            type="text"
+          <Input
             placeholder="Имя нового проекта"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreate();
             }}
-            className={cn(
-              "flex-1 rounded-xl border border-gray-300 dark:border-gray-700/80",
-              "bg-white dark:bg-gray-900/60 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100",
-              "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 outline-none"
-            )}
+            className="flex-1"
           />
-          <button
-            onClick={() => void handleCreate()}
-            disabled={!newName.trim() || isCreating}
-            className="px-4 py-2.5 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors"
-          >
+          <Button variant="primary" onClick={() => void handleCreate()} disabled={!newName.trim() || isCreating}>
             {isCreating ? "Создание..." : "Создать"}
-          </button>
+          </Button>
         </div>}
       </DialogBody>
 

@@ -7,6 +7,7 @@ import { MoveRight } from "lucide-react";
 
 import Modal from "@/shared/ui/dialog/Modal";
 import { Button } from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
 
 import {
   Select,
@@ -77,11 +78,7 @@ export const MoveToGroupModal = ({
         </>
       }
     >
-      <div className="space-y-2">
-        <label className="text-sm font-semibold">
-          Целевая группа
-        </label>
-
+      <Field label="Целевая группа">
         <Select
           value={selectedGroupKey}
           onValueChange={setSelectedGroupKey}
@@ -113,7 +110,7 @@ export const MoveToGroupModal = ({
             )}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
     </Modal>
   );
 };

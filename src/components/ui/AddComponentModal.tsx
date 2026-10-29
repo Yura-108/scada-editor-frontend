@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 
 import Modal from "@/shared/ui/dialog/Modal";
 import { Button } from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
 import { elementRegistry } from "@/constants/propertiesPanel";
 import { getDescendants } from "@/lib/getDescendants";
 import { DiagramElement, ElementType } from "@/types/editorElement.type";
@@ -85,11 +86,7 @@ export const AddComponentModal = ({
         </>
       }
     >
-      <div className="space-y-2">
-        <label className="text-sm font-semibold">
-          Компонент
-        </label>
-
+      <Field label="Компонент">
         <Select
           value={selectedKey}
           onValueChange={setSelectedKey}
@@ -118,7 +115,7 @@ export const AddComponentModal = ({
             )}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
     </Modal>
   );
 };
