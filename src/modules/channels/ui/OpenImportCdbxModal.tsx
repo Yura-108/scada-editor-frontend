@@ -1,12 +1,13 @@
 "use client";
 
 import React, {useEffect, useId, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {FileUp, FolderPlus} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {pickFile} from "@/shared/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 import {openImportReportModal} from "./OpenImportReportModal";
@@ -54,7 +55,7 @@ function PlcSourceButton({hint, file, onChange}: {
 }
 
 function ImportCdbxContent() {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
 
   const [file, setFile] = useState<File | null>(null);
   // Исходники проекта ПЛК (контракт, раздел 1.1): необязательны и независимы друг от друга.
@@ -134,13 +135,12 @@ function ImportCdbxContent() {
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1">Импорт базы каналов</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Файл `.cdbx` старой системы станет новым проектом базы каналов. Площадку и имя проекта
-        задаёте вы — из файла они не берутся. Существующие проекты импорт не трогает.
-      </Dialog.Description>
+      <DialogHeader
+        title="Импорт базы каналов"
+        description="Файл `.cdbx` старой системы станет новым проектом базы каналов. Площадку и имя проекта задаёте вы — из файла они не берутся. Существующие проекты импорт не трогает."
+      />
 
-      <div className="space-y-5">
+      <DialogBody className="space-y-5">
         <div className="space-y-2">
           <span className={labelClass}>Файл</span>
           <button
@@ -209,19 +209,19 @@ function ImportCdbxContent() {
             Точка разделяет уровни пути в базе — в имени площадки и проекта её быть не может.
           </p>
         )}
-      </div>
+      </DialogBody>
 
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button variant="primary" onClick={() => void handleSubmit()} disabled={!canSubmit}>
           <FolderPlus size={16} />
           {isLoading ? "Импорт…" : "Импортировать"}
         </Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
 
 export function openImportCdbxModal() {
-  useModalStore.getState().openModal(<ImportCdbxContent />, {legacyLayout: true});
+  useModalStore.getState().openModal(<ImportCdbxContent />, {size: "md"});
 }

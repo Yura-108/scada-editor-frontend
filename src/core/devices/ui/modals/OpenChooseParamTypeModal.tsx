@@ -1,7 +1,6 @@
 import { DeviceParamsLayoutType } from "@/types/nodeTypes";
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { useId, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { cn } from "@/shared/lib/cn";
 import { ChevronDown, Type } from "lucide-react"; // Добавил иконку Type для инпута
@@ -11,7 +10,9 @@ import {
   selectIconClassName,
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
-import { Button, ModalFooter } from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addParam} from "../../model/deviceActions";
 import {useDeviceDictionaries} from "../../model/deviceDictionaries";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
@@ -22,7 +23,7 @@ interface Props {
 }
 
 export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) {
-  const { closeModal } = useModalStore.getState();
+  const closeModal = useCloseModal();
   const { selectedDevice } = useDeviceTreeStore.getState();
 
   // Состояния для селекта и инпута
@@ -47,15 +48,12 @@ export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) 
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1">
-        Создание параметра
-      </Dialog.Title>
+      <DialogHeader
+        title="Создание параметра"
+        description="Выберите тип параметра и введите значение."
+      />
 
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Выберите тип параметра и введите значение.
-      </Dialog.Description>
-
-      <div className="space-y-5">
+      <DialogBody className="space-y-5">
         {/* Выбор типа (Select) */}
         <div className="space-y-2">
           {/* Select у Radix — кнопка, поэтому подпись связывается через
@@ -118,15 +116,15 @@ export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) 
             <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-600 pointer-events-none" />
           </div>
         </div>
-      </div>
+      </DialogBody>
 
       {/* Кнопки внизу */}
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button variant="primary" onClick={handleConfirm} disabled={!inputValue.trim()}>
           Выбрать
         </Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   )
 }
@@ -136,7 +134,7 @@ export function openChooseParamTypeModal() {
   const { paramsTypes } = useDeviceDictionaries.getState();
 
   if (paramsTypes.length > 0) {
-    openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />, {legacyLayout: true});
+    openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />, {size: "md"});
   }
 }
 

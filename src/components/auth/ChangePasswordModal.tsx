@@ -1,10 +1,10 @@
 "use client";
 
 import React, {useId, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
-import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {logoutToLogin, readBackendError} from "@/core/access";
 
 const RELOGIN_DELAY_MS = 1500;
@@ -24,7 +24,7 @@ export const fieldInput =
 
 /** Смена своего пароля: `PUT /api/auth/me/password` → 204, неверный текущий — 400. */
 export function ChangePasswordModal() {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -66,12 +66,13 @@ export function ChangePasswordModal() {
   };
 
   return (
-    <form onSubmit={e => void submit(e)} className="w-full max-w-md">
-      <Dialog.Title className="text-xl font-semibold mb-1">Смена пароля</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Новый пароль — от {PASSWORD_MIN} до {PASSWORD_MAX} символов.
-      </Dialog.Description>
-      <div className="space-y-4">
+    // Форма — колонка окна: шапка, прокручиваемое тело и подвал с кнопкой отправки.
+    <form onSubmit={e => void submit(e)} className="flex min-h-0 flex-1 flex-col">
+      <DialogHeader
+        title="Смена пароля"
+        description={<>Новый пароль — от {PASSWORD_MIN} до {PASSWORD_MAX} символов.</>}
+      />
+      <DialogBody className="space-y-4">
         <div>
           <label htmlFor={ids.old} className="block text-xs font-medium text-gray-500 mb-1">Текущий пароль</label>
           <input id={ids.old} type="password" autoComplete="current-password" className={fieldInput}
@@ -88,11 +89,11 @@ export function ChangePasswordModal() {
             value={repeat} onChange={e => { setRepeat(e.target.value); setError(null); }} />
         </div>
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      </div>
-      <ModalFooter>
+      </DialogBody>
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button type="submit" variant="primary" disabled={saving}>{saving ? "Сохранение…" : "Сменить пароль"}</Button>
-      </ModalFooter>
+      </DialogFooter>
     </form>
   );
 }
