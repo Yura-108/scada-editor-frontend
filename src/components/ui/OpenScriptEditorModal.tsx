@@ -5,8 +5,9 @@ import CodeMirror from '@uiw/react-codemirror';
 import {javascript} from "@codemirror/lang-javascript";
 import {Wand2} from "lucide-react";
 import {formatCode} from "@/shared/lib/formatCode";
-import {TitleWithHint} from "@/shared/ui/codeModalParts";
-import { Button, ModalFooter } from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {checkScriptSyntax} from "@/core/runtime";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 
@@ -33,7 +34,7 @@ export function ScriptEditorModalContent({
   confirmLabel = "Сохранить",
   onConfirm,
 }: ScriptModalProps) {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
   const [name, setName] = useState(defaultName);
   const [content, setContent] = useState(defaultContent);
   const [displayed, setDisplayed] = useState(defaultDisplayed);
@@ -70,96 +71,98 @@ export function ScriptEditorModalContent({
   }
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      <TitleWithHint title={title} description={description} />
+    <>
+      <DialogHeader hint title={title} description={description} />
 
-      <div className="shrink-0">
-        <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
-          Название скрипта
-        </label>
-        <input
-          id={inputId}
-          autoFocus
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Например, onClick, onInit..."
-          className={cn(
-            "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5",
-            "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-none",
-            "hover:border-gray-400 dark:hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-            "transition-all shadow-sm"
-          )}
-        />
-      </div>
-
-      {/* Помеченный скрипт становится пунктом меню компонента в мониторе
-          (ПКМ по компоненту) — оператор запускает его вручную, не дожидаясь
-          события. Непомеченный по-прежнему вызывается только из обработчика
-          события через runScript("Имя"). */}
-      <div className="shrink-0">
-        <label
-          htmlFor={displayedId}
-          className="flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200"
-        >
-          <input
-            id={displayedId}
-            type="checkbox"
-            checked={displayed}
-            onChange={(e) => setDisplayed(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
-          />
-          Добавить действие в монитор?
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            (пункт в меню компонента по правому клику)
-          </span>
-        </label>
-      </div>
-
-      {/* Уровень оператора, которому монитор разрешит запуск (кнопка, пункт меню,
-          runScript). Проверяет сервер по prod-выпуску, поэтому новый уровень начинает
-          действовать только после выпуска и назначения его prod. */}
-      <div className="shrink-0 flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-200">
-        <label htmlFor={accessLevelId}>Уровень доступа</label>
-        <AccessLevelSelect id={accessLevelId} value={accessLevel} onChange={setAccessLevel} />
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          (оператор с уровнем ниже не сможет запустить скрипт; действует после выпуска и prod)
-        </span>
-      </div>
-
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex items-center justify-between mb-1 ml-1">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Код скрипта (JavaScript)
+      <DialogBody className="flex flex-col gap-4">
+        <div className="shrink-0">
+          <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+            Название скрипта
           </label>
-          <button
-            type="button"
-            onClick={() => setContent(c => formatCode(c))}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-            title="Автоматически расставить отступы"
-          >
-            <Wand2 size={13} />
-            Форматировать
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 border border-gray-300 dark:border-gray-700/80 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/70">
-          <CodeMirror
-            value={content}
-            height="100%"
-            className="h-full text-sm"
-            extensions={[javascript()]}
-            onChange={(value) => setContent(value)}
-            theme="dark"
+          <input
+            id={inputId}
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Например, onClick, onInit..."
+            className={cn(
+              "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5",
+              "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-none",
+              "hover:border-gray-400 dark:hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
+              "transition-all shadow-sm"
+            )}
           />
         </div>
-        {syntaxError && (
-          <div role="alert" className="mt-2 ml-1 text-sm text-red-600 dark:text-red-400">
-            Синтаксическая ошибка: {syntaxError}
-          </div>
-        )}
-      </div>
 
-      <ModalFooter className="shrink-0 mt-0">
+        {/* Помеченный скрипт становится пунктом меню компонента в мониторе
+            (ПКМ по компоненту) — оператор запускает его вручную, не дожидаясь
+            события. Непомеченный по-прежнему вызывается только из обработчика
+            события через runScript("Имя"). */}
+        <div className="shrink-0">
+          <label
+            htmlFor={displayedId}
+            className="flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200"
+          >
+            <input
+              id={displayedId}
+              type="checkbox"
+              checked={displayed}
+              onChange={(e) => setDisplayed(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+            />
+            Добавить действие в монитор?
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              (пункт в меню компонента по правому клику)
+            </span>
+          </label>
+        </div>
+
+        {/* Уровень оператора, которому монитор разрешит запуск (кнопка, пункт меню,
+            runScript). Проверяет сервер по prod-выпуску, поэтому новый уровень начинает
+            действовать только после выпуска и назначения его prod. */}
+        <div className="shrink-0 flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-200">
+          <label htmlFor={accessLevelId}>Уровень доступа</label>
+          <AccessLevelSelect id={accessLevelId} value={accessLevel} onChange={setAccessLevel} />
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            (оператор с уровнем ниже не сможет запустить скрипт; действует после выпуска и prod)
+          </span>
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex items-center justify-between mb-1 ml-1">
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Код скрипта (JavaScript)
+            </label>
+            <button
+              type="button"
+              onClick={() => setContent(c => formatCode(c))}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+              title="Автоматически расставить отступы"
+            >
+              <Wand2 size={13} />
+              Форматировать
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 border border-gray-300 dark:border-gray-700/80 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/70">
+            <CodeMirror
+              value={content}
+              height="100%"
+              className="h-full text-sm"
+              extensions={[javascript()]}
+              onChange={(value) => setContent(value)}
+              theme="dark"
+            />
+          </div>
+          {syntaxError && (
+            <div role="alert" className="mt-2 ml-1 text-sm text-red-600 dark:text-red-400">
+              Синтаксическая ошибка: {syntaxError}
+            </div>
+          )}
+        </div>
+      </DialogBody>
+
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button
           variant="primary"
@@ -169,13 +172,13 @@ export function ScriptEditorModalContent({
         >
           {isLoading ? "Загрузка..." : confirmLabel}
         </Button>
-      </ModalFooter>
-    </div>
+      </DialogFooter>
+    </>
   )
 }
 
 export function openScriptEditorModal(props: ScriptModalProps) {
   const {openModal} = useModalStore.getState();
 
-  openModal(<ScriptEditorModalContent {...props} />, {size: "fullscreen", legacyLayout: true})
+  openModal(<ScriptEditorModalContent {...props} />, {size: "fullscreen"})
 }

@@ -1,5 +1,5 @@
 import {useMemo, useState} from "react";
-import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {createUuid} from "@/shared/lib/createUuid";
 import {compileBinding, executeBinding, modernizeScopeCode, type BindingIntent} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
@@ -32,7 +32,7 @@ const describeIntents = (intents: BindingIntent[]) =>
 
 /** Состояние окна привязки: название, код, ссылки на свойства, тест-прогон, сохранение. */
 export function useBindingEditor(element: DiagramElement, binding: TagBinding | undefined) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
 
   const [name, setName] = useState(binding?.name ?? "");
   const stateNames = useMemo(() => element.states.map(s => s.name), [element.states]);

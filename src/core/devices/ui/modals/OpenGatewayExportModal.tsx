@@ -1,12 +1,13 @@
 "use client";
 
 import React, {useId, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {Check, Copy, Download, FileDown} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {copyText, downloadText} from "@/shared/lib/downloadText";
 import {safeFileName} from "@/shared/lib/downloadJson";
 
@@ -24,7 +25,7 @@ const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wi
  * Текст берётся с бэкенда готовым и НЕ переформатируется: в YAML от отступов зависит смысл.
  */
 function GatewayExportContent({root}: {root: string}) {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
 
   const projectName = root.split(".")[1] ?? root;
   const [controllerId, setControllerId] = useState(`ptusa-${projectName.toLowerCase()}`);
@@ -77,13 +78,13 @@ function GatewayExportContent({root}: {root: string}) {
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1">Выгрузка тегов для шлюза</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Блок контроллера для <b>{root}</b>. Вставьте его в <code>controllers.yaml</code> шлюза и
-        пересоберите шлюз — без этого теги нового проекта приходить не будут.
-      </Dialog.Description>
+      <DialogHeader
+        title="Выгрузка тегов для шлюза"
+        description={<>        Блок контроллера для <b>{root}</b>. Вставьте его в <code>controllers.yaml</code> шлюза и
+        пересоберите шлюз — без этого теги нового проекта приходить не будут.</>}
+      />
 
-      <div className="space-y-5">
+      <DialogBody className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label htmlFor={controllerIdField} className={labelClass}>Идентификатор контроллера</label>
@@ -133,9 +134,9 @@ function GatewayExportContent({root}: {root: string}) {
             </pre>
           </div>
         )}
-      </div>
+      </DialogBody>
 
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>{yaml ? "Закрыть" : "Отмена"}</Button>
         <Button
           variant="primary"
@@ -145,11 +146,11 @@ function GatewayExportContent({root}: {root: string}) {
           <FileDown size={16} />
           {isLoading ? "Готовлю…" : yaml ? "Пересобрать" : "Сформировать"}
         </Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
 
 export function openGatewayExportModal(root: string) {
-  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {size: "fullscreen", legacyLayout: true});
+  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {size: "fullscreen"});
 }

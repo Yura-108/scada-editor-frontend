@@ -1,10 +1,11 @@
 "use client";
 
 import React, {useMemo, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {buildTrendGeometry, trendScale} from "@/core/scene";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {formatDateTime} from "../lib/trendTime";
 import {useTrendData} from "./trend/useTrendData";
 import {TrendPeriodBar} from "./trend/TrendPeriodBar";
@@ -29,7 +30,7 @@ const MARGIN = {l: 56, r: 16, t: 12, b: 28};
  * отдельного канала для живых значений нет.
  */
 function TrendModalContent({elementKey}: Props) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const {
     element, pens, timing, windowSec, setWindowSec, setEndTs, follow, clockTs, clockNow,
     from, to, seriesByTag, aggregated, loading, error, boxRef, size, shift,
@@ -54,59 +55,61 @@ function TrendModalContent({elementKey}: Props) {
 
   if (!element) {
     return (
-      <div className="space-y-4">
-        <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">Тренд</Dialog.Title>
-        <Dialog.Description className="text-sm text-gray-500">Элемент больше не на схеме.</Dialog.Description>
-        <ModalFooter><Button onClick={closeModal}>Закрыть</Button></ModalFooter>
-      </div>
+      <>
+        <DialogHeader title="Тренд" description="Элемент больше не на схеме." />
+        <DialogBody>{null}</DialogBody>
+        <DialogFooter><Button onClick={closeModal}>Закрыть</Button></DialogFooter>
+      </>
     );
   }
 
   const title = (element as {title?: string}).title || element.label || "Тренд";
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-3">
-      <div className="shrink-0">
-        <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">{title}</Dialog.Title>
-        <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400">
+    <>
+      <DialogHeader
+        title={title}
+        description={<>
           {formatDateTime(from)} — {follow && clockTs === null ? "сейчас" : formatDateTime(to)}. Настройки этого окна не сохраняются.
-        </Dialog.Description>
-      </div>
-
-      <TrendPeriodBar
-        windowSec={windowSec}
-        setWindowSec={setWindowSec}
-        shift={shift}
-        follow={follow}
-        to={to}
-        clockNow={clockNow}
-        setEndTs={setEndTs}
-        loading={loading}
-        aggregated={aggregated}
-        error={error}
+        </>}
       />
 
-      <TrendChart
-        boxRef={boxRef}
-        size={size}
-        plot={plot}
-        geometry={geometry}
-        from={from}
-        to={to}
-        visiblePens={visiblePens}
-        seriesByTag={seriesByTag}
-        hasPens={pens.length > 0}
-      />
+      <DialogBody className="flex flex-col gap-3">
+        <TrendPeriodBar
+          windowSec={windowSec}
+          setWindowSec={setWindowSec}
+          shift={shift}
+          follow={follow}
+          to={to}
+          clockNow={clockNow}
+          setEndTs={setEndTs}
+          loading={loading}
+          aggregated={aggregated}
+          error={error}
+        />
 
-      <TrendLegend pens={pens} geometry={geometry} hidden={hidden} setHidden={setHidden} scale={scale} setScale={setScale} />
+        <TrendChart
+          boxRef={boxRef}
+          size={size}
+          plot={plot}
+          geometry={geometry}
+          from={from}
+          to={to}
+          visiblePens={visiblePens}
+          seriesByTag={seriesByTag}
+          hasPens={pens.length > 0}
+        />
 
-      <ModalFooter className="shrink-0">
+        <TrendLegend pens={pens} geometry={geometry} hidden={hidden} setHidden={setHidden} scale={scale} setScale={setScale} />
+      </DialogBody>
+
+      <DialogFooter>
         <Button onClick={closeModal}>Закрыть</Button>
-      </ModalFooter>
-    </div>
+      </DialogFooter>
+    </>
   );
 }
 
 export function openTrendModal(props: Props) {
-  useModalStore.getState().openModal(<TrendModalContent {...props} />, {size: "fullscreen", legacyLayout: true});
+  useModalStore.getState().openModal(<TrendModalContent {...props} />, {size: "fullscreen"});
 }

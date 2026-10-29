@@ -1,5 +1,5 @@
 import {useMemo, useState} from "react";
-import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {compileEventScript, describeSceneTarget, executeEventScript, modernizeScopeCode, resolveSceneTarget} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import type {DiagramElement} from "@/types/editorElement.type";
@@ -18,7 +18,7 @@ const setPropertyCall = (varName: string) => `setProperty("${varName}", ${varNam
 
 /** Состояние окна скрипта события: код, ссылки на свойства, схемы для openScene, тест-прогон, сохранение. */
 export function useEventScriptEditor(element: DiagramElement, event: ElementEventName) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const existing = element.events?.find(e => e.event_type === event)?.handler;
 
   // Старый синтаксис «Имя.V» показываем уже переведённым — см. useBindingEditor.

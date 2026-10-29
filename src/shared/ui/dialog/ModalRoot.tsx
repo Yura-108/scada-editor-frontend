@@ -13,8 +13,8 @@ import {ModalEntryContext} from "./useCloseModal";
  * без них диалог остаётся для скринридера безымянным, а в консоль летит
  * предупреждение. Заголовок здесь не рендерится намеренно: он был бы вторым
  * `Dialog.Title` с тем же id, что ломает разметку.
- * Готовые заготовки: `DialogHeader` (`DialogParts.tsx`), `TitleWithHint`
- * (`ui/codeModalParts.tsx`) для окон с редактором кода, либо собственный `Dialog.Title`.
+ * Шапку рисует `DialogHeader` (`DialogParts.tsx`); у редакторов кода описание прячется
+ * под «?» — `DialogHeader hint`.
  *
  * Содержимое собирается из `DialogHeader`/`DialogBody`/`DialogFooter`. Ещё не
  * переведённые окна (`legacyLayout`) стоят в прежней прокручиваемой области с отступами.
@@ -33,12 +33,6 @@ export function ModalRoot() {
       >
         {!entry.legacyLayout ? (
           <Fragment key={entry.contentKey}>{entry.content}</Fragment>
-        ) : entry.size === "fullscreen" ? (
-          // Полноэкранный режим: контент сам управляет своей раскладкой (flex h-full),
-          // чтобы редактор кода растянулся на всю доступную высоту.
-          <div key={entry.contentKey} className="flex min-h-0 flex-1 flex-col p-6 sm:p-8">
-            {entry.content}
-          </div>
         ) : (
           // Прокручиваемая область: padding здесь, чтобы скролл-бар был у края.
           <div key={entry.contentKey} className="overflow-y-auto p-6 sm:p-8">
