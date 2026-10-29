@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {proxyProcedure} from "@/lib/procedureProxy";
 
 const KINDS = new Set(["ACTION", "PROCEDURE", "TAG_WRITE", "PROPERTY_WRITE"]);

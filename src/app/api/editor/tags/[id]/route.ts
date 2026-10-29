@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {backendErrorResponse} from "@/lib/backendProxy";
-import {protectedRoute, decodeJwtUsername} from "@/lib/protected";
+import {protectedRoute, decodeJwtUsername} from "@/server/auth/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 

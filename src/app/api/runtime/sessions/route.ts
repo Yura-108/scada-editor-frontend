@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
+import {fetchWsTicket} from "@/server/auth/wsTicket";
 
 // И REST, и WebSocket монитора идут через gateway (Bearer обязателен). Сам сокет
 // браузер открывает по `wsPath` из ответа — `/ws/runtime/<instanceId>/<sessionId>`:
@@ -35,6 +36,12 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   // Сокет браузер открывает сам (через gateway, по wsPath из этого ответа): httpOnly-cookie
   // ему не видна, а заголовок Authorization браузерный WebSocket слать не умеет — поэтому
-  // отдаём тот же JWT в теле ответа, фронт добавит его как ?token= к wsPath.
-  return NextResponse.json({...data, token}, {status: response.status});
+  // отдаём одноразовый билет, фронт добавит его как ?ticket= к wsPath. Сессия создаётся на
+  // каждое (пере)подключение, значит и билет каждый раз новый.
+  const ticket = await fetchWsTicket(token);
+  if (!ticket) {
+    // runtimeConnection повторит с паузой.
+    return NextResponse.json({message: "Не удалось получить билет для подключения к монитору"}, {status: 503});
+  }
+  return NextResponse.json({...data, ticket}, {status: response.status});
 });

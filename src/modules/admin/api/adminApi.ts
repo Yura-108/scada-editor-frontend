@@ -44,6 +44,11 @@ export const resetUserPassword = async (id: number, password: string): Promise<v
   await request(`/users/${id}/password`, {method: "PUT", body: JSON.stringify({password})});
 };
 
+/** Гасит все сеансы пользователя: refresh-токены и уже выданные access-токены. Ответ 204. */
+export const revokeUserSessions = async (id: number): Promise<void> => {
+  await request(`/users/${id}/revoke-sessions`, {method: "POST"});
+};
+
 export const deleteUser = async (id: number): Promise<void> => {
   await request(`/users/${id}`, {method: "DELETE"});
 };

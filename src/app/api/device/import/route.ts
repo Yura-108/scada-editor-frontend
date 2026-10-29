@@ -1,4 +1,4 @@
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {backendErrorResponse} from "@/lib/backendProxy";
 import {NextRequest, NextResponse} from "next/server";
 

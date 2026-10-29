@@ -3,6 +3,7 @@ import {Client, type StompSubscription} from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayHttpOrigin} from "@/lib/gatewayOrigin";
+import {refreshSessionCookie} from "@/core/access";
 import {useEditorStore} from "../../model/editorStore";
 import {useSceneChangeStore} from "@/store/useSceneChangeStore";
 
@@ -46,6 +47,10 @@ export function useSceneChangedNotifications() {
       webSocketFactory: () =>
         new SockJS(`${gatewayHttpOrigin()}/ws/editor`, null, {withCredentials: true} as never),
       reconnectDelay: RECONNECT_DELAY_MS,
+      // Cookie живёт столько же, сколько access-токен: перед каждым (пере)подключением просим
+      // BFF освежить её, иначе после долгого простоя страницы gateway ответит 401. Сбой — не
+      // повод не подключаться: STOMP сам повторит через RECONNECT_DELAY_MS.
+      beforeConnect: () => refreshSessionCookie().catch(err => log("не удалось освежить cookie:", err)),
     });
 
     const resubscribe = () => {

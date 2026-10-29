@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 
 // Как и создание сессии/снапшот — REST идёт через gateway, не напрямую на :8085.
 const BACKEND_URL = process.env.BACKEND_URL_RUNTIME || process.env.BACKEND_URL || "http://localhost:8080";

@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {badPath, parseId, passThrough} from "@/lib/editorHistoryProxy";
 import {RUNTIME_BACKEND_URL} from "@/lib/procedureProxy";
 import type {PropertyWriteItemDto} from "@/types/runtimeWrite.types";

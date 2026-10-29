@@ -1,6 +1,12 @@
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export async function callAuth(path: string, body: { login: string; password: string }) {
+/** `Retry-After` в секундах; формат даты и мусор — `null`. */
+const parseRetryAfter = (header: string | null): number | null => {
+  const seconds = Number(header);
+  return header && Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+};
+
+export async function callAuth(path: string, body: Record<string, string>) {
   const response = await fetch(`${BACKEND_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -23,5 +29,6 @@ export async function callAuth(path: string, body: { login: string; password: st
     ok: response.ok,
     status: response.status,
     data,
+    retryAfter: parseRetryAfter(response.headers.get('Retry-After')),
   };
 }
