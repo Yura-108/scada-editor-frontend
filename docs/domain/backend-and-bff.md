@@ -8,8 +8,8 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
 
 - `BACKEND_URL_EDITOR` (default `http://localhost:8080`) — editor/scene/component APIs.
 - `BACKEND_URL` — device/channel APIs.
-- Auth: `protectedRoute` (`src/lib/protected.ts`) reads the `access_token` httpOnly cookie and forwards it as `Authorization: Bearer …`. Wrap every backend-touching route with it.
-- The cookie's `Secure` flag follows the **request's protocol** (`isHttpsRequest` in `src/lib/setTokenCookies.ts`, honours `x-forwarded-proto`), never `NODE_ENV`: the stand and the Docker package are production builds served over http, where a `Secure` cookie is silently dropped for anything but `localhost`. Login and logout must set the same attributes, or the logout cannot overwrite it.
+- Auth: `protectedRoute` (`src/server/auth/protected.ts`) reads the `access_token` httpOnly cookie and forwards it as `Authorization: Bearer …`. Wrap every backend-touching route with it.
+- The cookie's `Secure` flag follows the **request's protocol** (`isHttpsRequest` in `src/server/auth/setTokenCookies.ts`, honours `x-forwarded-proto`), never `NODE_ENV`: the stand and the Docker package are production builds served over http, where a `Secure` cookie is silently dropped for anything but `localhost`. Login and logout must set the same attributes, or the logout cannot overwrite it.
 
 **Browser-side connections** (monitor WebSocket, editor STOMP) go to the gateway directly, not through
 the BFF: `src/lib/gatewayOrigin.ts` builds the origin from the **page's hostname** + port 8080

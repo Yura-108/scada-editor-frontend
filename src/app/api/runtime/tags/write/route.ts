@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import type {TagWriteItemDto} from "@/types/runtimeWrite.types";
 
 // Как и применение рецепта: REST идёт через gateway, не напрямую на :8085.

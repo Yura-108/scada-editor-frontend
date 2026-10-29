@@ -1,4 +1,4 @@
-import { protectedRoute } from "@/lib/protected";
+import { protectedRoute } from "@/server/auth/protected";
 import {NextResponse} from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';

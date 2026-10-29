@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isHttpsRequest } from '@/lib/setTokenCookies';
+import { isHttpsRequest } from '@/server/auth/setTokenCookies';
 
 export async function POST(request: Request) {
   const response = NextResponse.json({ message: 'Выход выполнен' }, { status: 200 });

@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {backendErrorResponse} from "@/lib/backendProxy";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {
   badPath,
   buildVersionsQuery,

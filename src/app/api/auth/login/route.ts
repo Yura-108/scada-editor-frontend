@@ -1,5 +1,5 @@
-import { setTokenCookie } from '@/lib/setTokenCookies';
-import { callAuth } from '@/lib/auth';
+import { setTokenCookie } from '@/server/auth/setTokenCookies';
+import { callAuth } from '@/server/auth/auth';
 
 export async function POST(request: Request) {
   const body = await request.json();

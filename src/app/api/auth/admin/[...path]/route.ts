@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
-import {proxyAuth} from "@/lib/authProxy";
+import {protectedRoute} from "@/server/auth/protected";
+import {proxyAuth} from "@/server/auth/authProxy";
 
 /**
  * Админка: `/api/auth/admin/**` один в один. Сегменты пути проверяются — они

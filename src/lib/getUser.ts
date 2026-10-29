@@ -1,5 +1,5 @@
 import {cookies} from "next/headers";
-import {decodeJwtClaims} from "@/lib/protected";
+import {decodeJwtClaims} from "@/server/auth/protected";
 
 export interface SessionUser {
   login: string;

@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import { backendErrorResponse } from '@/lib/backendProxy';
 import {normalizeSaveResponse, toSaveEnvelope} from '@/lib/saveEnvelope';
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 

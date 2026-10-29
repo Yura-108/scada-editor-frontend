@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {
   badRecipeId, missingProjectId, parseProjectId, parseRecipeId, parseSessionId, proxyProcedure,
 } from "@/lib/procedureProxy";

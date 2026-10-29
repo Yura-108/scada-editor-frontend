@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {badPath, parseId} from "@/lib/editorHistoryProxy";
 
 /** automation доступен через gateway (/api/automation/**). */

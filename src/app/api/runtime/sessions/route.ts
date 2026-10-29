@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 
 // И REST, и WebSocket монитора идут через gateway (Bearer обязателен). Сам сокет
 // браузер открывает по `wsPath` из ответа — `/ws/runtime/<instanceId>/<sessionId>`:

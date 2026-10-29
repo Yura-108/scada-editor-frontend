@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { decodeJwtClaims } from '@/lib/protected';
+import { decodeJwtClaims } from '@/server/auth/protected';
 
 /** Сколько живёт cookie, если срок из токена вычитать не удалось. Совпадает с бэкендом. */
 const FALLBACK_MAX_AGE = 60 * 60 * 24;
