@@ -46,6 +46,8 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
   значения не хранить, `fetch` в сторах и компонентах не писать.
 - **Цвета интерфейса — только токенами темы** (`bg-card`, `text-muted-foreground`, `border-input`,
   `text-warning`…), без `gray-500`/`indigo-600`/`[#hex]`. Таблица — `docs/architecture.md`, «UI-kit: цвета».
+- **Поля — только из `shared/ui/field`** (`Field`, `Input`, `Textarea`, `Checkbox`, `Select`, `SearchInput`),
+  свой класс поля в файле не заводить. Что когда брать — `docs/architecture.md`, «UI-kit: поля».
 - **Окна — только из `shared/ui/dialog`** (`openModal`/`pushModal`, `confirmModal`/`promptModal`/
   `choiceModal`, локальный `Modal`), свой `Dialog.Root` не заводить. Что когда брать —
   `docs/architecture.md`, «UI-kit: окна».

@@ -193,6 +193,33 @@ ui/properties-panel/
   `Dialog.Title` и `ModalFooter`, прежняя прокручиваемая область с отступами); его заменит общий
   выбор тега (ветка `tag-picker`). Тогда флаг и старая обёртка в `ModalRoot` удаляются.
 
+### UI-kit: поля
+
+Поля — из `src/shared/ui/field/`. Свой класс поля (`inputClass`, `fieldInput`) в файле не заводится.
+
+| Что нужно | Что брать |
+|---|---|
+| Подпись + поле + подсказка или ошибка | `<Field label hint error><Input …/></Field>` — id, `aria-describedby`, `aria-invalid` проставляются сами |
+| Однострочное поле (в т. ч. `number`, `password`, `datetime-local`) | `Input` |
+| Многострочное | `Textarea` |
+| Поиск | `SearchInput` (лупа слева) |
+| Флажок | `<Checkbox label="…" />` — обычный чекбокс в цвете акцента |
+| Выпадающий список | `<Select value onValueChange options placeholder />`; пункты с иконкой — из частей `SelectTrigger`/`SelectContent`/`SelectItem` |
+| Число, строка, цвет, которые применяются сразу (панель свойств) | `NumberInput`, `TextInput`, `ColorField` + `{...historyEditing}` из модуля редактора |
+| Подпись у не-поля (кнопка выбора файла, редактор кода) | `fieldLabelClass` |
+
+- Высоты: `size="md"` — 40px (окна, формы), `size="sm"` — 32px (панели, строки таблиц). У `Button`
+  те же два размера, поэтому поле и кнопка в одной строке вровень.
+- Подписи — обычным регистром (`text-sm font-medium`), без мелких заглавных.
+- `Select` с пунктом `value: ""` («Без проверки», «Все») работает: Radix такое значение запрещает,
+  компонент подменяет его внутри. Список раскрывается под триггером (`popper`).
+- `NumberInput`/`TextInput`/`ColorField` сами об истории не знают: о начале, конце и отмене правки
+  сообщают `onEditStart`/`onEditEnd`/`onEditCancel` (`EditSession`); редактор склеивает правку в один
+  шаг undo через `historyEditing` (`modules/editor/model/historyGroup`).
+- Пока не переведены: страницы и панели (панель свойств, автоматизация, данные, админка, плавающие
+  окна монитора, каналы, журнал действий) и 25 обычных `<select>` в них — ветка `ui-fields-pages`;
+  `OpenChooseTagModal` со своим Radix Select (`SelectItem`, `selectStyles`) — ветка `tag-picker`.
+
 ## 4. Состояние
 
 Три вида состояния — три инструмента:
@@ -345,7 +372,6 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 
 | Файл | Почему не в `shared` | Что сделать |
 |---|---|---|
-| `components/ui/NumberInput`, `TextInput`, `ColorField` | зависят от `historyGroup` модуля редактора (`@/modules/editor`) (группировка undo редактора) | передавать начало/конец правки через пропсы — тогда в `shared/ui` |
 | `components/ui/ReadOnlyBanner`, `AccessLevelSelect` | тексты и типы прав проекта | `core/access` |
 | `components/ui/Open*Modal`, `ProjectModal`, `ContextMenu`, `TitleRenderer`, … | бизнес-модалки со сторами | в модули своих областей (шаг 8) |
 
