@@ -22,3 +22,6 @@ export const fieldSizes: Record<FieldSize, string> = {
 
 /** Подпись над полем — у `Field` и там, где подписан не `Input`, а, например, кнопка выбора файла. */
 export const fieldLabelClass = "block text-sm font-medium text-foreground";
+
+/** Подпись над полем `sm` в плотных местах — панель свойств, строки настроек. */
+export const fieldLabelSmClass = "block text-xs font-medium text-muted-foreground";

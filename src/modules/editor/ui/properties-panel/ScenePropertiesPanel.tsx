@@ -4,15 +4,10 @@ import React, {useMemo} from "react";
 import {useEditorStore} from "../../model/editorStore";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {resolveSheet, SHEET_PRESETS, SHEET_MIN, SHEET_MAX, isSameSheet} from "@/core/scene";
-import {cn} from "@/shared/lib/cn";
 import {historyEditing} from "../../model/historyGroup";
-
-const inputClasses = cn(
-  "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",
-  "text-gray-900 dark:text-neutral-100",
-  "focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50",
-  "transition-all duration-200 hover:border-gray-400 dark:hover:border-neutral-600",
-);
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {baseInputClasses} from "./panelClasses";
+import {Select} from "@/shared/ui/field/Select";
 
 /**
  * Свойства самой сцены — показываются, когда ничего не выделено.
@@ -31,7 +26,7 @@ export function ScenePropertiesPanel() {
   const preset = SHEET_PRESETS.find(p => isSameSheet(p, sheet));
 
   const label = (text: string, htmlFor: string) => (
-    <label htmlFor={htmlFor} className="block text-xs font-medium text-gray-600 dark:text-neutral-400">
+    <label htmlFor={htmlFor} className={fieldLabelSmClass}>
       {text}
     </label>
   );
@@ -49,24 +44,21 @@ export function ScenePropertiesPanel() {
 
       <div className="space-y-1.5">
         {label("Формат", "sheet-preset")}
-        <select
+        {/* Импортированная сцена берёт размер из файла и номиналу ISO не обязана
+            соответствовать — для неё показываем «свой». */}
+        <Select
           id="sheet-preset"
-          className={inputClasses}
+          size="sm"
           value={preset?.label ?? ""}
-          onChange={(e) => {
-            const next = SHEET_PRESETS.find(p => p.label === e.target.value);
+          onValueChange={(v) => {
+            const next = SHEET_PRESETS.find(p => p.label === v);
             if (next) setSheet(next.w, next.h);
           }}
-        >
-          {/* Импортированная сцена берёт размер из файла и номиналу ISO не обязана
-              соответствовать — для неё показываем «свой». */}
-          {!preset && <option value="">Свой размер</option>}
-          {SHEET_PRESETS.map(p => (
-            <option key={p.label} value={p.label}>
-              {p.label} — {p.w} × {p.h}
-            </option>
-          ))}
-        </select>
+          options={[
+            ...(!preset ? [{value: "", label: "Свой размер"}] : []),
+            ...SHEET_PRESETS.map(p => ({value: p.label, label: `${p.label} — ${p.w} × ${p.h}`})),
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -74,7 +66,7 @@ export function ScenePropertiesPanel() {
           {label("Ширина", "sheet-w")}
           <NumberInput {...historyEditing}
             id="sheet-w"
-            className={inputClasses}
+            className={baseInputClasses}
             value={sheet.w}
             min={SHEET_MIN}
             max={SHEET_MAX}
@@ -86,7 +78,7 @@ export function ScenePropertiesPanel() {
           {label("Высота", "sheet-h")}
           <NumberInput {...historyEditing}
             id="sheet-h"
-            className={inputClasses}
+            className={baseInputClasses}
             value={sheet.h}
             min={SHEET_MIN}
             max={SHEET_MAX}

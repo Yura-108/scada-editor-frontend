@@ -2,7 +2,6 @@
 
 import {useState} from "react";
 import {Boxes} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {GRID} from "@/core/scene";
 import {DiagramElement} from "@/types/editorElement.type";
 import {ColorField} from "@/shared/ui/field/ColorField";
@@ -15,6 +14,8 @@ import type {TableCellModel} from "../../hooks/useTableCell";
 import {baseAddButtonClasses, baseInputClasses} from "../../panelClasses";
 import {TableCellBindingFields} from "./TableCellBindingFields";
 import {historyEditing} from "../../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {Select} from "@/shared/ui/field/Select";
 
 interface TableCellSectionProps {
   element: DiagramElement;
@@ -69,18 +70,19 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
       />
 
       <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+        <label className={fieldLabelSmClass}>
           Выравнивание
         </label>
-        <select
-          className={cn(baseInputClasses, "appearance-none pr-8")}
+        <Select
+          size="sm"
           value={cellData?.align ?? "left"}
-          onChange={(e) => patchCell({align: e.target.value as "left" | "center" | "right"})}
-        >
-          <option value="left">Слева</option>
-          <option value="center">По центру</option>
-          <option value="right">Справа</option>
-        </select>
+          onValueChange={(v) => patchCell({align: v as "left" | "center" | "right"})}
+          options={[
+            {value: "left", label: "Слева"},
+            {value: "center", label: "По центру"},
+            {value: "right", label: "Справа"},
+          ]}
+        />
       </div>
 
       {/* Размер полос, которым принадлежит ячейка. Правится и мышью —
@@ -90,7 +92,7 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
           <div className="space-y-1.5">
             <label
               htmlFor="cell-col-width"
-              className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight"
+              className={fieldLabelSmClass}
             >
               Ширина столбца
             </label>
@@ -105,7 +107,7 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
           <div className="space-y-1.5">
             <label
               htmlFor="cell-row-height"
-              className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight"
+              className={fieldLabelSmClass}
             >
               Высота строки
             </label>

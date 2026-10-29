@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type { EditSession } from "./editSession";
+import { cn } from "@/shared/lib/cn";
+import { fieldBase, fieldSizes, type FieldSize } from "./fieldStyles";
 
 interface TextInputProps extends EditSession {
   id?: string;
@@ -9,6 +11,8 @@ interface TextInputProps extends EditSession {
   value: string | undefined;
   onCommit: (value: string) => void;
   className?: string;
+  /** Высота поля; по умолчанию `sm` — поля панели свойств. */
+  size?: FieldSize;
   placeholder?: string;
 }
 
@@ -26,7 +30,7 @@ interface TextInputProps extends EditSession {
  *
  * Escape возвращает строку, которая была до начала правки, и не оставляет следа в истории.
  */
-export function TextInput({ id, value, onCommit, className, placeholder, onEditStart, onEditEnd, onEditCancel }: TextInputProps) {
+export function TextInput({ id, value, onCommit, className, size = "sm", placeholder, onEditStart, onEditEnd, onEditCancel }: TextInputProps) {
   // draft === null — поле не редактируется и просто показывает значение из стора
   // (так оно само следует за undo/redo и сменой выделенного элемента).
   const [draft, setDraft] = useState<string | null>(null);
@@ -83,7 +87,7 @@ export function TextInput({ id, value, onCommit, className, placeholder, onEditS
       ref={inputRef}
       id={id}
       type="text"
-      className={className}
+      className={cn(fieldBase, fieldSizes[size], className)}
       value={displayed}
       placeholder={placeholder}
       onChange={(e) => {

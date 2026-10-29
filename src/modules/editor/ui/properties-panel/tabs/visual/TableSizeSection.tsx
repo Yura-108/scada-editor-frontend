@@ -7,6 +7,7 @@ import {useEditorStore} from "../../../../model/editorStore";
 import type {TableTracks} from "../../lib/tableTracks";
 import {baseInputClasses} from "../../panelClasses";
 import {historyEditing} from "../../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 /**
  * Размеры таблицы, не привязанные к конкретной ячейке. «Выровнять»
@@ -25,7 +26,7 @@ export function TableSizeSection({elementKey, tableTracks}: {elementKey: string;
           <div className="space-y-1.5">
             <label
               htmlFor="table-header-h"
-              className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
+              className={cn(fieldLabelSmClass, "mb-1.5")}
             >
               Высота заголовка
             </label>

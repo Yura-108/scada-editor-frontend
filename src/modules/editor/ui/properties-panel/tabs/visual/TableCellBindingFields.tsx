@@ -1,16 +1,16 @@
 "use client";
 
 import {Boxes, Trash2} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import type {CellSourceField} from "@/types/binding.types";
 import {TextInput} from "@/shared/ui/field/TextInput";
 import {cellSourceFieldsFor} from "@/core/scene";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableCellModel} from "../../hooks/useTableCell";
-import {propertyKey} from "../../lib/propertyOrder";
 import {baseInputClasses} from "../../panelClasses";
 import {historyEditing} from "../../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {Select} from "@/shared/ui/field/Select";
 
 /** Чем заполнена ячейка: полем свойства таблицы, свободным текстом или прежней привязкой. */
 export function TableCellBindingFields({element, cell}: {element: DiagramElement; cell: TableCellModel}) {
@@ -24,53 +24,49 @@ export function TableCellBindingFields({element, cell}: {element: DiagramElement
           указывается только, что из них показать в этой ячейке. */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+          <label className={fieldLabelSmClass}>
             Свойство
           </label>
-          <select
-            className={cn(baseInputClasses, "appearance-none pr-8")}
+          <Select
+            size="sm"
             value={ownCellBinding?.cell?.propertyName ?? ""}
-            onChange={(e) => {
-              const name = e.target.value;
+            onValueChange={(name) => {
               if (!name) {
                 if (ownCellBinding) removeBinding(element.key, ownCellBinding.id);
                 return;
               }
               bindCell(name, ownCellBinding?.cell?.field ?? "value");
             }}
-          >
-            <option value="">— свободный текст —</option>
-            {(element.properties ?? []).map(p => (
-              <option key={propertyKey(p)} value={p.name}>
-                {p.label?.trim() ? `${p.name} — ${p.label.trim()}` : p.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              {value: "", label: "— свободный текст —"},
+              ...(element.properties ?? []).map(p => ({
+                value: p.name,
+                label: p.label?.trim() ? `${p.name} — ${p.label.trim()}` : p.name,
+              })),
+            ]}
+          />
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+          <label className={fieldLabelSmClass}>
             Поле
           </label>
-          <select
-            className={cn(baseInputClasses, "appearance-none pr-8")}
+          <Select
+            size="sm"
             value={ownCellBinding?.cell?.field ?? "value"}
             disabled={!ownCellBinding}
-            onChange={(e) => {
+            onValueChange={(v) => {
               if (!ownCellBinding?.cell) return;
-              bindCell(ownCellBinding.cell.propertyName, e.target.value as CellSourceField);
+              bindCell(ownCellBinding.cell.propertyName, v as CellSourceField);
             }}
-          >
-            {cellSourceFieldsFor(ownCellBinding?.cell?.field).map(f => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
+            options={cellSourceFieldsFor(ownCellBinding?.cell?.field)}
+          />
         </div>
       </div>
 
       {!ownCellBinding && (
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+          <label className={fieldLabelSmClass}>
             Текст
           </label>
           {/* Как и остальные текстовые поля: коммит по blur/Enter —

@@ -31,7 +31,7 @@ export function StateSelect({elementKey, states}: Props) {
       value={normalizedSelectedValue}
       onValueChange={(value) => setCurrentComponentStateId(elementKey, value)}
     >
-      <SelectTrigger aria-label="Выберите состояние">
+      <SelectTrigger size="sm" aria-label="Выберите состояние">
         <SelectValue placeholder="Выберите состояние..." />
       </SelectTrigger>
       <SelectContent className="min-w-[180px]">

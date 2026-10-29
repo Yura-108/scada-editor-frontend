@@ -14,6 +14,7 @@ import {validateRecipe} from "../../lib/recipeValidation";
 import {shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useCurrentProjectGrant} from "@/core/access";
+import {RecipeValueCell} from "./RecipeValueCell";
 
 /**
  * Процедурные рецепты открытого проекта. Рецепт не принадлежит ни компоненту, ни сцене —
@@ -35,15 +36,6 @@ const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []
 
 const cellClass = "px-4 py-2 align-top";
 const headClass = "px-4 py-2 font-medium";
-
-const inputClass = cn(
-  "w-full rounded-md border bg-white dark:bg-gray-900/80",
-  "border-gray-300 dark:border-gray-700/80",
-  "px-2 py-1 text-sm text-gray-900 dark:text-gray-100",
-  "placeholder:text-gray-400 dark:placeholder:text-gray-600",
-  "outline-hidden hover:border-gray-400 dark:hover:border-gray-600",
-  "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
-);
 
 export function RecipesPanel() {
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
@@ -361,24 +353,11 @@ export function RecipesPanel() {
                                                 {tag.description || "—"}
                                               </td>
                                               <td className={cellClass}>
-                                                {tag.value_type === "bool" ? (
-                                                  <select
-                                                    className={inputClass}
-                                                    value={text}
-                                                    onChange={(e) => editValue(recipe, index, tag.name, e.target.value)}
-                                                  >
-                                                    <option value="">не пишется</option>
-                                                    <option value="true">true</option>
-                                                    <option value="false">false</option>
-                                                  </select>
-                                                ) : (
-                                                  <input
-                                                    className={inputClass}
-                                                    value={text}
-                                                    placeholder="не пишется"
-                                                    onChange={(e) => editValue(recipe, index, tag.name, e.target.value)}
-                                                  />
-                                                )}
+                                                <RecipeValueCell
+                                                  valueType={tag.value_type}
+                                                  text={text}
+                                                  onChange={(v) => editValue(recipe, index, tag.name, v)}
+                                                />
                                               </td>
                                             </tr>
                                           );

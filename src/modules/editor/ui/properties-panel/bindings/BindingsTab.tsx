@@ -11,6 +11,7 @@ import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
 import {ChooseTagModal} from "./ChooseTagModal";
 import {shortTagPath} from "@/core/scene";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
 
 interface BindingsTabProps {
   element: DiagramElement;
@@ -85,12 +86,10 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
                 )}
               >
                 {/* Тумблер включения */}
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={binding.enabled}
                   title={binding.enabled ? "Привязка активна" : "Привязка выключена"}
                   onChange={e => updateBinding(element.key, binding.id, {enabled: e.target.checked})}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-blue-500"
                 />
 
                 {binding.direct && binding.tag ? (

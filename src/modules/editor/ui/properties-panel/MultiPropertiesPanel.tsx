@@ -9,6 +9,10 @@ import {getRenderedElement} from "@/core/scene";
 import {ColorField} from "@/shared/ui/field/ColorField";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {historyEditing} from "../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {baseInputClasses} from "./panelClasses";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Select} from "@/shared/ui/field/Select";
 
 interface MultiPropertiesPanelProps {
   elements: DiagramElement[];
@@ -49,15 +53,8 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
 
   const apply = (key: string, value: unknown) => updateElementsVisual(keys, {[key]: value});
 
-  const baseInputClasses = cn(
-    "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",
-    "text-gray-900 dark:text-neutral-100 placeholder:text-gray-500 dark:placeholder:text-neutral-600",
-    "focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50",
-    "transition-all duration-200 hover:border-gray-400 dark:hover:border-neutral-600",
-  );
-
   const label = (text: string, htmlFor: string) => (
-    <label htmlFor={htmlFor} className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight">
+    <label htmlFor={htmlFor} className={cn(fieldLabelSmClass, "mb-1.5")}>
       {text}
     </label>
   );
@@ -106,29 +103,27 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
         return (
           <div key={prop.key} className="space-y-1.5">
             {label(prop.label, id)}
-            <select
-              id={id} className={cn(baseInputClasses, "appearance-none pr-8")}
+            <Select
+              id={id}
+              size="sm"
               value={typeof shared === "string" ? shared : ""}
-              onChange={(e) => apply(prop.key, e.target.value)}
-            >
-              {shared === undefined && <option value="" disabled>— разные —</option>}
-              {prop.options?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
+              onValueChange={(v) => apply(prop.key, v)}
+              options={[
+                ...(shared === undefined ? [{value: "", label: "— разные —", disabled: true}] : []),
+                ...(prop.options ?? []),
+              ]}
+            />
           </div>
         );
       case "boolean":
         return (
           <div key={prop.key} className="flex items-center gap-2 py-1">
-            <input
-              id={id} type="checkbox"
+            <Checkbox
               checked={shared === true}
               ref={(node) => { if (node) node.indeterminate = shared === undefined; }}
               onChange={(e) => apply(prop.key, e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-blue-500"
+              label={prop.label}
             />
-            <label htmlFor={id} className="text-sm text-gray-800 dark:text-neutral-300 cursor-pointer select-none">
-              {prop.label}
-            </label>
           </div>
         );
       default:
