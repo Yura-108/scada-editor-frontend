@@ -234,6 +234,6 @@ export function OpenCreateFaceplateModal(faceplate: DiagramElement[]) {
       onUpdateAction={updatePaletteItem}
       faceplate={faceplate}
     />,
-    {size: "lg"},
+    {size: "lg", closeOnOverlay: false},
   );
 }

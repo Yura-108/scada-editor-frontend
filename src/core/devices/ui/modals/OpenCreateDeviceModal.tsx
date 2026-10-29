@@ -151,6 +151,6 @@ export function OpenCreateDeviveModal(nodeKey: string) {
     return;
   }
 
-  openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={templates} nodeKey={nodeKey} />, {size: "md"});
+  openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={templates} nodeKey={nodeKey} />, {size: "md", closeOnOverlay: false});
 }
 
