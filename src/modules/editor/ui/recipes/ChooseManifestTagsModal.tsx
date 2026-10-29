@@ -3,11 +3,12 @@
 import React, {useMemo, useState} from "react";
 import Tree from "rc-tree";
 import type {Key} from "rc-tree/es/interface";
-import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "lucide-react";
+import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {Button} from "@/shared/ui/Button";
 import Modal from "@/shared/ui/dialog/Modal";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo, useDeviceTreeStore} from "@/core/devices";
 import {buildManifestTags} from "../../lib/tagMeta";
 import {shortTagPath} from "@/core/scene";
@@ -134,23 +135,12 @@ export function ChooseManifestTagsModal({open, onClose, takenNames, onPick}: Pro
         </div>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col gap-3">
-          <div className="relative shrink-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-600 pointer-events-none" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по пути тега"
-              className={cn(
-                "w-full rounded-xl border bg-white dark:bg-gray-900/80",
-                "border-gray-300 dark:border-gray-700/80",
-                "py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100",
-                "placeholder:text-gray-400 dark:placeholder:text-gray-600",
-                "outline-hidden hover:border-gray-400 dark:hover:border-gray-600",
-                "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
-              )}
-            />
-          </div>
+          <SearchInput
+            className="shrink-0"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по пути тега"
+          />
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950/70 px-2 py-3">
             {treeData.length === 0 ? (

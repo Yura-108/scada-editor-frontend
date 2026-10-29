@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import {useFieldContext} from "./Field";
 import {fieldBase, fieldSizes, type FieldSize} from "./fieldStyles";
 
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
+export type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   size?: FieldSize;
   ref?: React.Ref<HTMLInputElement>;
 };
