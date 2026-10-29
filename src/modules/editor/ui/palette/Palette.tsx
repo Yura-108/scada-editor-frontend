@@ -6,7 +6,7 @@ import {Search, X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 

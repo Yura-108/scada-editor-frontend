@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { GRID } from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
-import { useModalStore } from "@/store/modalStore";
+import { isModalOpen } from "@/shared/ui/dialog/modalStore";
 import { beginHistoryGroup, endHistoryGroup } from "../../../model/historyGroup";
 
 /**
@@ -23,7 +23,7 @@ export function shouldIgnoreEditorHotkey(e: KeyboardEvent): boolean {
   if (target instanceof HTMLElement && target.closest('[role="dialog"], [role="alertdialog"]')) return true;
 
   // Модалка открыта, но фокус мог остаться на body (например, клик по оверлею).
-  if (useModalStore.getState().open) return true;
+  if (isModalOpen()) return true;
 
   return false;
 }

@@ -14,43 +14,45 @@ import { cn } from "@/shared/lib/cn";
  * тёмно-синем. Здесь один источник правды.
  */
 type Variant = "primary" | "secondary" | "danger";
+/** `md` — кнопки окон и форм, `sm` — компактные кнопки в панелях и строках таблиц. */
+type Size = "md" | "sm";
 
+// Рамка есть у всех вариантов (у сплошных — прозрачная): иначе «Отмена» с рамкой
+// на 2px выше соседней «Создать». Наведение — только у активной кнопки (`enabled:`).
 const base = cn(
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium",
-  "transition-all disabled:cursor-not-allowed",
+  "inline-flex items-center justify-center gap-2 rounded-lg border font-medium",
+  "transition-colors disabled:cursor-not-allowed",
 );
+
+// Неактивная главная кнопка — серая, а не бледный акцент: «нельзя нажать» должно
+// читаться сразу.
+const disabledSolid = "disabled:border-input disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none";
 
 const variants: Record<Variant, string> = {
   primary: cn(
-    "px-6 py-2.5 text-white shadow-lg shadow-indigo-500/30",
-    "bg-linear-to-r from-indigo-600 to-blue-600",
-    "hover:from-indigo-500 hover:to-blue-500",
-    "disabled:from-gray-300 disabled:to-gray-400 disabled:text-gray-500 disabled:shadow-none",
-    "dark:disabled:from-gray-700 dark:disabled:to-gray-600 dark:disabled:text-gray-400",
+    "border-transparent bg-primary text-primary-foreground shadow-sm enabled:hover:bg-primary/90",
+    disabledSolid,
   ),
-  secondary: cn(
-    "px-5 py-2.5",
-    "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700",
-    "border border-gray-300 dark:border-gray-700",
-    "hover:border-gray-400 dark:hover:border-gray-600",
-    "text-gray-700 dark:text-gray-300",
-    "disabled:opacity-60",
-  ),
+  secondary: "border-input bg-transparent text-foreground enabled:hover:bg-accent disabled:opacity-60",
   danger: cn(
-    "px-6 py-2.5 text-white shadow-lg shadow-red-500/30",
-    "bg-red-600 hover:bg-red-500",
-    "disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none",
-    "dark:disabled:bg-gray-700 dark:disabled:text-gray-400",
+    "border-transparent bg-destructive text-destructive-foreground shadow-sm enabled:hover:bg-destructive/90",
+    disabledSolid,
   ),
+};
+
+const sizes: Record<Size, string> = {
+  md: "px-5 py-2.5",
+  sm: "px-3 py-1.5 text-sm",
 };
 
 export function Button({
   variant = "secondary",
+  size = "md",
   className,
   type = "button",
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return <button type={type} className={cn(base, variants[variant], className)} {...props} />;
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
+  return <button type={type} className={cn(base, variants[variant], sizes[size], className)} {...props} />;
 }
 
 /** Ряд кнопок внизу модалки. */

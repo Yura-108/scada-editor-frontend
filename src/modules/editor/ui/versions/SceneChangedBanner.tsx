@@ -5,7 +5,7 @@ import {hasUnsavedWork} from "../../model/editorStoreInternals";
 import {useEditorStore} from "../../model/editorStore";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {useSceneChangeStore, useVisibleSceneChange} from "@/store/useSceneChangeStore";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {dropScene} from "@/core/project";
 
 /**

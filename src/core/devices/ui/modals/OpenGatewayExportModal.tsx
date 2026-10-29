@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {Check, Copy, Download, FileDown} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {copyText, downloadText} from "@/shared/lib/downloadText";
 import {safeFileName} from "@/shared/lib/downloadJson";
@@ -151,5 +151,5 @@ function GatewayExportContent({root}: {root: string}) {
 }
 
 export function openGatewayExportModal(root: string) {
-  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {variant: "fullscreen"});
+  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {size: "fullscreen"});
 }

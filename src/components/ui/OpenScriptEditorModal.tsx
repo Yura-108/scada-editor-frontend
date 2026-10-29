@@ -1,4 +1,4 @@
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import React, {useId, useState, useEffect, useMemo} from "react";
 import CodeMirror from '@uiw/react-codemirror';
@@ -177,5 +177,5 @@ export function ScriptEditorModalContent({
 export function openScriptEditorModal(props: ScriptModalProps) {
   const {openModal} = useModalStore.getState();
 
-  openModal(<ScriptEditorModalContent {...props} />, {variant: "fullscreen"})
+  openModal(<ScriptEditorModalContent {...props} />, {size: "fullscreen"})
 }

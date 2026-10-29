@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import {KeyRound, LogOut, Trash2} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
-import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {confirmModal, promptModal} from "@/shared/ui/dialog/confirmModal";
 import {passwordProblem} from "@/components/auth/ChangePasswordModal";
 import {logoutToLogin, useSessionUserStore} from "@/core/access";
 import {deleteUser, resetUserPassword, revokeUserSessions, updateUser, type AdminUser} from "../api/adminApi";

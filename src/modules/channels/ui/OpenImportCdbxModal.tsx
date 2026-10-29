@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {FileUp, FolderPlus} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {pickFile} from "@/shared/lib/pickFile";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";

@@ -3,8 +3,8 @@ import { Geist } from 'next/font/google';
 import Providers from './providers';
 import { ThemeProvider } from 'next-themes';
 import React from 'react';
-import { ModalRoot } from '@/components/ui/ModalRoot';
-import { ConfirmRoot } from '@/components/ui/ConfirmModal';
+import { ModalRoot } from '@/shared/ui/dialog/ModalRoot';
+import { ConfirmRoot } from '@/shared/ui/dialog/ConfirmRoot';
 import { cn } from '@/shared/lib/cn';
 import type { Metadata } from 'next';
 

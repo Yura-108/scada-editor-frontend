@@ -1,5 +1,5 @@
 import type {ProjectRuntimeInfo} from "@/core/project";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import type {EditorState} from "./editorStore";
 import {hasUnsavedWork} from "./editorStoreInternals";
 

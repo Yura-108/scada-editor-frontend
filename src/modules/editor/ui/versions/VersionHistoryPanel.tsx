@@ -5,7 +5,7 @@ import {Clock, Eye, Loader2, RotateCcw, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useCurrentProjectGrant} from "@/core/access";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {
   formatVersionTime,
   VERSION_KIND_BADGE,

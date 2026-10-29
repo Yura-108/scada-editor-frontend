@@ -1,4 +1,4 @@
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import * as Dialog from "@radix-ui/react-dialog";
 import {cn} from "@/shared/lib/cn";
 import {Type} from "lucide-react";

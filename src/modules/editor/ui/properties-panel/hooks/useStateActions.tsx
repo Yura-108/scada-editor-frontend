@@ -1,6 +1,6 @@
 import {toast} from "sonner";
 import {DiagramElement} from "@/types/editorElement.type";
-import {choiceModal, confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {choiceModal, confirmModal, promptModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore} from "../../../model/editorStore";
 
 /** Добавление, удаление и переименование состояний элемента — с вопросами пользователю. */

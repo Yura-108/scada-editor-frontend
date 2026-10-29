@@ -2,7 +2,7 @@ import React, {useMemo, useRef, useState} from "react";
 import CodeMirror, {EditorView} from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {Boxes, ExternalLink, Play, Tag, Terminal, Wand2, X} from "lucide-react";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../../model/editorStore";
 import {cn} from "@/shared/lib/cn";
 import {formatCode} from "@/shared/lib/formatCode";
@@ -405,5 +405,5 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
 
 export function openEventScriptModal(props: EventScriptProps) {
   const {openModal} = useModalStore.getState();
-  openModal(<EventScriptModalContent {...props} />, {variant: "fullscreen"});
+  openModal(<EventScriptModalContent {...props} />, {size: "fullscreen"});
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
+import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "./confirm.types";
 
 export type ConfirmEntry =
   | {
@@ -26,10 +26,9 @@ interface ConfirmState {
   /**
    * Стек диалогов подтверждения.
    *
-   * Отдельный от `modalStore` стек нужен, потому что тот держит РОВНО ОДНО
-   * содержимое: подтверждение, открытое из уже открытой модалки (например,
-   * «Прервать процедуру» внутри ProcedurePanel), вытеснило бы родителя.
-   * Radix спокойно рендерит вложенные диалоги, поэтому здесь именно стек.
+   * Отдельный от `modalStore` стек — отдельный слой (`z-confirm`): подтверждение,
+   * открытое из окна (например, «Прервать процедуру» внутри ProcedurePanel), всегда
+   * поверх всего стека окон, сколько бы их ни открыли после.
    */
   stack: ConfirmEntry[];
   push: (entry: Omit<ConfirmEntry, "id">) => void;

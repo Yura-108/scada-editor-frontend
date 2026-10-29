@@ -4,7 +4,7 @@ import React, {useMemo, useState} from "react";
 import {ChevronDown, Pencil, Search, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useDeleteTemplate, useTemplates} from "../api/templates";
 import {groupTemplates} from "../lib/automationTemplates";
 import {openTemplateModal} from "./OpenTemplateModal";

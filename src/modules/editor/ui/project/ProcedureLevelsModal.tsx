@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {readBackendError, parseProcedureLevels} from "@/core/access";

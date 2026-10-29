@@ -3,7 +3,7 @@
 import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {CheckCircle2} from "lucide-react";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import type {DeviceLayoutReport} from "../../lib/deviceLayoutImport";

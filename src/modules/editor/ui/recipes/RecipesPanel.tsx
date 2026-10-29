@@ -12,7 +12,7 @@ import {openRecipeHistoryModal} from "./RecipeHistoryModal";
 import {setStepValueAt, stepValueText, stepsChanged} from "../../lib/recipeSteps";
 import {validateRecipe} from "../../lib/recipeValidation";
 import {shortTagPath} from "@/core/scene";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useCurrentProjectGrant} from "@/core/access";
 
 /**

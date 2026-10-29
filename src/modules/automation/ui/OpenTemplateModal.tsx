@@ -1,4 +1,4 @@
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {TemplateEditor} from "./TemplateEditor";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 
@@ -13,5 +13,5 @@ interface Options {
  * (тот же приём, что у редактора скриптов элемента).
  */
 export function openTemplateModal(options: Options) {
-  useModalStore.getState().openModal(<TemplateEditor {...options} />, {variant: "fullscreen"});
+  useModalStore.getState().openModal(<TemplateEditor {...options} />, {size: "fullscreen"});
 }

@@ -4,7 +4,7 @@ import React, {useEffect, useMemo, useRef, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useTrendStore} from "@/core/canvas";
 import {buildTrendGeometry, formatTrendTime, formatTrendValue, TREND_WINDOW_PRESETS, trendPens, trendScale, trendTiming, shortTagPath, useSceneView} from "@/core/scene";
 import {Button, ModalFooter} from "@/shared/ui/Button";
@@ -413,5 +413,5 @@ function TrendModalContent({elementKey}: Props) {
 }
 
 export function openTrendModal(props: Props) {
-  useModalStore.getState().openModal(<TrendModalContent {...props} />, {variant: "fullscreen"});
+  useModalStore.getState().openModal(<TrendModalContent {...props} />, {size: "fullscreen"});
 }

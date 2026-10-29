@@ -3,7 +3,7 @@
 import React, {useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {logoutToLogin, readBackendError} from "@/core/access";
 

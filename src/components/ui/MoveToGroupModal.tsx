@@ -5,7 +5,7 @@ import { useEditorStore } from "@/modules/editor";
 import { toast } from "sonner";
 import { MoveRight } from "lucide-react";
 
-import Modal from "@/shared/ui/Modal";
+import Modal from "@/shared/ui/dialog/Modal";
 
 import {
   Select,
