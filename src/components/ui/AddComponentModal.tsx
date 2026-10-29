@@ -109,9 +109,8 @@ export const AddComponentModal = ({
                 </SelectItem>
               ))
             ) : (
-              <SelectItem value="" disabled>
-                Нет доступных компонентов
-              </SelectItem>
+              // Подпись, а не пункт: пункт со значением "" Radix запрещает и падает с ошибкой.
+              <div className="px-2 py-1.5 text-sm text-muted-foreground">Нет доступных компонентов</div>
             )}
           </SelectContent>
         </Select>
