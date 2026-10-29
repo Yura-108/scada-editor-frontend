@@ -4,8 +4,11 @@ import React from "react";
 import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
-import {cellInput, compactButton, iconButton} from "./formStyles";
+import {compactButton, iconButton} from "./formStyles";
 import {useDeviceTreeStore} from "@/core/devices";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 interface Props {
   title: string;
@@ -30,16 +33,16 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">{title}</span>
+        <span className={fieldLabelSmClass}>{title}</span>
         <Button className={compactButton} onClick={() => onChange([...rows, {alias: "", tag: "", value_type: "float"}])}>
           <Plus size={14} />Добавить
         </Button>
       </div>
       {rows.map((row, i) => (
         <div key={i} className="grid grid-cols-[140px_1fr_auto_100px_auto] gap-2 items-center">
-          <input className={cellInput} placeholder="alias" value={row.alias} onChange={e => patch(i, {alias: e.target.value})} />
-          <input
-            className={cellInput}
+          <Input size="sm" placeholder="alias" value={row.alias} onChange={e => patch(i, {alias: e.target.value})} />
+          <Input
+            size="sm"
             /* Пример из шаблона — только подсказка: она исчезает, как только тег введён. */
             placeholder={row.example_tag || tagPlaceholder || "путь тега ПЛК"}
             value={row.tag}
@@ -54,9 +57,12 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
           >
             <ArrowLeftToLine size={14} />
           </Button>
-          <select className={cellInput} value={row.value_type} onChange={e => patch(i, {value_type: e.target.value as AutomationValueType})}>
-            {AUTOMATION_VALUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select
+            size="sm"
+            value={row.value_type}
+            onValueChange={v => patch(i, {value_type: v as AutomationValueType})}
+            options={AUTOMATION_VALUE_TYPES.map(t => ({value: t, label: t}))}
+          />
           <Button className={iconButton} onClick={() => onChange(rows.filter((_, j) => j !== i))} title="Удалить строку"><Trash2 size={14} /></Button>
         </div>
       ))}
