@@ -87,7 +87,7 @@ export const MoveToGroupModal = ({
           onValueChange={setSelectedGroupKey}
           key={isOpen ? "open" : "closed"} // ← Важный фикс
         >
-          <SelectTrigger className="h-12">
+          <SelectTrigger>
             <SelectValue placeholder="Выберите группу..." />
           </SelectTrigger>
 

@@ -95,7 +95,7 @@ export const AddComponentModal = ({
           onValueChange={setSelectedKey}
           key={isOpen ? "open" : "closed"}
         >
-          <SelectTrigger className="h-12">
+          <SelectTrigger>
             <SelectValue placeholder="Выберите компонент..." />
           </SelectTrigger>
 

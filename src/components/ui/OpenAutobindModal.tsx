@@ -184,7 +184,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
               <div className="space-y-2">
                 <label htmlFor={siteField} className={labelClass}>Площадка</label>
                 <Select value={site} onValueChange={setSite}>
-                  <SelectTrigger id={siteField} className="h-12">
+                  <SelectTrigger id={siteField}>
                     <SelectValue placeholder="Выберите площадку…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -196,7 +196,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
               <div className="space-y-2">
                 <label htmlFor={rootField} className={labelClass}>База каналов</label>
                 <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
-                  <SelectTrigger id={rootField} className="h-12">
+                  <SelectTrigger id={rootField}>
                     <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
                   </SelectTrigger>
                   <SelectContent>
