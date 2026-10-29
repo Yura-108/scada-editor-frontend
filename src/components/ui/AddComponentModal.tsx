@@ -17,7 +17,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/shared/ui/select";
+} from "@/shared/ui/field/Select";
 
 interface AddComponentModalProps {
   isOpen: boolean;

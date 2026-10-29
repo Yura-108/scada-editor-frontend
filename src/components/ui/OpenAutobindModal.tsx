@@ -15,7 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/ui/select";
+} from "@/shared/ui/field/Select";
 import type {AutobindMiss, AutobindReport} from "@/types/autobind.types";
 
 const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider";
