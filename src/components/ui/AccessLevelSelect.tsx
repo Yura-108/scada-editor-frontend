@@ -2,6 +2,8 @@
 
 import React from "react";
 import {cn} from "@/shared/lib/cn";
+import {Select} from "@/shared/ui/field/Select";
+import type {FieldSize} from "@/shared/ui/field/fieldStyles";
 import {MAX_ACCESS_LEVEL, MIN_ACCESS_LEVEL} from "@/types/access.types";
 
 const LEVELS = Array.from({length: MAX_ACCESS_LEVEL - MIN_ACCESS_LEVEL + 1}, (_, i) => MIN_ACCESS_LEVEL + i);
@@ -13,6 +15,7 @@ interface Props {
   /** Подпись пустого значения: у скрипта и операции процедуры `null` значит «уровень 1». */
   emptyLabel?: string | null;
   disabled?: boolean;
+  size?: FieldSize;
   className?: string;
 }
 
@@ -20,20 +23,20 @@ interface Props {
  * Уровень доступа 1…10. Выпадающий список, а не число: значений всего десять, а вне
  * диапазона бэкенд отвечает 400 — так ввести недопустимое просто нельзя.
  */
-export function AccessLevelSelect({id, value, onChange, emptyLabel = "— (1)", disabled, className}: Props) {
+export function AccessLevelSelect({id, value, onChange, emptyLabel = "— (1)", disabled, size, className}: Props) {
+  const options = [
+    ...(emptyLabel !== null ? [{value: "", label: emptyLabel}] : []),
+    ...LEVELS.map(level => ({value: String(level), label: String(level)})),
+  ];
   return (
-    <select
+    <Select
       id={id}
-      value={value ?? ""}
+      size={size}
+      value={value === null ? "" : String(value)}
       disabled={disabled}
-      onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))}
-      className={cn(
-        "rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm disabled:opacity-50",
-        className,
-      )}
-    >
-      {emptyLabel !== null && <option value="">{emptyLabel}</option>}
-      {LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
-    </select>
+      onValueChange={v => onChange(v === "" ? null : Number(v))}
+      options={options}
+      className={cn("w-28", className)}
+    />
   );
 }

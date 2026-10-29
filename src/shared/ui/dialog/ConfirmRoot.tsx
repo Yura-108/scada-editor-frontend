@@ -1,9 +1,11 @@
 "use client";
 
 import { AlertTriangle, HelpCircle } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/Button";
+import { Field } from "@/shared/ui/field/Field";
+import { Input } from "@/shared/ui/field/Input";
 import { DialogFrame } from "./DialogFrame";
 import { DialogBody, DialogFooter, DialogHeader } from "./DialogParts";
 import { useConfirmStore, type ConfirmEntry } from "./confirmStore";
@@ -108,7 +110,6 @@ function PromptDialog({ entry, depth }: DialogProps<"prompt">) {
   } = entry.options;
 
   const [value, setValue] = useState(defaultValue);
-  const inputId = useId();
 
   const canSubmit = allowEmpty || value.trim().length > 0;
   const submit = () => { if (canSubmit) settle(value.trim()); };
@@ -116,23 +117,16 @@ function PromptDialog({ entry, depth }: DialogProps<"prompt">) {
   return (
     <DialogFrame layer="confirm" depth={depth} size="sm" showClose={false} onClose={() => settle(null)}>
       <DialogHeader separated={false} title={title} description={description} />
-      <DialogBody className="space-y-2">
-        <label htmlFor={inputId} className="ml-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </label>
-        <input
-          id={inputId}
-          autoFocus
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
-          placeholder={placeholder}
-          className={cn(
-            "w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground outline-hidden",
-            "placeholder:text-muted-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20",
-          )}
-        />
+      <DialogBody>
+        <Field label={label}>
+          <Input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+            placeholder={placeholder}
+          />
+        </Field>
       </DialogBody>
       <DialogFooter separated={false}>
         <Button onClick={() => settle(null)}>Отмена</Button>

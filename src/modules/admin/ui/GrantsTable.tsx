@@ -109,6 +109,8 @@ export function GrantsTable({userId}: {userId: number}) {
                   </td>
                   <td className="px-3 py-1.5 text-center">
                     <AccessLevelSelect
+                      size="sm"
+                      className="mx-auto"
                       value={g.operate ? (g.level ?? 1) : null}
                       emptyLabel={g.operate ? null : "—"}
                       disabled={!g.operate}
