@@ -1,4 +1,4 @@
-import OpenAddPropertyModal from "@/components/ui/OpenChooseTagModal";
+import OpenAddPropertyModal from "./PropertyModal";
 import { PropertyCreateDto } from "@/types/tags.types";
 
 /**

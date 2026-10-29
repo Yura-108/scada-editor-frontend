@@ -4,7 +4,7 @@ import {DndContext, closestCenter} from "@dnd-kit/core";
 import {SortableContext, rectSortingStrategy} from "@dnd-kit/sortable";
 import {AlertTriangle, Plus} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
-import {handleAddProperty} from "@/lib/handleAddProperty";
+import {handleAddProperty} from "../property/handleAddProperty";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {MonitorMenuSettingsBlock} from "../blocks/MonitorMenuSettingsBlock";
 import {TrendSettingsBlock} from "../blocks/TrendSettingsBlock";

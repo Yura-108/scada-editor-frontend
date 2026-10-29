@@ -10,7 +10,8 @@ import { selectContentClassName, selectIconClassName, selectTriggerClassName } f
 import { cn } from "@/shared/lib/cn";
 import {shortTagPath, isBooleanValueType} from "@/core/scene";
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
-import {useEditorStore, confirmDeleteProperty} from "@/modules/editor";
+import {useEditorStore} from "../../../model/editorStore";
+import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { Button, ModalFooter } from "@/shared/ui/Button";
 import {fetchAutomation} from "@/core/automation";

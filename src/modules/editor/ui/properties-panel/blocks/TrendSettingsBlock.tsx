@@ -3,7 +3,7 @@
 import React from "react";
 import {Pencil, Plus, Trash2} from "lucide-react";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
-import OpenAddPropertyModal from "@/components/ui/OpenChooseTagModal";
+import OpenAddPropertyModal from "../property/PropertyModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
