@@ -54,7 +54,7 @@ export function CreateUserForm({onCreated}: {onCreated: (user: AdminUser) => voi
           <input type="checkbox" checked={admin} onChange={e => setAdmin(e.target.checked)} />
           Администратор
         </label>
-        <Button type="submit" variant="primary" className="px-3 py-1.5" disabled={saving || !!problem} title={problem ?? undefined}>
+        <Button type="submit" variant="primary" size="sm" disabled={saving || !!problem} title={problem ?? undefined}>
           <Plus size={14} />Создать
         </Button>
       </div>

@@ -6,6 +6,7 @@ import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {Button} from "@/shared/ui/Button";
+import {Input} from "@/shared/ui/field/Input";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
@@ -100,12 +101,12 @@ function ReleasesContent({projectId, projectName}: Props) {
 
       <DialogBody className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={comment}
             onChange={e => setComment(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !busy) void handleRelease(); }}
             placeholder="Комментарий к выпуску (что изменилось)"
-            className="flex-1 rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+            className="flex-1"
           />
           <Button variant="primary" onClick={() => void handleRelease()} disabled={busy}>
             {busy ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}

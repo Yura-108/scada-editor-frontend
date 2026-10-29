@@ -10,7 +10,9 @@ import {useBindingEditor} from "./useBindingEditor";
 import {ScriptCodeField} from "../script/ScriptCodeField";
 import {ScriptTestRun} from "../script/ScriptTestRun";
 import {PropertyRefChips, TagChips} from "../script/ScopeChips";
-import {chipClasses, scriptInputClasses} from "../script/scriptStyles";
+import {chipClasses} from "../script/scriptStyles";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
 
 interface BindingEditorProps {
   element: DiagramElement;
@@ -46,19 +48,9 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
       />
 
       <DialogBody className="flex flex-col gap-4">
-        <div className="shrink-0">
-          <label className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
-            Название привязки
-          </label>
-          <input
-            autoFocus
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Например, Авария по уровню"
-            className={scriptInputClasses}
-          />
-        </div>
+        <Field label="Название привязки" className="shrink-0">
+          <Input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Например, Авария по уровню" />
+        </Field>
 
         {/* Жёсткий блок: без своего сохранённого свойства бэкенд не даст сохранить
             сцену вообще (component_property_id обязан ссылаться на свойство этого

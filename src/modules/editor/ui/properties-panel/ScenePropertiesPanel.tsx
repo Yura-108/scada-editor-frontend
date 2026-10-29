@@ -2,9 +2,10 @@
 
 import React, {useMemo} from "react";
 import {useEditorStore} from "../../model/editorStore";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {resolveSheet, SHEET_PRESETS, SHEET_MIN, SHEET_MAX, isSameSheet} from "@/core/scene";
 import {cn} from "@/shared/lib/cn";
+import {historyEditing} from "../../model/historyGroup";
 
 const inputClasses = cn(
   "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",
@@ -71,7 +72,7 @@ export function ScenePropertiesPanel() {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           {label("Ширина", "sheet-w")}
-          <NumberInput
+          <NumberInput {...historyEditing}
             id="sheet-w"
             className={inputClasses}
             value={sheet.w}
@@ -83,7 +84,7 @@ export function ScenePropertiesPanel() {
         </div>
         <div className="space-y-1.5">
           {label("Высота", "sheet-h")}
-          <NumberInput
+          <NumberInput {...historyEditing}
             id="sheet-h"
             className={inputClasses}
             value={sheet.h}

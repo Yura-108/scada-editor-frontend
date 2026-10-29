@@ -1,10 +1,11 @@
 "use client";
 
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {useEditorStore} from "../../../../model/editorStore";
 import {getGeometryFields} from "../../lib/geometryFields";
 import {getNumberValue} from "../../lib/getNumberValue";
 import {baseInputClasses} from "../../panelClasses";
+import {historyEditing} from "../../../../model/historyGroup";
 
 interface GeometrySectionProps {
   elementKey: string;
@@ -35,7 +36,7 @@ export function GeometrySection({elementKey, type, values}: GeometrySectionProps
             >
               {field.label}
             </label>
-            <NumberInput
+            <NumberInput {...historyEditing}
               id={`geom-${field.key}`}
               className={baseInputClasses}
               value={field.value ?? getNumberValue(values[field.key])}

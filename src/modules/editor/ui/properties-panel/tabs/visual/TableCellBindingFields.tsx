@@ -4,12 +4,13 @@ import {Boxes, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import type {CellSourceField} from "@/types/binding.types";
-import {TextInput} from "@/components/ui/TextInput";
+import {TextInput} from "@/shared/ui/field/TextInput";
 import {cellSourceFieldsFor} from "@/core/scene";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableCellModel} from "../../hooks/useTableCell";
 import {propertyKey} from "../../lib/propertyOrder";
 import {baseInputClasses} from "../../panelClasses";
+import {historyEditing} from "../../../../model/historyGroup";
 
 /** Чем заполнена ячейка: полем свойства таблицы, свободным текстом или прежней привязкой. */
 export function TableCellBindingFields({element, cell}: {element: DiagramElement; cell: TableCellModel}) {
@@ -74,7 +75,7 @@ export function TableCellBindingFields({element, cell}: {element: DiagramElement
           </label>
           {/* Как и остальные текстовые поля: коммит по blur/Enter —
               значение ячейки уходит в схему целиком, а не посимвольно. */}
-          <TextInput
+          <TextInput {...historyEditing}
             className={baseInputClasses}
             value={cellData?.value ?? ""}
             onCommit={(v) => patchCell({value: v})}

@@ -1,11 +1,14 @@
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {cn} from "@/shared/lib/cn";
 import React, {useId, useState, useEffect, useMemo} from "react";
 import CodeMirror from '@uiw/react-codemirror';
 import {javascript} from "@codemirror/lang-javascript";
 import {Wand2} from "lucide-react";
 import {formatCode} from "@/shared/lib/formatCode";
 import {Button} from "@/shared/ui/Button";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {checkScriptSyntax} from "@/core/runtime";
@@ -40,8 +43,6 @@ export function ScriptEditorModalContent({
   const [displayed, setDisplayed] = useState(defaultDisplayed);
   const [accessLevel, setAccessLevel] = useState<number | null>(defaultAccessLevel);
   const [isLoading, setIsLoading] = useState(false);
-  const inputId = useId();
-  const displayedId = useId();
   const accessLevelId = useId();
 
   useEffect(() => {
@@ -75,65 +76,39 @@ export function ScriptEditorModalContent({
       <DialogHeader hint title={title} description={description} />
 
       <DialogBody className="flex flex-col gap-4">
-        <div className="shrink-0">
-          <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1 ml-1 uppercase tracking-wider">
-            Название скрипта
-          </label>
-          <input
-            id={inputId}
-            autoFocus
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Например, onClick, onInit..."
-            className={cn(
-              "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5",
-              "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-none",
-              "hover:border-gray-400 dark:hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-              "transition-all shadow-sm"
-            )}
-          />
-        </div>
+        <Field label="Название скрипта" className="shrink-0">
+          <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, onClick, onInit..." />
+        </Field>
 
         {/* Помеченный скрипт становится пунктом меню компонента в мониторе
             (ПКМ по компоненту) — оператор запускает его вручную, не дожидаясь
             события. Непомеченный по-прежнему вызывается только из обработчика
             события через runScript("Имя"). */}
         <div className="shrink-0">
-          <label
-            htmlFor={displayedId}
-            className="flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200"
-          >
-            <input
-              id={displayedId}
-              type="checkbox"
-              checked={displayed}
-              onChange={(e) => setDisplayed(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
-            />
-            Добавить действие в монитор?
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              (пункт в меню компонента по правому клику)
-            </span>
-          </label>
+          <Checkbox
+            checked={displayed}
+            onChange={(e) => setDisplayed(e.target.checked)}
+            label={<>
+              Добавить действие в монитор?
+              <span className="text-xs text-muted-foreground">(пункт в меню компонента по правому клику)</span>
+            </>}
+          />
         </div>
 
         {/* Уровень оператора, которому монитор разрешит запуск (кнопка, пункт меню,
             runScript). Проверяет сервер по prod-выпуску, поэтому новый уровень начинает
             действовать только после выпуска и назначения его prod. */}
-        <div className="shrink-0 flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-200">
-          <label htmlFor={accessLevelId}>Уровень доступа</label>
+        <div className="shrink-0 flex items-center gap-2.5 text-sm">
+          <label htmlFor={accessLevelId} className="font-medium">Уровень доступа</label>
           <AccessLevelSelect id={accessLevelId} value={accessLevel} onChange={setAccessLevel} />
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-muted-foreground">
             (оператор с уровнем ниже не сможет запустить скрипт; действует после выпуска и prod)
           </span>
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between mb-1 ml-1">
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Код скрипта (JavaScript)
-            </label>
+            <span className={fieldLabelClass}>Код скрипта (JavaScript)</span>
             <button
               type="button"
               onClick={() => setContent(c => formatCode(c))}

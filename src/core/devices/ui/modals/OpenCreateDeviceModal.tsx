@@ -1,16 +1,10 @@
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { toast } from "sonner";
-import { useId, useState } from "react";
-import * as Select from "@radix-ui/react-select";
-import { cn } from "@/shared/lib/cn";
-import { ChevronDown, Type } from "lucide-react";
-import SelectItem from "@/shared/ui/SelectItem";
-import {
-  selectContentClassName,
-  selectIconClassName,
-  selectTriggerClassName,
-} from "@/shared/ui/selectStyles";
+import { useState } from "react";
 import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addDevice} from "../../model/deviceActions";
@@ -31,8 +25,6 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
   const [selectedValue, setSelectedValue] = useState<string>(String(templateList[0].key));
   const [inputValue, setInputValue] = useState<string>("");
-  const typeLabelId = useId();
-  const nameId = useId();
 
   const handleConfirm = () => {
     if (!inputValue.trim()) return;
@@ -55,76 +47,17 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
       />
 
       <DialogBody className="space-y-5">
-        {/* Выбор типа (Select).
-            Radix Select.Trigger — кнопка, а не поле формы: `htmlFor` её не
-            подписывает, поэтому связь идёт через id + aria-labelledby. */}
-        <div className="space-y-2">
-          <label
-            id={typeLabelId}
-            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
-          >
-            Тип устройства
-          </label>
-          <Select.Root
+        <Field label="Тип устройства">
+          <Select
             defaultValue={String(templateList[0].key)}
             onValueChange={setSelectedValue}
-          >
-            <Select.Trigger aria-labelledby={typeLabelId} className={selectTriggerClassName}>
-              <Select.Value placeholder="Выберите тип..." />
-              <Select.Icon>
-                <ChevronDown className={selectIconClassName} />
-              </Select.Icon>
-            </Select.Trigger>
-
-            <Select.Portal>
-              <Select.Content
-                position="popper"
-                sideOffset={6}
-                className={selectContentClassName}
-              >
-                <Select.Viewport className="p-1.5">
-                  <Select.Group>
-                    {templateList.map((template) => (
-                      <SelectItem key={template.key} value={String(template.key)}>
-                        {template.value}
-                      </SelectItem>
-                    ))}
-                  </Select.Group>
-                </Select.Viewport>
-              </Select.Content>
-            </Select.Portal>
-          </Select.Root>
-        </div>
-
-        {/* Поле ввода */}
-        <div className="space-y-2">
-          <label
-            htmlFor={nameId}
-            className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider"
-          >
-            Название устройства
-          </label>
-          <div className="relative">
-            <input
-              id={nameId}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Введите текст..."
-              className={cn(
-                "w-full rounded-xl border bg-white dark:bg-gray-900",
-                "border-gray-300 dark:border-gray-700",
-                "text-gray-900 dark:text-gray-100",
-                "placeholder:text-gray-500 dark:placeholder:text-gray-500",
-                "hover:border-gray-400 dark:hover:border-gray-600",
-                "focus:border-indigo-500 dark:focus:border-indigo-500",
-                "focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/30",
-                "transition-all shadow-sm py-3.5 px-4"
-              )}
-            />
-            <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
-          </div>
-        </div>
+            placeholder="Выберите тип..."
+            options={templateList.map((template) => ({value: String(template.key), label: template.value}))}
+          />
+        </Field>
+        <Field label="Название устройства">
+          <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Введите текст..." />
+        </Field>
       </DialogBody>
 
       {/* Кнопки */}

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { beginHistoryGroup, cancelHistoryGroup, endHistoryGroup } from "@/modules/editor";
+import type { EditSession } from "./editSession";
 
-interface NumberInputProps {
+interface NumberInputProps extends EditSession {
   id?: string;
   /** undefined — значение не определено (у выделенных элементов оно разное). */
   value: number | undefined;
@@ -31,7 +31,7 @@ interface NumberInputProps {
  *    сторе остаётся прежнее значение, а в поле видно то, что печатает пользователь;
  *  - **история undo.** Каждый символ создавал отдельный шаг, и набранное число приходилось
  *    отменять посимвольно. Вся правка от первого нажатия до потери фокуса склеивается в один
- *    шаг (`historyGroup`, тот же приём, что у ведения по палитре цвета и перетаскивания).
+ *    шаг: поле зовёт `onEditStart`/`onEditEnd`, редактор склеивает между ними историю.
  *
  * Escape возвращает значение, которое было до начала правки, и не оставляет следа в истории.
  */
@@ -44,6 +44,9 @@ export function NumberInput({
   max,
   step = 1,
   placeholder,
+  onEditStart,
+  onEditEnd,
+  onEditCancel,
 }: NumberInputProps) {
   const asText = (v: number | undefined) => (v === undefined ? "" : String(v));
 
@@ -61,17 +64,17 @@ export function NumberInput({
     if (groupingRef.current) return;
     groupingRef.current = true;
     initialRef.current = value;
-    beginHistoryGroup();
+    onEditStart?.();
   };
   const endGrouping = () => {
     if (!groupingRef.current) return;
     groupingRef.current = false;
-    endHistoryGroup();
+    onEditEnd?.();
   };
   const cancelGrouping = () => {
     if (!groupingRef.current) return;
     groupingRef.current = false;
-    cancelHistoryGroup();
+    onEditCancel?.();
   };
   // Страховка: элемент могли снять с выделения прямо во время правки —
   // без этого история осталась бы на паузе навсегда.

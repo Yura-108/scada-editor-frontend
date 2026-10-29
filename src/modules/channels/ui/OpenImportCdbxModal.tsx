@@ -6,6 +6,9 @@ import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldBase, fieldLabelClass, fieldSizes} from "@/shared/ui/field/fieldStyles";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {pickFile} from "@/shared/lib/pickFile";
@@ -14,13 +17,8 @@ import {openImportReportModal} from "./OpenImportReportModal";
 import {errorTextFromJson} from "@/core/access";
 import {useDeviceTreeStore} from "@/core/devices";
 
-const inputClass = cn(
-  "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-3",
-  "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 outline-hidden",
-  "hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
-);
-
-const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider";
+/** Кнопка выбора файла выглядит как поле. */
+const pickerClass = cn(fieldBase, "flex items-center gap-3 text-left");
 
 /** Площадка и проект — имена узлов базы, точка в них разделяет уровни пути. */
 const badSegment = (value: string) => !value.trim() || value.includes(".");
@@ -45,11 +43,11 @@ function PlcSourceButton({hint, file, onChange}: {
       type="button"
       onClick={() => void handleClick()}
       title={file ? "Убрать файл" : `Выбрать ${hint}`}
-      className={cn(inputClass, "flex items-center gap-3 py-2 text-left text-sm", !file && "text-gray-500 dark:text-gray-400")}
+      className={cn(pickerClass, fieldSizes.sm, !file && "text-muted-foreground")}
     >
-      <FileUp className="h-4 w-4 shrink-0 text-indigo-500" />
+      <FileUp className="h-4 w-4 shrink-0 text-primary" />
       <span className="min-w-0 flex-1 truncate">{file ? file.name : hint}</span>
-      {file && <span className="shrink-0 text-xs text-gray-500">убрать</span>}
+      {file && <span className="shrink-0 text-xs text-muted-foreground">убрать</span>}
     </button>
   );
 }
@@ -66,8 +64,6 @@ function ImportCdbxContent() {
   const [sites, setSites] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const siteId = useId();
-  const projectId = useId();
   const sitesListId = useId();
 
   // Площадки — подсказкой, а не жёстким выбором: импорт вправе создать и новую.
@@ -141,54 +137,35 @@ function ImportCdbxContent() {
       />
 
       <DialogBody className="space-y-5">
-        <div className="space-y-2">
-          <span className={labelClass}>Файл</span>
+        <div className="space-y-1.5">
+          <span className={fieldLabelClass}>Файл</span>
           <button
             type="button"
             onClick={() => void handlePick()}
-            className={cn(
-              inputClass,
-              "flex items-center gap-3 text-left",
-              !file && "text-gray-500 dark:text-gray-400",
-            )}
+            className={cn(pickerClass, fieldSizes.md, !file && "text-muted-foreground")}
           >
-            <FileUp className="h-5 w-5 shrink-0 text-indigo-500" />
+            <FileUp className="h-5 w-5 shrink-0 text-primary" />
             <span className="min-w-0 flex-1 truncate">
               {file ? file.name : "Выберите файл .cdbx"}
             </span>
             {file && (
-              <span className="shrink-0 text-xs text-gray-500">
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {(file.size / (1024 * 1024)).toFixed(1)} МБ
               </span>
             )}
           </button>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor={siteId} className={labelClass}>Площадка</label>
-          <input
-            id={siteId}
-            list={sitesListId}
-            value={site}
-            onChange={(e) => setSite(e.target.value)}
-            placeholder="Барановичи-1"
-            className={inputClass}
-          />
+        <Field label="Площадка">
+          <Input list={sitesListId} value={site} onChange={(e) => setSite(e.target.value)} placeholder="Барановичи-1" />
           <datalist id={sitesListId}>
             {sites.map(s => <option key={s} value={s} />)}
           </datalist>
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor={projectId} className={labelClass}>Проект</label>
-          <input
-            id={projectId}
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            placeholder="BN1_MCA2"
-            className={inputClass}
-          />
-        </div>
+        <Field label="Проект">
+          <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="BN1_MCA2" />
+        </Field>
 
         <details className="rounded-xl border border-gray-200 dark:border-gray-700/80 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -205,7 +182,7 @@ function ImportCdbxContent() {
         </details>
 
         {(site.includes(".") || project.includes(".")) && (
-          <p className="text-sm text-red-600 dark:text-red-400">
+          <p className="text-sm text-destructive">
             Точка разделяет уровни пути в базе — в имени площадки и проекта её быть не может.
           </p>
         )}

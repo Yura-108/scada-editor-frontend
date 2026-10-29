@@ -1,11 +1,13 @@
 "use client";
 
-import React, {useEffect, useId, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "@/modules/editor";
 import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
@@ -15,10 +17,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/ui/select";
+} from "@/shared/ui/field/Select";
 import type {AutobindMiss, AutobindReport} from "@/types/autobind.types";
-
-const labelClass = "text-xs font-medium text-gray-500 ml-1 uppercase tracking-wider";
 
 /** Строки несовпадений: имя компонента, свойство (у `not_found` его нет) и сцена. */
 function MissList({items}: {items: AutobindMiss[]}) {
@@ -46,7 +46,7 @@ function AutobindReportView({report}: {report: AutobindReport}) {
 
       {report.scenes.length > 0 ? (
         <div className="space-y-1">
-          <span className={labelClass}>Изменённые схемы</span>
+          <span className={fieldLabelClass}>Изменённые схемы</span>
           <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
             {report.scenes.map((s) => (
               <li key={s.scene_id}>
@@ -105,8 +105,6 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
   const [isBinding, setIsBinding] = useState(false);
   const [report, setReport] = useState<AutobindReport | null>(null);
 
-  const siteField = useId();
-  const rootField = useId();
 
   useEffect(() => {
     void (async () => {
@@ -181,22 +179,23 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor={siteField} className={labelClass}>Площадка</label>
+              <Field label="Площадка">
                 <Select value={site} onValueChange={setSite}>
-                  <SelectTrigger id={siteField} className="h-12">
+                  <SelectTrigger>
                     <SelectValue placeholder="Выберите площадку…" />
                   </SelectTrigger>
                   <SelectContent>
                     {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label htmlFor={rootField} className={labelClass}>База каналов</label>
+              <Field
+                label="База каналов"
+                hint={site && !isLoadingRoots && roots.length === 0 ? "На этой площадке баз нет" : undefined}
+              >
                 <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
-                  <SelectTrigger id={rootField} className="h-12">
+                  <SelectTrigger>
                     <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -207,10 +206,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
                     ))}
                   </SelectContent>
                 </Select>
-                {site && !isLoadingRoots && roots.length === 0 && (
-                  <p className="text-xs text-gray-500 ml-1">На этой площадке баз нет</p>
-                )}
-              </div>
+              </Field>
             </div>
 
             <p className={cn(

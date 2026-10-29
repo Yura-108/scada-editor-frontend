@@ -99,9 +99,9 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
           Администратор
         </label>
         <div className="flex-1" />
-        <Button className="px-3 py-1.5" onClick={() => void handleResetPassword()}><KeyRound size={14} />Сбросить пароль</Button>
-        <Button className="px-3 py-1.5" onClick={() => void handleRevokeSessions()}><LogOut size={14} />Завершить сеансы</Button>
-        <Button variant="danger" className="px-3 py-1.5" onClick={() => void handleDelete()}><Trash2 size={14} />Удалить</Button>
+        <Button size="sm" onClick={() => void handleResetPassword()}><KeyRound size={14} />Сбросить пароль</Button>
+        <Button size="sm" onClick={() => void handleRevokeSessions()}><LogOut size={14} />Завершить сеансы</Button>
+        <Button variant="danger" size="sm" onClick={() => void handleDelete()}><Trash2 size={14} />Удалить</Button>
       </div>
       {user.admin
         ? <p className="text-sm text-neutral-500">Администратору доступно всё во всех проектах (уровень 10); права по проектам не нужны.</p>

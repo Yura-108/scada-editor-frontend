@@ -10,7 +10,10 @@ import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogP
 import {useCreateTemplate, useUpdateTemplate} from "../api/templates";
 import {AutomationSaveError} from "@/core/automation";
 import {templateBody} from "../lib/automationTemplates";
-import {fieldInput, fieldLabel} from "./formStyles";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {IoTable} from "./IoTable";
 import type {AutomationIo, AutomationValidationError} from "@/types/automation.types";
 import type {AutomationTaskTemplate, AutomationTemplateIo} from "@/types/automationTemplate.types";
@@ -62,18 +65,9 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
   };
 
   const numberField = (field: NumberField, title: string, hint: string) => (
-    <div>
-      <label className={fieldLabel}>{title}</label>
-      <input
-        type="number"
-        className={fieldInput}
-        value={draft[field] ?? ""}
-        onChange={e => setNumber(field, e.target.value)}
-      />
-      <p className={errorOf(field) ? "text-xs text-red-600 mt-1" : "text-xs text-neutral-500 mt-1"}>
-        {errorOf(field) || hint}
-      </p>
-    </div>
+    <Field label={title} hint={hint} error={errorOf(field)}>
+      <Input type="number" value={draft[field] ?? ""} onChange={e => setNumber(field, e.target.value)} />
+    </Field>
   );
 
   const addVariable = () => {
@@ -121,38 +115,28 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
 
       <DialogBody>
         {generalError && (
-          <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-red-500/10 text-red-700 dark:text-red-300">
+          <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-destructive/10 text-destructive">
             {generalError}
           </div>
         )}
 
         <div className="space-y-4 overflow-y-auto">
           <div className="grid grid-cols-[2fr_1fr] gap-3">
-            <div>
-              <label className={fieldLabel}>Название</label>
-              <input className={fieldInput} value={draft.name} onChange={e => set({name: e.target.value})} />
-              {errorOf("name") && <p className="text-xs text-red-600 mt-1">{errorOf("name")}</p>}
-            </div>
-            <div>
-              <label className={fieldLabel}>Категория</label>
-              <input
-                className={fieldInput}
-                placeholder="Без категории"
-                value={draft.category ?? ""}
-                onChange={e => set({category: e.target.value})}
-              />
-            </div>
+            <Field label="Название" error={errorOf("name")}>
+              <Input value={draft.name} onChange={e => set({name: e.target.value})} />
+            </Field>
+            <Field label="Категория">
+              <Input placeholder="Без категории" value={draft.category ?? ""} onChange={e => set({category: e.target.value})} />
+            </Field>
           </div>
 
-          <div>
-            <label className={fieldLabel}>Описание</label>
-            <input
-              className={fieldInput}
+          <Field label="Описание">
+            <Input
               placeholder="Чем задача занимается и что нужно подставить"
               value={draft.description ?? ""}
               onChange={e => set({description: e.target.value})}
             />
-          </div>
+          </Field>
 
           <div className="grid grid-cols-3 gap-3">
             {numberField("period_ms", "Период, мс", "100 … 3 600 000")}
@@ -160,23 +144,21 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
             {numberField("stale_after_ms", "Вход устарел через, мс", "100 … 86 400 000")}
           </div>
 
-          <label className="flex items-center gap-2 text-sm" title="Выполнять такт, даже если входы устарели">
-            <input
-              type="checkbox"
-              checked={draft.run_on_stale}
-              onChange={e => set({run_on_stale: e.target.checked})}
-            />
-            Работать на устаревших входах
-          </label>
+          <Checkbox
+            title="Выполнять такт, даже если входы устарели"
+            checked={draft.run_on_stale}
+            onChange={e => set({run_on_stale: e.target.checked})}
+            label="Работать на устаревших входах"
+          />
 
-          {errorOf("inputs") && <p className="text-xs text-red-600">{errorOf("inputs")}</p>}
+          {errorOf("inputs") && <p className="text-xs text-destructive">{errorOf("inputs")}</p>}
           <IoTable
             title="Входы"
             rows={toIoRows(draft.inputs)}
             onChange={rows => set({inputs: fromIoRows(rows)})}
             tagPlaceholder="пример тега — подсказка, не привязка"
           />
-          {errorOf("outputs") && <p className="text-xs text-red-600">{errorOf("outputs")}</p>}
+          {errorOf("outputs") && <p className="text-xs text-destructive">{errorOf("outputs")}</p>}
           <IoTable
             title="Выходы"
             rows={toIoRows(draft.outputs)}
@@ -185,8 +167,8 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
           />
 
           <div>
-            <span className={fieldLabel}>Пишет переменные</span>
-            <p className="text-xs text-neutral-500 mb-1">
+            <span className={fieldLabelClass}>Пишет переменные</span>
+            <p className="text-xs text-muted-foreground mb-1">
               Подсказка для вставки: переменных шаблон не создаёт, объявлены они должны быть в проекте.
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -206,8 +188,9 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
                   </button>
                 </span>
               ))}
-              <input
-                className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm"
+              <Input
+                size="sm"
+                className="w-48"
                 placeholder="имя переменной, Enter"
                 value={variableDraft}
                 onChange={e => setVariableDraft(e.target.value)}
@@ -223,7 +206,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
           </div>
 
           <div>
-            <span className={fieldLabel}>Скрипт (JavaScript)</span>
+            <span className={fieldLabelClass}>Скрипт (JavaScript)</span>
             <div className="border border-neutral-300 dark:border-neutral-700 rounded-xl overflow-hidden">
               <CodeMirror
                 value={draft.script}
@@ -233,7 +216,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
                 onChange={script => set({script})}
               />
             </div>
-            {errorOf("script") && <p className="text-xs text-red-600 mt-1">{errorOf("script")}</p>}
+            {errorOf("script") && <p className="text-xs text-destructive mt-1">{errorOf("script")}</p>}
           </div>
         </div>
       </DialogBody>

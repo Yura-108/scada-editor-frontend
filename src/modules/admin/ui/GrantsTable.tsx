@@ -109,6 +109,8 @@ export function GrantsTable({userId}: {userId: number}) {
                   </td>
                   <td className="px-3 py-1.5 text-center">
                     <AccessLevelSelect
+                      size="sm"
+                      className="mx-auto"
                       value={g.operate ? (g.level ?? 1) : null}
                       emptyLabel={g.operate ? null : "—"}
                       disabled={!g.operate}
@@ -120,7 +122,7 @@ export function GrantsTable({userId}: {userId: number}) {
                   </td>
                   <td className="px-3 py-1.5 text-right">
                     {dirty && (
-                      <Button variant="primary" className="px-2.5 py-1 text-xs" disabled={savingId === p.id} onClick={() => void save(p.id)}>
+                      <Button variant="primary" size="sm" className="px-2.5 text-xs" disabled={savingId === p.id} onClick={() => void save(p.id)}>
                         {savingId === p.id ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}Сохранить
                       </Button>
                     )}

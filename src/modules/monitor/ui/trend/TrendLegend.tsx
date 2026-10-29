@@ -1,5 +1,7 @@
 import React, {type Dispatch, type SetStateAction} from "react";
 import {formatTrendValue, shortTagPath, type buildTrendGeometry, type trendPens} from "@/core/scene";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Input} from "@/shared/ui/field/Input";
 
 type Geometry = ReturnType<typeof buildTrendGeometry>;
 type Pen = ReturnType<typeof trendPens>[number];
@@ -31,14 +33,15 @@ export function TrendLegend({pens, geometry, hidden, setHidden, scale, setScale}
         {(["min", "max"] as const).map(key => (
           <label key={key} className="flex items-center gap-1">
             {key === "min" ? "мин" : "макс"}
-            <input
+            <Input
+              size="sm"
+              className="w-24"
               key={`${key}-${scale[key] === undefined ? "auto" : "set"}`}
               type="number"
               defaultValue={scale[key] ?? ""}
               placeholder={formatTrendValue(geometry.scale[key])}
               onBlur={e => setBound(key, e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") setBound(key, e.currentTarget.value); }}
-              className="w-24 rounded-md border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-1.5 py-0.5 text-gray-900 dark:text-gray-100"
             />
           </label>
         ))}
@@ -55,8 +58,7 @@ export function TrendLegend({pens, geometry, hidden, setHidden, scale, setScale}
           return (
             <div key={pen.name} className="flex flex-wrap items-center gap-3 text-sm">
               <label className="flex min-w-48 items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={!hidden.has(pen.name)}
                   onChange={() => setHidden(prev => {
                     const next = new Set(prev);

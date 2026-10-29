@@ -58,3 +58,13 @@ export function endHistoryGroup(): void {
     futureStates: [],
   });
 }
+
+/**
+ * Правка поля панели свойств (`NumberInput`, `TextInput`, `ColorField`) — один шаг undo:
+ * `<NumberInput {...historyEditing} …/>`.
+ */
+export const historyEditing = {
+  onEditStart: beginHistoryGroup,
+  onEditEnd: endHistoryGroup,
+  onEditCancel: cancelHistoryGroup,
+};

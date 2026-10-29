@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { beginHistoryGroup, cancelHistoryGroup, endHistoryGroup } from "@/modules/editor";
+import type { EditSession } from "./editSession";
 
-interface TextInputProps {
+interface TextInputProps extends EditSession {
   id?: string;
   /** undefined — значение не определено (у выделенных элементов оно разное). */
   value: string | undefined;
@@ -20,13 +20,13 @@ interface TextInputProps {
  *
  * Сдерживало живой ввод одно — история undo: `onChange`, пишущий прямо в стор, создавал шаг
  * на КАЖДЫЙ символ, и набранное слово приходилось стирать двадцатью Ctrl+Z. Вся правка от
- * первого нажатия до потери фокуса склеивается в один шаг (`historyGroup`, тот же приём, что
- * у ведения по палитре цвета). Пересчёт схемы на символ дешёвый: `updateElementVisual`
+ * первого нажатия до потери фокуса склеивается в один шаг: поле зовёт `onEditStart`/`onEditEnd`,
+ * редактор склеивает между ними историю. Пересчёт схемы на символ дешёвый: `updateElementVisual`
  * трогает один элемент, а фигуры на холсте мемоизированы поэлементно.
  *
  * Escape возвращает строку, которая была до начала правки, и не оставляет следа в истории.
  */
-export function TextInput({ id, value, onCommit, className, placeholder }: TextInputProps) {
+export function TextInput({ id, value, onCommit, className, placeholder, onEditStart, onEditEnd, onEditCancel }: TextInputProps) {
   // draft === null — поле не редактируется и просто показывает значение из стора
   // (так оно само следует за undo/redo и сменой выделенного элемента).
   const [draft, setDraft] = useState<string | null>(null);
@@ -40,17 +40,17 @@ export function TextInput({ id, value, onCommit, className, placeholder }: TextI
     if (groupingRef.current) return;
     groupingRef.current = true;
     initialRef.current = value ?? "";
-    beginHistoryGroup();
+    onEditStart?.();
   };
   const endGrouping = () => {
     if (!groupingRef.current) return;
     groupingRef.current = false;
-    endHistoryGroup();
+    onEditEnd?.();
   };
   const cancelGrouping = () => {
     if (!groupingRef.current) return;
     groupingRef.current = false;
-    cancelHistoryGroup();
+    onEditCancel?.();
   };
   // Страховка: элемент могли снять с выделения прямо во время правки —
   // без этого история осталась бы на паузе навсегда.

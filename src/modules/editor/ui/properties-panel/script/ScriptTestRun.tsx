@@ -2,7 +2,7 @@ import React, {type Dispatch, type SetStateAction} from "react";
 import {Play} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Collapsible} from "@/shared/ui/codeModalParts";
-import {scriptInputClasses} from "./scriptStyles";
+import {Input} from "@/shared/ui/field/Input";
 
 /** Итог тест-прогона, уже в виде текста: что сделал бы код в мониторе или чем он упал. */
 export type ScriptTestOutcome = {kind: "ok" | "error"; text: string} | null;
@@ -33,9 +33,8 @@ export function ScriptTestRun({names, mockValues, setMockValues, onRun, outcome}
         {names.map(varName => (
           <div key={varName} className="flex items-center gap-2">
             <span className="text-xs text-gray-600 dark:text-gray-400 font-mono shrink-0">{varName} =</span>
-            <input
-              type="text"
-              className={cn(scriptInputClasses, "px-2 py-1 text-xs rounded-lg")}
+            <Input
+              size="sm"
               placeholder="значение"
               value={mockValues[varName] ?? ""}
               onChange={e => setMockValues(v => ({...v, [varName]: e.target.value}))}

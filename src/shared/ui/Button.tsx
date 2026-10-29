@@ -14,7 +14,10 @@ import { cn } from "@/shared/lib/cn";
  * тёмно-синем. Здесь один источник правды.
  */
 type Variant = "primary" | "secondary" | "danger";
-/** `md` — кнопки окон и форм, `sm` — компактные кнопки в панелях и строках таблиц. */
+/**
+ * `md` — кнопки окон и форм (40px), `sm` — компактные кнопки в панелях и строках таблиц (32px).
+ * Высоты те же, что у полей (`shared/ui/field`): кнопка рядом с полем в одной строке вровень.
+ */
 type Size = "md" | "sm";
 
 // Рамка есть у всех вариантов (у сплошных — прозрачная): иначе «Отмена» с рамкой
@@ -41,8 +44,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  md: "px-5 py-2.5",
-  sm: "px-3 py-1.5 text-sm",
+  md: "h-10 px-4 text-sm",
+  sm: "h-8 px-3 text-sm",
 };
 
 export function Button({

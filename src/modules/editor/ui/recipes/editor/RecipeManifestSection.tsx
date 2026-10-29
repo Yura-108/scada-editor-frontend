@@ -1,8 +1,9 @@
 import React from "react";
 import {Tags, Trash2} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {RECIPE_VALUE_TYPES, type RecipeTag, type RecipeValueType} from "@/types/recipe.types";
-import {inputClass, sectionTitle} from "./styles";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
+import {sectionTitle} from "./styles";
 
 /** Манифест рецепта — теги, которые рецепт вправе записывать. */
 export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
@@ -36,31 +37,29 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
               key={`${tag.tag}-${index}`}
               className="grid grid-cols-[1fr_1.4fr_auto_auto] gap-2 items-center rounded-lg border border-gray-200 dark:border-gray-800 p-2"
             >
-              <input
-                className={inputClass}
+              <Input
+                size="sm"
                 value={tag.name}
                 placeholder="Имя"
                 onChange={(e) => patchTag(index, {name: e.target.value})}
               />
-              <input
-                className={inputClass}
+              <Input
+                size="sm"
                 value={tag.tag}
                 placeholder="Путь тега"
                 title={tag.tag}
                 onChange={(e) => patchTag(index, {tag: e.target.value})}
               />
-              <select
-                className={inputClass}
+              <Select
+                size="sm"
+                className="w-36"
                 value={tag.value_type ?? ""}
-                onChange={(e) => patchTag(index, {
-                  value_type: (e.target.value || undefined) as RecipeValueType | undefined,
-                })}
-              >
-                <option value="">Без проверки</option>
-                {RECIPE_VALUE_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+                onValueChange={(v) => patchTag(index, {value_type: (v || undefined) as RecipeValueType | undefined})}
+                options={[
+                  {value: "", label: "Без проверки"},
+                  ...RECIPE_VALUE_TYPES.map(t => ({value: t.value, label: t.label})),
+                ]}
+              />
               <button
                 type="button"
                 className="text-red-600 dark:text-red-400 hover:text-red-500 px-1"
@@ -69,8 +68,9 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
               >
                 <Trash2 size={16} />
               </button>
-              <input
-                className={cn(inputClass, "col-span-4")}
+              <Input
+                size="sm"
+                className="col-span-4"
                 value={tag.description ?? ""}
                 placeholder="Описание (для интерфейса)"
                 onChange={(e) => patchTag(index, {description: e.target.value})}

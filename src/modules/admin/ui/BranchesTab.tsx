@@ -75,7 +75,7 @@ export function BranchesTab() {
               onChange={e => setText(e.target.value)}
             />
             <div className="flex justify-end">
-              <Button variant="primary" className="px-4 py-2" disabled={saving || text === savedText} onClick={() => void save()}>
+              <Button variant="primary" disabled={saving || text === savedText} onClick={() => void save()}>
                 <Save size={14} />{saving ? "Сохранение…" : "Сохранить ветки"}
               </Button>
             </div>
