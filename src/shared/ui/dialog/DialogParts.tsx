@@ -1,8 +1,9 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { DialogFrameContext } from "./DialogFrame";
 
 /**
  * Части окна внутри `DialogFrame`: шапка, тело, подвал.
@@ -30,11 +31,16 @@ export function DialogHeader({
   separated?: boolean;
   className?: string;
 }) {
+  const { showClose } = useContext(DialogFrameContext);
+
   return (
     <div
       className={cn(
-        "flex shrink-0 items-start gap-4 px-6 pr-14",
-        separated ? "border-b py-4" : "pt-6 pb-4",
+        "flex items-start gap-4 pl-6",
+        showClose ? "pr-14" : "pr-6",
+        // Без линии — шапка короткого вопроса, и всё сообщение в ней. Длинное описание
+        // (список тегов для записи в ПЛК) прокручивается в самой шапке, кнопки остаются на экране.
+        separated ? "shrink-0 border-b py-4" : "min-h-0 overflow-y-auto pt-6 pb-2",
         className,
       )}
     >

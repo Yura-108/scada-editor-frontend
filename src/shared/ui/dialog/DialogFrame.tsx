@@ -2,8 +2,11 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import { createContext, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+
+/** Есть ли в окне крестик — шапке, чтобы оставить под него место справа. */
+export const DialogFrameContext = createContext({ showClose: true });
 
 /**
  * Ширина окна. Окно не придумывает свою ширину — берёт одну из этих:
@@ -91,7 +94,7 @@ export function DialogFrame({
               </button>
             </Dialog.Close>
           )}
-          {children}
+          <DialogFrameContext.Provider value={{ showClose }}>{children}</DialogFrameContext.Provider>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

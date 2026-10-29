@@ -4,7 +4,7 @@ import Providers from './providers';
 import { ThemeProvider } from 'next-themes';
 import React from 'react';
 import { ModalRoot } from '@/shared/ui/dialog/ModalRoot';
-import { ConfirmRoot } from '@/shared/ui/dialog/confirmModal';
+import { ConfirmRoot } from '@/shared/ui/dialog/ConfirmRoot';
 import { cn } from '@/shared/lib/cn';
 import type { Metadata } from 'next';
 
