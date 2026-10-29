@@ -1,10 +1,11 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {readBackendError, parseProcedureLevels} from "@/core/access";
 import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
@@ -23,7 +24,7 @@ export const PROCEDURE_OPERATION_LABELS: Record<ProcedureOperation, string> = {
  * проверки сервера) уровни попадают только с новым выпуском, ставшим prod.
  */
 function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: number; projectName: string; editable: boolean}) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const [levels, setLevels] = useState<ProcedureLevels | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,46 +65,52 @@ function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: 
   };
 
   return (
-    <div className="w-full max-w-md">
-      <Dialog.Title className="text-xl font-semibold mb-1">Уровни процедур «{projectName}»</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Минимальный уровень оператора для каждой операции процедуры. Пусто — уровень 1.
-        Действует после выпуска проекта и назначения его prod.
-      </Dialog.Description>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : !levels ? (
-        <p className="text-sm text-gray-500">Загрузка…</p>
-      ) : (
-        <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 items-center">
-          {PROCEDURE_OPERATIONS.map(op => (
-            <React.Fragment key={op}>
-              <label htmlFor={`procedure-level-${op}`} className="text-sm">{PROCEDURE_OPERATION_LABELS[op]}</label>
-              <AccessLevelSelect
-                id={`procedure-level-${op}`}
-                value={levels[op]}
-                disabled={!editable}
-                onChange={value => setLevels(l => (l ? {...l, [op]: value} : l))}
-              />
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-      {!editable && <p className="mt-4 text-xs text-gray-500">Только просмотр — менять уровни может пользователь с правом правки.</p>}
-      <ModalFooter>
+    <>
+      <DialogHeader
+        title={<>Уровни процедур «{projectName}»</>}
+        description="Минимальный уровень оператора для каждой операции процедуры. Пусто — уровень 1. Действует после выпуска проекта и назначения его prod."
+      />
+
+      <DialogBody>
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        ) : !levels ? (
+          <p className="text-sm text-gray-500">Загрузка…</p>
+        ) : (
+          <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 items-center">
+            {PROCEDURE_OPERATIONS.map(op => (
+              <React.Fragment key={op}>
+                <label htmlFor={`procedure-level-${op}`} className="text-sm">{PROCEDURE_OPERATION_LABELS[op]}</label>
+                <AccessLevelSelect
+                  id={`procedure-level-${op}`}
+                  value={levels[op]}
+                  disabled={!editable}
+                  onChange={value => setLevels(l => (l ? {...l, [op]: value} : l))}
+                />
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+        {!editable && <p className="mt-4 text-xs text-gray-500">Только просмотр — менять уровни может пользователь с правом правки.</p>}
+      </DialogBody>
+      <DialogFooter>
         <Button onClick={closeModal}>{editable ? "Отмена" : "Закрыть"}</Button>
         {editable && (
           <Button variant="primary" disabled={!levels || saving} onClick={() => void save()}>
             {saving ? "Сохранение…" : "Сохранить"}
           </Button>
         )}
-      </ModalFooter>
-    </div>
+      </DialogFooter>
+    </>
   );
 }
 
+/**
+ * Уровни процедур — поверх окна, из которого открыли (список проектов): закрыли — список на месте.
+ */
 export function openProcedureLevelsModal(projectId: number, projectName: string, editable: boolean) {
-  useModalStore.getState().openModal(
+  useModalStore.getState().pushModal(
     <ProcedureLevelsContent projectId={projectId} projectName={projectName} editable={editable} />,
+    {size: "md"},
   );
 }

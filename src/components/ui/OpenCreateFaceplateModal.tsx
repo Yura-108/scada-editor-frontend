@@ -1,7 +1,6 @@
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { usePaletteStore } from "@/store/usePaletteStore";
 import { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { cn } from "@/shared/lib/cn";
 import { Type, ChevronDown } from "lucide-react";
@@ -9,7 +8,9 @@ import { DiagramElement } from "@/types/editorElement.type";
 import { PaletteItemType } from "@/types/palette.types";
 import SelectItem from "@/shared/ui/SelectItem";
 import {selectTriggerClassName} from "@/shared/ui/selectStyles";
-import { Button, ModalFooter } from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 
 interface Props {
   onLoadAction: (paletteItem: Omit<PaletteItemType, "id">) => void;
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate }: Props) {
-  const { closeModal } = useModalStore.getState();
+  const closeModal = useCloseModal();
   const { paletteItems } = usePaletteStore.getState();
 
   const customTemplates = paletteItems.filter(item => item.type === 'custom');
@@ -72,141 +73,140 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
-        Создание и обновление шаблонов
-      </Dialog.Title>
+      <DialogHeader
+        title="Создание и обновление шаблонов"
+        description="Создайте новый шаблон или обновите существующий."
+      />
 
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Создайте новый шаблон или обновите существующий.
-      </Dialog.Description>
-
-      {/* Режим выбора */}
-      <div className="space-y-4 mb-6 pb-6 border-b border-gray-300 dark:border-gray-700">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-          Режим
-        </label>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setMode('create');
-              setSelectedTemplateId('');
-              setName('');
-              setType('');
-            }}
-            className={cn(
-              "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
-              mode === 'create'
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
-            )}
-          >
-            Создать новый
-          </button>
-
-          <button
-            onClick={() => {
-              setMode('update');
-              setName('');
-              setType('');
-            }}
-            disabled={customTemplates.length === 0}
-            className={cn(
-              "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
-              mode === 'update' && customTemplates.length > 0
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                : customTemplates.length === 0
-                  ? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
-            )}
-          >
-            Обновить существующий
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-5">
-        {/* Выбор шаблона для обновления */}
-        {mode === 'update' && customTemplates.length > 0 && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-              Выберите шаблон для обновления
-            </label>
-            <Select.Root value={selectedTemplateId} onValueChange={handleSelectTemplate}>
-              <Select.Trigger className={cn(selectTriggerClassName || "", inputClass)}>
-                <Select.Value placeholder="Выберите шаблон..." />
-                <Select.Icon>
-                  <ChevronDown className="h-5 w-5 opacity-70" />
-                </Select.Icon>
-              </Select.Trigger>
-
-              <Select.Portal>
-                <Select.Content
-                  position="popper"
-                  sideOffset={6}
-                  className="z-dropdown min-w-[var(--radix-select-trigger-width)] max-h-64 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-                >
-                  <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-                    <ChevronDown className="h-5 w-5 rotate-180" />
-                  </Select.ScrollUpButton>
-
-                  <Select.Viewport className="p-1.5">
-                    <Select.Group>
-                      {customTemplates.map((template) => (
-                        <SelectItem key={template.id} value={String(template.id)}>
-                          {template.name} ({template.category})
-                        </SelectItem>
-                      ))}
-                    </Select.Group>
-                  </Select.Viewport>
-
-                  <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-                    <ChevronDown className="h-5 w-5" />
-                  </Select.ScrollDownButton>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
-          </div>
-        )}
-
-        {/* Название шаблона */}
-        <div className="space-y-2">
+      <DialogBody>
+        {/* Режим выбора */}
+        <div className="space-y-4 mb-6 pb-6 border-b border-gray-300 dark:border-gray-700">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-            Название шаблона
+            Режим
           </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Введите название..."
-              className={cn(inputClass, "pr-11")}
-            />
-            <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setMode('create');
+                setSelectedTemplateId('');
+                setName('');
+                setType('');
+              }}
+              className={cn(
+                "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
+                mode === 'create'
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                  : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+              )}
+            >
+              Создать новый
+            </button>
+
+            <button
+              onClick={() => {
+                setMode('update');
+                setName('');
+                setType('');
+              }}
+              disabled={customTemplates.length === 0}
+              className={cn(
+                "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
+                mode === 'update' && customTemplates.length > 0
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                  : customTemplates.length === 0
+                    ? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+              )}
+            >
+              Обновить существующий
+            </button>
           </div>
         </div>
 
-        {/* Категория (только при создании) */}
-        {mode === 'create' && (
+        <div className="space-y-5">
+          {/* Выбор шаблона для обновления */}
+          {mode === 'update' && customTemplates.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+                Выберите шаблон для обновления
+              </label>
+              <Select.Root value={selectedTemplateId} onValueChange={handleSelectTemplate}>
+                <Select.Trigger className={cn(selectTriggerClassName || "", inputClass)}>
+                  <Select.Value placeholder="Выберите шаблон..." />
+                  <Select.Icon>
+                    <ChevronDown className="h-5 w-5 opacity-70" />
+                  </Select.Icon>
+                </Select.Trigger>
+
+                <Select.Portal>
+                  <Select.Content
+                    position="popper"
+                    sideOffset={6}
+                    className="z-dropdown min-w-[var(--radix-select-trigger-width)] max-h-64 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  >
+                    <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                      <ChevronDown className="h-5 w-5 rotate-180" />
+                    </Select.ScrollUpButton>
+
+                    <Select.Viewport className="p-1.5">
+                      <Select.Group>
+                        {customTemplates.map((template) => (
+                          <SelectItem key={template.id} value={String(template.id)}>
+                            {template.name} ({template.category})
+                          </SelectItem>
+                        ))}
+                      </Select.Group>
+                    </Select.Viewport>
+
+                    <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                      <ChevronDown className="h-5 w-5" />
+                    </Select.ScrollDownButton>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
+            </div>
+          )}
+
+          {/* Название шаблона */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
-              Категория шаблона
+              Название шаблона
             </label>
             <div className="relative">
               <input
                 type="text"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                placeholder="Введите категорию..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Введите название..."
                 className={cn(inputClass, "pr-11")}
               />
               <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Категория (только при создании) */}
+          {mode === 'create' && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1 uppercase tracking-wider">
+                Категория шаблона
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  placeholder="Введите категорию..."
+                  className={cn(inputClass, "pr-11")}
+                />
+                <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-600 pointer-events-none" />
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogBody>
 
       {/* Кнопки */}
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button
           variant="primary"
@@ -219,7 +219,7 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
         >
           {mode === 'create' ? 'Создать' : 'Обновить'}
         </Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
@@ -233,6 +233,7 @@ export function OpenCreateFaceplateModal(faceplate: DiagramElement[]) {
       onLoadAction={createPaletteItem}
       onUpdateAction={updatePaletteItem}
       faceplate={faceplate}
-    />
+    />,
+    {size: "lg", closeOnOverlay: false},
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import type {CdbxImportReport} from "@/types/cdbxImport.types";
 
@@ -13,7 +14,7 @@ import type {CdbxImportReport} from "@/types/cdbxImport.types";
  * под спойлером: цифра важна всем, перечень — тому, кто пойдёт проверять.
  */
 function ImportReportContent({report}: {report: CdbxImportReport}) {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
   const unmapped = report.unmapped ?? [];
 
   const list = (names: string[]) => (
@@ -26,16 +27,15 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1 flex items-center gap-2">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-        Импорт завершён
-      </Dialog.Title>
+      <DialogHeader
+        icon={<CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-success" />}
+        title="Импорт завершён"
+        description={<>
+          Создан проект <b>{report.root}</b>: {report.channels} каналов, {report.nodes} узлов.
+        </>}
+      />
 
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Создан проект <b>{report.root}</b>: {report.channels} каналов, {report.nodes} узлов.
-      </Dialog.Description>
-
-      <div className="space-y-3">
+      <DialogBody className="space-y-3">
         {report.merged.length > 0 && (
           <Collapsible
             title={`Объединено каналов: ${report.merged.length}`}
@@ -93,15 +93,15 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
           Чтобы теги нового проекта пошли с контроллера, выгрузите блок для шлюза: правый клик
           по узлу проекта → «Выгрузить для шлюза».
         </p>
-      </div>
+      </DialogBody>
 
-      <ModalFooter>
+      <DialogFooter>
         <Button variant="primary" onClick={closeModal}>Понятно</Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
 
 export function openImportReportModal(report: CdbxImportReport) {
-  useModalStore.getState().openModal(<ImportReportContent report={report} />);
+  useModalStore.getState().openModal(<ImportReportContent report={report} />, {size: "lg"});
 }

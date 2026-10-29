@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {CheckCircle2} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import type {DeviceLayoutReport} from "../../lib/deviceLayoutImport";
 
@@ -13,23 +14,22 @@ import type {DeviceLayoutReport} from "../../lib/deviceLayoutImport";
  * чистый прогон обходится тостом, иначе диалог пришлось бы закрывать каждый раз.
  */
 function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
   const skipped = report.devices - report.placed;
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1 flex items-center gap-2">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-        Импорт плана устройств
-      </Dialog.Title>
+      <DialogHeader
+        icon={<CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-success" />}
+        title="Импорт плана устройств"
+        description={<>
+          Поставлено устройств: <b>{report.placed}</b> из {report.devices}
+          {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}
+          {report.junctions > 0 && <>, узлов: <b>{report.junctions}</b></>}.
+        </>}
+      />
 
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Поставлено устройств: <b>{report.placed}</b> из {report.devices}
-        {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}
-        {report.junctions > 0 && <>, узлов: <b>{report.junctions}</b></>}.
-      </Dialog.Description>
-
-      <div className="space-y-3">
+      <DialogBody className="space-y-3">
         {report.missing.length > 0 && (
           <Collapsible
             title={`Шаблон не найден: ${skipped} устройств`}
@@ -89,15 +89,15 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
             указанной в файле, — одноимённый шаблон из другой группы не подставляется.
           </p>
         )}
-      </div>
+      </DialogBody>
 
-      <ModalFooter>
+      <DialogFooter>
         <Button variant="primary" onClick={closeModal}>Понятно</Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
 
 export function openDeviceImportReportModal(report: DeviceLayoutReport) {
-  useModalStore.getState().openModal(<DeviceImportReportContent report={report} />);
+  useModalStore.getState().openModal(<DeviceImportReportContent report={report} />, {size: "lg"});
 }

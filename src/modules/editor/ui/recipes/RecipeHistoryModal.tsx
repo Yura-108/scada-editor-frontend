@@ -1,12 +1,13 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {toast} from "sonner";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {useInvalidateRecipes} from "../../api/recipes";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import {fetchVersions} from "@/core/project";
 import {readBackendError} from "@/core/access";
@@ -30,7 +31,7 @@ interface Props {
 }
 
 function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
   const invalidateRecipes = useInvalidateRecipes();
   const [versions, setVersions] = useState<VersionSummary[] | null>(null);
@@ -63,41 +64,43 @@ function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
   };
 
   return (
-    <div className="w-full max-w-2xl">
-      <Dialog.Title className="text-xl font-semibold mb-1">История рецепта «{recipe.name}»</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
-        Каждое сохранение — версия. Восстановление создаёт новую версию из выбранной.
-      </Dialog.Description>
+    <>
+      <DialogHeader
+        title={<>История рецепта «{recipe.name}»</>}
+        description="Каждое сохранение — версия. Восстановление создаёт новую версию из выбранной."
+      />
 
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : !versions ? (
-        <p className="text-sm text-gray-500">Загрузка…</p>
-      ) : (
-        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar -mx-4">
-          <VersionHistoryList
-            versions={versions}
-            // Свежая версия первой — она и есть текущий черновик.
-            currentVersion={versions[0]?.version_no ?? null}
-            dirty={dirty || restoring}
-            onRestore={editable ? v => void restore(v) : undefined}
-          />
-        </div>
-      )}
+      <DialogBody>
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        ) : !versions ? (
+          <p className="text-sm text-gray-500">Загрузка…</p>
+        ) : (
+          <div className="max-h-[60vh] overflow-y-auto custom-scrollbar -mx-4">
+            <VersionHistoryList
+              versions={versions}
+              // Свежая версия первой — она и есть текущий черновик.
+              currentVersion={versions[0]?.version_no ?? null}
+              dirty={dirty || restoring}
+              onRestore={editable ? v => void restore(v) : undefined}
+            />
+          </div>
+        )}
 
-      {dirty && editable && (
-        <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
-          В панели есть несохранённые значения шагов — сохраните или сбросьте их перед восстановлением.
-        </p>
-      )}
+        {dirty && editable && (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
+            В панели есть несохранённые значения шагов — сохраните или сбросьте их перед восстановлением.
+          </p>
+        )}
+      </DialogBody>
 
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>Закрыть</Button>
-      </ModalFooter>
-    </div>
+      </DialogFooter>
+    </>
   );
 }
 
 export function openRecipeHistoryModal(props: Props) {
-  useModalStore.getState().openModal(<RecipeHistoryContent {...props} />);
+  useModalStore.getState().openModal(<RecipeHistoryContent {...props} />, {size: "lg"});
 }

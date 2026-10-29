@@ -1,9 +1,10 @@
 "use client";
 
 import React, {useEffect, useMemo, useRef} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import DeviceTreePanel from "../DeviceTreePanel";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 
@@ -30,7 +31,7 @@ const useIsChannel = (key: string | null): boolean => {
 };
 
 function TagPickerContent({title = "Выбор тега ПЛК", description, resolve}: ContentProps) {
-  const closeModal = useModalStore(s => s.closeModal);
+  const closeModal = useCloseModal();
   const selected = useDeviceTreeStore(s => s.selectedDevice);
   const isChannel = useIsChannel(selected);
   const resolved = useRef(false);
@@ -59,37 +60,39 @@ function TagPickerContent({title = "Выбор тега ПЛК", description, re
   };
 
   return (
-    <div className="w-full max-w-2xl">
-      <Dialog.Title className="text-xl font-semibold mb-1">{title}</Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
-        {description ?? "Раскройте площадку, проект и устройство и выберите канал. Можно искать по имени или пути."}
-      </Dialog.Description>
+    <>
+      <DialogHeader
+        title={title}
+        description={description ?? "Раскройте площадку, проект и устройство и выберите канал. Можно искать по имени или пути."}
+      />
 
-      <div className="h-[55vh]">
-        <DeviceTreePanel fill />
-      </div>
+      <DialogBody>
+        <div className="h-[55vh]">
+          <DeviceTreePanel fill />
+        </div>
 
-      <div className="mt-3 text-sm min-h-10">
-        {selected ? (
-          <>
-            <span className="text-neutral-500">Выбрано: </span>
-            <code className="break-all">{selected}</code>
-            {!isChannel && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Это папка (площадка, проект или устройство) — выберите конечный канал внутри неё.
-              </p>
-            )}
-          </>
-        ) : (
-          <span className="text-neutral-500">Ничего не выбрано</span>
-        )}
-      </div>
+        <div className="mt-3 text-sm min-h-10">
+          {selected ? (
+            <>
+              <span className="text-neutral-500">Выбрано: </span>
+              <code className="break-all">{selected}</code>
+              {!isChannel && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Это папка (площадка, проект или устройство) — выберите конечный канал внутри неё.
+                </p>
+              )}
+            </>
+          ) : (
+            <span className="text-neutral-500">Ничего не выбрано</span>
+          )}
+        </div>
+      </DialogBody>
 
-      <ModalFooter className="mt-4">
+      <DialogFooter>
         <Button onClick={() => { finish(null); closeModal(); }}>Отмена</Button>
         <Button variant="primary" onClick={choose} disabled={!isChannel}>Выбрать</Button>
-      </ModalFooter>
-    </div>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -99,6 +102,6 @@ function TagPickerContent({title = "Выбор тега ПЛК", description, re
  */
 export function pickTag(options: Options = {}): Promise<string | null> {
   return new Promise(resolve => {
-    useModalStore.getState().openModal(<TagPickerContent {...options} resolve={resolve} />);
+    useModalStore.getState().openModal(<TagPickerContent {...options} resolve={resolve} />, {size: "lg"});
   });
 }

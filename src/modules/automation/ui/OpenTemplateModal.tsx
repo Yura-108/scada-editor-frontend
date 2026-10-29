@@ -13,5 +13,5 @@ interface Options {
  * (тот же приём, что у редактора скриптов элемента).
  */
 export function openTemplateModal(options: Options) {
-  useModalStore.getState().openModal(<TemplateEditor {...options} />, {size: "fullscreen"});
+  useModalStore.getState().openModal(<TemplateEditor {...options} />, {size: "fullscreen", legacyLayout: true});
 }

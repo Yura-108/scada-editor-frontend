@@ -1,7 +1,6 @@
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { toast } from "sonner";
 import { useId, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { cn } from "@/shared/lib/cn";
 import { ChevronDown, Type } from "lucide-react";
@@ -11,7 +10,9 @@ import {
   selectIconClassName,
   selectTriggerClassName,
 } from "@/shared/ui/selectStyles";
-import { Button, ModalFooter } from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addDevice} from "../../model/deviceActions";
 import {useDeviceDictionaries} from "../../model/deviceDictionaries";
 
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Props) {
-  const { closeModal } = useModalStore.getState();
+  const closeModal = useCloseModal();
 
   const [selectedValue, setSelectedValue] = useState<string>(String(templateList[0].key));
   const [inputValue, setInputValue] = useState<string>("");
@@ -48,15 +49,12 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
-        Создание устройства
-      </Dialog.Title>
+      <DialogHeader
+        title="Создание устройства"
+        description="Выберите тип устройства и введите его имя."
+      />
 
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Выберите тип устройства и введите его имя.
-      </Dialog.Description>
-
-      <div className="space-y-5">
+      <DialogBody className="space-y-5">
         {/* Выбор типа (Select).
             Radix Select.Trigger — кнопка, а не поле формы: `htmlFor` её не
             подписывает, поэтому связь идёт через id + aria-labelledby. */}
@@ -127,15 +125,15 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
             <Type className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
           </div>
         </div>
-      </div>
+      </DialogBody>
 
       {/* Кнопки */}
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button variant="primary" onClick={handleConfirm} disabled={!inputValue.trim()}>
           Создать
         </Button>
-      </ModalFooter>
+      </DialogFooter>
     </>
   )
 }
@@ -153,6 +151,6 @@ export function OpenCreateDeviveModal(nodeKey: string) {
     return;
   }
 
-  openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={templates} nodeKey={nodeKey} />);
+  openModal(<CreateDeviceContent onLoadAction={addDevice} templateList={templates} nodeKey={nodeKey} />, {size: "md", closeOnOverlay: false});
 }
 

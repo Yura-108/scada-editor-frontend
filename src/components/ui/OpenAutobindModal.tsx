@@ -1,12 +1,13 @@
 "use client";
 
 import React, {useEffect, useId, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "@/modules/editor";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import {
   Select,
@@ -93,7 +94,7 @@ function AutobindReportView({report}: {report: AutobindReport}) {
 }
 
 function AutobindContent({projectId, projectName}: {projectId: number; projectName: string}) {
-  const closeModal = useModalStore((s) => s.closeModal);
+  const closeModal = useCloseModal();
   const autobindProject = useEditorStore((s) => s.autobindProject);
 
   const [sites, setSites] = useState<string[]>([]);
@@ -163,66 +164,68 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
 
   return (
     <>
-      <Dialog.Title className="text-xl font-semibold mb-1 flex items-center gap-2">
-        {report
-          ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          : <Link2 className="h-5 w-5 text-indigo-500" />}
-        Автопривязка к базе каналов
-      </Dialog.Title>
-      <Dialog.Description className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-        Проект <b>{projectName}</b>. Теговые свойства получат пути из базы: имя компонента —
-        объект, имя свойства — поле.
-      </Dialog.Description>
+      <DialogHeader
+        icon={report
+          ? <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-success" />
+          : <Link2 className="mt-1 h-5 w-5 shrink-0 text-primary" />}
+        title="Автопривязка к базе каналов"
+        description={<>
+          Проект <b>{projectName}</b>. Теговые свойства получат пути из базы: имя компонента —
+          объект, имя свойства — поле.
+        </>}
+      />
 
-      {report ? (
-        <AutobindReportView report={report} />
-      ) : (
-        <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor={siteField} className={labelClass}>Площадка</label>
-              <Select value={site} onValueChange={setSite}>
-                <SelectTrigger id={siteField} className="h-12">
-                  <SelectValue placeholder="Выберите площадку…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
+      <DialogBody>
+        {report ? (
+          <AutobindReportView report={report} />
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor={siteField} className={labelClass}>Площадка</label>
+                <Select value={site} onValueChange={setSite}>
+                  <SelectTrigger id={siteField} className="h-12">
+                    <SelectValue placeholder="Выберите площадку…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor={rootField} className={labelClass}>База каналов</label>
+                <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
+                  <SelectTrigger id={rootField} className="h-12">
+                    <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Подпись — последний сегмент, значение — полный путь: именно он уезжает
+                        в `channel_root`. */}
+                    {roots.map((key) => (
+                      <SelectItem key={key} value={key}>{key.split(".").pop() || key}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {site && !isLoadingRoots && roots.length === 0 && (
+                  <p className="text-xs text-gray-500 ml-1">На этой площадке баз нет</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor={rootField} className={labelClass}>База каналов</label>
-              <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
-                <SelectTrigger id={rootField} className="h-12">
-                  <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Подпись — последний сегмент, значение — полный путь: именно он уезжает
-                      в `channel_root`. */}
-                  {roots.map((key) => (
-                    <SelectItem key={key} value={key}>{key.split(".").pop() || key}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {site && !isLoadingRoots && roots.length === 0 && (
-                <p className="text-xs text-gray-500 ml-1">На этой площадке баз нет</p>
-              )}
-            </div>
+            <p className={cn(
+              "flex items-start gap-2 rounded-xl p-3 text-sm",
+              "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+            )}>
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              Совпавшие теги будут перезаписаны, даже если уже заданы. Отменить — восстановлением
+              предыдущей версии схемы.
+            </p>
           </div>
+        )}
+      </DialogBody>
 
-          <p className={cn(
-            "flex items-start gap-2 rounded-xl p-3 text-sm",
-            "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-          )}>
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-            Совпавшие теги будут перезаписаны, даже если уже заданы. Отменить — восстановлением
-            предыдущей версии схемы.
-          </p>
-        </div>
-      )}
-
-      <ModalFooter>
+      <DialogFooter>
         <Button onClick={closeModal}>{report ? "Закрыть" : "Отмена"}</Button>
         {!report && (
           <Button
@@ -234,13 +237,17 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
             {isBinding ? "Привязываю…" : "Привязать"}
           </Button>
         )}
-      </ModalFooter>
+      </DialogFooter>
     </>
   );
 }
 
+/**
+ * Автопривязка — поверх окна, из которого открыли (список проектов): закрыли — список на месте.
+ */
 export function openAutobindModal(projectId: number, projectName: string) {
-  useModalStore.getState().openModal(
+  useModalStore.getState().pushModal(
     <AutobindContent projectId={projectId} projectName={projectName} />,
+    {size: "lg", closeOnOverlay: false},
   );
 }

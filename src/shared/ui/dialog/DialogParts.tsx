@@ -79,7 +79,7 @@ export function DialogFooter({
   return (
     <div
       className={cn(
-        "flex shrink-0 justify-end gap-3 px-6",
+        "flex shrink-0 flex-wrap justify-end gap-3 px-6",
         separated ? "border-t py-4" : "pt-4 pb-6",
         className,
       )}

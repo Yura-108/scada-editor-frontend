@@ -11,7 +11,15 @@ export function useStateActions(element: DiagramElement) {
   const findStateUsages = useEditorStore(s => s.findStateUsages);
   const setCurrentComponentStateId = useEditorStore(s => s.setCurrentComponentStateId);
 
-  const addComponentState = (value: string) => {
+  const addComponentState = async () => {
+    const value = await promptModal({
+      title: "Добавление нового состояния",
+      description: "Введите название состояния",
+      label: "Название состояния",
+      placeholder: "Включено, Отключено, Открыто и тд",
+      confirmLabel: "Добавить",
+    });
+    if (!value) return;
     const createdStateId = addComponentStateToSubtree(element.key, value);
     if (createdStateId) {
       setCurrentComponentStateId(element.key, createdStateId);

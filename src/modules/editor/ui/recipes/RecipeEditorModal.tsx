@@ -63,8 +63,8 @@ function RecipeEditorContent({recipe}: Props) {
    */
   const [pauseAction, setPauseAction] = useState(recipe?.pause_action ?? []);
   const [isSaving, setIsSaving] = useState(false);
-  // Выбор тегов — ВЛОЖЕННЫЙ диалог, который рисуем сами. Через useModalStore нельзя:
-  // он одноместный и подменил бы эту форму, потеряв всё набранное.
+  // Выбор тегов — локальный Modal поверх этой формы. Через openModal нельзя: он открывает
+  // окно вместо верхнего и подменил бы эту форму, потеряв всё набранное.
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const problems = validateRecipe({name, tags, steps, pause_action: pauseAction});
@@ -465,5 +465,5 @@ function RecipeEditorContent({recipe}: Props) {
 
 export default function openRecipeEditorModal(props: Props = {}) {
   const {openModal} = useModalStore.getState();
-  openModal(<RecipeEditorContent {...props} />, {size: "fullscreen"});
+  openModal(<RecipeEditorContent {...props} />, {size: "fullscreen", legacyLayout: true});
 }

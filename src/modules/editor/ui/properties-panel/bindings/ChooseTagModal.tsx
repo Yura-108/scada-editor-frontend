@@ -1,22 +1,21 @@
 "use client";
 
 import React, {useMemo, useState} from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import Tree from "rc-tree";
 import type {Key} from "rc-tree/es/interface";
 import {Activity, AlertTriangle, Box, Building2, Cpu, FolderOpen, Search} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
-import {Button, ModalFooter} from "@/shared/ui/Button";
+import {Button} from "@/shared/ui/Button";
+import Modal from "@/shared/ui/dialog/Modal";
 import {buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo, useDeviceTreeStore} from "@/core/devices";
 import {shortTagPath} from "@/core/scene";
 
 /**
  * Выбор ОДНОГО тега — для прямой привязки «значение элемента ← тег».
  *
- * Вложенный диалог со своим `Dialog.Root` и `z-modal-nested`, как
- * `ChooseObjectPropertyModal`: панель свойств уже живёт внутри своего окна, а
- * `useModalStore` одноместный и подменил бы её.
+ * Локальный `Modal`, как `ChooseObjectPropertyModal`: открывается и из панели свойств, и
+ * из окна редактора привязки — во втором случае встаёт на ступень выше него.
  *
  * Выбор одиночный и НЕ трогает `useDeviceTreeStore.selectedDevice`: тот глобальный и общий
  * со страницей «База каналов» — выбор тега здесь не должен менять выделение там.
@@ -77,92 +76,82 @@ export function ChooseTagModal({open, onClose, onPick}: Props) {
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && close()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-modal-nested bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content
-          className={cn(
-            "fixed left-1/2 top-1/2 z-modal-nested -translate-x-1/2 -translate-y-1/2",
-            "w-[95vw] max-w-xl max-h-[85vh] flex flex-col overflow-hidden rounded-2xl",
-            "bg-white dark:bg-[#0f0f1a] text-gray-900 dark:text-white",
-            "border border-gray-200 dark:border-gray-800/70 shadow-2xl shadow-black/50 p-6",
-            "focus:outline-none",
-          )}
-        >
-          <Dialog.Title className="text-lg font-semibold mb-1">Привязка к тегу</Dialog.Title>
-          <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Значение элемента будет следовать за выбранным тегом. Собственных свойств
-            элементу для этого не нужно.
-          </Dialog.Description>
+    <Modal
+      open={open}
+      onClose={close}
+      size="lg"
+      bodyClassName="flex flex-col"
+      title="Привязка к тегу"
+      description={<>
+        Значение элемента будет следовать за выбранным тегом. Собственных свойств
+        элементу для этого не нужно.
+      </>}
+      footer={<>
+        <Button onClick={close}>Отмена</Button>
+        <Button variant="primary" onClick={handleConfirm} disabled={!selected}>
+          Привязать
+        </Button>
+      </>}
+    >
+      {isTreeEmpty ? (
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="max-w-md rounded-2xl border border-amber-400/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Дерево устройств пусто. Откройте раздел «База каналов» и загрузите проект —
+              без него не из чего выбирать теги.
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
+          <div className="relative shrink-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-600 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск по пути тега"
+              className={cn(
+                "w-full rounded-xl border bg-white dark:bg-gray-900/80",
+                "border-gray-300 dark:border-gray-700/80",
+                "py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100",
+                "placeholder:text-gray-400 dark:placeholder:text-gray-600",
+                "outline-hidden hover:border-gray-400 dark:hover:border-gray-600",
+                "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
+              )}
+            />
+          </div>
 
-          {isTreeEmpty ? (
-            <div className="flex-1 min-h-0 flex items-center justify-center">
-              <div className="max-w-md rounded-2xl border border-amber-400/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Дерево устройств пусто. Откройте раздел «База каналов» и загрузите проект —
-                  без него не из чего выбирать теги.
-                </span>
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950/70 px-2 py-3">
+            {treeData.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                Ничего не найдено
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 flex flex-col gap-3">
-              <div className="relative shrink-0">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-600 pointer-events-none" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Поиск по пути тега"
-                  className={cn(
-                    "w-full rounded-xl border bg-white dark:bg-gray-900/80",
-                    "border-gray-300 dark:border-gray-700/80",
-                    "py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100",
-                    "placeholder:text-gray-400 dark:placeholder:text-gray-600",
-                    "outline-hidden hover:border-gray-400 dark:hover:border-gray-600",
-                    "focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20 transition-all",
-                  )}
-                />
-              </div>
+            ) : (
+              <Tree
+                treeData={treeData}
+                showLine={false}
+                showIcon={false}
+                switcherIcon={SwitcherIcon}
+                selectedKeys={selected ? [selected] : []}
+                // Ветку выбрать нельзя: значение есть только у конечного узла.
+                onSelect={(keys: Key[]) => {
+                  const key = keys[0] as string | undefined;
+                  if (key && leafKeys.has(key)) setSelected(key);
+                }}
+                className="custom-tree"
+              />
+            )}
+          </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950/70 px-2 py-3">
-                {treeData.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                    Ничего не найдено
-                  </div>
-                ) : (
-                  <Tree
-                    treeData={treeData}
-                    showLine={false}
-                    showIcon={false}
-                    switcherIcon={SwitcherIcon}
-                    selectedKeys={selected ? [selected] : []}
-                    // Ветку выбрать нельзя: значение есть только у конечного узла.
-                    onSelect={(keys: Key[]) => {
-                      const key = keys[0] as string | undefined;
-                      if (key && leafKeys.has(key)) setSelected(key);
-                    }}
-                    className="custom-tree"
-                  />
-                )}
-              </div>
-
-              <p className="shrink-0 text-xs text-gray-500 dark:text-gray-500 truncate" title={selected ?? undefined}>
-                {selected
-                  ? `Выбран тег: ${shortTagPath(selected)}`
-                  : "Выберите конечный узел дерева — у ветки значения нет."}
-              </p>
-            </div>
-          )}
-
-          <ModalFooter className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-            <Button onClick={close}>Отмена</Button>
-            <Button variant="primary" onClick={handleConfirm} disabled={!selected}>
-              Привязать
-            </Button>
-          </ModalFooter>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          <p className="shrink-0 text-xs text-gray-500 dark:text-gray-500 truncate" title={selected ?? undefined}>
+            {selected
+              ? `Выбран тег: ${shortTagPath(selected)}`
+              : "Выберите конечный узел дерева — у ветки значения нет."}
+          </p>
+        </div>
+      )}
+    </Modal>
   );
 }

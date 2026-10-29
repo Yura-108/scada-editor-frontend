@@ -413,5 +413,5 @@ function TrendModalContent({elementKey}: Props) {
 }
 
 export function openTrendModal(props: Props) {
-  useModalStore.getState().openModal(<TrendModalContent {...props} />, {size: "fullscreen"});
+  useModalStore.getState().openModal(<TrendModalContent {...props} />, {size: "fullscreen", legacyLayout: true});
 }
