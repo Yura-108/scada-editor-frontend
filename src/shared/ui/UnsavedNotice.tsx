@@ -15,7 +15,7 @@ interface Props {
   saveBlockedReason?: string | null;
 }
 
-const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
 
 /**
  * Плашка в левом нижнем углу, пока есть несохранённые правки. Заменяет надпись «есть

@@ -7,7 +7,7 @@ import {MultiSelect} from "@/shared/ui/MultiSelect";
 import {useDeviceDictionaries} from "../model/deviceDictionaries";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
 
-const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
 
 /** Площадка проекта — первый сегмент его ключа (`площадка.проект`). */
 const siteOf = (projectKey: string) => projectKey.split('.')[0];

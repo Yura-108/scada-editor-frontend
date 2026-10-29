@@ -184,7 +184,7 @@ export default function ActionsClient() {
               placeholder="точное имя"
             />
           </JournalField>
-          <Button type="submit" variant="primary" className="px-3 py-1.5 text-sm shadow-none" disabled={loading}>
+          <Button type="submit" variant="primary" size="sm" disabled={loading}>
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Показать
           </Button>

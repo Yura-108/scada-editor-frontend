@@ -25,7 +25,7 @@ export const fieldHint = "text-xs text-neutral-500 dark:text-neutral-400 mt-1";
 
 /** Компактные кнопки строк: размер `Button` по умолчанию рассчитан на подвал модалки. */
 export const compactButton = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
-export const iconButton = "p-1.5 shadow-none";
+export const iconButton = "h-8 w-8 px-0 shadow-none";
 
 /** Локальная подсказка к имени (таблицы или колонки) — до того, как это скажет бэкенд. */
 export const nameHint = (name: string): string | null =>

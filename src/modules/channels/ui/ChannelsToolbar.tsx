@@ -3,7 +3,7 @@ import {Button} from "@/shared/ui/Button";
 import {ChannelsProjectPicker} from "@/core/devices";
 import {openImportCdbxModal} from "./OpenImportCdbxModal";
 
-const compact = "px-3 py-1.5 text-sm shadow-none whitespace-nowrap";
+const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
 
 /**
  * Верхняя панель «Базы каналов»: какие площадки и проекты загрузить в дерево, плюс импорт.

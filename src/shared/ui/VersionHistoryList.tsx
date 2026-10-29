@@ -87,7 +87,7 @@ export function VersionHistoryList({versions, currentVersion, dirty, onRestore, 
                 </span>
               ) : onRestore && (
                 <Button
-                  className="px-3 py-1.5 text-sm"
+                  size="sm"
                   onClick={() => onRestore(v.version_no)}
                   disabled={dirty}
                   title={dirty ? "Сначала сохраните или перечитайте набор" : "Посмотреть, что изменится, и вернуть всё к этой версии"}

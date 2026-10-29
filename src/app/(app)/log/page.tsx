@@ -65,7 +65,7 @@ export default function LogsPage() {
             title="Фильтрует уже загруженные записи, без нового запроса"
           />
         </JournalField>
-        <Button type="submit" variant="primary" className="px-3 py-1.5 text-sm shadow-none" disabled={isLoading}>
+        <Button type="submit" variant="primary" size="sm" disabled={isLoading}>
           {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
           Показать
         </Button>
