@@ -1,7 +1,7 @@
 "use client";
 
-import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
-import {AlertTriangle, ChevronDown, Loader2, Search, SlidersHorizontal, Waypoints} from "lucide-react";
+import React, {useCallback, useEffect, useId, useState} from "react";
+import {AlertTriangle, Loader2, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
@@ -19,6 +19,8 @@ import {
 } from "@/types/runtimeWrite.types";
 import {errorTextFromJson} from "@/core/access";
 import {useOpenScene} from "@/core/project";
+import {ValueWriteRow} from "./ValueWriteRow";
+import {ObjectPicker} from "./ObjectPicker";
 
 /** Как часто перечитываем значения: они лежат в рефах движка, а не в сторе (как в «Опциях»). */
 const VALUE_POLL_MS = 1000;
@@ -31,113 +33,6 @@ const withoutDraft = (drafts: Record<number, string>, id: number) => {
   return next;
 };
 
-const objectLabel = (o: InspectorObjectDto) => o.name ?? `#${o.id}`;
-
-/** Совпадение по имени объекта или схемы, без учёта регистра. */
-const matches = (o: InspectorObjectDto, q: string) =>
-  (o.name ?? "").toLowerCase().includes(q) || (o.sceneName ?? "").toLowerCase().includes(q);
-
-/**
- * Выбор объекта одним полем: пишешь — список под полем сразу фильтруется (по имени объекта и
- * схемы), выбор мышью или стрелками + Enter, Esc — закрыть. Пока поле не в фокусе, в нём виден
- * выбранный объект. Объектов в выпуске сотни, и пара «поле поиска + селект» заставляла сначала
- * печатать, потом отдельно раскрывать список.
- */
-function ObjectPicker({objects, selected, loading, onSelect, inputClass}: {
-  objects: InspectorObjectDto[];
-  selected: InspectorObjectDto | null;
-  loading: boolean;
-  onSelect: (id: number) => void;
-  inputClass: string;
-}) {
-  const listId = useId();
-  const listRef = useRef<HTMLUListElement>(null);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? objects.filter(o => matches(o, q)) : objects;
-  }, [objects, query]);
-
-  // Подсвеченная строка всегда видна при листании стрелками.
-  useEffect(() => {
-    if (!open) return;
-    listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({block: "nearest"});
-  }, [active, open]);
-
-  const choose = (o: InspectorObjectDto | undefined) => {
-    if (!o) return;
-    onSelect(o.id);
-    setOpen(false);
-    setQuery("");
-  };
-
-  const shown = open
-    ? query
-    : selected ? `${objectLabel(selected)}${selected.sceneName ? ` · ${selected.sceneName}` : ""}` : "";
-
-  return (
-    <div className="relative">
-      <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-      <input
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={open && filtered[active] ? `${listId}-${filtered[active].id}` : undefined}
-        value={shown}
-        disabled={loading && !objects.length}
-        placeholder={loading && !objects.length ? "Загрузка…" : "Найти объект или схему"}
-        onFocus={() => { setOpen(true); setQuery(""); setActive(0); }}
-        onBlur={() => setOpen(false)}
-        onChange={e => { setQuery(e.target.value); setActive(0); setOpen(true); }}
-        onKeyDown={e => {
-          if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, filtered.length - 1)); }
-          else if (e.key === "ArrowUp") { e.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
-          else if (e.key === "Enter") { e.preventDefault(); choose(filtered[active]); }
-          else if (e.key === "Escape") { setOpen(false); setQuery(""); (e.target as HTMLInputElement).blur(); }
-        }}
-        className={cn(inputClass, "pl-8 pr-8")}
-      />
-      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-
-      {open && (
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-1 shadow-xl custom-scrollbar"
-        >
-          {filtered.length === 0 && (
-            <li className="px-3 py-2 text-sm text-gray-500 italic">Ничего не найдено</li>
-          )}
-          {filtered.map((o, i) => (
-            <li
-              key={o.id}
-              id={`${listId}-${o.id}`}
-              data-index={i}
-              role="option"
-              aria-selected={o.id === selected?.id}
-              // mousedown, а не click: иначе поле потеряет фокус и закроет список раньше выбора.
-              onMouseDown={e => { e.preventDefault(); choose(o); }}
-              onMouseEnter={() => setActive(i)}
-              className={cn(
-                "flex items-baseline gap-2 px-3 py-1.5 text-sm cursor-pointer",
-                i === active ? "bg-indigo-500/10" : "",
-                o.id === selected?.id ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-gray-900 dark:text-gray-100",
-              )}
-            >
-              <span className="min-w-0 truncate">{objectLabel(o)}</span>
-              {o.sceneName && <span className="ml-auto shrink-0 text-xs text-gray-500">{o.sceneName}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 /**
  * Инспектор объектов монитора (docs/contract/2026-10-01-object-inspector-contract.md).
@@ -313,12 +208,6 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
     }
   };
 
-  const inputClass = cn(
-    "w-full rounded-lg border bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700",
-    "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
-    "outline-none focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-  );
-
   return (
     // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
     <div className="flex flex-col flex-1 min-h-0">
@@ -331,7 +220,6 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
           selected={selected}
           loading={loading}
           onSelect={id => selectObject(id)}
-          inputClass={inputClass}
         />
       </div>
 
@@ -393,40 +281,17 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 pl-7">
-                    {isBool ? (
-                      <label className="flex flex-1 items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={draft === "true"}
-                          onChange={e => setDrafts({...drafts, [p.id]: e.target.checked ? "true" : "false"})}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        {draft === "true" ? "true" : "false"}
-                      </label>
-                    ) : (
-                      <input
-                        type={isNumericValueType(p.value_type) ? "number" : "text"}
-                        value={draft}
-                        onChange={e => setDrafts({...drafts, [p.id]: e.target.value})}
-                        onKeyDown={e => { if (e.key === "Enter" && draft.trim()) void write(p); }}
-                        placeholder="Новое значение"
-                        className={cn(inputClass, "flex-1")}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void write(p)}
-                      disabled={writing !== null || (!isBool && !draft.trim())}
-                      className={cn(
-                        "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors",
-                        p.tag_id ? "bg-red-600 hover:bg-red-500" : "bg-indigo-600 hover:bg-indigo-500",
-                        "disabled:bg-gray-400 disabled:cursor-not-allowed",
-                      )}
-                    >
-                      {writing === p.id ? "Запись..." : p.tag_id ? "Записать в ПЛК" : "Задать"}
-                    </button>
-                  </div>
+                  <ValueWriteRow
+                    isBool={isBool}
+                    numeric={isNumericValueType(p.value_type)}
+                    draft={draft}
+                    onDraft={(value) => setDrafts({...drafts, [p.id]: value})}
+                    onWrite={() => void write(p)}
+                    disabled={writing !== null || (!isBool && !draft.trim())}
+                    label={writing === p.id ? "Запись..." : p.tag_id ? "Записать в ПЛК" : "Задать"}
+                    danger={Boolean(p.tag_id)}
+                    submitOnEnter
+                  />
                 </div>
               );
             })}

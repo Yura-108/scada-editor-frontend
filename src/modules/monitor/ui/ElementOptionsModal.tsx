@@ -3,7 +3,6 @@
 import React, {useEffect, useState} from "react";
 import {AlertTriangle, Waypoints} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/shared/lib/cn";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
 import {shortTagPath, isBooleanValueType, isNumericValueType, useSceneView, getSceneView} from "@/core/scene";
 import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/core/runtime";
@@ -19,6 +18,7 @@ import {
   tagWriteStatusLabel,
 } from "@/types/runtimeWrite.types";
 import {useOpenScene} from "@/core/project";
+import {ValueWriteRow} from "./ValueWriteRow";
 
 interface Props {
   elementKey: string;
@@ -288,13 +288,6 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
     if (row) void sendWrites([row]);
   };
 
-  const inputClass = cn(
-    "w-full rounded-lg border bg-white dark:bg-neutral-900",
-    "border-neutral-300 dark:border-neutral-700",
-    "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
-    "outline-none focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-  );
-
   return (
     // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
     <div className="flex flex-col flex-1 min-h-0">
@@ -345,40 +338,16 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 pl-7">
-                    {isBool ? (
-                      <label className="flex flex-1 items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={draft === "true"}
-                          onChange={(e) => setDrafts({...drafts, [tagId]: e.target.checked ? "true" : "false"})}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        {draft === "true" ? "true" : "false"}
-                      </label>
-                    ) : (
-                      <input
-                        type={isNumericType(p.value_type) ? "number" : "text"}
-                        value={draft}
-                        onChange={(e) => setDrafts({...drafts, [tagId]: e.target.value})}
-                        placeholder="Новое значение"
-                        className={cn(inputClass, "flex-1")}
-                      />
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => write(p)}
-                      disabled={!tagId || isBusy || (!isBool && !draft.trim())}
-                      className={cn(
-                        "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors",
-                        "bg-red-600 hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed",
-                      )}
-                    >
-                      {isWriting ? "Запись..." : "Записать в ПЛК"}
-                    </button>
-
-                  </div>
+                  <ValueWriteRow
+                    isBool={isBool}
+                    numeric={isNumericType(p.value_type)}
+                    draft={draft}
+                    onDraft={(value) => setDrafts({...drafts, [tagId]: value})}
+                    onWrite={() => write(p)}
+                    disabled={!tagId || isBusy || (!isBool && !draft.trim())}
+                    label={isWriting ? "Запись..." : "Записать в ПЛК"}
+                    danger
+                  />
                 </div>
               );
             })}

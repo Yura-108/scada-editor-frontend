@@ -5,6 +5,8 @@ import {Info, Loader2, Pause, Play} from "lucide-react";
 import {REPLAY_SPEEDS, useArchiveReplayStore} from "../model/useArchiveReplayStore";
 import type {ArchiveReplayControls} from "../model/archive/useArchiveReplay";
 import {ARCHIVE_DEPTH_MS} from "../model/archive/archive";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 
 /** `datetime-local` работает в местном времени без пояса. */
 const toLocalInput = (ts: number) =>
@@ -16,9 +18,6 @@ const formatCursor = (ts: number) => {
   const d = new Date(ts);
   return `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU")}`;
 };
-
-const inputClass =
-  "rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-xs";
 
 /**
  * Панель плеера режима «Архив»: период, пуск/пауза, скорость, ползунок времени.
@@ -51,12 +50,12 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
     <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2 border-b border-amber-500/30 bg-amber-500/5 text-xs text-neutral-700 dark:text-neutral-300">
       <label className="flex items-center gap-1.5">
         с
-        <input type="datetime-local" step={1} className={inputClass} value={draftFrom} min={oldest}
+        <Input size="sm" className="w-auto" type="datetime-local" step={1} value={draftFrom} min={oldest}
           onChange={e => setDraftFrom(e.target.value)} />
       </label>
       <label className="flex items-center gap-1.5">
         по
-        <input type="datetime-local" step={1} className={inputClass} value={draftTo} min={oldest}
+        <Input size="sm" className="w-auto" type="datetime-local" step={1} value={draftTo} min={oldest}
           onChange={e => setDraftTo(e.target.value)} />
       </label>
       <button
@@ -80,14 +79,14 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
         {playing ? <Pause size={14} /> : <Play size={14} />}
       </button>
 
-      <select
+      <Select
         aria-label="Скорость"
-        className={inputClass}
-        value={speed}
-        onChange={e => controls.setSpeed(Number(e.target.value))}
-      >
-        {REPLAY_SPEEDS.map(s => <option key={s} value={s}>×{s}</option>)}
-      </select>
+        size="sm"
+        className="w-20"
+        value={String(speed)}
+        onValueChange={v => controls.setSpeed(Number(v))}
+        options={REPLAY_SPEEDS.map(s => ({value: String(s), label: `×${s}`}))}
+      />
 
       <input
         type="range"
