@@ -127,6 +127,11 @@ value locally — the UPDATE that follows is what proves runtime holds it. `UNKN
 the list is stale: re-read it. Opened from the monitor toolbar and the component menu, live only —
 never in the archive.
 
+**The WS authenticates with a one-time ticket** (`?ticket=`, 30 s, single use) that
+`/api/runtime/sessions` returns with every new session — never the JWT in the query (contract
+`docs/contract/2026-10-28-auth-sessions-contract.md`, §4). Each reconnect creates a new session and
+therefore a new ticket; 503 from the session route (ticket unavailable) is retried like any 503.
+
 **The WS is subscribed to the open scene** (contract
 `docs/contract/2026-10-08-ws-scene-subscription-contract.md`). `{"type":"SUBSCRIBE_SCENE", sceneId,
 tags}` makes runtime send `UPDATE.tags` only for that scene's subtree plus `tags`, and put the

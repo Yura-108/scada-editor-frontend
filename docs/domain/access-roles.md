@@ -23,6 +23,11 @@ here is convenience, never protection.
 - **Global logout**: `authInterceptor.ts` wraps `window.fetch` at module load (in `providers.tsx`,
   not an effect — child effects run first) and sends any 401 / 403 `USER_DISABLED` from `/api/*`
   to `/login`. Login/logout routes are exempt.
+- **Sessions die all at once** (refresh *and* issued access tokens) on a password change, an admin
+  password reset, disabling the user, or the admin card's «Завершить сеансы»
+  (`POST /api/auth/admin/users/{id}/revoke-sessions`). This includes the current session:
+  `ChangePasswordModal` and ending one's own sessions call `logoutToLogin()` (`core/access/sessionApi.ts`)
+  instead of waiting for the next 401. Details — `docs/domain/backend-and-bff.md`, «Sessions».
 - **Editor, `view` without `edit`**: local editing and undo stay; everything that writes is hidden
   (`canWrite` in `ToolsPanel`, computed by `modules/editor/ui/tools-panel/hooks/useToolbarAccess.ts`, separate from the existing `canEdit`) **and** refused in the store
   by `canWriteCurrentProject()` — `exportScene` (autosave silently), restore, create/delete scene,
