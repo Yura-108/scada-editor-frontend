@@ -173,6 +173,10 @@ function ReleasesContent({projectId, projectName}: Props) {
   );
 }
 
+/**
+ * Выпуски проекта. Из панели редактора — просто окно; из списка проектов — поверх него:
+ * закрыли — список на месте.
+ */
 export function openReleasesModal(projectId: number, projectName: string) {
-  useModalStore.getState().openModal(<ReleasesContent projectId={projectId} projectName={projectName} />, {size: "lg"});
+  useModalStore.getState().pushModal(<ReleasesContent projectId={projectId} projectName={projectName} />, {size: "lg"});
 }

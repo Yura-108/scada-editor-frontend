@@ -105,8 +105,11 @@ function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: 
   );
 }
 
+/**
+ * Уровни процедур — поверх окна, из которого открыли (список проектов): закрыли — список на месте.
+ */
 export function openProcedureLevelsModal(projectId: number, projectName: string, editable: boolean) {
-  useModalStore.getState().openModal(
+  useModalStore.getState().pushModal(
     <ProcedureLevelsContent projectId={projectId} projectName={projectName} editable={editable} />,
     {size: "md"},
   );

@@ -83,8 +83,8 @@ export function ProjectContent() {
     await setProjectInOperation(proj.id, next);
   };
 
-  // Состояния занятости строке не заводим: диалог открывается через тот же `modalStore`,
-  // то есть заменяет собой окно проектов, и «занятой» строки на экране не остаётся.
+  // Состояния занятости строке не заводим: автопривязка идёт в своём окне поверх списка
+  // проектов, и её ход виден там.
   const handleAutobind = (e: React.MouseEvent, proj: EditorProject) => {
     e.stopPropagation();
     openAutobindModal(proj.id, proj.name);
