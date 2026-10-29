@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { DialogFrame } from './DialogFrame';
+import { DialogFrame, type DialogSize } from './DialogFrame';
 import { DialogBody, DialogFooter, DialogHeader } from './DialogParts';
 
 /**
@@ -9,7 +9,8 @@ import { DialogBody, DialogFooter, DialogHeader } from './DialogParts';
  *
  * В отличие от {@link ModalRoot} (стек окон в layout) используется там, где
  * диалог принадлежит конкретному компоненту — «Добавить компонент»,
- * «Переместить в группу». Рамка, шапка и подвал — общие (`DialogFrame`, `DialogParts`).
+ * «Переместить в группу», выбор свойства и тега для привязки. Рамка, шапка и подвал —
+ * общие (`DialogFrame`, `DialogParts`). Открытая изнутри окна стека, встаёт поверх него.
  */
 type ModalProps = {
   open: boolean;
@@ -22,6 +23,8 @@ type ModalProps = {
   children?: ReactNode;
   footer?: ReactNode;
 
+  /** Ширина окна (`DialogFrame`). По умолчанию `md`. */
+  size?: DialogSize;
   /** false — клик по затемнению не закрывает окно (для форм с несохранёнными данными). */
   closeOnOverlay?: boolean;
 };
@@ -33,15 +36,15 @@ const Modal: React.FC<ModalProps> = ({
   description,
   children,
   footer,
+  size = 'md',
   closeOnOverlay = true,
 }) => {
   if (!open) return null;
 
   return (
-    <DialogFrame size="md" onClose={onClose} closeOnOverlay={closeOnOverlay}>
+    <DialogFrame size={size} onClose={onClose} closeOnOverlay={closeOnOverlay}>
       <DialogHeader title={title} description={description} />
-      {/* Отступы тела пока задают сами окна — оба пользователя рисуют их в `children`. */}
-      <DialogBody className="p-0">{children}</DialogBody>
+      <DialogBody>{children}</DialogBody>
       {footer && <DialogFooter>{footer}</DialogFooter>}
     </DialogFrame>
   );
