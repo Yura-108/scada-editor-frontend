@@ -1,12 +1,10 @@
 import React, {useMemo, useRef, useState} from "react";
-import CodeMirror, {EditorView} from "@uiw/react-codemirror";
-import {javascript} from "@codemirror/lang-javascript";
-import {Boxes, ExternalLink, Play, Tag, Terminal, Wand2, X} from "lucide-react";
+import type {EditorView} from "@uiw/react-codemirror";
+import {ExternalLink, Terminal} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../../model/editorStore";
 import {cn} from "@/shared/lib/cn";
-import {formatCode} from "@/shared/lib/formatCode";
-import {Collapsible, TitleWithHint} from "@/shared/ui/codeModalParts";
+import {TitleWithHint} from "@/shared/ui/codeModalParts";
 import {DiagramElement} from "@/types/editorElement.type";
 import {
   ElementEventHandler,
@@ -17,6 +15,10 @@ import {
 import {collectTagScope, modernizeScopeCode, uniqueVarName, withPropertyRefs, compileEventScript, executeEventScript, checkScriptSyntax, describeSceneTarget, resolveSceneTarget} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import {ChooseObjectPropertyModal, type PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
+import {ScriptCodeField} from "../script/ScriptCodeField";
+import {ScriptTestRun} from "../script/ScriptTestRun";
+import {PropertyRefChips, TagChips} from "../script/ScopeChips";
+import {chipClasses} from "../script/scriptStyles";
 
 const EVENT_LABEL: Record<ElementEventName, string> = {
   onClick: "onClick (клик)",
@@ -173,17 +175,6 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
     closeModal();
   };
 
-  const inputClasses = cn(
-    "w-full rounded-xl border border-gray-300 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 px-4 py-2.5",
-    "text-gray-900 dark:text-gray-100 placeholder:text-gray-500 outline-none",
-    "hover:border-gray-400 dark:hover:border-gray-500 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20",
-    "transition-all shadow-sm",
-  );
-  const chipClasses = cn(
-    "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full cursor-pointer",
-    "bg-indigo-950/60 text-indigo-300 border border-indigo-800/40 hover:bg-indigo-900/70 transition-colors",
-  );
-
   return (
     <div className="flex flex-col h-full gap-4">
       <TitleWithHint
@@ -207,55 +198,15 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
 
       {/* Теги / свойства / выбор свойства */}
       <div className="shrink-0 space-y-2">
-        {scope.names.some(n => n in scope.tagIdByName) && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Теги:</span>
-            {scope.names
-              .filter(n => n in scope.tagIdByName)
-              .map(tagName => (
-                <span
-                  key={tagName}
-                  className={chipClasses}
-                  title={scope.tagIdByName[tagName]}
-                  onClick={() => insertAtCursor(tagName)}
-                >
-                  <Tag size={12} />
-                  {tagName}
-                </span>
-              ))}
-          </div>
-        )}
+        <TagChips scope={scope} onInsert={insertAtCursor} />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Свойства:</span>
-          {propertyRefs.map(ref => (
-            <span
-              key={ref.propertyId}
-              className={cn(chipClasses, "bg-emerald-950/60 text-emerald-300 border-emerald-800/40 hover:bg-emerald-900/70")}
-              title={`${ref.componentLabel} · ${ref.propertyName} — клик вставит setProperty`}
-              onClick={() => insertAtCursor(`setProperty("${ref.varName}", ${ref.varName} + 1)`)}
-            >
-              <Boxes size={12} />
-              {ref.varName}
-              <X
-                size={11}
-                className="ml-0.5 hover:text-red-300"
-                onClick={e => {
-                  e.stopPropagation();
-                  removePropertyRef(ref.propertyId);
-                }}
-              />
-            </span>
-          ))}
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border border-dashed border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/40 transition-colors"
-          >
-            <Boxes size={12} />
-            Выбрать свойства объекта
-          </button>
-        </div>
+        <PropertyRefChips
+          refs={propertyRefs}
+          titleOf={ref => `${ref.componentLabel} · ${ref.propertyName} — клик вставит setProperty`}
+          onInsert={ref => insertAtCursor(`setProperty("${ref.varName}", ${ref.varName} + 1)`)}
+          onRemove={removePropertyRef}
+          onPick={() => setPickerOpen(true)}
+        />
 
         {/* Серверные скрипты компонента — клик вставит runScript("Имя") */}
         {element.scripts && element.scripts.length > 0 && (
@@ -303,72 +254,18 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex items-center justify-between mb-1 ml-1">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Код (JavaScript)
-          </label>
-          <button
-            type="button"
-            onClick={() => setCode(c => formatCode(c))}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-            title="Автоматически расставить отступы"
-          >
-            <Wand2 size={13} />
-            Форматировать
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 border border-gray-300 dark:border-gray-700/80 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/70">
-          <CodeMirror
-            value={code}
-            height="100%"
-            className="h-full text-sm"
-            extensions={[javascript()]}
-            onChange={value => setCode(value)}
-            onCreateEditor={view => {
-              viewRef.current = view;
-            }}
-            theme="dark"
-          />
-        </div>
-      </div>
+      <ScriptCodeField code={code} setCode={setCode} viewRef={viewRef} />
 
       {scope.names.length > 0 && (
-        <Collapsible title="Тест-прогон">
-          <div className="flex justify-end">
-            <button
-              onClick={runTest}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/80 hover:bg-emerald-600 text-white transition-colors"
-            >
-              <Play size={12} />
-              Выполнить
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {scope.names.map(varName => (
-              <div key={varName} className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 dark:text-gray-400 font-mono shrink-0">{varName} =</span>
-                <input
-                  type="text"
-                  className={cn(inputClasses, "px-2 py-1 text-xs rounded-lg")}
-                  placeholder="значение"
-                  value={mockValues[varName] ?? ""}
-                  onChange={e => setMockValues(v => ({...v, [varName]: e.target.value}))}
-                />
-              </div>
-            ))}
-          </div>
-          {testResult && (
-            <div
-              className={cn(
-                "text-xs rounded-lg px-3 py-2 font-mono whitespace-pre-wrap",
-                testResult.kind === "error" ? "bg-red-950/40 text-red-300" : "bg-emerald-950/40 text-emerald-300",
-              )}
-            >
-              {testResult.kind === "error" ? testResult.message : testResult.text}
-            </div>
-          )}
-        </Collapsible>
+        <ScriptTestRun
+          names={scope.names}
+          mockValues={mockValues}
+          setMockValues={setMockValues}
+          onRun={runTest}
+          outcome={testResult && (testResult.kind === "error"
+            ? {kind: "error", text: testResult.message}
+            : {kind: "ok", text: testResult.text})}
+        />
       )}
 
       {syntaxError && (
