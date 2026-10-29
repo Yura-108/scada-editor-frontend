@@ -3,7 +3,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Tree from 'rc-tree';
 import {Key} from 'rc-tree/es/interface';
-import {ChevronDown, ChevronUp, Router, Search, X} from 'lucide-react';
+import {Router} from 'lucide-react';
 import TitleRenderer from "./TitleRenderer";
 import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/shared/ui/SwitcherIcon';
@@ -14,6 +14,7 @@ import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "../lib/devic
 import ChannelsProjectPicker from "./ChannelsProjectPicker";
 import {handleContextAction} from "../model/deviceActions";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
+import {TreeSearchBox} from "./TreeSearchBox";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -190,53 +191,20 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
           {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}
         </p>
 
-        <div className="mt-2 flex items-center gap-1 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 focus-within:border-indigo-500">
-          <Search className="w-4 h-4 shrink-0 text-gray-400"/>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                // Enter до истечения паузы ищет сразу; дальше — переход по совпадениям.
-                if (searchPending) runSearch(query);
-                else goToMatch(e.shiftKey ? -1 : 1);
-              } else if (e.key === 'Escape' && query) {
-                e.preventDefault();
-                e.stopPropagation();
-                clearSearch();
-              }
-            }}
-            placeholder="Название или путь узла"
-            aria-label="Поиск по дереву устройств"
-            title="Полное название узла или хвост пути через точку. Enter — следующее совпадение, Shift+Enter — предыдущее, Esc — очистить"
-            className="flex-1 min-w-0 bg-transparent py-1.5 text-sm text-gray-800 dark:text-gray-100 outline-none [&::-webkit-search-cancel-button]:hidden"
-          />
-          {searchActive && !searchPending && (
-            <span
-              className={matches.length ? 'text-xs text-gray-500 dark:text-gray-400 tabular-nums' : 'text-xs text-red-600 dark:text-red-400'}
-              aria-live="polite"
-            >
-              {matches.length ? `${Math.min(matchIndex, matches.length - 1) + 1} / ${matches.length}` : 'не найдено'}
-            </span>
-          )}
-          {matches.length > 1 && (
-            <>
-              <button type="button" onClick={() => goToMatch(-1)} title="Предыдущее совпадение (Shift+Enter)" className="p-1 rounded text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                <ChevronUp className="w-4 h-4"/>
-              </button>
-              <button type="button" onClick={() => goToMatch(1)} title="Следующее совпадение (Enter)" className="p-1 rounded text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                <ChevronDown className="w-4 h-4"/>
-              </button>
-            </>
-          )}
-          {query && (
-            <button type="button" onClick={clearSearch} title="Очистить (Esc)" className="p-1 rounded text-gray-500 hover:text-gray-900 dark:hover:text-white">
-              <X className="w-4 h-4"/>
-            </button>
-          )}
-        </div>
+        <TreeSearchBox
+          query={query}
+          onQueryChange={handleQueryChange}
+          // Enter до истечения паузы ищет сразу; дальше — переход по совпадениям.
+          onEnter={(back) => { if (searchPending) runSearch(query); else goToMatch(back ? -1 : 1); }}
+          onEscape={clearSearch}
+          status={searchActive && !searchPending
+            ? (matches.length ? `${Math.min(matchIndex, matches.length - 1) + 1} / ${matches.length}` : 'не найдено')
+            : null}
+          notFound={!matches.length}
+          canStep={matches.length > 1}
+          onStep={goToMatch}
+          onClear={clearSearch}
+        />
       </div>
 
       <div
