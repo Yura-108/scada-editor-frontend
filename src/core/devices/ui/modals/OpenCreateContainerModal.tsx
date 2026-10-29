@@ -1,4 +1,4 @@
-import { useModalStore } from "@/store/modalStore";
+import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/shared/lib/cn";

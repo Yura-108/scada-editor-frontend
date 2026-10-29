@@ -1,7 +1,7 @@
 import {hasUnsavedWork} from "./editorStoreInternals";
 import {useEditorStore} from "./editorStore";
 import {usePaletteStore} from "@/store/usePaletteStore";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 /**
  * Загружает схему, спросив подтверждение при несохранённых правках.

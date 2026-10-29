@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, ChevronDown, ChevronUp, Plus, Tags, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations} from "../../api/recipes";
 import {ChooseManifestTagsModal} from "./ChooseManifestTagsModal";

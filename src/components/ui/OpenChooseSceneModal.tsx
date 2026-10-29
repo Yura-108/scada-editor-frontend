@@ -1,6 +1,6 @@
 "use client";
 
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Pin, PinOff, X} from "lucide-react";
@@ -8,7 +8,7 @@ import {useState} from "react";
 import {canWriteCurrentProject, useEditorStore, openSceneGuarded} from "@/modules/editor";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {toast} from "sonner";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import { Button, ModalFooter } from "@/shared/ui/Button";
 
 interface Props {

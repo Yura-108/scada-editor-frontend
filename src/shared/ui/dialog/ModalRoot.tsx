@@ -1,10 +1,9 @@
-// components/ModalRoot.tsx
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "./modalStore";
 
 /**
  * Единый стек модалок приложения (содержимое кладёт `modalStore.openModal`).

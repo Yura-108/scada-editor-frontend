@@ -5,7 +5,7 @@ import { useEditorStore } from "@/modules/editor";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
-import Modal from "@/shared/ui/Modal";
+import Modal from "@/shared/ui/dialog/Modal";
 import { elementRegistry } from "@/constants/propertiesPanel";
 import { getDescendants } from "@/lib/getDescendants";
 import { DiagramElement, ElementType } from "@/types/editorElement.type";

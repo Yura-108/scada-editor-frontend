@@ -3,7 +3,7 @@ import type {EditorState} from "../editorStore";
 import type {SceneType} from "@/types/editorElement.type";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {dropReleaseScenes, dropScene, fetchSceneWithVersion, getCachedScene, SceneLoadError, type SceneSource, fetchCurrentVersion} from "@/core/project";
-import {promptModal} from "@/components/ui/ConfirmModal";
+import {promptModal} from "@/shared/ui/dialog/confirmModal";
 import {requestCreateScene, requestSceneList} from "../../api/scenes";
 import {editorSession} from "../editorSession";
 import {editorStore} from "../editorStoreRef";

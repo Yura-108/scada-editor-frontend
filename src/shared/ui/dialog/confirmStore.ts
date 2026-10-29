@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
+import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "./confirm.types";
 
 export type ConfirmEntry =
   | {

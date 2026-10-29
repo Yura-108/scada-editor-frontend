@@ -4,7 +4,7 @@ import React, {useEffect, useId, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "@/modules/editor";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {Collapsible} from "@/shared/ui/codeModalParts";

@@ -9,7 +9,7 @@ import SelectItem from "@/shared/ui/SelectItem";
 import { selectContentClassName, selectIconClassName, selectTriggerClassName } from "@/shared/ui/selectStyles";
 import { cn } from "@/shared/lib/cn";
 import {shortTagPath, isBooleanValueType} from "@/core/scene";
-import { useModalStore } from "@/store/modalStore";
+import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import {useEditorStore, confirmDeleteProperty} from "@/modules/editor";
 import { PropertyCreateDto } from "@/types/tags.types";
 import { Button, ModalFooter } from "@/shared/ui/Button";

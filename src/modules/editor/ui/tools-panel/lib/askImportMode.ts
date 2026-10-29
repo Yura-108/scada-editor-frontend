@@ -1,4 +1,4 @@
-import {choiceModal} from "@/components/ui/ConfirmModal";
+import {choiceModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore} from "../../../model/editorStore";
 
 export type ImportMode = "append" | "replace";

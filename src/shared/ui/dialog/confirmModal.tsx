@@ -4,8 +4,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 import React, { useId, useState } from "react";
 import { cn } from "@/shared/lib/cn";
-import { useConfirmStore, type ConfirmEntry } from "@/store/confirmStore";
-import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "@/types/confirm.types";
+import { useConfirmStore, type ConfirmEntry } from "./confirmStore";
+import type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions } from "./confirm.types";
 
 export type { ChoiceModalOptions, ConfirmModalOptions, PromptModalOptions };
 

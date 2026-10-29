@@ -2,7 +2,7 @@ import React, {useMemo, useRef, useState} from "react";
 import CodeMirror, {EditorView} from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {Boxes, Play, Tag, Wand2, X} from "lucide-react";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../../model/editorStore";
 import {cn} from "@/shared/lib/cn";
 import {formatCode} from "@/shared/lib/formatCode";

@@ -4,7 +4,7 @@ import React, {useEffect} from "react";
 import {Plus} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {cellInput, ColumnsEditor, compactButton, fieldHint, fieldTitle, nameHint} from "./ColumnsEditor";
 import {RowsGrid} from "./RowsGrid";
 import type {ProjectDataTable, ProjectDataValidationError} from "@/types/projectData.types";

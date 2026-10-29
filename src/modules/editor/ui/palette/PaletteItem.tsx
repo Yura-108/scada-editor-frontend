@@ -5,7 +5,7 @@ import {usePaletteStore} from "@/store/usePaletteStore";
 import {useEditorStore} from "../../model/editorStore";
 import {ElementType} from "@/types/editorElement.type";
 import {Trash2} from "lucide-react";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 

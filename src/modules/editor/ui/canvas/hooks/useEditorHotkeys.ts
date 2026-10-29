@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { GRID } from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
-import { useModalStore } from "@/store/modalStore";
+import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { beginHistoryGroup, endHistoryGroup } from "../../../model/historyGroup";
 
 /**

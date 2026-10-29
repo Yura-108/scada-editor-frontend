@@ -17,7 +17,7 @@ import {
 } from "@/types/contextMenu.type";
 import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {toast} from "sonner";
 
 const DeviceParams = () => {

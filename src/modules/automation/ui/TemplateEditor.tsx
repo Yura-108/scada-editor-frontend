@@ -6,7 +6,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {X} from "lucide-react";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useCreateTemplate, useUpdateTemplate} from "../api/templates";
 import {AutomationSaveError} from "@/core/automation";
 import {templateBody} from "../lib/automationTemplates";

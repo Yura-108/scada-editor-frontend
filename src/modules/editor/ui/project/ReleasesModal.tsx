@@ -4,10 +4,10 @@ import React, {useCallback, useEffect, useState} from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {Loader2, Package, Rocket} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {fetchReleases} from "@/core/project";
 import type {VersionSummary} from "@/types/editorVersion.types";
 

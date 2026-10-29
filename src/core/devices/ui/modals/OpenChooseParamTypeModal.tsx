@@ -1,5 +1,5 @@
 import { DeviceParamsLayoutType } from "@/types/nodeTypes";
-import { useModalStore } from "@/store/modalStore";
+import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { useId, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";

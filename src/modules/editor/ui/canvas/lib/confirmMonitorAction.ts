@@ -1,6 +1,6 @@
 import type {DiagramElement} from "@/types/editorElement.type";
 import type {ElementEventName} from "@/types/binding.types";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 /**
  * Подтверждение действия оператора в мониторе.

@@ -4,7 +4,7 @@ import type {NodeParamType} from "@/types/channelsTypes";
 import {OpenCreateDeviveModal} from "../ui/modals/OpenCreateDeviceModal";
 import {OpenCreateProjectModal, OpenCreateSiteModal} from "../ui/modals/OpenCreateContainerModal";
 import {openGatewayExportModal} from "../ui/modals/OpenGatewayExportModal";
-import {confirmModal, promptModal} from "@/components/ui/ConfirmModal";
+import {confirmModal, promptModal} from "@/shared/ui/dialog/confirmModal";
 import {
   createDeviceRequest, createParamRequest, deleteDeviceRequest, deleteImportedProjectRequest,
   deleteParamRequest, deleteParamUnchecked, errorMessage, patchParamsRequest,

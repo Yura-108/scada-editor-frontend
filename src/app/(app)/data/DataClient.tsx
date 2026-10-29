@@ -6,7 +6,7 @@ import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {confirmModal} from "@/components/ui/ConfirmModal";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore, useEditableProject} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/core/access";
 import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";

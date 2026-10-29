@@ -1,4 +1,4 @@
-import {useModalStore} from "@/store/modalStore";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {TemplateEditor} from "./TemplateEditor";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
 

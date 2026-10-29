@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useRef} from "react";
-import {choiceModal} from "@/components/ui/ConfirmModal";
+import {choiceModal} from "@/shared/ui/dialog/confirmModal";
 
 /**
  * Охрана несохранённых правок при переходе между разделами по шапке.
