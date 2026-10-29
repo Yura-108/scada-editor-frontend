@@ -3,7 +3,6 @@
 import {Pencil, Plus, Trash2} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {StateSelect} from "@/components/ui/StateSelect";
-import {openInputModal} from "@/components/ui/OpenInputModal";
 import {EditAllStatesToggle} from "../EditAllStatesToggle";
 import {useStateActions} from "../hooks/useStateActions";
 import {baseAddButtonClasses} from "../panelClasses";
@@ -70,13 +69,7 @@ export function StatesTab({element}: {element: DiagramElement}) {
 
       <button
         className={baseAddButtonClasses}
-        onClick={() => openInputModal({
-          title: "Добавление нового состояния",
-          description: "Введите название состояния",
-          label: "Название состояния",
-          placeholder: "Включено, Отключено, Открыто и тд",
-          onConfirm: addComponentState
-        })}
+        onClick={() => void addComponentState()}
       >
         <Plus size={18}/>
         Добавить состояние
