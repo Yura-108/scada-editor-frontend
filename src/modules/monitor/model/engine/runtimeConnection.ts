@@ -10,16 +10,16 @@ import type {AccessDenial} from "@/types/access.types";
  * PHASE4_RUNTIME_PLAN.md, WP4):
  *
  *  1. POST /api/runtime/sessions {projectId} (через наш BFF, Bearer нужен только
- *     на этом шаге) → {sessionId, wsPath, projectTree, token}. token — тот же JWT
- *     из httpOnly-cookie access_token; BFF отдаёт его в теле ответа, поскольку
- *     дальше сокет открывается напрямую браузером и cookie ему не виден.
+ *     на этом шаге) → {sessionId, wsPath, projectTree, ticket}. ticket — одноразовый
+ *     билет на 30 с, его BFF берёт у auth на каждую сессию: сокет открывается напрямую
+ *     браузером, httpOnly-cookie ему не видна, а полный JWT в query осел бы в журналах.
  *  2. Raw WebSocket (НЕ SockJS/STOMP!) на GATEWAY + wsPath из ответа.
  *     `wsPath` — `/ws/runtime/<instanceId>/<sessionId>`: экземпляров runtime может быть
  *     несколько, и gateway выбирает нужный по имени экземпляра в пути (список берёт у
  *     runtime раз в 10 с). Собирать путь вручную нельзя, а `sessionId` (`<instanceId>.<uuid>`)
  *     — непрозрачная строка: её только передают обратно, не разбирают.
- *     Рантайм требует JWT в query (?token=…) — заголовок Authorization браузерный
- *     WebSocket слать не умеет; без валидного token соединение закрывается 401.
+ *     Gateway требует билет в query (?ticket=…) — заголовок Authorization браузерный
+ *     WebSocket слать не умеет; билет принимается один раз, без годного — 401.
  *
  * Сессия — НАБЛЮДАТЕЛЬ проекта, а не владелец работы: проект живёт по флагу «в
  * эксплуатации», процедуры и состояние свойств принадлежат ему и идут без единого
@@ -186,7 +186,7 @@ export function openRuntimeConnection(
 
     // Сессия одноразовая: каждый (ре)коннект начинается с нового POST.
     let wsPath: string;
-    let wsToken: string;
+    let wsTicket: string;
 
     try {
       const res = await fetch("/api/runtime/sessions", {
@@ -237,10 +237,10 @@ export function openRuntimeConnection(
       const data = await res.json();
 
       if (typeof data?.wsPath !== "string") throw new Error("В ответе сессии нет wsPath");
-      if (typeof data?.token !== "string") throw new Error("В ответе сессии нет token");
+      if (typeof data?.ticket !== "string") throw new Error("В ответе сессии нет ticket");
 
       wsPath = data.wsPath;
-      wsToken = data.token;
+      wsTicket = data.ticket;
       currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
       if (typeof data?.versionNo === "number" && !closed) onRelease?.(data.versionNo, false);
 
@@ -253,12 +253,12 @@ export function openRuntimeConnection(
 
     if (closed) return;
 
-    // Браузерный WebSocket не умеет слать заголовок Authorization — JWT идёт query-параметром.
+    // Браузерный WebSocket не умеет слать заголовок Authorization — билет идёт query-параметром.
     const separator = wsPath.includes("?") ? "&" : "?";
     // Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
     // и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
     // закроется кодом 1003 «Session belongs to instance …».
-    const socket = new WebSocket(`${gatewayWsOrigin()}${wsPath}${separator}token=${encodeURIComponent(wsToken)}`);
+    const socket = new WebSocket(`${gatewayWsOrigin()}${wsPath}${separator}ticket=${encodeURIComponent(wsTicket)}`);
     ws = socket;
 
     socket.onopen = () => {
