@@ -4,8 +4,11 @@ import React from "react";
 import {FolderTree} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {pickTag} from "@/core/devices";
-import {compactButton, fieldInput as input, fieldLabel as label} from "./formStyles";
+import {compactButton} from "./formStyles";
 import type {AutomationValidationError, AutomationWatchdog} from "@/types/automation.types";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
 
 interface Props {
   watchdog: AutomationWatchdog | null;
@@ -49,30 +52,30 @@ export function WatchdogEditor({watchdog, errors, onChange, readOnly = false}: P
           значит автоматика остановилась или пропала связь, и ПЛК переводит оборудование
           в безопасный режим.
         </p>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Счётчик замирает, если проект не исполняется или шлюз не отвечает на команды дольше трёх периодов.
           Ошибки в скриптах задач его не останавливают — они видны в статусе задачи.
           В программе ПЛК порог обычно ставят в 3–5 периодов.
         </p>
       </section>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={watchdog !== null}
-          onChange={e => onChange(e.target.checked ? {tag: "", period_ms: 1000} : null)}
-        />
-        Включён
-      </label>
+      <Checkbox
+        checked={watchdog !== null}
+        onChange={e => onChange(e.target.checked ? {tag: "", period_ms: 1000} : null)}
+        label="Включён"
+      />
 
       {watchdog && (
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-4">
-          <div>
-            <label className={label} htmlFor="watchdog-tag">Тег ПЛК для счётчика</label>
+          <Field
+            size="sm"
+            label="Тег ПЛК для счётчика"
+            error={errorOf("watchdog.tag")}
+            hint={<>Полный путь канала из «Базы каналов», например <code>BN1.Нормализация.PLC1.WD_Counter</code>. Тип канала — целый (INT/WORD). Этот тег не должна писать ни одна задача.</>}
+          >
             <div className="flex gap-2">
-              <input
-                id="watchdog-tag"
-                className={input}
+              <Input
+                size="sm"
                 placeholder="площадка.проект.устройство.канал"
                 value={watchdog.tag}
                 onChange={e => onChange({...watchdog, tag: e.target.value})}
@@ -81,16 +84,10 @@ export function WatchdogEditor({watchdog, errors, onChange, readOnly = false}: P
                 <FolderTree size={14} />Выбрать…
               </Button>
             </div>
-            <p className={errorOf("watchdog.tag") ? "text-xs text-red-600 mt-1" : "text-xs text-neutral-500 mt-1"}>
-              {errorOf("watchdog.tag")
-                || <>Полный путь канала из «Базы каналов», например <code>BN1.Нормализация.PLC1.WD_Counter</code>. Тип канала — целый (INT/WORD). Этот тег не должна писать ни одна задача.</>}
-            </p>
-          </div>
-          <div>
-            <label className={label} htmlFor="watchdog-period">Период записи, мс</label>
-            <input
-              id="watchdog-period"
-              className={input}
+          </Field>
+          <Field size="sm" label="Период записи, мс" hint={periodHint} error={errorOf("watchdog.period_ms")}>
+            <Input
+              size="sm"
               type="number"
               min={PERIOD_MIN}
               max={PERIOD_MAX}
@@ -98,16 +95,13 @@ export function WatchdogEditor({watchdog, errors, onChange, readOnly = false}: P
               value={watchdog.period_ms}
               onChange={e => onChange({...watchdog, period_ms: Math.trunc(Number(e.target.value))})}
             />
-            <p className={errorOf("watchdog.period_ms") ? "text-xs text-red-600 mt-1" : "text-xs text-neutral-500 mt-1"}>
-              {errorOf("watchdog.period_ms") || periodHint}
-            </p>
-          </div>
+          </Field>
         </div>
       )}
 
-      {otherErrors.map((e, i) => <p key={i} className="text-xs text-red-600">{e.message}</p>)}
+      {otherErrors.map((e, i) => <p key={i} className="text-xs text-destructive">{e.message}</p>)}
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-muted-foreground">
         {readOnly ? "Нет права правки — настройки только для просмотра." : "Изменения уходят на сервер кнопкой «Сохранить всё» вверху."}
       </p>
     </fieldset>

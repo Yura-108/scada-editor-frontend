@@ -6,6 +6,8 @@ import {getGeometryFields} from "../../lib/geometryFields";
 import {getNumberValue} from "../../lib/getNumberValue";
 import {baseInputClasses} from "../../panelClasses";
 import {historyEditing} from "../../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {cn} from "@/shared/lib/cn";
 
 interface GeometrySectionProps {
   elementKey: string;
@@ -32,7 +34,7 @@ export function GeometrySection({elementKey, type, values}: GeometrySectionProps
           <div key={field.key} className="space-y-1.5">
             <label
               htmlFor={`geom-${field.key}`}
-              className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
+              className={cn(fieldLabelSmClass, "mb-1.5")}
             >
               {field.label}
             </label>

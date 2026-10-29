@@ -8,9 +8,13 @@ import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {IoTable} from "./IoTable";
 import {TagTreeSidebar} from "./TagTreeSidebar";
-import {compactButton, fieldInput as input, fieldLabel as label} from "./formStyles";
+import {compactButton} from "./formStyles";
 import type {TaskDraftState} from "../lib/automationDraft";
 import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/types/automation.types";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 interface Props {
   task: AutomationTask;
@@ -56,11 +60,9 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
   };
 
   const numberField = (field: NumberField, title: string, hint: string) => (
-    <div>
-      <label className={label}>{title}</label>
-      <input type="number" className={input} value={task[field] ?? ""} onChange={e => setNumber(field, e.target.value)} />
-      <p className={errorOf(field) ? "text-xs text-red-600 mt-1" : "text-xs text-neutral-500 mt-1"}>{errorOf(field) || hint}</p>
-    </div>
+    <Field size="sm" label={title} hint={hint} error={errorOf(field)}>
+      <Input size="sm" type="number" value={task[field] ?? ""} onChange={e => setNumber(field, e.target.value)} />
+    </Field>
   );
 
   const toggleWrite = (name: string, on: boolean) =>
@@ -72,11 +74,9 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
           него, по нему можно искать и в режиме просмотра. */}
       <fieldset disabled={readOnly} className="flex-1 min-w-0 m-0 border-0 overflow-y-auto p-4 pb-28 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-56">
-            <label className={label}>Название</label>
-            <input className={input} value={task.name} onChange={e => set({name: e.target.value})} />
-            {errorOf("name") && <p className="text-xs text-red-600 mt-1">{errorOf("name")}</p>}
-          </div>
+          <Field size="sm" label="Название" error={errorOf("name")} className="flex-1 min-w-56">
+            <Input size="sm" value={task.name} onChange={e => set({name: e.target.value})} />
+          </Field>
           <div className="flex items-center gap-2">
             {onSaveAsTemplate && (
               <Button className={compactButton} onClick={onSaveAsTemplate} title="Сохранить задачу заготовкой в палитру шаблонов">
@@ -103,13 +103,14 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
         </div>
 
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={task.enabled} onChange={e => set({enabled: e.target.checked})} />Включена
-          </label>
-          <label className="flex items-center gap-2" title="Выполнять такт, даже если входы устарели (скрипт сам проверяет input(alias).stale)">
-            <input type="checkbox" checked={task.run_on_stale} onChange={e => set({run_on_stale: e.target.checked})} />Работать на устаревших входах
-          </label>
-          <span className={cn("ml-auto text-xs", draftState === "saved" ? "text-neutral-500" : "text-amber-600 dark:text-amber-400")}>
+          <Checkbox checked={task.enabled} onChange={e => set({enabled: e.target.checked})} label="Включена" />
+          <Checkbox
+            title="Выполнять такт, даже если входы устарели (скрипт сам проверяет input(alias).stale)"
+            checked={task.run_on_stale}
+            onChange={e => set({run_on_stale: e.target.checked})}
+            label="Работать на устаревших входах"
+          />
+          <span className={cn("ml-auto text-xs", draftState === "saved" ? "text-muted-foreground" : "text-warning")}>
             {DRAFT_STATE_LABEL[draftState]}
           </span>
         </div>
@@ -120,35 +121,37 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
           {numberField("stale_after_ms", "Вход устарел через, мс", "100 … 86 400 000")}
         </div>
 
-        {errorOf("inputs") && <p className="text-xs text-red-600">{errorOf("inputs")}</p>}
+        {errorOf("inputs") && <p className="text-xs text-destructive">{errorOf("inputs")}</p>}
         <IoTable title="Входы" rows={task.inputs} onChange={inputs => set({inputs})} />
-        {errorOf("outputs") && <p className="text-xs text-red-600">{errorOf("outputs")}</p>}
+        {errorOf("outputs") && <p className="text-xs text-destructive">{errorOf("outputs")}</p>}
         <IoTable title="Выходы" rows={task.outputs} onChange={outputs => set({outputs})} />
 
         <div>
-          <span className={label}>Пишет переменные</span>
-          {variables.length === 0 && <p className="text-xs text-neutral-500">Переменных проекта нет — заведите в разделе «Данные проекта» → «Переменные».</p>}
+          <span className={fieldLabelSmClass}>Пишет переменные</span>
+          {variables.length === 0 && <p className="text-xs text-muted-foreground">Переменных проекта нет — заведите в разделе «Данные проекта» → «Переменные».</p>}
           <div className="flex flex-wrap gap-3">
             {variables.map(v => (
-              <label key={v.name} className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={task.writes_variables.includes(v.name)} onChange={e => toggleWrite(v.name, e.target.checked)} />
-                {v.name}
-              </label>
+              <Checkbox
+                key={v.name}
+                checked={task.writes_variables.includes(v.name)}
+                onChange={e => toggleWrite(v.name, e.target.checked)}
+                label={v.name}
+              />
             ))}
           </div>
-          {errorOf("writes_variables") && <p className="text-xs text-red-600 mt-1">{errorOf("writes_variables")}</p>}
+          {errorOf("writes_variables") && <p className="text-xs text-destructive mt-1">{errorOf("writes_variables")}</p>}
         </div>
 
         <div>
-          <span className={label}>Скрипт (JavaScript)</span>
-          <p className="text-xs text-neutral-500 mb-1">
+          <span className={fieldLabelSmClass}>Скрипт (JavaScript)</span>
+          <p className="text-xs text-muted-foreground mb-1">
             inputs.alias · input(alias) → {"{value, good, ageMs, stale}"} · write(alias, value) · vars.имя · setVar(имя, value) ·
             state (объект, до 64 КБ) · dt · firstRun · log.info(...) / log.warn(...)
           </p>
           <div className="border border-neutral-300 dark:border-neutral-700 rounded-xl overflow-hidden">
             <CodeMirror value={task.script} height="360px" extensions={[javascript()]} theme="dark" readOnly={readOnly} editable={!readOnly} onChange={script => set({script})} />
           </div>
-          {errorOf("script") && <p className="text-xs text-red-600 mt-1">{errorOf("script")}</p>}
+          {errorOf("script") && <p className="text-xs text-destructive mt-1">{errorOf("script")}</p>}
         </div>
       </fieldset>
 

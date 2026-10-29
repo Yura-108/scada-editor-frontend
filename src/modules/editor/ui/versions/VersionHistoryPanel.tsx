@@ -12,6 +12,10 @@ import {
   VERSION_KIND_LABEL,
 } from "./formatVersion";
 import type {VersionKind} from "@/types/editorVersion.types";
+import {Button} from "@/shared/ui/Button";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 /** Кроме MANUAL показываем автосохранения и восстановления — по переключателю. */
 const ALL_KINDS: VersionKind[] = ["MANUAL", "AUTOSAVE", "RESTORE"];
@@ -108,43 +112,34 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
       </header>
 
       <div className="shrink-0 space-y-3 border-b border-neutral-200 dark:border-neutral-800 p-3">
-        <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={e => setShowAll(e.target.checked)}
-            className="accent-primary"
-          />
-          Показывать автосохранения и восстановления
-        </label>
+        <Checkbox
+          className="text-xs text-muted-foreground"
+          checked={showAll}
+          onChange={e => setShowAll(e.target.checked)}
+          label="Показывать автосохранения и восстановления"
+        />
 
         <div className="space-y-1">
-          <label htmlFor="version-at-time" className="block text-xs text-neutral-600 dark:text-neutral-400">
+          <label htmlFor="version-at-time" className={fieldLabelSmClass}>
             Состояние на момент времени
           </label>
           <div className="flex gap-2">
-            <input
+            <Input
               id="version-at-time"
+              size="sm"
               type="datetime-local"
               value={atTime}
               onChange={e => setAtTime(e.target.value)}
-              className="min-w-0 flex-1 rounded-md border border-neutral-300 dark:border-neutral-700
-                         bg-transparent px-2 py-1 text-xs"
+              className="min-w-0 flex-1"
             />
-            <button
-              type="button"
-              onClick={handleAt}
-              disabled={!atTime}
-              className="flex items-center gap-1 rounded-md border border-neutral-300 dark:border-neutral-700
-                         px-2 py-1 text-xs hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40"
-            >
+            <Button size="sm" onClick={handleAt} disabled={!atTime}>
               <Clock size={13} />
               Открыть
-            </button>
+            </Button>
           </div>
           {/* История — это точки сохранения, а не непрерывная запись: обещать точность
               до минуты нельзя, и лучше сказать об этом прямо, чем удивить потом. */}
-          <p className="text-[11px] leading-tight text-neutral-500">
+          <p className="text-[11px] leading-tight text-muted-foreground">
             Вернётся ближайшее сохранение не позже указанного времени.
           </p>
         </div>

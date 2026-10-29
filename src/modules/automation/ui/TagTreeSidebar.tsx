@@ -4,7 +4,7 @@ import React, {useCallback, useRef, useState} from "react";
 import {PanelRightClose, PanelRightOpen} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {DeviceTreePanel} from "@/core/devices";
-import {fieldLabel as label} from "./formStyles";
+import {fieldLabelSmClass as label} from "@/shared/ui/field/fieldStyles";
 
 const WIDTH_KEY = "automation.tagTree.width";
 const OPEN_KEY = "automation.tagTree.open";

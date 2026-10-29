@@ -4,6 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {Ban} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import type {EditSession} from "./editSession";
+import {fieldBase, fieldLabelSmClass, fieldSizes} from "./fieldStyles";
 
 interface ColorFieldProps extends EditSession {
   id: string;
@@ -11,7 +12,8 @@ interface ColorFieldProps extends EditSession {
   /** Текущее значение ("#rrggbb" | "transparent" | undefined — значения различаются). */
   value: string | undefined;
   onChange: (value: string) => void;
-  inputClassName: string;
+  /** Дополнительные классы обоих полей (пикера и hex). */
+  inputClassName?: string;
 }
 
 const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -65,30 +67,27 @@ export function ColorField({id, label, value, onChange, inputClassName, onEditSt
 
   return (
     <div className="space-y-1.5">
-      <label
-        htmlFor={id}
-        className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
-      >
+      <label htmlFor={id} className={cn(fieldLabelSmClass, "mb-1.5")}>
         {label}{value === undefined ? " (разные)" : ""}
       </label>
       <div className="flex items-center gap-2">
         {/* Свотч: шахматка для transparent */}
         <div
-          className="w-8 h-8 rounded-md border border-gray-300 dark:border-neutral-600 shadow-sm shrink-0 ring-1 ring-neutral-700/50"
+          className="w-8 h-8 rounded-md border border-input shrink-0"
           style={{background: isTransparent || !value ? CHECKER : value}}
           title={value ?? "разные"}
         />
         <input
           id={id}
           type="color"
-          className={cn(inputClassName, "h-9 w-12 p-1 cursor-pointer shrink-0")}
+          className={cn(fieldBase, inputClassName, "h-8 w-12 p-1 cursor-pointer shrink-0")}
           value={pickerValue}
           onChange={(e) => { beginGrouping(); setDraft(null); onChange(e.target.value); }}
           onBlur={endGrouping}
         />
         <input
           type="text"
-          className={cn(inputClassName, "font-mono text-xs")}
+          className={cn(fieldBase, fieldSizes.sm, inputClassName, "font-mono text-xs")}
           value={shownText}
           placeholder={value === undefined ? "разные" : "#rrggbb"}
           spellCheck={false}
@@ -109,10 +108,10 @@ export function ColorField({id, label, value, onChange, inputClassName, onEditSt
           title="Прозрачный"
           onClick={() => { setDraft(null); onChange(isTransparent ? pickerValue : "transparent"); }}
           className={cn(
-            "shrink-0 p-2 rounded-lg border transition-colors",
+            "shrink-0 h-8 w-8 grid place-items-center rounded-lg border transition-colors",
             isTransparent
-              ? "border-blue-500/60 bg-blue-500/15 text-blue-500"
-              : "border-gray-300 dark:border-neutral-700 text-gray-500 dark:text-neutral-400 hover:border-gray-400 dark:hover:border-neutral-500",
+              ? "border-primary/60 bg-primary/15 text-primary"
+              : "border-input text-muted-foreground hover:border-ring",
           )}
         >
           <Ban size={14} />

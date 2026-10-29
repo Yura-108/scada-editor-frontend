@@ -24,6 +24,7 @@ import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";
 import type {ProjectDataSet, ProjectDataValidationError} from "@/types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
+import {ProjectSelect} from "@/core/project";
 
 type Tab = "tables" | "variables" | "history";
 
@@ -350,14 +351,7 @@ export default function DataClient() {
       {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
       <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
         <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Данные проекта</span>
-        <select
-          className="min-w-0 max-w-48 shrink bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm"
-          value={projectId ?? ""}
-          onChange={e => void switchProject(Number(e.target.value))}
-        >
-          <option value="" disabled>Проект…</option>
-          {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <ProjectSelect projects={projectList} value={projectId} onChange={id => void switchProject(id)} />
         {(Object.keys(TAB_LABELS) as Tab[]).map(key => (
           <button
             key={key}

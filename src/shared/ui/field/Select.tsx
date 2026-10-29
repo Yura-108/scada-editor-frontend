@@ -30,6 +30,9 @@ type SelectProps = Omit<React.ComponentProps<typeof SelectPrimitive.Root>, "valu
   size?: FieldSize
   id?: string
   className?: string
+  /** Подсказка и подпись для скринридера — на триггер (корень Radix в DOM не рисуется). */
+  title?: string
+  "aria-label"?: string
 }
 
 /**
@@ -38,7 +41,7 @@ type SelectProps = Omit<React.ComponentProps<typeof SelectPrimitive.Root>, "valu
  * Простой случай — `<Select value onValueChange options placeholder />`. Пункты с иконкой или
  * разметкой собираются из частей: `<Select><SelectTrigger/><SelectContent><SelectItem/>…`.
  */
-function Select({ options, placeholder, size = "md", id, className, value, defaultValue, onValueChange, children, ...props }: SelectProps) {
+function Select({ options, placeholder, size = "md", id, className, title, "aria-label": ariaLabel, value, defaultValue, onValueChange, children, ...props }: SelectProps) {
   if (!options) {
     return (
       <SelectPrimitive.Root data-slot="select" value={value} defaultValue={defaultValue} onValueChange={onValueChange} {...props}>
@@ -56,7 +59,7 @@ function Select({ options, placeholder, size = "md", id, className, value, defau
       onValueChange={(v) => onValueChange?.(v === EMPTY ? "" : v)}
       {...props}
     >
-      <SelectTrigger id={id} size={size} className={className}>
+      <SelectTrigger id={id} size={size} className={className} title={title} aria-label={ariaLabel}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

@@ -12,8 +12,13 @@ import {
   type AutomationValueType,
   type AutomationVariable,
 } from "@/types/automation.types";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
+import {fieldBase, fieldSizes} from "@/shared/ui/field/fieldStyles";
 
-const input = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-sm";
+/** Список задач-писателей раскрывается из «поля» — у него вид поля, но это `<summary>`. */
+const fieldLook = cn(fieldBase, fieldSizes.sm, "flex items-center");
 
 interface Props {
   variables: AutomationVariable[];
@@ -79,28 +84,34 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
           const writers = tasks.filter(t => v.name !== "" && t.writes_variables.includes(v.name));
           return (
             <div key={i} className="grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2 items-start">
-              <input className={input} value={v.name} placeholder="pump.speedSp" onChange={e => patch(i, {name: e.target.value})} title={`${VARIABLE_TAG_PREFIX}${v.name}`} />
-              <select className={input} value={v.value_type} onChange={e => patch(i, {value_type: e.target.value as AutomationValueType})}>
-                {AUTOMATION_VALUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input className={input} value={v.default_value ?? ""} onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})} />
-              <input className={input} value={v.description ?? ""} onChange={e => patch(i, {description: e.target.value === "" ? null : e.target.value})} />
+              <Input size="sm" value={v.name} placeholder="pump.speedSp" onChange={e => patch(i, {name: e.target.value})} title={`${VARIABLE_TAG_PREFIX}${v.name}`} />
+              <Select
+                size="sm"
+                value={v.value_type}
+                onValueChange={val => patch(i, {value_type: val as AutomationValueType})}
+                options={AUTOMATION_VALUE_TYPES.map(t => ({value: t, label: t}))}
+              />
+              <Input size="sm" value={v.default_value ?? ""} onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})} />
+              <Input size="sm" value={v.description ?? ""} onChange={e => patch(i, {description: e.target.value === "" ? null : e.target.value})} />
               <details className="relative">
-                <summary className={cn(input, "cursor-pointer list-none truncate", writers.length === 0 && "text-amber-600 dark:text-amber-400")}>
+                <summary className={cn(fieldLook, "cursor-pointer list-none truncate", writers.length === 0 && "text-warning")}>
                   {writers.length ? writers.map(t => t.name).join(", ") : "нет писателя"}
                 </summary>
-                <div className="absolute z-dropdown mt-1 w-full min-w-48 max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-2 shadow-xl space-y-1">
-                  {tasks.length === 0 && <p className="text-xs text-neutral-500">Задач нет — заведите на странице «Автоматизация».</p>}
-                  {v.name === "" && tasks.length > 0 && <p className="text-xs text-neutral-500">Сначала задайте имя переменной.</p>}
+                <div className="absolute z-dropdown mt-1 w-full min-w-48 max-h-60 overflow-y-auto rounded-lg border bg-popover text-popover-foreground p-2 shadow-lg space-y-1">
+                  {tasks.length === 0 && <p className="text-xs text-muted-foreground">Задач нет — заведите на странице «Автоматизация».</p>}
+                  {v.name === "" && tasks.length > 0 && <p className="text-xs text-muted-foreground">Сначала задайте имя переменной.</p>}
                   {v.name !== "" && tasks.map((t, ti) => (
-                    <label key={t.id ?? `new-${ti}`} className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={t.writes_variables.includes(v.name)} onChange={e => toggleWriter(ti, v.name, e.target.checked)} />
-                      <span className="truncate">{t.name}</span>
-                    </label>
+                    <Checkbox
+                      key={t.id ?? `new-${ti}`}
+                      className="flex"
+                      checked={t.writes_variables.includes(v.name)}
+                      onChange={e => toggleWriter(ti, v.name, e.target.checked)}
+                      label={<span className="truncate">{t.name}</span>}
+                    />
                   ))}
                 </div>
               </details>
-              <Button onClick={() => remove(i)} title="Удалить"><Trash2 size={14} /></Button>
+              <Button size="sm" className="w-8 px-0" onClick={() => remove(i)} title="Удалить"><Trash2 size={14} /></Button>
             </div>
           );
         })}

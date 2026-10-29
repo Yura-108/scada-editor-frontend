@@ -12,6 +12,7 @@ import {useTableCell} from "../hooks/useTableCell";
 import {GeometrySection} from "./visual/GeometrySection";
 import {TableCellSection} from "./visual/TableCellSection";
 import {TableSizeSection} from "./visual/TableSizeSection";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 interface VisualTabProps {
   element: DiagramElement;
@@ -37,7 +38,7 @@ export function VisualTab({element, values}: VisualTabProps) {
           правится: переключил состояние на другой вкладке — и те же поля
           показывают уже другие числа. */}
       <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight">
+        <label className={fieldLabelSmClass}>
           Состояние
         </label>
         <StateSelect elementKey={element.key} states={element.states}/>

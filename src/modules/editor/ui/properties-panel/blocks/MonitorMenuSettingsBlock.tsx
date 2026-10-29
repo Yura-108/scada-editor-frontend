@@ -8,6 +8,7 @@ import {isOpenableTrend, monitorActions, tagProperties} from "../../canvas/lib/b
 import {ContextMenuPanel} from "../../canvas/CanvasContextMenu";
 import type {CanvasMenuItem} from "@/core/canvas";
 import {historyEditing} from "../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 
 interface Props {
   element: DiagramElement;
@@ -52,7 +53,7 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
           <div key={f.key} className="space-y-1.5">
             <label
               htmlFor={`monitor-menu-${f.key}`}
-              className="block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight"
+              className={fieldLabelSmClass}
             >
               {f.label}
             </label>

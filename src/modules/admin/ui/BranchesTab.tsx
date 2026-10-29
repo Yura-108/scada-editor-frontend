@@ -3,11 +3,11 @@
 import React, {useEffect, useState} from "react";
 import {Save} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {useOpenScene} from "@/core/project";
 import {fetchBranches, putBranches} from "../api/adminApi";
-import {inputClass} from "./adminStyles";
+import {ProjectSelect} from "@/core/project";
+import {Textarea} from "@/shared/ui/field/Textarea";
 
 /** Ветки каталога проекта: какие узлы базы каналов видят и правят его пользователи. */
 export function BranchesTab() {
@@ -61,15 +61,12 @@ export function BranchesTab() {
         правка узлов под ветками, «просмотр» — чтение. Без веток каталог для них пуст. Удалять корень ветки
         и узлы выше может только администратор.
       </p>
-      <select className={inputClass} value={projectId ?? ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : null)}>
-        <option value="" disabled>Проект…</option>
-        {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
+      <ProjectSelect projects={projectList} value={projectId} onChange={setProjectId} className="max-w-72" />
       {projectId != null && (
-        loading ? <p className="text-sm text-neutral-500">Загрузка…</p> : (
+        loading ? <p className="text-sm text-muted-foreground">Загрузка…</p> : (
           <>
-            <textarea
-              className={cn(inputClass, "w-full h-48 font-mono")}
+            <Textarea
+              className="h-48 font-mono"
               placeholder={"По одной ветке в строке, например:\nБарановичи-1.BN1_MCA1"}
               value={text}
               onChange={e => setText(e.target.value)}

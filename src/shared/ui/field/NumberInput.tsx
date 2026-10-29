@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type { EditSession } from "./editSession";
+import { cn } from "@/shared/lib/cn";
+import { fieldBase, fieldSizes, type FieldSize } from "./fieldStyles";
 
 interface NumberInputProps extends EditSession {
   id?: string;
@@ -9,6 +11,8 @@ interface NumberInputProps extends EditSession {
   value: number | undefined;
   onCommit: (value: number) => void;
   className?: string;
+  /** Высота поля; по умолчанию `sm` — поля панели свойств. */
+  size?: FieldSize;
   min?: number;
   max?: number;
   step?: number;
@@ -40,6 +44,7 @@ export function NumberInput({
   value,
   onCommit,
   className,
+  size = "sm",
   min,
   max,
   step = 1,
@@ -126,7 +131,7 @@ export function NumberInput({
       ref={inputRef}
       id={id}
       type="number"
-      className={className}
+      className={cn(fieldBase, fieldSizes[size], className)}
       value={displayed}
       min={min}
       max={max}

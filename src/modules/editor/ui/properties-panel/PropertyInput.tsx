@@ -9,6 +9,9 @@ import {useEditorStore} from "../../model/editorStore";
 import {getNumberValue} from "./lib/getNumberValue";
 import {baseInputClasses} from "./panelClasses";
 import {historyEditing} from "../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Select} from "@/shared/ui/field/Select";
 
 interface PropertyInputProps {
   elementKey: string;
@@ -62,7 +65,7 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
   const label = (
     <label
       htmlFor={`prop-${property.key}`}
-      className="block text-xs font-medium text-gray-600 dark:text-neutral-400 mb-1.5 tracking-tight"
+      className={cn(fieldLabelSmClass, "mb-1.5")}
     >
       {property.label}
     </label>
@@ -118,44 +121,26 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
       return (
         <div className="space-y-1.5">
           {label}
-          <select
+          <Select
             id={`prop-${property.key}`}
-            className={cn(baseInputClasses, "appearance-none pr-8")}
+            size="sm"
             value={selectValue}
-            onChange={(e) => handleSelectChange(property.key, e.target.value)}
-          >
-            {property.options?.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => handleSelectChange(property.key, v)}
+            options={property.options ?? []}
+          />
         </div>
       );
 
     case "boolean":
       return (
         <div className="flex items-center gap-2 py-1">
-          <input
-            id={`prop-${property.key}`}
-            type="checkbox"
+          <Checkbox
             checked={booleanValue}
             onChange={(e) =>
               updateElementVisual(elementKey, {[property.key]: e.target.checked})
             }
-            className={cn(
-              "w-4 h-4 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800",
-              "text-blue-500 focus:ring-blue-500/40 focus:ring-offset-white dark:focus:ring-offset-neutral-950",
-              "checked:bg-blue-600 checked:border-blue-600",
-              "transition-all duration-150"
-            )}
+            label={property.label}
           />
-          <label
-            htmlFor={`prop-${property.key}`}
-            className="text-sm text-gray-800 dark:text-neutral-300 cursor-pointer select-none"
-          >
-            {property.label}
-          </label>
         </div>
       );
 

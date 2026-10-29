@@ -1,12 +1,11 @@
 import {cn} from "@/shared/lib/cn";
+import {fieldBase, fieldSizes} from "@/shared/ui/field/fieldStyles";
 
-/** Общие классы полей и кнопок панели свойств. */
-export const baseInputClasses = cn(
-  "w-full bg-white/80 dark:bg-neutral-900/80 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm",
-  "text-gray-900 dark:text-neutral-100 placeholder:text-gray-500 dark:placeholder:text-neutral-600",
-  "focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50",
-  "transition-all duration-200 hover:border-gray-400 dark:hover:border-neutral-600"
-);
+/**
+ * Поле панели свойств — общее поле `sm` (`shared/ui/field`). Отдельный класс нужен только
+ * тем, кто сам рисует `<input>` или оформляет как поле кнопку.
+ */
+export const baseInputClasses = cn(fieldBase, fieldSizes.sm);
 
 export const baseAddButtonClasses = cn(
   "flex items-center gap-2 py-2",

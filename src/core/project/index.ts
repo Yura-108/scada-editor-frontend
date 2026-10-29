@@ -11,3 +11,4 @@ export * from "./versions/documentComponents";
 export * from "./versions/versionContentCache";
 export * from "./releases/releasesApi";
 export * from "./settings/projectSettingsApi";
+export {ProjectSelect} from "./ui/ProjectSelect";

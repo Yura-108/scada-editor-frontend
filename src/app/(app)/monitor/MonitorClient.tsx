@@ -13,6 +13,8 @@ import {cn} from "@/shared/lib/cn";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
+import {ProjectSelect} from "@/core/project";
+import {Select} from "@/shared/ui/field/Select";
 
 // Окна монитора для меню элемента на холсте.
 registerMonitorDialogs();
@@ -177,12 +179,6 @@ export default function MonitorClient() {
   const statusView = STATUS_VIEW[scene ? status : "closed"];
   const isLive = !isArchive && status === "live";
 
-  const selectClasses = cn(
-    "bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg",
-    "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
-    "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
-  );
-
   return (
     <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
       {/* Тонкий тулбар: проект / сцена / индикатор соединения */}
@@ -193,38 +189,27 @@ export default function MonitorClient() {
           Монитор
         </span>
 
-        <select
-          className={cn(selectClasses, "min-w-0 max-w-48 shrink")}
-          value={currentProject?.id ?? ""}
-          onChange={(e) => {
-            const project = projectList.find(p => p.id === Number(e.target.value)) ?? null;
-            setCurrentProject(project);
-          }}
-        >
-          <option value="" disabled>Проект…</option>
-          {/* Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
-              Пометка у рабочих была бы шумом — их большинство. */}
-          {projectList.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}{runtimeFlags[p.id] === false ? " — не в эксплуатации" : ""}
-            </option>
-          ))}
-        </select>
+        <ProjectSelect
+          projects={projectList}
+          value={currentProject?.id}
+          onChange={(id) => setCurrentProject(projectList.find(p => p.id === id) ?? null)}
+          // Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
+          // Пометка у рабочих была бы шумом — их большинство.
+          labelOf={(p) => `${p.name}${runtimeFlags[p.id] === false ? " — не в эксплуатации" : ""}`}
+        />
 
-        <select
-          className={cn(selectClasses, "min-w-0 max-w-56 shrink")}
-          value={scene?.id ?? ""}
+        <Select
+          size="sm"
+          className="min-w-0 max-w-56 shrink"
+          value={scene?.id == null ? "" : String(scene.id)}
           disabled={!currentProject}
-          onChange={(e) => {
-            const id = Number(e.target.value);
+          onValueChange={(v) => {
+            const id = Number(v);
             if (Number.isSafeInteger(id)) void loadScene(id);
           }}
-        >
-          <option value="" disabled>Схема…</option>
-          {sceneList.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+          placeholder="Схема…"
+          options={sceneList.map(s => ({value: String(s.id), label: s.name}))}
+        />
 
         <div className="flex-1" />
 

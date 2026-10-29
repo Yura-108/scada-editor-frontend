@@ -8,6 +8,8 @@ import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
 import {historyEditing} from "../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {Select} from "@/shared/ui/field/Select";
 
 interface Props {
   element: DiagramElement;
@@ -19,7 +21,7 @@ interface Props {
   addPenHint: string;
 }
 
-const labelClass = "block text-xs font-medium text-gray-600 dark:text-neutral-400 tracking-tight";
+const labelClass = fieldLabelSmClass;
 
 const formatWindow = (sec: number) =>
   TREND_WINDOW_PRESETS.find(p => p.seconds === sec)?.label ?? `${sec} с`;
@@ -65,14 +67,13 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label htmlFor="trend-window" className={labelClass}>Окно</label>
-          <select
+          <Select
             id="trend-window"
-            className={inputClassName}
-            value={windowSec}
-            onChange={e => commit({window: Number(e.target.value)})}
-          >
-            {presets.map(p => <option key={p.seconds} value={p.seconds}>{p.label}</option>)}
-          </select>
+            size="sm"
+            value={String(windowSec)}
+            onValueChange={v => commit({window: Number(v)})}
+            options={presets.map(p => ({value: String(p.seconds), label: p.label}))}
+          />
         </div>
         <div className="space-y-1.5">
           <label htmlFor="trend-step" className={labelClass}>Шаг сетки, с</label>

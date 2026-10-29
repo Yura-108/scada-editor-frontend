@@ -9,6 +9,7 @@ import {useProcedureStore} from "../model/useProcedureStore";
 import {useProcedureControls} from "../model/procedures/useProcedureControls";
 import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat";
 import {useOpenScene} from "@/core/project";
+import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
 
 /**
  * Выполнение процедурного рецепта — подробный вид во вкладке «Процедуры».
@@ -55,19 +56,13 @@ export function ProcedurePanel() {
             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Процедура
             </label>
-            <select
-              className={cn(
-                "w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700",
-                "rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
-              )}
-              value={recipeId ?? ""}
+            <ProcedureRecipeSelect
+              recipes={recipes}
+              recipeId={recipeId}
+              onWatch={watch}
               disabled={isLoading}
-              onChange={(e) => watch(e.target.value || null)}
-            >
-              <option value="" disabled>{isLoading ? "Загрузка…" : "Выберите рецепт…"}</option>
-              {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+              placeholder={isLoading ? "Загрузка…" : "Выберите рецепт…"}
+            />
           </div>
 
           {!isRunning ? (

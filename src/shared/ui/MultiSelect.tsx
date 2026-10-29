@@ -2,6 +2,7 @@ import React, {useMemo, useState} from "react";
 import * as Popover from '@radix-ui/react-popover';
 import {Check, ChevronDown, Search, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
+import {fieldBase, fieldSizes} from "./field/fieldStyles";
 
 interface MultiSelectProps {
   options: { value: string; label: string }[];
@@ -46,26 +47,23 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
           disabled={disabled || isLoading}
           title={selected.length ? selected.map(labelOf).join(", ") : undefined}
           className={cn(
-            "relative flex items-center gap-2 h-8 pl-8 pr-2 rounded-lg border text-sm text-left outline-none transition-colors",
-            "bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100",
-            disabled || isLoading
-              ? "opacity-60 cursor-not-allowed border-neutral-200 dark:border-neutral-800"
-              : "border-neutral-300 dark:border-neutral-700 hover:border-indigo-400 focus-visible:border-indigo-500 cursor-pointer",
+            fieldBase, fieldSizes.sm,
+            "relative flex items-center gap-2 pl-8 pr-2 text-left cursor-pointer",
             className,
           )}
         >
-          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-indigo-600 dark:text-indigo-400 [&_svg]:w-4 [&_svg]:h-4">
+          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-primary [&_svg]:w-4 [&_svg]:h-4">
             {icon}
           </span>
           <span className="flex-1 min-w-0 truncate">
-            {isLoading ? <span className="text-neutral-500 animate-pulse">Загрузка…</span>
-              : selected.length === 0 ? <span className="text-neutral-500">{placeholder}</span>
+            {isLoading ? <span className="text-muted-foreground animate-pulse">Загрузка…</span>
+              : selected.length === 0 ? <span className="text-muted-foreground">{placeholder}</span>
               : <>
                   {labelOf(selected[0])}
-                  {selected.length > 1 && <span className="ml-1 px-1.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 text-xs">+{selected.length - 1}</span>}
+                  {selected.length > 1 && <span className="ml-1 px-1.5 rounded bg-primary/15 text-primary text-xs">+{selected.length - 1}</span>}
                 </>}
           </span>
-          <ChevronDown className="w-4 h-4 shrink-0 text-neutral-500" />
+          <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
         </button>
       </Popover.Trigger>
 
@@ -73,24 +71,24 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-dropdown min-w-(--radix-popover-trigger-width) w-72 max-w-[90vw] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="z-dropdown min-w-(--radix-popover-trigger-width) w-72 max-w-[90vw] bg-popover text-popover-foreground border rounded-lg shadow-lg overflow-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0"
         >
           {options.length >= FILTER_FROM && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800">
-              <Search className="w-4 h-4 shrink-0 text-neutral-400" />
+            <div className="flex items-center gap-2 px-3 py-2 border-b">
+              <Search className="w-4 h-4 shrink-0 text-muted-foreground" />
               <input
                 autoFocus
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder="Фильтр"
                 aria-label="Фильтр вариантов"
-                className="flex-1 min-w-0 bg-transparent text-sm outline-none"
+                className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
           )}
           <div className="max-h-72 overflow-y-auto p-1">
             {visible.length === 0 ? (
-              <p className="p-3 text-center text-neutral-500 text-sm">{options.length ? "Ничего не найдено" : "Нет доступных вариантов"}</p>
+              <p className="p-3 text-center text-muted-foreground text-sm">{options.length ? "Ничего не найдено" : "Нет доступных вариантов"}</p>
             ) : (
               visible.map((option) => {
                 const isSelected = selected.includes(option.value);
@@ -104,9 +102,7 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
                     onClick={() => toggleOption(option.value)}
                     className={cn(
                       "w-full text-left flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-colors",
-                      isSelected
-                        ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300"
-                        : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                      isSelected ? "bg-primary/10 text-primary" : "hover:bg-accent",
                     )}
                   >
                     <span className="min-w-0 truncate">{option.label}</span>
@@ -117,8 +113,8 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
             )}
           </div>
           {selected.length > 0 && (
-            <div className="flex justify-end px-2 py-1.5 border-t border-neutral-200 dark:border-neutral-800">
-              <button type="button" onClick={() => onChange([])} className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200">
+            <div className="flex justify-end px-2 py-1.5 border-t">
+              <button type="button" onClick={() => onChange([])} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                 <X className="w-3.5 h-3.5" />Снять всё
               </button>
             </div>

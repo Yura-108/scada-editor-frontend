@@ -19,6 +19,7 @@ import {paramMenuItems} from "@/constants/contextMenuItems";
 import debounce from 'lodash/debounce';
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {toast} from "sonner";
+import {ParamValueField} from "./ParamValueField";
 
 const DeviceParams = () => {
   const {
@@ -330,43 +331,12 @@ const DeviceParams = () => {
                   hasChanged={hasChanged}
                   onRemove={handleRemoveParam}
                 >
-                  {widget === 'input' && (
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => handleChange(keyStr, e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 hover:border-gray-400 dark:hover:border-neutral-600 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 dark:focus:ring-purple-500/20 outline-none transition-all text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-500 font-medium"
-                      placeholder="Введите значение..."
-                    />
-                  )}
-
-                  {widget === 'textarea' && (
-                    <textarea
-                      value={value}
-                      onChange={(e) => handleChange(keyStr, e.target.value)}
-                      rows={4}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 hover:border-gray-400 dark:hover:border-neutral-600 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 dark:focus:ring-purple-500/20 outline-none transition-all resize-none font-medium text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-500"
-                      placeholder="Введите описание..."
-                    />
-                  )}
-
-                  {widget === 'checkbox' && (
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="checkbox"
-                        id={`cb-${param.key}`}
-                        checked={checked}
-                        onChange={(e) => handleChange(keyStr, e.target.checked ? 'true' : 'false')}
-                        className="w-5 h-5 accent-purple-600 cursor-pointer"
-                      />
-                      <label
-                        htmlFor={`cb-${param.key}`}
-                        className="text-lg font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-                      >
-                        {checked ? 'Включено' : 'Выключено'}
-                      </label>
-                    </div>
-                  )}
+                  <ParamValueField
+                    widget={widget}
+                    value={value}
+                    checked={checked}
+                    onChange={(next) => handleChange(keyStr, next)}
+                  />
                 </ParamWrapper>
               );
             })}

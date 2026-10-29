@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useMemo, useState} from "react";
-import {ChevronDown, Pencil, Search, Trash2, X} from "lucide-react";
+import {ChevronDown, Pencil, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
@@ -9,6 +9,7 @@ import {useDeleteTemplate, useTemplates} from "../api/templates";
 import {groupTemplates} from "../lib/automationTemplates";
 import {openTemplateModal} from "./OpenTemplateModal";
 import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
 
 /** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */
 const NO_TEMPLATES: AutomationTaskTemplate[] = [];
@@ -69,20 +70,19 @@ export function TemplatePalette({onInsert}: Props) {
           Шаблоны задач
         </div>
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" size={14} />
-          <input
-            type="text"
+          <SearchInput
+            size="sm"
             placeholder="Поиск шаблонов…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-8 pr-7 py-1.5 text-sm"
+            inputClassName="pr-7"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
               aria-label="Очистить поиск"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X size={14} />
             </button>

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import PaletteItem from "./PaletteItem";
-import {Search, X, ChevronDown, Trash2} from "lucide-react";
+import {X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "@/lib/palette-utils";
 import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 
@@ -37,21 +38,11 @@ export default function Palette() {
       {/* Поиск */}
       <div className="p-4 pb-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
         <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-            size={16}
-          />
-          <input
-            type="text"
+          <SearchInput
             placeholder="Поиск элементов..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={`
-              w-full bg-white dark:bg-neutral-900/70 border border-neutral-300 dark:border-neutral-700 rounded-lg
-              pl-10 pr-4 py-2.5 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-500
-              focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600/50
-              transition-all
-            `}
+            inputClassName="pr-9"
           />
           {search && (
             <button
@@ -59,7 +50,7 @@ export default function Palette() {
               onClick={() => setSearch("")}
               aria-label="Очистить поиск"
               title="Очистить поиск"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-300"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X size={16} />
             </button>

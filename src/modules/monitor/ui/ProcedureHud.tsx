@@ -14,6 +14,7 @@ import {
   type HudPrefs,
 } from "../lib/procedureHudPrefs";
 import {useOpenScene} from "@/core/project";
+import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
 
 /**
  * Ведение процедуры ПОВЕРХ мнемосхемы.
@@ -175,18 +176,13 @@ export function ProcedureHud() {
         {/* Переключать рецепт можно и на ходу: процедура на бэкенде живёт под ключом
             (проект, рецепт), и смена выбора меняет лишь то, за чем мы наблюдаем —
             запущенная продолжает идти, а по возвращении её состояние вернёт GET /status. */}
-        <select
-          className={cn(
-            "w-56 shrink-0 rounded-md border border-neutral-300 dark:border-neutral-700",
-            "bg-white dark:bg-neutral-900 px-2 py-1 text-xs text-neutral-900 dark:text-neutral-100",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
-          )}
-          value={recipeId ?? ""}
-          onChange={(e) => watch(e.target.value || null)}
-        >
-          <option value="" disabled>Процедура…</option>
-          {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
+        <ProcedureRecipeSelect
+          className="w-56 shrink-0"
+          recipes={recipes}
+          recipeId={recipeId}
+          onWatch={watch}
+          placeholder="Процедура…"
+        />
 
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} />
 
