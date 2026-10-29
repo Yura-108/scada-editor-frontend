@@ -87,9 +87,6 @@ const eslintConfig = defineConfig([
     files: ['src/**/*.{ts,tsx}'],
     ignores: [
       'src/shared/ui/field/**',
-      // Ждут ветку общего выбора тега — там уйдёт и SelectItem со своим Radix Select.
-      'src/components/ui/OpenChooseTagModal.tsx',
-      'src/shared/ui/SelectItem.tsx',
       // Редактор текста прямо на холсте: обязан выглядеть как текст фигуры, а не как поле.
       'src/modules/editor/ui/canvas/TextEditorOverlay.tsx',
     ],

@@ -1,7 +1,7 @@
 import { DiagramElement } from "@/types/editorElement.type";
 import {useEditorStore} from "../../../model/editorStore";
 import { getDescendants } from "@/lib/getDescendants";
-import { handleAddProperty } from "@/lib/handleAddProperty";
+import { handleAddProperty } from "../../properties-panel/property/handleAddProperty";
 import { OpenCreateFaceplateModal } from "@/components/ui/OpenCreateFaceplateModal";
 import { promptModal } from "@/shared/ui/dialog/confirmModal";
 import type { CanvasMenuItem } from "@/core/canvas";

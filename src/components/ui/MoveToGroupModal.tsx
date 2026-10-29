@@ -104,9 +104,8 @@ export const MoveToGroupModal = ({
                 </SelectItem>
               ))
             ) : (
-              <SelectItem value="" disabled>
-                Нет доступных групп для перемещения
-              </SelectItem>
+              // Подпись, а не пункт: пункт со значением "" Radix запрещает и падает с ошибкой.
+              <div className="px-2 py-1.5 text-sm text-muted-foreground">Нет доступных групп для перемещения</div>
             )}
           </SelectContent>
         </Select>

@@ -7,12 +7,6 @@ interface ModalOptions {
   size?: DialogSize;
   /** false — клик по затемнению не закрывает окно. */
   closeOnOverlay?: boolean;
-  /**
-   * Содержимое ещё не собрано из `DialogHeader`/`DialogBody`/`DialogFooter` и рисует
-   * свои `Dialog.Title` и `ModalFooter` — `ModalRoot` кладёт его в прежнюю прокручиваемую
-   * область с отступами. Снимается, когда окно переводят на части.
-   */
-  legacyLayout?: boolean;
 }
 
 export interface ModalEntry {
@@ -23,7 +17,6 @@ export interface ModalEntry {
   content: ReactNode;
   size: DialogSize;
   closeOnOverlay: boolean;
-  legacyLayout: boolean;
 }
 
 interface ModalState {
@@ -51,7 +44,6 @@ const entryOf = (id: number, content: ReactNode, options?: ModalOptions): ModalE
   content,
   size: options?.size ?? "xl",
   closeOnOverlay: options?.closeOnOverlay ?? true,
-  legacyLayout: options?.legacyLayout ?? false,
 });
 
 export const useModalStore = create<ModalState>((set) => ({

@@ -17,4 +17,5 @@ export {default as DeviceTreePanel} from "./ui/DeviceTreePanel";
 export {default as ChannelsProjectPicker} from "./ui/ChannelsProjectPicker";
 export {default as DeviceContextMenu} from "./ui/DeviceContextMenu";
 export {openChooseParamTypeModal} from "./ui/modals/OpenChooseParamTypeModal";
-export {pickTag} from "./ui/modals/TagPickerModal";
+export {pickTag, pickTags} from "./ui/tag-picker/pickTag";
+export {TagTree} from "./ui/tag-picker/TagTree";
