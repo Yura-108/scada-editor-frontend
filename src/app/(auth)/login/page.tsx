@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginSchema } from '@/schemas/authSchema';
+import {Input} from "@/shared/ui/field/Input";
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -75,10 +76,10 @@ export default function LoginPage() {
           {/* Email */}
           <div className="space-y-2">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-4 w-4 text-muted-foreground" />
               </div>
-              <input
+              <Input
                 {...register('login')}
                 id="login"
                 type="text"
@@ -87,18 +88,13 @@ export default function LoginPage() {
                 placeholder="Логин"
                 aria-invalid={!!errors.login}
                 aria-describedby={errors.login ? 'login-error' : undefined}
-                className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                    ${
-                      errors.login
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-gray-200 dark:border-neutral-700 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } bg-white dark:bg-neutral-950 outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-neutral-500`}
+                className="pl-10"
               />
             </div>
             {errors.login && (
               <p
                 id="login-error"
-                className="text-sm text-red-600 dark:text-red-400 font-medium leading-5"
+                className="text-sm text-destructive"
               >
                 {errors.login.message}
               </p>
@@ -108,9 +104,9 @@ export default function LoginPage() {
           {/* Пароль */}
           <div className="space-y-2">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
-                  className="h-5 w-5 text-indigo-500 dark:text-indigo-400"
+                  className="h-4 w-4 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -123,7 +119,7 @@ export default function LoginPage() {
                   />
                 </svg>
               </div>
-              <input
+              <Input
                 {...register('password')}
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -131,12 +127,7 @@ export default function LoginPage() {
                 placeholder="Пароль"
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? 'password-error' : undefined}
-                className={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 transition-all duration-300 text-lg font-medium
-                    ${
-                      errors.password
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-gray-200 dark:border-neutral-700 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } bg-white dark:bg-neutral-950 outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-neutral-500`}
+                className="pl-10 pr-10"
               />
               <button
                 type="button"
@@ -144,19 +135,19 @@ export default function LoginPage() {
                 aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
                 aria-pressed={showPassword}
                 title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
               >
                 {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
+                  <EyeOff className="h-4 w-4" />
                 ) : (
-                  <Eye className="h-5 w-5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
+                  <Eye className="h-4 w-4" />
                 )}
               </button>
             </div>
             {errors.password && (
               <p
                 id="password-error"
-                className="text-sm text-red-600 dark:text-red-400 font-medium leading-5"
+                className="text-sm text-destructive"
               >
                 {errors.password.message}
               </p>
@@ -165,7 +156,7 @@ export default function LoginPage() {
 
           {/* Ошибка от сервера */}
           {serverError && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 rounded-xl text-center font-medium">
+            <div className="p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-xl text-center font-medium">
               {serverError}
             </div>
           )}

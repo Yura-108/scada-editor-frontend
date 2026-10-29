@@ -7,8 +7,9 @@ import {useLogsFilterStore, useLogsSearch} from "@/modules/logs";
 import LogsList from "@/components/logs/LogsList";
 import {Button} from "@/shared/ui/Button";
 import {
-  journalFilterBar, journalInput, journalPage, JournalField, JournalPresets, JournalTitle, toLocalInput,
+  journalFilterBar, journalPage, JournalField, JournalPresets, JournalTitle, toLocalInput,
 } from "@/components/journal/journalUi";
+import {Input} from "@/shared/ui/field/Input";
 
 const DAY_MS = 24 * 3600_000;
 
@@ -51,14 +52,14 @@ export default function LogsPage() {
       />
       <form className={journalFilterBar} onSubmit={e => { e.preventDefault(); search(); }}>
         <JournalField label="С">
-          <input type="datetime-local" className={journalInput} value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          <Input size="sm" type="datetime-local" value={fromDate} onChange={e => setFromDate(e.target.value)} />
         </JournalField>
         <JournalField label="По">
-          <input type="datetime-local" className={journalInput} value={toDate} onChange={e => setToDate(e.target.value)} />
+          <Input size="sm" type="datetime-local" value={toDate} onChange={e => setToDate(e.target.value)} />
         </JournalField>
         <JournalField label="Пользователь">
-          <input
-            className={journalInput}
+          <Input
+            size="sm"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="часть имени"

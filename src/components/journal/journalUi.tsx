@@ -1,5 +1,6 @@
 import React from "react";
 import {cn} from "@/shared/lib/cn";
+import {Field} from "@/shared/ui/field/Field";
 
 /**
  * Общий вид журналов — «Журнал действий» и «Логирование». Страницы показывают разные записи,
@@ -24,12 +25,6 @@ export const formatTs = (iso: string) => {
     ? iso
     : `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU")}`;
 };
-
-export const journalInput = cn(
-  "rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900",
-  "px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100",
-  "focus:outline-none focus:ring-2 focus:ring-indigo-500/40",
-);
 
 /** Каркас страницы журнала: под шапкой, на всю высоту. */
 export const journalPage =
@@ -70,13 +65,9 @@ export function JournalTitle({title, description}: {title: string; description: 
 }
 
 /** Поле фильтра с подписью над ним. */
+/** Поле фильтра журнала: компактная подпись над `Input`/`Select` размера `sm`. */
 export function JournalField({label, children}: {label: string; children: React.ReactNode}) {
-  return (
-    <label className="space-y-1 text-xs text-neutral-500">
-      <span className="block">{label}</span>
-      {children}
-    </label>
-  );
+  return <Field size="sm" label={label} className="space-y-1">{children}</Field>;
 }
 
 /** Быстрые периоды «1 ч / 24 ч / 7 дней / 30 дней». */

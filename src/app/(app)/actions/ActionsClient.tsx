@@ -4,7 +4,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Loader2, RefreshCw} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {
-  formatTs, journalBadge, journalFilterBar, journalInput as inputClass, journalPage, journalTableBox, journalTbody,
+  formatTs, journalBadge, journalFilterBar, journalPage, journalTableBox, journalTbody,
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, JournalTitle, toLocalInput,
 } from "@/components/journal/journalUi";
 import {useEditorStore} from "@/modules/editor";
@@ -12,6 +12,8 @@ import {shortTagPath} from "@/core/scene";
 import {
   ACTION_KIND_LABEL, fetchActionLog, type ActionKind, type ActionLogFilter, type ActionLogRecord,
 } from "@/modules/monitor";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 
 const PAGE_SIZE = 100;
 
@@ -153,32 +155,35 @@ export default function ActionsClient() {
           onSubmit={e => { e.preventDefault(); apply(); }}
         >
           <JournalField label="С">
-            <input type="datetime-local" className={inputClass} value={draftFrom} onChange={e => setDraftFrom(e.target.value)} />
+            <Input size="sm" type="datetime-local" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} />
           </JournalField>
           <JournalField label="По">
-            <input type="datetime-local" className={inputClass} value={draftTo} onChange={e => setDraftTo(e.target.value)} />
+            <Input size="sm" type="datetime-local" value={draftTo} onChange={e => setDraftTo(e.target.value)} />
           </JournalField>
           <JournalField label="Проект">
-            <select
-              className={inputClass}
-              value={projectId ?? ""}
-              onChange={e => setProjectId(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Все проекты</option>
-              {projectList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <Select
+              size="sm"
+              className="w-44"
+              value={projectId == null ? "" : String(projectId)}
+              onValueChange={v => setProjectId(v ? Number(v) : null)}
+              options={[{value: "", label: "Все проекты"}, ...projectList.map(p => ({value: String(p.id), label: p.name}))]}
+            />
           </JournalField>
           <JournalField label="Вид">
-            <select className={inputClass} value={kind} onChange={e => setKind(e.target.value as ActionKind | "")}>
-              <option value="">Все</option>
-              {(Object.keys(ACTION_KIND_LABEL) as ActionKind[]).map(k => (
-                <option key={k} value={k}>{ACTION_KIND_LABEL[k]}</option>
-              ))}
-            </select>
+            <Select
+              size="sm"
+              className="w-44"
+              value={kind}
+              onValueChange={v => setKind(v as ActionKind | "")}
+              options={[
+                {value: "", label: "Все"},
+                ...(Object.keys(ACTION_KIND_LABEL) as ActionKind[]).map(k => ({value: k, label: ACTION_KIND_LABEL[k]})),
+              ]}
+            />
           </JournalField>
           <JournalField label="Пользователь">
-            <input
-              className={inputClass}
+            <Input
+              size="sm"
               value={username}
               onChange={e => setUsername(e.target.value)}
               placeholder="точное имя"
