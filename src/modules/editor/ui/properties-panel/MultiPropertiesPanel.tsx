@@ -6,8 +6,8 @@ import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement
 import {elementPropertyMap, Z_INDEX_FIELD} from "@/constants/propertiesPanel";
 import {useEditorStore} from "../../model/editorStore";
 import {getRenderedElement} from "@/core/scene";
-import {ColorField} from "@/components/ui/ColorField";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {ColorField} from "@/shared/ui/field/ColorField";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 
 interface MultiPropertiesPanelProps {
   elements: DiagramElement[];

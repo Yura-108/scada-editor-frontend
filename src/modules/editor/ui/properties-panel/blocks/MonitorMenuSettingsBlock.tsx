@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import type {DiagramElement, MonitorMenuSettings} from "@/types/editorElement.type";
 import {MONITOR_MENU_DEFAULTS, MONITOR_MENU_LIMITS, readMonitorMenu} from "@/core/scene";
 import {isOpenableTrend, monitorActions, tagProperties} from "../../canvas/lib/buildMonitorMenu";

@@ -2,7 +2,7 @@
 
 import {cn} from "@/shared/lib/cn";
 import {GRID, MIN_TRACK} from "@/core/scene";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableTracks} from "../../lib/tableTracks";
 import {baseInputClasses} from "../../panelClasses";

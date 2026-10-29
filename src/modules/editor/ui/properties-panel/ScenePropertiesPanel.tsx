@@ -2,7 +2,7 @@
 
 import React, {useMemo} from "react";
 import {useEditorStore} from "../../model/editorStore";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {resolveSheet, SHEET_PRESETS, SHEET_MIN, SHEET_MAX, isSameSheet} from "@/core/scene";
 import {cn} from "@/shared/lib/cn";
 

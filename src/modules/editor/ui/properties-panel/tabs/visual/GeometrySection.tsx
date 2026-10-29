@@ -1,6 +1,6 @@
 "use client";
 
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {useEditorStore} from "../../../../model/editorStore";
 import {getGeometryFields} from "../../lib/geometryFields";
 import {getNumberValue} from "../../lib/getNumberValue";

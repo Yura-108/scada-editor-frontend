@@ -2,9 +2,9 @@
 
 import {cn} from "@/shared/lib/cn";
 import {PropertySchema} from "@/types/editorElement.type";
-import {ColorField} from "@/components/ui/ColorField";
-import {NumberInput} from "@/components/ui/NumberInput";
-import {TextInput} from "@/components/ui/TextInput";
+import {ColorField} from "@/shared/ui/field/ColorField";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
+import {TextInput} from "@/shared/ui/field/TextInput";
 import {useEditorStore} from "../../model/editorStore";
 import {getNumberValue} from "./lib/getNumberValue";
 import {baseInputClasses} from "./panelClasses";

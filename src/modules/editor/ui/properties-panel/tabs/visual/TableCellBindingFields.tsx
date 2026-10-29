@@ -4,7 +4,7 @@ import {Boxes, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import type {CellSourceField} from "@/types/binding.types";
-import {TextInput} from "@/components/ui/TextInput";
+import {TextInput} from "@/shared/ui/field/TextInput";
 import {cellSourceFieldsFor} from "@/core/scene";
 import {useEditorStore} from "../../../../model/editorStore";
 import type {TableCellModel} from "../../hooks/useTableCell";

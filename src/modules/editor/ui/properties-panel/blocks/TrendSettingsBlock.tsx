@@ -2,7 +2,7 @@
 
 import React from "react";
 import {Pencil, Plus, Trash2} from "lucide-react";
-import {NumberInput} from "@/components/ui/NumberInput";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
 import OpenAddPropertyModal from "@/components/ui/OpenChooseTagModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
