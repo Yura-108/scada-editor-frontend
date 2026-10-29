@@ -3,11 +3,11 @@
 import React, {useState} from "react";
 import {Plus} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {passwordProblem} from "@/components/auth/ChangePasswordModal";
 import {createUser, type AdminUser} from "../api/adminApi";
-import {inputClass} from "./adminStyles";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Input} from "@/shared/ui/field/Input";
 
 const LOGIN_MIN = 3;
 const LOGIN_MAX = 50;
@@ -47,13 +47,10 @@ export function CreateUserForm({onCreated}: {onCreated: (user: AdminUser) => voi
   return (
     <form onSubmit={e => void submit(e)} className="p-3 space-y-2 border-b border-neutral-200 dark:border-neutral-800">
       <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Новый пользователь</div>
-      <input className={cn(inputClass, "w-full")} placeholder="Логин" autoComplete="off" value={login} onChange={e => setLogin(e.target.value)} />
-      <input className={cn(inputClass, "w-full")} placeholder="Пароль" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
+      <Input size="sm" placeholder="Логин" autoComplete="off" value={login} onChange={e => setLogin(e.target.value)} />
+      <Input size="sm" placeholder="Пароль" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
       <div className="flex items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={admin} onChange={e => setAdmin(e.target.checked)} />
-          Администратор
-        </label>
+        <Checkbox checked={admin} onChange={e => setAdmin(e.target.checked)} label="Администратор" />
         <Button type="submit" variant="primary" size="sm" disabled={saving || !!problem} title={problem ?? undefined}>
           <Plus size={14} />Создать
         </Button>

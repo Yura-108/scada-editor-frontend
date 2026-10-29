@@ -8,6 +8,7 @@ import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {useOpenScene} from "@/core/project";
 import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
 import {fetchUserGrants, putUserGrant, type UserGrants} from "../api/adminApi";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
 
 const sameGrant = (a: ProjectGrant, b: ProjectGrant) =>
   a.view === b.view && a.operate === b.operate && a.edit === b.edit
@@ -101,10 +102,10 @@ export function GrantsTable({userId}: {userId: number}) {
                 <tr key={p.id} className={dirty ? "bg-amber-500/5" : undefined}>
                   <td className="px-3 py-1.5">{p.name}</td>
                   <td className="px-3 py-1.5 text-center">
-                    <input type="checkbox" aria-label={`Просмотр в «${p.name}»`} checked={g.view} onChange={e => setDraft(p.id, {view: e.target.checked})} />
+                    <Checkbox aria-label={`Просмотр в «${p.name}»`} checked={g.view} onChange={e => setDraft(p.id, {view: e.target.checked})} />
                   </td>
                   <td className="px-3 py-1.5 text-center">
-                    <input type="checkbox" aria-label={`Управление в «${p.name}»`} checked={g.operate}
+                    <Checkbox aria-label={`Управление в «${p.name}»`} checked={g.operate}
                       onChange={e => setDraft(p.id, {operate: e.target.checked, level: e.target.checked ? (g.level ?? 1) : null})} />
                   </td>
                   <td className="px-3 py-1.5 text-center">
@@ -118,7 +119,7 @@ export function GrantsTable({userId}: {userId: number}) {
                     />
                   </td>
                   <td className="px-3 py-1.5 text-center">
-                    <input type="checkbox" aria-label={`Правка в «${p.name}»`} checked={g.edit} onChange={e => setDraft(p.id, {edit: e.target.checked})} />
+                    <Checkbox aria-label={`Правка в «${p.name}»`} checked={g.edit} onChange={e => setDraft(p.id, {edit: e.target.checked})} />
                   </td>
                   <td className="px-3 py-1.5 text-right">
                     {dirty && (

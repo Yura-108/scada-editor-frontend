@@ -9,6 +9,7 @@ import {passwordProblem} from "@/components/auth/ChangePasswordModal";
 import {logoutToLogin, useSessionUserStore} from "@/core/access";
 import {deleteUser, resetUserPassword, revokeUserSessions, updateUser, type AdminUser} from "../api/adminApi";
 import {GrantsTable} from "./GrantsTable";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
 
 export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onChanged: (u: AdminUser) => void; onDeleted: () => void}) {
   const [busy, setBusy] = useState(false);
@@ -88,16 +89,19 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
     <div className="p-6 space-y-6 max-w-4xl">
       <div className="flex flex-wrap items-center gap-4">
         <h2 className="text-lg font-semibold">{user.login}</h2>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={user.enabled} disabled={busy}
-            onChange={e => void patch({enabled: e.target.checked, admin: user.admin})} />
-          Включён
-        </label>
-        <label className="flex items-center gap-2 text-sm" title="Администратору можно всё, уровень 10">
-          <input type="checkbox" checked={user.admin} disabled={busy}
-            onChange={e => void patch({enabled: user.enabled, admin: e.target.checked})} />
-          Администратор
-        </label>
+        <Checkbox
+          checked={user.enabled}
+          disabled={busy}
+          onChange={e => void patch({enabled: e.target.checked, admin: user.admin})}
+          label="Включён"
+        />
+        <Checkbox
+          title="Администратору можно всё, уровень 10"
+          checked={user.admin}
+          disabled={busy}
+          onChange={e => void patch({enabled: user.enabled, admin: e.target.checked})}
+          label="Администратор"
+        />
         <div className="flex-1" />
         <Button size="sm" onClick={() => void handleResetPassword()}><KeyRound size={14} />Сбросить пароль</Button>
         <Button size="sm" onClick={() => void handleRevokeSessions()}><LogOut size={14} />Завершить сеансы</Button>
