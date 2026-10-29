@@ -9,7 +9,7 @@ import {collectTagScope} from "@/core/runtime";
 import {buildDirectBinding, buildDirectTagBinding} from "../../../lib/directBinding";
 import {openBindingEditorModal} from "./OpenBindingEditorModal";
 import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
-import {ChooseTagModal} from "./ChooseTagModal";
+import {pickTag} from "@/core/devices";
 import {shortTagPath} from "@/core/scene";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 
@@ -37,9 +37,18 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
   const addBinding = useEditorStore(s => s.addBinding);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const bindings = element.bindings ?? [];
+
+  // Прямая привязка «значение элемента ← тег»: собственных свойств элементу для неё не нужно.
+  const bindTag = async () => {
+    const tagId = await pickTag({
+      title: "Привязка к тегу",
+      description: "Значение элемента будет следовать за выбранным тегом. Собственных свойств элементу для этого не нужно.",
+      confirmLabel: "Привязать",
+    });
+    if (tagId) addBinding(element.key, buildDirectTagBinding(DIRECT_TARGET, tagId));
+  };
   // Раньше требовалось СОХРАНЁННО� свойство: биндинг ссылался на него номером, а номер
   // появлялся только после отдельного запроса. Теперь свойство уезжает той же сценой, и
   // бэкенд привязывает биндинг по `component_property_name` — достаточно, чтобы свойство
@@ -144,7 +153,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
         </div>
       )}
 
-      <button className={addButtonClasses} onClick={() => setTagPickerOpen(true)}>
+      <button className={addButtonClasses} onClick={() => void bindTag()}>
         <TagIcon size={18} />
         Привязать тег
       </button>
@@ -166,12 +175,6 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onPick={createDirectBinding}
-      />
-
-      <ChooseTagModal
-        open={tagPickerOpen}
-        onClose={() => setTagPickerOpen(false)}
-        onPick={(tagId) => addBinding(element.key, buildDirectTagBinding(DIRECT_TARGET, tagId))}
       />
     </div>
   );

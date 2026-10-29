@@ -5,7 +5,8 @@ import {AlertTriangle} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations} from "../../api/recipes";
-import {ChooseManifestTagsModal} from "./ChooseManifestTagsModal";
+import {pickTags, useDeviceTreeStore} from "@/core/devices";
+import {buildManifestTags} from "../../lib/tagMeta";
 import {validateRecipe} from "../../lib/recipeValidation";
 import {Button} from "@/shared/ui/Button";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
@@ -43,11 +44,25 @@ function RecipeEditorContent({recipe}: Props) {
    */
   const [pauseAction, setPauseAction] = useState(recipe?.pause_action ?? []);
   const [isSaving, setIsSaving] = useState(false);
-  // Выбор тегов — локальный Modal поверх этой формы. Через openModal нельзя: он открывает
-  // окно вместо верхнего и подменил бы эту форму, потеряв всё набранное.
-  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const problems = validateRecipe({name, tags, steps, pause_action: pauseAction});
+
+  // Выбор тегов открывается ПОВЕРХ этой формы (pickTags → pushModal): форма остаётся со всем
+  // набранным. Строки манифеста — короткое имя, путь, тип и описание из базы каналов.
+  const addManifestTags = async () => {
+    const picked = await pickTags({
+      title: "Теги рецепта",
+      description: "Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия шагов — по короткому имени, а не по пути.",
+      note: <>
+        Тип значения подставляется из базы каналов, но <b>логический тег она отличить не
+        умеет</b> — там есть только признак «строковый». Дискретные теги пометьте вручную
+        в списке манифеста, иначе запись <code>true</code> не пройдёт проверку.
+      </>,
+    });
+    if (!picked) return;
+    const params = useDeviceTreeStore.getState().params;
+    setTags(prev => [...prev, ...buildManifestTags(picked, params, prev.map(t => t.name))]);
+  };
 
   const patchTag = (index: number, patch: Partial<RecipeTag>) =>
     setTags(prev => prev.map((t, i) => i === index ? {...t, ...patch} : t));
@@ -105,7 +120,7 @@ function RecipeEditorContent({recipe}: Props) {
           tags={tags}
           patchTag={patchTag}
           removeTag={(index) => setTags(prev => prev.filter((_, i) => i !== index))}
-          onPickTags={() => setTagPickerOpen(true)}
+          onPickTags={() => void addManifestTags()}
         />
 
         <RecipePauseSection tags={tags} pauseAction={pauseAction} setPauseAction={setPauseAction} />
@@ -125,13 +140,6 @@ function RecipeEditorContent({recipe}: Props) {
           </ul>
         </div>
       )}
-
-      <ChooseManifestTagsModal
-        open={tagPickerOpen}
-        onClose={() => setTagPickerOpen(false)}
-        takenNames={tags.map(t => t.name)}
-        onPick={(picked) => setTags(prev => [...prev, ...picked])}
-      />
 
       <DialogFooter>
         <Button onClick={closeModal} disabled={isSaving}>Отмена</Button>

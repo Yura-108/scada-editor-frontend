@@ -12,12 +12,13 @@ interface PickOptions {
   title?: string;
   /** Что пояснить под заголовком: куда пойдёт выбранный тег. */
   description?: ReactNode;
+  /** Подпись главной кнопки: «Выбрать», «Привязать», «Добавить». */
+  confirmLabel?: string;
 }
 
 interface PickManyOptions extends PickOptions {
   /** Пояснение над кнопками — например, что дальше сделать с выбранными тегами. */
   note?: ReactNode;
-  confirmLabel?: string;
 }
 
 const DEFAULT_DESCRIPTION = "Раскройте площадку, проект и устройство и выберите канал. Можно искать по имени или пути.";
@@ -45,7 +46,7 @@ function useSettleOnce<T>(resolve: (value: T | null) => void) {
   return settle;
 }
 
-function PickTagContent({title = "Выбор тега ПЛК", description = DEFAULT_DESCRIPTION, resolve}: PickOptions & {
+function PickTagContent({title = "Выбор тега ПЛК", description = DEFAULT_DESCRIPTION, confirmLabel = "Выбрать", resolve}: PickOptions & {
   resolve: (tag: string | null) => void;
 }) {
   const closeModal = useCloseModal();
@@ -68,7 +69,7 @@ function PickTagContent({title = "Выбор тега ПЛК", description = DEF
       </DialogBody>
       <DialogFooter>
         <Button onClick={() => done(null)}>Отмена</Button>
-        <Button variant="primary" onClick={() => tag && done(tag)} disabled={!tag}>Выбрать</Button>
+        <Button variant="primary" onClick={() => tag && done(tag)} disabled={!tag}>{confirmLabel}</Button>
       </DialogFooter>
     </>
   );
