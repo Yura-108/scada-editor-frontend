@@ -20,8 +20,15 @@ type ModalProps = {
   title: ReactNode;
   /** Подпись под заголовком. Если не задана — скрыта визуально, но есть в DOM. */
   description?: ReactNode;
+  /** Значок слева от заголовка (`DialogHeader`). */
+  icon?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
+  /**
+   * Классы тела. `flex flex-col` — когда прокручивается не всё тело, а часть: дерево
+   * под закреплённым поиском.
+   */
+  bodyClassName?: string;
 
   /** Ширина окна (`DialogFrame`). По умолчанию `md`. */
   size?: DialogSize;
@@ -34,8 +41,10 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   description,
+  icon,
   children,
   footer,
+  bodyClassName,
   size = 'md',
   closeOnOverlay = true,
 }) => {
@@ -43,8 +52,8 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <DialogFrame size={size} onClose={onClose} closeOnOverlay={closeOnOverlay}>
-      <DialogHeader title={title} description={description} />
-      <DialogBody>{children}</DialogBody>
+      <DialogHeader icon={icon} title={title} description={description} />
+      <DialogBody className={bodyClassName}>{children}</DialogBody>
       {footer && <DialogFooter>{footer}</DialogFooter>}
     </DialogFrame>
   );

@@ -223,8 +223,7 @@
   --z-panel: 40; /* боковые панели редактора */
   --z-panel-handle: 45; /* ручки изменения ширины панелей */
   --z-header: 50; /* sticky-шапка приложения */
-  --z-modal: 100; /* ModalRoot и одиночные диалоги */
-  --z-modal-nested: 110; /* диалог, открытый из другого диалога */
+  --z-modal: 100; /* окна; каждое следующее в стеке или открытое изнутри — на +1 (DialogFrame) */
   --z-confirm: 120; /* подтверждения — всегда поверх всего диалогового стека */
   --z-dropdown: 150; /* Select/Popover/контекстные меню */
   --z-toast: 200;
@@ -253,9 +252,6 @@
 }
 @utility z-modal {
   z-index: var(--z-modal);
-}
-@utility z-modal-nested {
-  z-index: var(--z-modal-nested);
 }
 @utility z-confirm {
   z-index: var(--z-confirm);
