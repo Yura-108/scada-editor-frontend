@@ -80,6 +80,41 @@ const eslintConfig = defineConfig([
     [{ group: ['@/store/*'], message: 'ui-kit не знает про сторы: бизнес-компонент — в свою область.' }],
   ),
 
+  // UI-kit: поля только из shared/ui/field (docs/architecture.md, «UI-kit: поля»).
+  // Своё правило, а не no-restricted-imports: тот уже настроен по слоям выше, и второй блок
+  // с ним перезаписал бы те ограничения для тех же файлов.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/shared/ui/field/**',
+      // Ждут ветку общего выбора тега — там уйдёт и SelectItem со своим Radix Select.
+      'src/components/ui/OpenChooseTagModal.tsx',
+      'src/shared/ui/SelectItem.tsx',
+      // Редактор текста прямо на холсте: обязан выглядеть как текст фигуры, а не как поле.
+      'src/modules/editor/ui/canvas/TextEditorOverlay.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': ['warn',
+        {
+          selector: "ImportDeclaration[source.value='@radix-ui/react-select']",
+          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+        },
+        {
+          selector: "ImportDeclaration[source.value='radix-ui'] > ImportSpecifier[imported.name='Select']",
+          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='textarea']",
+          message: 'Многострочное поле — Textarea из @/shared/ui/field/Textarea.',
+        },
+      ],
+    },
+  },
+
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
