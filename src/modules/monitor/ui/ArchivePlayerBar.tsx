@@ -1,7 +1,8 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {Info, Loader2, Pause, Play} from "lucide-react";
+import {Info, Pause, Play} from "lucide-react";
+import {Spinner} from "@/shared/ui/Spinner";
 import {REPLAY_SPEEDS, useArchiveReplayStore} from "../model/useArchiveReplayStore";
 import type {ArchiveReplayControls} from "../model/archive/useArchiveReplay";
 import {ARCHIVE_DEPTH_MS} from "../model/archive/archive";
@@ -104,10 +105,7 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
       <span className="font-mono tabular-nums">{formatCursor(shown)}</span>
 
       {(loading || buffering) && (
-        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-          <Loader2 size={12} className="animate-spin" />
-          Загрузка…
-        </span>
+        <Spinner size={12} label="Загрузка…" className="gap-1 text-xs text-warning" />
       )}
       {ended && !loading && <span className="text-neutral-500">Конец периода</span>}
       {error && <span className="text-red-600 dark:text-red-400">{error}</span>}

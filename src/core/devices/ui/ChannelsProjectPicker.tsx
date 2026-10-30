@@ -1,7 +1,8 @@
 import {useEffect, useId, useState} from "react";
 import {toast} from "sonner";
-import {Building2, Download, FolderOpen, RefreshCw} from 'lucide-react';
+import {Building2, Download, FolderOpen} from 'lucide-react';
 import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
 import {Button} from "@/shared/ui/Button";
 import {MultiSelect} from "@/shared/ui/MultiSelect";
 import {useDeviceDictionaries} from "../model/deviceDictionaries";
@@ -178,7 +179,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
         disabled={isSubmitting || selectedProjects.length === 0}
         title={loadHint}
       >
-        {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+        {isSubmitting ? <Spinner /> : <Download size={14} />}
         {isSubmitting ? 'Загрузка…' : 'Загрузить'}
       </Button>
     </div>

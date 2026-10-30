@@ -15,6 +15,8 @@ import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
 import {ProjectSelect} from "@/core/project";
 import {Select} from "@/shared/ui/field/Select";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+import {PageHeader} from "@/shared/ui/page/PageHeader";
 
 // Окна монитора для меню элемента на холсте.
 registerMonitorDialogs();
@@ -180,14 +182,11 @@ export default function MonitorClient() {
   const isLive = !isArchive && status === "live";
 
   return (
-    <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
+    <PageFrame>
       {/* Тонкий тулбар: проект / сцена / индикатор соединения */}
       {/* В одну строку на любой ширине: второстепенные подписи ниже xl сворачиваются до иконок
           (полный текст — в подсказке), а не переносят панель на вторую строку. */}
-      <div className="h-12 shrink-0 flex items-center gap-2 xl:gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md whitespace-nowrap overflow-x-auto">
-        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-          Монитор
-        </span>
+      <PageHeader title="Монитор" className="gap-2 xl:gap-3">
 
         <ProjectSelect
           projects={projectList}
@@ -335,7 +334,7 @@ export default function MonitorClient() {
             {statusDetail}
           </span>
         )}
-      </div>
+      </PageHeader>
 
       {isArchive && scene && <ArchivePlayerBar controls={replayControls} />}
 
@@ -408,6 +407,6 @@ export default function MonitorClient() {
         {!showProcedures && !isArchive && <FloatingWindowsLayer />}
         {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
-    </div>
+    </PageFrame>
   );
 }

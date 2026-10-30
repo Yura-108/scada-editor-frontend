@@ -6,9 +6,11 @@ import LogDetailsModal from '@/components/ui/LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
 import { toast } from "sonner";
 import {
-  formatTs, journalBadge, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
+  formatTs, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
 } from '@/components/journal/journalUi';
 import {useDeviceTreeStore} from "@/core/devices";
+import {Badge} from "@/shared/ui/Badge";
+import type {Tone} from "@/shared/ui/tone";
 
 const COLUMNS = 7;
 
@@ -18,10 +20,10 @@ const COMMAND_LABEL: Record<LogEntry['commandType'], string> = {
   DELETE: 'Удаление',
 };
 
-const COMMAND_TONE: Record<LogEntry['commandType'], 'ok' | 'warn' | 'error'> = {
-  CREATE: 'ok',
-  UPDATE: 'warn',
-  DELETE: 'error',
+const COMMAND_TONE: Record<LogEntry['commandType'], Tone> = {
+  CREATE: 'success',
+  UPDATE: 'warning',
+  DELETE: 'destructive',
 };
 
 /** Таблица логов — тот же вид, что у «Журнала действий». */
@@ -90,9 +92,9 @@ export default function LogsList() {
                 {log.entityType === 'Node' ? 'Устройство' : 'Параметр'} №{log.entityId}
               </td>
               <td className={`${journalTd} whitespace-nowrap`}>
-                <span className={journalBadge(COMMAND_TONE[log.commandType] ?? 'neutral')}>
+                <Badge tone={COMMAND_TONE[log.commandType] ?? 'neutral'}>
                   {COMMAND_LABEL[log.commandType] ?? log.commandType}
-                </span>
+                </Badge>
               </td>
               <td className={`${journalTd} font-mono text-xs text-neutral-500`}>#{log.id}</td>
               <td className={journalTd}>
@@ -107,7 +109,7 @@ export default function LogsList() {
               </td>
               <td className={`${journalTd} text-right`}>
                 {log.undoneAt ? (
-                  <span className={journalBadge('neutral')} title={`Отменено ${formatTs(log.undoneAt)}`}>отменено</span>
+                  <Badge title={`Отменено ${formatTs(log.undoneAt)}`}>отменено</Badge>
                 ) : (
                   <button
                     type="button"

@@ -1,7 +1,8 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {Clock, Eye, Loader2, RotateCcw, X} from "lucide-react";
+import {Clock, Eye, RotateCcw, X} from "lucide-react";
+import {Spinner} from "@/shared/ui/Spinner";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useCurrentProjectGrant} from "@/core/access";
@@ -203,10 +204,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
         </ul>
 
         {isVersionsLoading && (
-          <p className="flex items-center justify-center gap-2 p-3 text-xs text-neutral-500">
-            <Loader2 size={14} className="animate-spin" />
-            Загрузка…
-          </p>
+          <Spinner label="Загрузка…" className="justify-center p-3 text-xs" />
         )}
 
         {!!versions.length && !versionsExhausted && !isVersionsLoading && (

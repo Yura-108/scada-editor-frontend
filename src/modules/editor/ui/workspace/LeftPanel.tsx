@@ -2,11 +2,10 @@
 
 import React from "react";
 import {ChevronLeft, PanelLeft} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
+import {Tabs, tabPanelProps, type TabItem} from "@/shared/ui/Tabs";
 import {LayersPanel} from "../layers-panel/LayersPanel";
 import Palette from "../palette/Palette";
-import {handleTabListKey} from "../../lib/tabListKeys";
-import {LEFT_COLLAPSE, LEFT_MAX, LEFT_TABS, type LeftTabType} from "./lib/workspaceLayout";
+import {LEFT_COLLAPSE, LEFT_MAX, type LeftTabType} from "./lib/workspaceLayout";
 import {ResizeHandle} from "./ResizeHandle";
 
 interface LeftPanelProps {
@@ -24,35 +23,15 @@ interface LeftPanelProps {
   onResizeKey: (e: React.KeyboardEvent) => void;
 }
 
+const LEFT_TAB_ITEMS: TabItem<LeftTabType>[] = [
+  {value: "palette", label: "Палитра"},
+  {value: "layers", label: "Слои"},
+];
+
 /** Левая панель — абсолютная, прилипшая к левому краю: «Палитра» и «Слои». */
 export function LeftPanel({
   width, shown, visible, showEditorPanels, resizing, leftTab, setLeftTab, setVisible, onResizeStart, onResizeKey,
 }: LeftPanelProps) {
-  // Вкладки — настоящие вкладки: role="tablist"/"tab"/"tabpanel", aria-selected и
-  // roving tabindex (одна остановка Tab на группу, дальше стрелками). Раньше это
-  // был просто набор кнопок: скринридер не сообщал ни о группе, ни о том, какая
-  // вкладка активна.
-  const leftTabButton = (tab: LeftTabType, title: string) => (
-    <button
-      id={`left-tab-${tab}`}
-      role="tab"
-      type="button"
-      aria-selected={leftTab === tab}
-      aria-controls="left-panel-content"
-      tabIndex={leftTab === tab ? 0 : -1}
-      onClick={() => setLeftTab(tab)}
-      onKeyDown={(e) => handleTabListKey(e, LEFT_TABS, leftTab, setLeftTab)}
-      className={cn(
-        "flex-1 py-2 text-xs font-semibold uppercase tracking-wide transition-colors",
-        leftTab === tab
-          ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
-          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 border-b-2 border-transparent",
-      )}
-    >
-      {title}
-    </button>
-  );
-
   return (
     <aside
       style={{width: "var(--ws-left-w)"}}
@@ -64,20 +43,10 @@ export function LeftPanel({
     >
       <div className="h-full w-full flex flex-col">
         {/* Вкладки левой панели: Палитра / Слои */}
-        <div
-          role="tablist"
-          aria-label="Левая панель"
-          className="flex h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800"
-        >
-          {leftTabButton("palette", "Палитра")}
-          {leftTabButton("layers", "Слои")}
+        <div className="shrink-0 border-b px-2 py-1.5">
+          <Tabs id="left" aria-label="Левая панель" value={leftTab} onValueChange={setLeftTab} items={LEFT_TAB_ITEMS} stretch />
         </div>
-        <div
-          id="left-panel-content"
-          role="tabpanel"
-          aria-labelledby={`left-tab-${leftTab}`}
-          className="flex-1 overflow-y-auto"
-        >
+        <div {...tabPanelProps("left", leftTab)} className="flex-1 overflow-y-auto">
           {leftTab === "palette" ? <Palette /> : <LayersPanel />}
         </div>
       </div>

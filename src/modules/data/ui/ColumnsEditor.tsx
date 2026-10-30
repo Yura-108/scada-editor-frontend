@@ -4,6 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
 import {dropColumnFromRows, renameColumnInRows, retypeColumnInRows} from "../lib/values";
 import {
   PROJECT_DATA_NAME_RE,
@@ -23,7 +24,6 @@ export const fieldHint = "text-xs text-muted-foreground mt-1";
 
 /** Компактные кнопки строк: размер `Button` по умолчанию рассчитан на подвал модалки. */
 export const compactButton = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
-export const iconButton = "h-8 w-8 px-0 shadow-none";
 
 /** Локальная подсказка к имени (таблицы или колонки) — до того, как это скажет бэкенд. */
 export const nameHint = (name: string): string | null =>
@@ -160,7 +160,7 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
             placeholder={c.value_type === "json" ? "{}" : ""}
             onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})}
           />
-          <Button className={iconButton} onClick={() => remove(i)} title="Удалить колонку и её значения во всех строках"><Trash2 size={14} /></Button>
+          <IconButton icon={Trash2} label="Удалить колонку и её значения во всех строках" variant="danger" onClick={() => remove(i)} />
         </div>
       ))}
       {columns.length === 0 && <p className="text-xs text-muted-foreground">Колонок нет — у строк будет только ключ.</p>}

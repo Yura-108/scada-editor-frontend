@@ -4,25 +4,23 @@ import { useEffect } from 'react';
 import { Building2, FolderOpen } from 'lucide-react';
 import {ChannelsToolbar, DeviceParams} from "@/modules/channels";
 import {DeviceTreePanel, useDeviceTreeStore} from "@/core/devices";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
 
 /** Пусто, пока ничего не загружено: подсказываем, где выбрать, вместо пустых панелей. */
-function EmptyState() {
+function NothingLoaded() {
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <div className="max-w-md text-center text-neutral-600 dark:text-neutral-400">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-          <FolderOpen className="h-7 w-7" />
-        </div>
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Проект не загружен</h2>
-        <p className="mt-2 text-sm">
-          На панели сверху выберите <Building2 className="inline h-4 w-4 align-text-bottom" /> площадку,
-          затем один или несколько проектов и нажмите «Загрузить» — слева появится дерево устройств.
-        </p>
-        <p className="mt-2 text-xs">
+    <EmptyState
+      icon={FolderOpen}
+      title="Проект не загружен"
+      description={<>
+        На панели сверху выберите <Building2 className="inline h-4 w-4 align-text-bottom" /> площадку,
+        затем один или несколько проектов и нажмите «Загрузить» — слева появится дерево устройств.
+        <span className="mt-2 block text-xs">
           Нет нужного проекта — импортируйте базу из файла кнопкой «Импорт .cdbx» справа сверху.
-        </p>
-      </div>
-    </div>
+        </span>
+      </>}
+    />
   );
 }
 
@@ -40,7 +38,7 @@ export default function Workspace() {
   }, []);
 
   return (
-    <div className="fixed inset-0 top-(--app-header-h) flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
+    <PageFrame>
       <ChannelsToolbar />
 
       {loaded ? (
@@ -53,8 +51,8 @@ export default function Workspace() {
           </section>
         </main>
       ) : (
-        <EmptyState />
+        <NothingLoaded />
       )}
-    </div>
+    </PageFrame>
   );
 }

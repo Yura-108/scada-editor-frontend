@@ -1,8 +1,9 @@
 "use client";
 
 import React, {useCallback, useEffect, useState} from "react";
-import {Loader2, Package, Rocket} from "lucide-react";
+import {Package, Rocket} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {Button} from "@/shared/ui/Button";
@@ -109,7 +110,7 @@ function ReleasesContent({projectId, projectName}: Props) {
             className="flex-1"
           />
           <Button variant="primary" onClick={() => void handleRelease()} disabled={busy}>
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
+            {busy ? <Spinner size={16} /> : <Rocket size={16} />}
             Выпустить
           </Button>
         </div>
@@ -120,7 +121,7 @@ function ReleasesContent({projectId, projectName}: Props) {
 
         <div className="max-h-80 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
           {loading && !rows.length && (
-            <div className="flex items-center gap-2 px-3 py-4 text-sm text-gray-500"><Loader2 size={14} className="animate-spin" />Загрузка…</div>
+            <Spinner label="Загрузка…" className="px-3 py-4" />
           )}
           {!loading && !rows.length && !error && (
             <div className="px-3 py-4 text-sm text-gray-500">Выпусков ещё нет. Выпустите текущий черновик кнопкой выше.</div>
