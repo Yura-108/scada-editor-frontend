@@ -1,6 +1,7 @@
 import React from "react";
-import {ChevronLeft, ChevronRight, Loader2, Radio} from "lucide-react";
+import {ChevronLeft, ChevronRight, Radio} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
 import {Input} from "@/shared/ui/field/Input";
 import {TREND_WINDOW_PRESETS} from "@/core/scene";
 import {ARCHIVE_DEPTH_MS} from "../../model/archive/archive";
@@ -79,7 +80,7 @@ export function TrendPeriodBar({windowSec, setWindowSec, shift, follow, to, cloc
         Сейчас
       </button>
 
-      {loading && <Loader2 size={14} className="animate-spin text-gray-400" />}
+      {loading && <Spinner className="text-muted-foreground" />}
       {aggregated && !loading && (
         <span className="text-xs text-amber-600 dark:text-amber-400" title="Архив вернул минимумы и максимумы по интервалам — пики сохранены">
           Данные прорежены — сузьте окно, чтобы увидеть каждое изменение

@@ -4,6 +4,7 @@ import React, {useState} from "react";
 import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations, useRecipes} from "../../api/recipes";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
@@ -149,12 +150,7 @@ export function RecipesPanel() {
           Выберите проект — рецепты принадлежат проекту.
         </div>
       ) : isLoading ? (
-        <div className="flex min-h-[180px] items-center justify-center text-gray-600 dark:text-gray-400">
-          <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            Загрузка рецептов...
-          </div>
-        </div>
+        <Spinner size={20} label="Загрузка рецептов…" className="min-h-[180px] justify-center gap-3" />
       ) : loadError ? (
         <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-400">
           <p>Не удалось загрузить рецепты: {loadError}</p>

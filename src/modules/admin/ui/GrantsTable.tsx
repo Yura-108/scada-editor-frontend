@@ -1,9 +1,10 @@
 "use client";
 
 import React, {useEffect, useMemo, useState} from "react";
-import {Loader2, Save} from "lucide-react";
+import {Save} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
+import {Spinner} from "@/shared/ui/Spinner";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
 import {useOpenScene} from "@/core/project";
 import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
@@ -124,7 +125,7 @@ export function GrantsTable({userId}: {userId: number}) {
                   <td className="px-3 py-1.5 text-right">
                     {dirty && (
                       <Button variant="primary" size="sm" className="px-2.5 text-xs" disabled={savingId === p.id} onClick={() => void save(p.id)}>
-                        {savingId === p.id ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}Сохранить
+                        {savingId === p.id ? <Spinner size={12} /> : <Save size={12} />}Сохранить
                       </Button>
                     )}
                   </td>

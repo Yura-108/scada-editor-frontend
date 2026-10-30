@@ -1,5 +1,4 @@
 import React from "react";
-import {cn} from "@/shared/lib/cn";
 import {Field} from "@/shared/ui/field/Field";
 
 /**
@@ -35,16 +34,6 @@ export const journalThead = "bg-muted text-left text-xs uppercase tracking-wide 
 export const journalTh = "px-3 py-2";
 export const journalTbody = "divide-y";
 export const journalTd = "px-3 py-2";
-
-/** Бейдж статуса в ячейке: «OK», «Ошибка», вид операции. */
-export const journalBadge = (tone: "ok" | "error" | "warn" | "neutral") =>
-  cn(
-    "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
-    tone === "ok" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    tone === "error" && "bg-red-500/15 text-red-600 dark:text-red-400",
-    tone === "warn" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-    tone === "neutral" && "bg-neutral-500/10 text-neutral-600 dark:text-neutral-300",
-  );
 
 /** Поле фильтра с подписью над ним. */
 /** Поле фильтра журнала: компактная подпись над `Input`/`Select` размера `sm`. */

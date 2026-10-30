@@ -1,9 +1,10 @@
 "use client";
 
 import React, {useCallback, useEffect, useId, useState} from "react";
-import {AlertTriangle, Loader2, SlidersHorizontal, Waypoints} from "lucide-react";
+import {AlertTriangle, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
 import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
@@ -229,9 +230,7 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
             {loadError}
           </div>
         ) : loading && !objects.length ? (
-          <div className="flex min-h-[120px] items-center justify-center gap-2 text-sm text-gray-500">
-            <Loader2 size={14} className="animate-spin" /> Загрузка объектов…
-          </div>
+          <Spinner label="Загрузка объектов…" className="min-h-[120px] justify-center" />
         ) : !selected ? (
           <div className="flex min-h-[120px] items-center justify-center text-sm text-gray-500 italic">
             {initialObjectId != null && selectedId === initialObjectId

@@ -1,13 +1,15 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {CircleAlert, Loader2, RefreshCw} from "lucide-react";
+import {CircleAlert, RefreshCw} from "lucide-react";
+import {Badge} from "@/shared/ui/Badge";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
+import {Spinner} from "@/shared/ui/Spinner";
 import {
-  formatTs, journalBadge, journalFilterBar, journalTableBox, journalTbody,
+  formatTs, journalFilterBar, journalTableBox, journalTbody,
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, toLocalInput,
 } from "@/components/journal/journalUi";
 import {useEditorStore} from "@/modules/editor";
@@ -194,7 +196,7 @@ export default function ActionsClient() {
             />
           </JournalField>
           <Button type="submit" variant="primary" size="sm" disabled={loading}>
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? <Spinner /> : <RefreshCw size={14} />}
             Показать
           </Button>
           <JournalPresets onPick={applyPreset} />
@@ -229,12 +231,12 @@ export default function ActionsClient() {
                   <td className={journalTd}><ActionTarget r={r} /></td>
                   <td className={journalTd}>
                     {r.outcome === "OK" ? (
-                      <span className={journalBadge("ok")}>OK</span>
+                      <Badge tone="success">OK</Badge>
                     ) : (
                       <div className="space-y-1">
-                        <span className={journalBadge("error")}>
+                        <Badge tone="destructive">
                           {r.outcome === "ERROR" ? "Ошибка" : r.outcome}
-                        </span>
+                        </Badge>
                         {r.error && <div className="text-xs text-red-600 dark:text-red-400 break-words">{r.error}</div>}
                       </div>
                     )}
@@ -254,7 +256,7 @@ export default function ActionsClient() {
               onClick={() => filterRef.current && load(filterRef.current, page + 1)}
               className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
             >
-              {loading && <Loader2 size={14} className="animate-spin" />}
+              {loading && <Spinner />}
               Показать ещё
             </button>
           </div>

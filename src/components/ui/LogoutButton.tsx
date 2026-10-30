@@ -2,7 +2,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { LogOut, Loader2 } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import {Spinner} from "@/shared/ui/Spinner";
 import { useState } from 'react';
 import { confirmLeave } from "@/lib/unsavedGuard";
 import {useDeviceLocksStore} from "@/core/devices";
@@ -45,7 +46,7 @@ export default function LogoutButton() {
       disabled={isLoading}
       className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-600 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-200 disabled:opacity-70"
     >
-      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+      {isLoading ? <Spinner size={20} /> : <LogOut className="w-5 h-5" />}
       <span className="font-medium">{isLoading ? 'Выходим...' : 'Выйти'}</span>
     </button>
   );

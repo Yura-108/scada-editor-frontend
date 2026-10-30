@@ -1,7 +1,8 @@
 "use client";
 
 import {useShallow} from "zustand/react/shallow";
-import {Loader2, Save} from "lucide-react";
+import {Save} from "lucide-react";
+import {Spinner} from "@/shared/ui/Spinner";
 import {useEditorStore} from "../../model/editorStore";
 import {TooltipBtn} from "./TooltipBtn";
 
@@ -19,7 +20,7 @@ export function SaveButton({canSave}: {canSave: boolean}) {
   return (
     <TooltipBtn
       icon={isSaving
-        ? <Loader2 size={16} strokeWidth={2.5} className="animate-spin" />
+        ? <Spinner size={16} />
         : <Save size={16} strokeWidth={2.5} />}
       label={isSaving ? "Сохранение…" : isDirty ? "Сохранить (есть изменения)" : "Сохранить"}
       onClick={() => { void exportScene(); }}

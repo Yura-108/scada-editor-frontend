@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect} from "react";
-import {CircleAlert, Loader2, RefreshCw} from "lucide-react";
+import {CircleAlert, RefreshCw} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useLogsFilterStore, useLogsSearch} from "@/modules/logs";
 import LogsList from "@/components/logs/LogsList";
@@ -9,6 +9,7 @@ import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
+import {Spinner} from "@/shared/ui/Spinner";
 import {journalFilterBar, JournalField, JournalPresets, toLocalInput} from "@/components/journal/journalUi";
 import {Input} from "@/shared/ui/field/Input";
 
@@ -69,7 +70,7 @@ export default function LogsPage() {
           />
         </JournalField>
         <Button type="submit" variant="primary" size="sm" disabled={isLoading}>
-          {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {isLoading ? <Spinner /> : <RefreshCw size={14} />}
           Показать
         </Button>
         <JournalPresets onPick={applyPreset} />
