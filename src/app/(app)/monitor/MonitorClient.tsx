@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {AlertTriangle, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
+import {AlertTriangle, CircleAlert, ClipboardList, Clock, Cpu, History, Package, Radio, SearchCode} from "lucide-react";
 import {
   ArchivePlayerBar, AutomationTaskPanel, closeFloatingWindows, countTaskProblems, FloatingWindowsLayer,
   openObjectInspectorModal, ProcedureHud, ProcedurePanel, registerMonitorDialogs, useArchiveReplay,
@@ -9,7 +9,6 @@ import {
 } from "@/modules/monitor";
 import {Canvas, useEditorStore, useSceneCameraMemory, SceneTabs, restoreLastProject} from "@/modules/editor";
 import type {RuntimeStatus} from "@/modules/monitor";
-import {cn} from "@/shared/lib/cn";
 import {toast} from "sonner";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {lastMonitorScene, rememberMonitorScene} from "@/core/project";
@@ -17,6 +16,12 @@ import {ProjectSelect} from "@/core/project";
 import {Select} from "@/shared/ui/field/Select";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
+import {Badge} from "@/shared/ui/Badge";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {SegmentedControl} from "@/shared/ui/SegmentedControl";
+import type {Tone} from "@/shared/ui/tone";
 
 // Окна монитора для меню элемента на холсте.
 registerMonitorDialogs();
@@ -24,17 +29,17 @@ registerMonitorDialogs();
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
 const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
 
-const STATUS_VIEW: Record<RuntimeStatus, {label: string; className: string}> = {
-  connecting: {label: "Подключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
-  live: {label: "Живые данные", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"},
-  reconnecting: {label: "Переподключение…", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400"},
-  closed: {label: "Нет соединения", className: "bg-neutral-500/15 text-neutral-500 dark:text-neutral-400"},
+const STATUS_VIEW: Record<RuntimeStatus, {label: string; tone: Tone}> = {
+  connecting: {label: "Подключение…", tone: "warning"},
+  live: {label: "Живые данные", tone: "success"},
+  reconnecting: {label: "Переподключение…", tone: "warning"},
+  closed: {label: "Нет соединения", tone: "neutral"},
   // Окончательный отказ: код закрытия 1003 либо 409 на создание сессии (проект не введён
   // в эксплуатацию). Реконнект не запускается — причина показывается оператору прямо на
   // холсте, иначе выключенный проект выглядел бы неисправностью экрана.
-  rejected: {label: "Соединение отклонено", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
+  rejected: {label: "Соединение отклонено", tone: "destructive"},
   // Код закрытия 4403: права в проекте отозваны. Монитор сам уходит к выбору проекта.
-  revoked: {label: "Доступ отозван", className: "bg-red-500/15 text-red-600 dark:text-red-400"},
+  revoked: {label: "Доступ отозван", tone: "destructive"},
 };
 
 /**
@@ -212,123 +217,93 @@ export default function MonitorClient() {
 
         <div className="flex-1" />
 
-        <div className="flex shrink-0 rounded-full border border-neutral-200 dark:border-neutral-700 p-0.5 text-xs font-medium">
-          {([["live", "Живые данные"], ["archive", "Архив"]] as const).map(([m, label]) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mode === m}
-              disabled={m === "archive" && !scene}
-              onClick={() => {
-                setMode(m);
-                // Процедуры — живое управление, в архиве им не место.
-                if (m === "archive") { setShowProcedures(false); setShowTasks(false); }
-              }}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-40",
-                mode === m
-                  ? (m === "archive"
-                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")
-                  : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
-              )}
-            >
-              {m === "archive" ? <History size={12} /> : <Radio size={12} />}
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          aria-label="Режим монитора"
+          value={mode}
+          onValueChange={m => {
+            setMode(m);
+            // Процедуры — живое управление, в архиве им не место.
+            if (m === "archive") { setShowProcedures(false); setShowTasks(false); }
+          }}
+          items={[
+            {value: "live", label: "Живые данные", icon: Radio, tone: "success"},
+            {value: "archive", label: "Архив", icon: History, tone: "warning", disabled: !scene},
+          ]}
+        />
 
         {isLive && sessionId && !showProcedures && (
-          <button
-            onClick={() => setShowProcedures(true)}
-            title="Процедуры"
-            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
-          >
+          <Button size="sm" onClick={() => setShowProcedures(true)} title="Процедуры">
             <ClipboardList size={14} />
             <span className="hidden xl:inline">Процедуры</span>
-          </button>
+          </Button>
         )}
 
         {/* Инспектор объектов: любой объект выпуска со всех схем, все его свойства с правкой.
             Только при живой сессии — в архиве записи невозможны, а значения из прошлого. */}
         {isLive && sessionId && directWrite && (
-          <button
-            onClick={() => openObjectInspectorModal()}
-            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors"
-            title="Инспектор объектов: свойства любого объекта проекта"
-          >
+          <Button size="sm" onClick={() => openObjectInspectorModal()} title="Инспектор объектов: свойства любого объекта проекта">
             <SearchCode size={14} />
             <span className="hidden xl:inline">Инспектор</span>
-          </button>
+          </Button>
         )}
 
         {isLive && sessionId && (
-          <button
+          <Button
+            size="sm"
             onClick={() => setShowTasks(v => !v)}
             aria-pressed={showTasks}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-              taskProblems > 0
-                ? "bg-red-500/15 text-red-600 dark:text-red-400 hover:bg-red-500/25"
-                : "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
-            )}
+            className="aria-pressed:bg-accent"
             title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : "Фоновые задачи проекта"}
           >
             <Cpu size={14} />
             <span className="hidden xl:inline">Задачи</span>
-            {taskProblems > 0 && <span><span className="hidden xl:inline">: </span>{taskProblems}</span>}
-          </button>
+            {taskProblems > 0 && <Badge tone="destructive">{taskProblems}</Badge>}
+          </Button>
         )}
 
         {problemCount > 0 && (
-          <span
-            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-600 dark:text-red-400"
+          <Badge
+            tone="destructive"
+            icon={<AlertTriangle size={12} />}
             title={[`Проблемы с привязками: ${problemCount}`,
               ...[...compileErrors.values()].map(e => `Компиляция: ${e}`),
               ...[...runtimeErrors.values()].map(e => `Исполнение: ${e}`),
             ].join("\n")}
           >
-            <AlertTriangle size={14} />
             <span className="hidden xl:inline">Проблемы с привязками: </span>{problemCount}
-          </span>
+          </Badge>
         )}
 
         {!isArchive && isStale && (
-          <span
-            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
+          <Badge
+            tone="warning"
+            icon={<Clock size={12} />}
             title="Соединение живое, но новых значений давно не приходило — данные на экране могут быть устаревшими"
           >
-            <Clock size={14} />
             <span className="hidden xl:inline">Данные могут устареть</span>
-          </span>
+          </Badge>
         )}
 
         {releaseVersionNo != null && (
-          <span
-            className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-500/10 text-neutral-600 dark:text-neutral-300"
+          <Badge
+            icon={<Package size={12} />}
             title={`Выпуск №${releaseVersionNo}. Монитор показывает prod-выпуск проекта. Правки редактора появятся здесь после нового выпуска.`}
           >
-            <Package size={14} />
             <span className="hidden xl:inline">Выпуск </span>№{releaseVersionNo}
-          </span>
+          </Badge>
         )}
 
         {!isArchive && (
-          <span
-            className={cn("flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusView.className)}
-            title={statusDetail || statusView.label}
-          >
-            <Radio size={14} />
+          <Badge tone={statusView.tone} icon={<Radio size={12} />} title={statusDetail || statusView.label}>
             <span className="hidden xl:inline">{statusView.label}</span>
-          </span>
+          </Badge>
         )}
 
         {/* Причина паузы рядом со статусом: «Переподключение…» без неё выглядит сбоем сети,
             хотя чинить надо остановленный экземпляр runtime, а не связь у оператора. */}
         {!isArchive && status === "reconnecting" && statusDetail && (
           <span
-            className="max-w-xs truncate text-xs text-amber-600 dark:text-amber-400"
+            className="max-w-xs truncate text-xs text-warning"
             title={statusDetail}
           >
             {statusDetail}
@@ -363,42 +338,38 @@ export default function MonitorClient() {
       {/* `relative` — точка отсчёта для HUD процедуры: он absolute внутри этого блока.
           Не `fixed`, как у баннеров редактора: там опорой служат --ws-*-m, которых
           в мониторе нет, и пришлось бы вручную вычитать тулбар и полосу вкладок. */}
-      <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900">
+      <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-card">
         {showProcedures ? (
           <ProcedurePanel />
         ) : releaseError && !scene ? (
           /* Выпуск не отдаётся (проект не в эксплуатации): схем нет вовсе, и пустой холст
              выглядел бы поломкой. */
           <div className="h-full flex items-center justify-center p-6">
-            <div className="max-w-md space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-              <div className="font-medium">Нет выпуска для показа</div>
+            <Banner tone="warning" icon={Package} title="Нет выпуска для показа" className="max-w-md">
               <p>{releaseError}</p>
-              <p className="text-xs opacity-80">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Монитор показывает prod-выпуск проекта, а его исполняет только проект в
                 эксплуатации. Ввести проект и выбрать выпуск можно в редакторе.
               </p>
-            </div>
+            </Banner>
           </div>
         ) : !isArchive && status === "rejected" ? (
           /* Состояние «проект выключен» должно быть видимым, а не выглядеть поломкой:
              текст причины приходит с бэкенда и называет её прямо. */
           <div className="h-full flex items-center justify-center p-6">
-            <div className="max-w-md space-y-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-              <div className="font-medium">Монитор не подключён</div>
+            <Banner tone="destructive" icon={CircleAlert} title="Монитор не подключён" className="max-w-md">
               <p>{statusDetail || "Рантайм отклонил подключение."}</p>
-              <p className="text-xs opacity-80">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Проект исполняется, только когда он введён в эксплуатацию — включить его можно
                 в списке проектов, после этого выберите схему заново. Если причина в правах
                 доступа, их выдаёт администратор.
               </p>
-            </div>
+            </Banner>
           </div>
         ) : scene ? (
           <Canvas readOnly archive={isArchive} />
         ) : (
-          <div className="h-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">
-            Выберите проект и сцену для мониторинга
-          </div>
+          <EmptyState size="sm" title="Выберите проект и сцену для мониторинга" className="h-full justify-center" />
         )}
 
         {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}

@@ -2,6 +2,7 @@
 
 import React, {useState} from "react";
 import {CircleHelp, X} from "lucide-react";
+import {IconButton} from "./IconButton";
 
 interface Props {
   /** Ключ запоминания «свёрнуто/развёрнуто» в браузере, например `help.data`. */
@@ -45,7 +46,7 @@ export function FloatingHelp({storageKey, title, children}: Props) {
         onClick={() => toggle(true)}
         title="Справка по разделу"
         aria-label="Справка по разделу"
-        className="fixed bottom-4 right-4 z-toolbar flex items-center gap-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 px-4 py-2.5 text-sm font-medium"
+        className="fixed bottom-4 right-4 z-toolbar flex items-center gap-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 px-4 py-2.5 text-sm font-medium"
       >
         <CircleHelp size={18} />Справка
       </button>
@@ -55,22 +56,14 @@ export function FloatingHelp({storageKey, title, children}: Props) {
   return (
     <aside
       aria-label={title}
-      className="fixed bottom-4 right-4 z-toolbar w-[min(380px,calc(100vw-2rem))] max-h-[min(60vh,560px)] flex flex-col rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-neutral-900 shadow-2xl"
+      className="fixed bottom-4 right-4 z-toolbar w-[min(380px,calc(100vw-2rem))] max-h-[min(60vh,560px)] flex flex-col rounded-2xl border border-primary/20 bg-card shadow-2xl"
     >
-      <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-indigo-100 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/40 rounded-t-2xl">
-        <CircleHelp size={16} className="text-indigo-600 dark:text-indigo-400" />
-        <span className="flex-1 text-sm font-semibold text-indigo-900 dark:text-indigo-200">{title}</span>
-        <button
-          type="button"
-          onClick={() => toggle(false)}
-          title="Свернуть справку"
-          aria-label="Свернуть справку"
-          className="p-1 rounded-md text-neutral-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
-        >
-          <X size={16} />
-        </button>
+      <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-primary/15 bg-primary/10 rounded-t-2xl">
+        <CircleHelp size={16} className="text-primary" />
+        <span className="flex-1 text-sm font-semibold text-foreground">{title}</span>
+        <IconButton icon={X} label="Свернуть справку" onClick={() => toggle(false)} />
       </div>
-      <div className="overflow-y-auto px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_b]:text-neutral-900 dark:[&_b]:text-neutral-100 [&_code]:text-xs [&_code]:px-1 [&_code]:rounded [&_code]:bg-neutral-100 dark:[&_code]:bg-neutral-800">
+      <div className="overflow-y-auto px-4 py-3 text-sm text-foreground space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_b]:text-foreground [&_code]:text-xs [&_code]:px-1 [&_code]:rounded [&_code]:bg-muted">
         {children}
       </div>
     </aside>

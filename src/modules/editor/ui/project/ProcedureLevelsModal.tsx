@@ -7,6 +7,8 @@ import {Button} from "@/shared/ui/Button";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
+import {Banner} from "@/shared/ui/Banner";
+import {Spinner} from "@/shared/ui/Spinner";
 import {readBackendError, parseProcedureLevels} from "@/core/access";
 import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
 
@@ -73,9 +75,9 @@ function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: 
 
       <DialogBody>
         {error ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <Banner tone="destructive">{error}</Banner>
         ) : !levels ? (
-          <p className="text-sm text-gray-500">Загрузка…</p>
+          <Spinner label="Загрузка…" />
         ) : (
           <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 items-center">
             {PROCEDURE_OPERATIONS.map(op => (

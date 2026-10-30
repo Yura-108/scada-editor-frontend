@@ -1,5 +1,6 @@
 import React from "react";
 import {Tags, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {RECIPE_VALUE_TYPES, type RecipeTag, type RecipeValueType} from "@/types/recipe.types";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
@@ -60,14 +61,7 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
                   ...RECIPE_VALUE_TYPES.map(t => ({value: t.value, label: t.label})),
                 ]}
               />
-              <button
-                type="button"
-                className="text-red-600 dark:text-red-400 hover:text-red-500 px-1"
-                title="Убрать тег"
-                onClick={() => removeTag(index)}
-              >
-                <Trash2 size={16} />
-              </button>
+              <IconButton icon={Trash2} label="Убрать тег" size="xs" variant="danger" onClick={() => removeTag(index)} />
               <Input
                 size="sm"
                 className="col-span-4"

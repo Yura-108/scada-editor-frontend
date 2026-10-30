@@ -1,4 +1,5 @@
 import type {ConflictKind, VersionKind} from "@/types/editorVersion.types";
+import type {Tone} from "@/shared/ui/tone";
 
 /** Подписи видов версий: `kind` отделяет осознанные сохранения от автоматических. */
 export const VERSION_KIND_LABEL: Record<VersionKind, string> = {
@@ -7,10 +8,11 @@ export const VERSION_KIND_LABEL: Record<VersionKind, string> = {
   RESTORE: "Восстановление",
 };
 
-export const VERSION_KIND_BADGE: Record<VersionKind, string> = {
-  MANUAL: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
-  AUTOSAVE: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/30",
-  RESTORE: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+/** Тон значка вида версии: ручное сохранение — успех, восстановление — предупреждение. */
+export const VERSION_KIND_TONE: Record<VersionKind, Tone> = {
+  MANUAL: "success",
+  AUTOSAVE: "neutral",
+  RESTORE: "warning",
 };
 
 export const CONFLICT_KIND_LABEL: Record<ConflictKind, string> = {

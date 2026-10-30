@@ -4,6 +4,9 @@ import React, {useCallback, useEffect, useState} from "react";
 import {Package, Rocket} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Badge} from "@/shared/ui/Badge";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {Button} from "@/shared/ui/Button";
@@ -116,41 +119,38 @@ function ReleasesContent({projectId, projectName}: Props) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</div>
+          <Banner tone="destructive">{error}</Banner>
         )}
 
-        <div className="max-h-80 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
+        <div className="max-h-80 overflow-y-auto rounded-lg border divide-y">
           {loading && !rows.length && (
             <Spinner label="Загрузка…" className="px-3 py-4" />
           )}
           {!loading && !rows.length && !error && (
-            <div className="px-3 py-4 text-sm text-gray-500">Выпусков ещё нет. Выпустите текущий черновик кнопкой выше.</div>
+            <EmptyState size="sm" title="Выпусков ещё нет. Выпустите текущий черновик кнопкой выше." />
           )}
           {rows.map(r => {
             const isProd = r.version_no === prodVersionNo;
             return (
-              <div key={r.version_no} className={cn("flex items-start gap-3 px-3 py-2.5 text-sm", isProd && "bg-emerald-500/5")}>
-                <Package size={16} className={cn("mt-0.5 shrink-0", isProd ? "text-emerald-500" : "text-neutral-400")} />
+              <div key={r.version_no} className={cn("flex items-start gap-3 px-3 py-2.5 text-sm", isProd && "bg-success/5")}>
+                <Package size={16} className={cn("mt-0.5 shrink-0", isProd ? "text-success" : "text-muted-foreground")} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">№{r.version_no}</span>
-                    {isProd && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        prod{inOperation ? " · исполняется" : ""}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500">{formatDate(r.created_at)} · {r.user_name || "—"}</span>
+                    <span className="font-medium text-foreground">№{r.version_no}</span>
+                    {isProd && <Badge tone="success">prod{inOperation ? " · исполняется" : ""}</Badge>}
+                    <span className="text-xs text-muted-foreground">{formatDate(r.created_at)} · {r.user_name || "—"}</span>
                   </div>
-                  {r.comment && <div className="mt-0.5 text-gray-700 dark:text-gray-300 break-words">{r.comment}</div>}
+                  {r.comment && <div className="mt-0.5 text-foreground break-words">{r.comment}</div>}
                 </div>
                 {!isProd && (
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => void handleMakeProd(r.version_no)}
-                    className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
+                    className="shrink-0 text-primary"
                   >
                     Сделать prod
-                  </button>
+                  </Button>
                 )}
               </div>
             );

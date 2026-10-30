@@ -5,6 +5,8 @@ import {AlertTriangle, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
 
 /**
  * Плашка «автосохранение отклонено» — с причиной от бэкенда.
@@ -39,33 +41,26 @@ export default function AutosaveErrorBanner() {
 
   return (
     <div
-      role="alert"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
       className={`fixed ${TOP_SLOTS[(sceneChanged ? 1 : 0) + (staleBaseVersion != null ? 1 : 0)]} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
-      <div
-        className="pointer-events-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-red-500/40
-                   bg-red-50/95 dark:bg-red-950/80 px-4 py-2 text-sm text-red-900 dark:text-red-100
-                   shadow-2xl backdrop-blur-xl"
+      <Banner
+        layout="floating"
+        tone="destructive"
+        icon={AlertTriangle}
+        className="pointer-events-auto min-w-0 max-w-3xl items-center"
+        actions={
+          <Button size="sm" variant="ghost" onClick={() => setDismissed(autosaveError)} title="Скрыть уведомление">
+            <X size={14} />
+            Скрыть
+          </Button>
+        }
       >
-        <AlertTriangle size={16} className="shrink-0" />
         {/* Полный текст — в title: сообщение бэкенда длинное, а плашка в одну строку. */}
-        <span className="truncate" title={autosaveError}>
+        <div className="truncate" title={autosaveError}>
           Автосохранение отклонено: {autosaveError}
-        </span>
-
-        <button
-          type="button"
-          onClick={() => setDismissed(autosaveError)}
-          aria-label="Скрыть уведомление"
-          title="Скрыть уведомление"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 py-1
-                     hover:bg-red-500/15 transition-colors"
-        >
-          <X size={14} />
-          Скрыть
-        </button>
-      </div>
+        </div>
+      </Banner>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {pickTags, useDeviceTreeStore} from "@/core/devices";
 import {buildManifestTags} from "../../lib/tagMeta";
 import {validateRecipe} from "../../lib/recipeValidation";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import type {Recipe, RecipeStep, RecipeTag} from "@/types/recipe.types";
@@ -129,16 +130,12 @@ function RecipeEditorContent({recipe}: Props) {
       </DialogBody>
 
       {problems.length > 0 && (
-        <div className="shrink-0 mx-6 my-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
-          <div className="flex items-center gap-2 font-medium mb-1">
-            <AlertTriangle size={14} />
-            Рецепт пока нельзя сохранить
-          </div>
+        <Banner tone="warning" icon={AlertTriangle} title="Рецепт пока нельзя сохранить" className="shrink-0 mx-6 my-4">
           <ul className="list-disc pl-5 space-y-0.5">
             {problems.slice(0, 5).map((p, i) => <li key={i}>{p}</li>)}
             {problems.length > 5 && <li>…и ещё {problems.length - 5}</li>}
           </ul>
-        </div>
+        </Banner>
       )}
 
       <DialogFooter>

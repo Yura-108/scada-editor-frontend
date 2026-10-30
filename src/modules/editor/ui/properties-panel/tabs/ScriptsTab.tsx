@@ -7,6 +7,7 @@ import {createUuid} from "@/shared/lib/createUuid";
 import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
 import {useEditorStore} from "../../../model/editorStore";
 import {baseAddButtonClasses} from "../panelClasses";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 // Скрипты компонента исполняются НА СЕРВЕРЕ — это JavaScript в GraalJS
 // (script-core бэкенда), а не Java, как долго писали в подписях: монитор только
@@ -39,9 +40,7 @@ export function ScriptsTab({element}: {element: DiagramElement}) {
       </h4>
 
       {elementScripts.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">
-          Нет добавленных скриптов
-        </div>
+        <EmptyState size="sm" title="Нет добавленных скриптов" className="py-3" />
       ) : (
         <div className="flex flex-wrap gap-2">
           {elementScripts.map(script => (

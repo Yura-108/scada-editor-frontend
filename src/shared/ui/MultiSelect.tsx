@@ -3,6 +3,7 @@ import * as Popover from '@radix-ui/react-popover';
 import {Check, ChevronDown, Search, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {fieldBase, fieldSizes} from "./field/fieldStyles";
+import {EmptyState} from "./EmptyState";
 
 interface MultiSelectProps {
   options: { value: string; label: string }[];
@@ -88,7 +89,7 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
           )}
           <div className="max-h-72 overflow-y-auto p-1">
             {visible.length === 0 ? (
-              <p className="p-3 text-center text-muted-foreground text-sm">{options.length ? "Ничего не найдено" : "Нет доступных вариантов"}</p>
+              <EmptyState size="sm" className="py-3" title={options.length ? "Ничего не найдено" : "Нет доступных вариантов"} />
             ) : (
               visible.map((option) => {
                 const isSelected = selected.includes(option.value);

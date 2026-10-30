@@ -4,6 +4,8 @@ import {Users, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
 
 /**
  * Плашка «сцену изменил кто-то другой», поднятая автосохранением.
@@ -35,34 +37,27 @@ export default function StaleVersionBanner() {
 
   return (
     <div
-      role="status"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
       className={`fixed ${sceneChanged ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
-      <div
-        className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-sky-500/40
-                   bg-sky-50/95 dark:bg-sky-950/80 px-4 py-2 text-sm text-sky-900 dark:text-sky-100
-                   shadow-2xl backdrop-blur-xl"
+      <Banner
+        layout="floating"
+        tone="info"
+        icon={Users}
+        className="pointer-events-auto min-w-0 items-center"
+        actions={
+          <Button size="sm" variant="ghost" onClick={dismissStaleBaseVersion} title="Скрыть уведомление">
+            <X size={14} />
+            Скрыть
+          </Button>
+        }
       >
-        <Users size={16} className="shrink-0" />
-        <span className="truncate">
+        <div className="truncate">
           Сцену сохранил другой пользователь: у вас версия <b>{sceneVersion ?? "—"}</b> из{" "}
           <b>{staleBaseVersion}</b>. Автосохранение отложено — нажмите «Сохранить», чтобы
           свести правки.
-        </span>
-
-        <button
-          type="button"
-          onClick={dismissStaleBaseVersion}
-          aria-label="Скрыть уведомление"
-          title="Скрыть уведомление"
-          className="flex items-center gap-1.5 rounded-lg border border-transparent px-2 py-1
-                     hover:bg-sky-500/15 transition-colors"
-        >
-          <X size={14} />
-          Скрыть
-        </button>
-      </div>
+        </div>
+      </Banner>
     </div>
   );
 }

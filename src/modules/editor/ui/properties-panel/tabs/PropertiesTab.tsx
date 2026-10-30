@@ -15,6 +15,8 @@ import {propertyKey} from "../lib/propertyOrder";
 import {baseAddButtonClasses, baseInputClasses} from "../panelClasses";
 import {SortablePropertyPill} from "../SortablePropertyPill";
 import {useDeviceTreeStore} from "@/core/devices";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 const addPropertyHint =
   "Откройте раздел «База каналов» и загрузите проект — без дерева устройств не из чего выбрать тег.";
@@ -39,9 +41,7 @@ export function PropertiesTab({element}: {element: DiagramElement}) {
       </h4>
 
       {sortedProperties.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">
-          Нет добавленных свойств
-        </div>
+        <EmptyState size="sm" title="Нет добавленных свойств" className="py-3" />
       ) : (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePropertyDragEnd}>
           <SortableContext items={sortedProperties.map(propertyKey)} strategy={rectSortingStrategy}>
@@ -60,10 +60,7 @@ export function PropertiesTab({element}: {element: DiagramElement}) {
       )}
 
       {!canAddProperty && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span>{addPropertyHint}</span>
-        </div>
+        <Banner role="note" tone="warning" icon={AlertTriangle} className="rounded-lg px-3 py-2 text-xs">{addPropertyHint}</Banner>
       )}
 
       <button

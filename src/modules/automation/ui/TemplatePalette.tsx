@@ -4,6 +4,10 @@ import React, {useMemo, useState} from "react";
 import {ChevronDown, Pencil, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {Spinner} from "@/shared/ui/Spinner";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useDeleteTemplate, useTemplates} from "../api/templates";
 import {groupTemplates} from "../lib/automationTemplates";
@@ -78,37 +82,33 @@ export function TemplatePalette({onInsert}: Props) {
             inputClassName="pr-7"
           />
           {search && (
-            <button
-              type="button"
+            <IconButton
+              icon={X}
+              label="Очистить поиск"
+              size="xs"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
               onClick={() => setSearch("")}
-              aria-label="Очистить поиск"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X size={14} />
-            </button>
+            />
           )}
         </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
-        {status === "loading" && <p className="text-sm text-neutral-500 px-1">Загрузка…</p>}
+        {status === "loading" && <Spinner label="Загрузка…" className="px-1" />}
 
         {status === "error" && (
-          <div className="px-1 space-y-2">
-            <p className="text-sm text-neutral-500">Палитра шаблонов недоступна.</p>
-            {error && <p className="text-xs text-neutral-500 break-words">{error}</p>}
-            <Button className="w-full" onClick={() => void reload()}>Повторить</Button>
-          </div>
+          <Banner tone="destructive" title="Палитра шаблонов недоступна." className="px-3 py-2">
+            {error && <p className="text-xs break-words">{error}</p>}
+            <Button size="sm" className="mt-2 w-full" onClick={() => void reload()}>Повторить</Button>
+          </Banner>
         )}
 
         {status === "ready" && items.length === 0 && (
-          <p className="text-sm text-neutral-500 px-1">
-            Шаблонов ещё нет: сохраните готовую задачу как шаблон кнопкой «В шаблоны».
-          </p>
+          <EmptyState size="sm" title="Шаблонов ещё нет: сохраните готовую задачу как шаблон кнопкой «В шаблоны»." />
         )}
 
         {status === "ready" && items.length > 0 && groups.length === 0 && (
-          <p className="text-sm text-neutral-500 px-1">Ничего не найдено</p>
+          <EmptyState size="sm" title="Ничего не найдено" />
         )}
 
         {groups.map(group => (
@@ -146,22 +146,23 @@ export function TemplatePalette({onInsert}: Props) {
                         <div className="truncate text-xs text-neutral-500">{template.description}</div>
                       )}
                     </button>
-                    <button
+                    <IconButton
+                      icon={Pencil}
+                      size="xs"
+                      className="opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100"
                       onClick={() => openTemplateModal({mode: "edit", initial: template})}
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-indigo-500 opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100 transition-opacity shrink-0"
                       title="Править шаблон"
-                      aria-label={`Править «${template.name}»`}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
+                      label={`Править «${template.name}»`}
+                    />
+                    <IconButton
+                      icon={Trash2}
+                      size="xs"
+                      variant="danger"
+                      className="opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100"
                       onClick={() => void handleDelete(template)}
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-red-500 opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100 transition-opacity shrink-0"
                       title="Удалить шаблон"
-                      aria-label={`Удалить «${template.name}»`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                      label={`Удалить «${template.name}»`}
+                    />
                   </div>
                 ))}
               </div>

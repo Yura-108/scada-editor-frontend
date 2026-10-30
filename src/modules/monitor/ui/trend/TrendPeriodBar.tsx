@@ -1,6 +1,8 @@
 import React from "react";
 import {ChevronLeft, ChevronRight, Radio} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {SegmentedControl} from "@/shared/ui/SegmentedControl";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Input} from "@/shared/ui/field/Input";
 import {TREND_WINDOW_PRESETS} from "@/core/scene";
@@ -22,34 +24,17 @@ export function TrendPeriodBar({windowSec, setWindowSec, shift, follow, to, cloc
 }) {
   return (
     <div className="shrink-0 flex flex-wrap items-center gap-2">
-      <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
-        {TREND_WINDOW_PRESETS.map(p => (
-          <button
-            key={p.seconds}
-            type="button"
-            onClick={() => setWindowSec(p.seconds)}
-            className={cn(
-              "px-2.5 py-1 text-xs",
-              windowSec === p.seconds
-                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800",
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        aria-label="Длина окна"
+        value={String(windowSec)}
+        onValueChange={v => setWindowSec(Number(v))}
+        items={TREND_WINDOW_PRESETS.map(p => ({value: String(p.seconds), label: p.label}))}
+      />
 
-      <button type="button" onClick={() => shift(-1)} title="Назад на пол-окна"
-        className="rounded-lg p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800">
-        <ChevronLeft size={16} />
-      </button>
-      <button type="button" onClick={() => shift(1)} disabled={follow} title="Вперёд на пол-окна"
-        className="rounded-lg p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 disabled:opacity-40">
-        <ChevronRight size={16} />
-      </button>
+      <IconButton icon={ChevronLeft} label="Назад на пол-окна" onClick={() => shift(-1)} />
+      <IconButton icon={ChevronRight} label="Вперёд на пол-окна" onClick={() => shift(1)} disabled={follow} />
 
-      <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         Конец периода
         <Input
           size="sm"
@@ -65,28 +50,24 @@ export function TrendPeriodBar({windowSec, setWindowSec, shift, follow, to, cloc
         />
       </label>
 
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         onClick={() => setEndTs(null)}
         aria-pressed={follow}
-        className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-          follow
-            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-            : "bg-gray-500/10 text-gray-600 dark:text-gray-300 hover:bg-gray-500/20",
-        )}
+        className="aria-pressed:bg-success/15 aria-pressed:text-success"
       >
         <Radio size={12} />
         Сейчас
-      </button>
+      </Button>
 
       {loading && <Spinner className="text-muted-foreground" />}
       {aggregated && !loading && (
-        <span className="text-xs text-amber-600 dark:text-amber-400" title="Архив вернул минимумы и максимумы по интервалам — пики сохранены">
+        <span className="text-xs text-warning" title="Архив вернул минимумы и максимумы по интервалам — пики сохранены">
           Данные прорежены — сузьте окно, чтобы увидеть каждое изменение
         </span>
       )}
-      {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
+      {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   );
 }

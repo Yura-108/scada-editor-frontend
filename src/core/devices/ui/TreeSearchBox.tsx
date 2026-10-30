@@ -1,9 +1,9 @@
 import React from 'react';
 import {ChevronDown, ChevronUp, Search, X} from 'lucide-react';
+import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from '@/shared/lib/cn';
 import {fieldBase, fieldSizes} from '@/shared/ui/field/fieldStyles';
 
-const navButton = 'p-1 rounded text-muted-foreground hover:text-foreground';
 
 /**
  * Поиск по дереву устройств: поле, счётчик «n / всего» и переход по совпадениям.
@@ -58,18 +58,12 @@ export function TreeSearchBox({query, onQueryChange, onEnter, onEscape, status, 
       )}
       {canStep && (
         <>
-          <button type="button" onClick={() => onStep(-1)} title="Предыдущее совпадение (Shift+Enter)" className={navButton}>
-            <ChevronUp className="w-4 h-4"/>
-          </button>
-          <button type="button" onClick={() => onStep(1)} title="Следующее совпадение (Enter)" className={navButton}>
-            <ChevronDown className="w-4 h-4"/>
-          </button>
+          <IconButton icon={ChevronUp} size="xs" label="Предыдущее совпадение (Shift+Enter)" onClick={() => onStep(-1)} />
+          <IconButton icon={ChevronDown} size="xs" label="Следующее совпадение (Enter)" onClick={() => onStep(1)} />
         </>
       )}
       {query && (
-        <button type="button" onClick={onClear} title="Очистить (Esc)" className={navButton}>
-          <X className="w-4 h-4"/>
-        </button>
+        <IconButton icon={X} size="xs" label="Очистить (Esc)" onClick={onClear} />
       )}
     </div>
   );

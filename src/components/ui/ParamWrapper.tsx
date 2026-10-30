@@ -2,6 +2,7 @@ import {clsx} from "clsx";
 import React, {ReactNode} from "react";
 import {DeviceParamsType} from "@/types/nodeTypes";
 import {X} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {resolveParamWidget} from "@/core/devices";
 
 interface IParamWrapper {
@@ -34,14 +35,14 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
 
       {/* Кнопка удалить */}
       {onRemove && (
-        <button
-          type="button"
+        <IconButton
+          icon={X}
+          label="Удалить параметр"
+          size="xs"
+          variant="danger"
+          className="absolute top-2 right-2"
           onClick={() => onRemove(param.key)}
-          className="absolute top-2 right-2 w-6 h-6 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-950/60 flex items-center justify-center text-red-600 dark:text-red-400 transition-all"
-          title="Удалить параметр"
-        >
-          <X className="w-4 h-4"/>
-        </button>
+        />
       )}
 
       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">

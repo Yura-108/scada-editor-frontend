@@ -80,13 +80,15 @@ const eslintConfig = defineConfig([
     [{ group: ['@/store/*'], message: 'ui-kit не знает про сторы: бизнес-компонент — в свою область.' }],
   ),
 
-  // UI-kit: поля только из shared/ui/field (docs/architecture.md, «UI-kit: поля»).
-  // Своё правило, а не no-restricted-imports: тот уже настроен по слоям выше, и второй блок
-  // с ним перезаписал бы те ограничения для тех же файлов.
+  // UI-kit: поля только из shared/ui/field (docs/architecture.md, «UI-kit: поля»), спиннер —
+  // только Spinner («UI-kit: общие компоненты»). Своё правило, а не no-restricted-imports: тот уже
+  // настроен по слоям выше, и второй блок с ним перезаписал бы те ограничения для тех же файлов.
+  // По той же причине спиннер здесь же: отдельный блок no-restricted-syntax затёр бы правила полей.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [
       'src/shared/ui/field/**',
+      'src/shared/ui/Spinner.tsx',
       // Редактор текста прямо на холсте: обязан выглядеть как текст фигуры, а не как поле.
       'src/modules/editor/ui/canvas/TextEditorOverlay.tsx',
     ],
@@ -107,6 +109,14 @@ const eslintConfig = defineConfig([
         {
           selector: "JSXOpeningElement[name.name='textarea']",
           message: 'Многострочное поле — Textarea из @/shared/ui/field/Textarea.',
+        },
+        {
+          selector: 'Literal[value=/animate-spin/]',
+          message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/animate-spin/]',
+          message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
         },
       ],
     },

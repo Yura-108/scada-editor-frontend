@@ -38,6 +38,7 @@ export function IconButton({
   variant = "ghost",
   size = "sm",
   busy = false,
+  pressed,
   title,
   className,
   type = "button",
@@ -49,6 +50,11 @@ export function IconButton({
   size?: Size;
   /** Идёт действие: вместо иконки крутится `Spinner`. */
   busy?: boolean;
+  /**
+   * Кнопка-переключатель («Зафиксировать вид»): `true`/`false` — нажата или нет, подсвечена
+   * акцентом. Не задано — обычная кнопка, `aria-pressed` не ставится.
+   */
+  pressed?: boolean;
 }) {
   const {box, icon} = sizes[size];
   return (
@@ -56,12 +62,14 @@ export function IconButton({
       type={type}
       aria-label={label}
       aria-busy={busy || undefined}
+      aria-pressed={pressed}
       title={title ?? label}
       className={cn(
         "inline-flex shrink-0 items-center justify-center border transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-50",
         box,
         variants[variant],
+        pressed && "bg-primary/15 text-primary enabled:hover:bg-primary/20 enabled:hover:text-primary",
         className,
       )}
       {...props}

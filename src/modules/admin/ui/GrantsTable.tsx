@@ -100,7 +100,7 @@ export function GrantsTable({userId}: {userId: number}) {
               const g = current(p.id);
               const dirty = drafts[p.id] !== undefined;
               return (
-                <tr key={p.id} className={dirty ? "bg-amber-500/5" : undefined}>
+                <tr key={p.id} className={dirty ? "bg-warning/5" : undefined}>
                   <td className="px-3 py-1.5">{p.name}</td>
                   <td className="px-3 py-1.5 text-center">
                     <Checkbox aria-label={`Просмотр в «${p.name}»`} checked={g.view} onChange={e => setDraft(p.id, {view: e.target.checked})} />

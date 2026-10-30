@@ -2,6 +2,7 @@ import React from "react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {DiagramElement} from "@/types/editorElement.type";
 import {TagBinding} from "@/types/binding.types";
@@ -56,12 +57,12 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
             сцену вообще (component_property_id обязан ссылаться на свойство этого
             компонента; падает 400 на ВЕСЬ POST) — это обязательное условие для Save. */}
         {!canSave && (
-          <div className="shrink-0 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+          <Banner tone="destructive" className="shrink-0">
             У элемента нет ни одного сохранённого свойства — бэкенд не позволит сохранить сцену
             с такой привязкой (весь сейв целиком откатится с ошибкой). Сначала добавьте элементу
             свойство на вкладке «Свойства» (оно уходит на сервер сразу же), затем возвращайтесь
             сюда — привязка сохранится.
-          </div>
+          </Banner>
         )}
 
         {/* Доступные теги, свойства объектов и состояния — клик вставляет в код */}

@@ -5,6 +5,7 @@ import {ChevronDown, ChevronRight, ChevronsDownUp, Boxes, Folder, Square, Circle
 import {useEditorStore} from "../../model/editorStore";
 import {DiagramElement} from "@/types/editorElement.type";
 import {cn} from "@/shared/lib/cn";
+import {IconButton} from "@/shared/ui/IconButton";
 import {sortByZIndex, sortKeysByZIndex, getElementIndex} from "@/core/scene";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -259,15 +260,12 @@ export function LayersPanel() {
           Слои
         </h3>
         {containerKeys.length > 0 && (
-          <button
-            type="button"
+          <IconButton
+            icon={allCollapsed ? ChevronsUpDown : ChevronsDownUp}
+            label={allCollapsed ? "Развернуть всё" : "Свернуть всё"}
+            size="xs"
             onClick={toggleAll}
-            title={allCollapsed ? "Развернуть всё" : "Свернуть всё"}
-            aria-label={allCollapsed ? "Развернуть всё" : "Свернуть всё"}
-            className="p-1 rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-          >
-            {allCollapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />}
-          </button>
+          />
         )}
       </div>
       <div
@@ -325,7 +323,7 @@ export function LayersPanel() {
                     tabIndex={-1}
                     aria-hidden
                     onClick={(e) => { e.stopPropagation(); toggleCollapsed(el.key); }}
-                    className="shrink-0 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
                   >
                     {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
                   </button>

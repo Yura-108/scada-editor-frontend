@@ -1,6 +1,7 @@
 "use client";
 
 import {Pencil, Plus, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {DiagramElement} from "@/types/editorElement.type";
 import {StateSelect} from "@/components/ui/StateSelect";
 import {EditAllStatesToggle} from "../EditAllStatesToggle";
@@ -43,23 +44,22 @@ export function StatesTab({element}: {element: DiagramElement}) {
               {/* ml-auto на общей обёртке, а не на корзине: у состояния по
                   умолчанию корзины нет, и карандаш прижался бы к имени. */}
               <div className="ml-auto flex items-center gap-0.5">
-                <button
-                  className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
+                <IconButton
+                  icon={Pencil}
+                  size="xs"
                   title="Переименовать состояние"
-                  aria-label={`Переименовать «${state.name}»`}
+                  label={`Переименовать «${state.name}»`}
                   onClick={() => renameComponentState(state.name)}
-                >
-                  <Pencil size={14}/>
-                </button>
+                />
                 {!state.isDefault && (
-                  <button
-                    className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                  <IconButton
+                    icon={Trash2}
+                    size="xs"
+                    variant="danger"
                     title="Удалить состояние"
-                    aria-label={`Удалить «${state.name}»`}
+                    label={`Удалить «${state.name}»`}
                     onClick={() => removeComponentState(state.name)}
-                  >
-                    <Trash2 size={14}/>
-                  </button>
+                  />
                 )}
               </div>
             </div>

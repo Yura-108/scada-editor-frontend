@@ -9,6 +9,8 @@ import {Button} from "@/shared/ui/Button";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
+import {Banner} from "@/shared/ui/Banner";
+import {Spinner} from "@/shared/ui/Spinner";
 import {fetchVersions} from "@/core/project";
 import {readBackendError} from "@/core/access";
 import type {VersionSummary} from "@/types/editorVersion.types";
@@ -72,9 +74,9 @@ function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
 
       <DialogBody>
         {error ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <Banner tone="destructive">{error}</Banner>
         ) : !versions ? (
-          <p className="text-sm text-gray-500">Загрузка…</p>
+          <Spinner label="Загрузка…" />
         ) : (
           <div className="max-h-[60vh] overflow-y-auto custom-scrollbar -mx-4">
             <VersionHistoryList

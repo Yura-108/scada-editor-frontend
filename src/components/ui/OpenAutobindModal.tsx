@@ -2,10 +2,10 @@
 
 import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "@/modules/editor";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
 import {Field} from "@/shared/ui/field/Field";
 import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
@@ -209,14 +209,10 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
               </Field>
             </div>
 
-            <p className={cn(
-              "flex items-start gap-2 rounded-xl p-3 text-sm",
-              "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-            )}>
-              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <Banner role="note" tone="warning" icon={AlertTriangle}>
               Совпавшие теги будут перезаписаны, даже если уже заданы. Отменить — восстановлением
               предыдущей версии схемы.
-            </p>
+            </Banner>
           </div>
         )}
       </DialogBody>

@@ -4,6 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Save} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
+import {Spinner} from "@/shared/ui/Spinner";
 import {useOpenScene} from "@/core/project";
 import {fetchBranches, putBranches} from "../api/adminApi";
 import {ProjectSelect} from "@/core/project";
@@ -63,7 +64,7 @@ export function BranchesTab() {
       </p>
       <ProjectSelect projects={projectList} value={projectId} onChange={setProjectId} className="max-w-72" />
       {projectId != null && (
-        loading ? <p className="text-sm text-muted-foreground">Загрузка…</p> : (
+        loading ? <Spinner label="Загрузка…" /> : (
           <>
             <Textarea
               className="h-48 font-mono"

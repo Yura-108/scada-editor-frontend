@@ -7,6 +7,8 @@ import {usePaletteStore} from "@/store/usePaletteStore";
 import {useSceneChangeStore, useVisibleSceneChange} from "@/store/useSceneChangeStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {dropScene} from "@/core/project";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
 
 /**
  * Плашка «сцену сохранил другой инженер» по STOMP-уведомлению `SCENE_CHANGED`
@@ -43,45 +45,32 @@ export default function SceneChangedBanner() {
 
   return (
     <div
-      role="status"
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
       className={`fixed ${versionPreview ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
-      <div
-        className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-sky-500/40
-                   bg-sky-50/95 dark:bg-sky-950/80 px-4 py-2 text-sm text-sky-900 dark:text-sky-100
-                   shadow-2xl backdrop-blur-xl"
+      <Banner
+        layout="floating"
+        tone="info"
+        icon={Users}
+        className="pointer-events-auto min-w-0 items-center"
+        actions={<>
+          {!versionPreview && (
+            <Button size="sm" onClick={() => void reload()}>
+              <RefreshCw size={14} />
+              Перезагрузить
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={dismiss} title="Скрыть уведомление">
+            <X size={14} />
+            Скрыть
+          </Button>
+        </>}
       >
-        <Users size={16} className="shrink-0" />
-        <span className="truncate">
+        <div className="truncate">
           Сцену сохранил{notice.userName ? <> <b>{notice.userName}</b></> : " другой пользователь"},
           версия <b>{notice.versionNo}</b>.
-        </span>
-
-        {!versionPreview && (
-          <button
-            type="button"
-            onClick={() => void reload()}
-            className="flex items-center gap-1.5 rounded-lg border border-sky-500/40 px-2 py-1
-                       hover:bg-sky-500/15 transition-colors"
-          >
-            <RefreshCw size={14} />
-            Перезагрузить
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Скрыть уведомление"
-          title="Скрыть уведомление"
-          className="flex items-center gap-1.5 rounded-lg border border-transparent px-2 py-1
-                     hover:bg-sky-500/15 transition-colors"
-        >
-          <X size={14} />
-          Скрыть
-        </button>
-      </div>
+        </div>
+      </Banner>
     </div>
   );
 }

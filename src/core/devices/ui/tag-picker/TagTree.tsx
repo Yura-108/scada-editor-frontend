@@ -6,6 +6,7 @@ import type {Key} from "rc-tree/es/interface";
 import {Activity, Box, Building2, Cpu, FolderOpen} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
+import {EmptyState} from "@/shared/ui/EmptyState";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "../../lib/deviceTreeData";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
@@ -92,7 +93,7 @@ export function TagTree(props: TagTreeProps) {
       />
       <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar rounded-lg border bg-background px-2 py-3">
         {treeData.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-muted-foreground">Ничего не найдено</div>
+          <EmptyState size="sm" title="Ничего не найдено" className="py-10" />
         ) : props.multiple ? (
           <Tree
             treeData={treeData}

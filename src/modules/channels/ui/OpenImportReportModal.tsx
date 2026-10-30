@@ -4,6 +4,7 @@ import React from "react";
 import {AlertTriangle, CheckCircle2} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
@@ -66,14 +67,13 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
         {/* Длинный список — не мелочь, а признак исходников ПЛК от другой ревизии проекта:
             его показываем сразу, а не под спойлером (контракт, раздел 1.1). */}
         {unmapped.length > 3 ? (
-          <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
-            <p className="mb-2 flex gap-2 font-medium">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              {unmapped.length} объектов не нашлось в исходниках ПЛК и разложены по общему правилу.
-              Возможно, файлы ПЛК от другой ревизии проекта.
-            </p>
-            {list(unmapped)}
-          </div>
+          <Banner
+            tone="warning"
+            icon={AlertTriangle}
+            title={`${unmapped.length} объектов не нашлось в исходниках ПЛК и разложены по общему правилу. Возможно, файлы ПЛК от другой ревизии проекта.`}
+          >
+            <div className="mt-2">{list(unmapped)}</div>
+          </Banner>
         ) : unmapped.length > 0 && (
           <Collapsible
             title={`Не найдено в исходниках ПЛК: ${unmapped.length}`}

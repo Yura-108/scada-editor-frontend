@@ -8,6 +8,8 @@ import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
+import {IconButton} from "@/shared/ui/IconButton";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 
@@ -45,15 +47,13 @@ export default function Palette() {
             inputClassName="pr-9"
           />
           {search && (
-            <button
-              type="button"
+            <IconButton
+              icon={X}
+              label="Очистить поиск"
+              size="xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2"
               onClick={() => setSearch("")}
-              aria-label="Очистить поиск"
-              title="Очистить поиск"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X size={16} />
-            </button>
+            />
           )}
         </div>
       </div>
@@ -61,9 +61,7 @@ export default function Palette() {
       {/* Список */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 custom-scrollbar">
         {sortedCategories.length === 0 ? (
-          <div className="text-center text-neutral-500 text-sm py-10">
-            Ничего не найдено
-          </div>
+          <EmptyState size="sm" title="Ничего не найдено" className="py-10" />
         ) : (
           sortedCategories.map((category) => {
             const isExpanded = getCategoryExpandedState(category);
@@ -95,7 +93,11 @@ export default function Palette() {
 
                   {/* Кнопка удаления группы — справа */}
                   {isDeletableCategory && (
-                    <button
+                    <IconButton
+                      icon={Trash2}
+                      variant="danger"
+                      size="xs"
+                      className="opacity-0 group-hover/cat:opacity-100 focus-visible:opacity-100"
                       onClick={async () => {
                         // Удаление категории необратимо (серверная операция вне undo),
                         // а порог у неё был самый низкий — один клик по иконке.
@@ -107,13 +109,8 @@ export default function Palette() {
                         });
                         if (confirmed) void deletePaletteCategory(category);
                       }}
-                      className="p-2 rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-500/10
-                           opacity-0 group-hover/cat:opacity-100 focus-visible:opacity-100 transition-all duration-200 shrink-0"
-                      title={`Удалить группу «${category}»`}
-                      aria-label={`Удалить группу «${category}»`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                      label={`Удалить группу «${category}»`}
+                    />
                   )}
                 </div>
 

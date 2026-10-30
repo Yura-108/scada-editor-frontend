@@ -5,6 +5,11 @@ import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Badge} from "@/shared/ui/Badge";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {EmptyState} from "@/shared/ui/EmptyState";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations, useRecipes} from "../../api/recipes";
 import {Recipe, RecipeStep} from "@/types/recipe.types";
@@ -146,27 +151,18 @@ export function RecipesPanel() {
       </div>
 
       {projectId == null ? (
-        <div className="flex min-h-[180px] items-center justify-center text-gray-500 dark:text-gray-400">
-          Выберите проект — рецепты принадлежат проекту.
-        </div>
+        <EmptyState size="sm" title="Выберите проект — рецепты принадлежат проекту." className="min-h-[180px] justify-center" />
       ) : isLoading ? (
         <Spinner size={20} label="Загрузка рецептов…" className="min-h-[180px] justify-center gap-3" />
       ) : loadError ? (
-        <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-400">
-          <p>Не удалось загрузить рецепты: {loadError}</p>
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => void recipesQuery.refetch()}
-          >
-            <RefreshCw size={16} />
-            Повторить
-          </button>
-        </div>
+        <Banner
+          tone="destructive"
+          actions={<Button size="sm" onClick={() => void recipesQuery.refetch()}><RefreshCw size={14} />Повторить</Button>}
+        >
+          Не удалось загрузить рецепты: {loadError}
+        </Banner>
       ) : recipes.length === 0 ? (
-        <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-          <span className="text-5xl opacity-30">📋</span>
-          <p>Рецептов пока нет</p>
-        </div>
+        <EmptyState size="sm" icon={ListOrdered} title="Рецептов пока нет" className="min-h-[180px] justify-center" />
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/70 backdrop-blur-sm">
           <table className="w-full text-left border-collapse">
@@ -200,9 +196,7 @@ export function RecipesPanel() {
                       <td className="px-4 py-4 font-medium text-gray-900 dark:text-gray-100">
                         {recipe.name}
                         {dirty && (
-                          <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-normal text-amber-700 dark:text-amber-400">
-                            не сохранено
-                          </span>
+                          <Badge tone="warning" className="ml-2 font-normal">не сохранено</Badge>
                         )}
                         <div className="text-xs font-normal text-gray-400 dark:text-gray-600">{recipe.id}</div>
                       </td>
@@ -217,33 +211,19 @@ export function RecipesPanel() {
                         <div className="flex items-center justify-center gap-3">
                           {/* История доступна и на чтение: смотреть версии может и `view`. */}
                           {recipe.document_id != null && (
-                            <button
-                              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                              title="История версий"
+                            <IconButton
+                              icon={History}
+                              label="История версий"
                               onClick={() => openRecipeHistoryModal({
                                 recipe,
                                 documentId: recipe.document_id!,
                                 editable: canEditRecipes,
                                 dirty,
                               })}
-                            >
-                              <History size={16} />
-                            </button>
+                            />
                           )}
-                          {canEditRecipes && <button
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors"
-                            title="Редактировать"
-                            onClick={() => openRecipeEditorModal({recipe})}
-                          >
-                            <Pencil size={16} />
-                          </button>}
-                          {canEditRecipes && <button
-                            className="text-red-600 dark:text-red-400 hover:text-red-500 transition-colors"
-                            title="Удалить"
-                            onClick={() => void handleDelete(recipe)}
-                          >
-                            <Trash2 size={16} />
-                          </button>}
+                          {canEditRecipes && <IconButton icon={Pencil} label="Редактировать" onClick={() => openRecipeEditorModal({recipe})} />}
+                          {canEditRecipes && <IconButton icon={Trash2} label="Удалить рецепт" title="Удалить" variant="danger" onClick={() => void handleDelete(recipe)} />}
                         </div>
                       </td>
                     </tr>

@@ -46,7 +46,7 @@ export function ScriptTestRun({names, mockValues, setMockValues, onRun, outcome}
         <div
           className={cn(
             "text-xs rounded-lg px-3 py-2 font-mono whitespace-pre-wrap",
-            outcome.kind === "error" ? "bg-red-950/40 text-red-300" : "bg-emerald-950/40 text-emerald-300",
+            outcome.kind === "error" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success",
           )}
         >
           {outcome.text}

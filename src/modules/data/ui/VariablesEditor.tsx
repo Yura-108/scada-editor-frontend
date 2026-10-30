@@ -4,6 +4,7 @@ import React from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
 import {
   AUTOMATION_VALUE_TYPES,
   VARIABLE_TAG_PREFIX,
@@ -111,7 +112,7 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
                   ))}
                 </div>
               </details>
-              <Button size="sm" className="w-8 px-0" onClick={() => remove(i)} title="Удалить"><Trash2 size={14} /></Button>
+              <IconButton icon={Trash2} label="Удалить переменную" title="Удалить" variant="danger" onClick={() => remove(i)} />
             </div>
           );
         })}
