@@ -50,6 +50,9 @@ export function SegmentedControl<T extends string>({
       ?.focus();
   };
 
+  // Значение вне списка (окно тренда задано не пресетом) — в группу всё равно должен вести Tab.
+  const focusable = items.some(item => item.value === value) ? value : items.find(item => !item.disabled)?.value;
+
   return (
     <div
       role="radiogroup"
@@ -65,7 +68,7 @@ export function SegmentedControl<T extends string>({
             role="radio"
             data-value={itemValue}
             aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={itemValue === focusable ? 0 : -1}
             disabled={disabled}
             title={title}
             onClick={() => onValueChange(itemValue)}

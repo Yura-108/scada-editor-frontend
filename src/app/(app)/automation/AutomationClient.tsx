@@ -5,6 +5,7 @@ import Link from "next/link";
 import {CircleAlert, Plus, RefreshCw, Save, Send, X} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
+import {Badge} from "@/shared/ui/Badge";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
@@ -527,31 +528,24 @@ export default function AutomationClient() {
               return (
                 <div
                   key={t.id ?? `new-${i}`}
-                  className={cn("flex items-start rounded-lg", i === selected ? "bg-indigo-500/15" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")}
+                  className={cn("flex items-start rounded-lg", i === selected ? "bg-primary/15" : "hover:bg-accent")}
                 >
                   <button onClick={() => setSelected(i)} className="flex-1 min-w-0 text-left px-3 py-2 text-sm">
-                    <div className={cn("truncate", taskErrors(t.name).length > 0 && "text-red-600 dark:text-red-400")}>{t.name}</div>
-                    <div className="mt-1 flex flex-wrap gap-1 text-[11px]">
+                    <div className={cn("truncate", taskErrors(t.name).length > 0 && "text-destructive")}>{t.name}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {/* Статус — то, что исполняет сервер, поэтому он виден и при правках в черновике. */}
                       {status && (
-                        <span className={cn("px-1.5 rounded", TASK_STATE_VIEW[status.state]?.className)}>
+                        <Badge tone={TASK_STATE_VIEW[status.state]?.tone ?? "neutral"}>
                           {TASK_STATE_VIEW[status.state]?.label ?? status.state}
-                        </span>
+                        </Badge>
                       )}
-                      {state === "new" && <span className="px-1.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">не сохранена</span>}
-                      {state === "changed" && <span className="px-1.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">изменена</span>}
+                      {state === "new" && <Badge tone="warning">не сохранена</Badge>}
+                      {state === "changed" && <Badge tone="warning">изменена</Badge>}
                     </div>
                   </button>
                   {canWrite && (
-                    <button
-                      onClick={() => void handleDeleteTask(i)}
-                      disabled={saving}
-                      title="Удалить задачу"
-                      aria-label={`Удалить задачу ${t.name}`}
-                      className="m-1.5 p-1 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-500/10 disabled:opacity-40"
-                    >
-                      <X size={14} />
-                    </button>
+                    <IconButton icon={X} label={`Удалить задачу ${t.name}`} title="Удалить задачу" variant="danger" size="xs"
+                      className="m-1.5" onClick={() => void handleDeleteTask(i)} disabled={saving} />
                   )}
                 </div>
               );

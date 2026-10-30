@@ -1,9 +1,11 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Pause, Play, RefreshCw} from "lucide-react";
+import {AlertTriangle, CheckCircle2, ChevronRight, CircleAlert, CircleStop, Package, Pause, Play, RefreshCw} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
+import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
+import {EmptyState} from "@/shared/ui/EmptyState";
 import {useMonitorRecipes} from "../api/procedures";
 import {useProcedureStore} from "../model/useProcedureStore";
 import {useProcedureControls} from "../model/procedures/useProcedureControls";
@@ -96,40 +98,33 @@ export function ProcedurePanel() {
         </div>
 
         {loadError ? (
-          <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-            <span className="flex-1">Не удалось загрузить рецепты: {loadError}</span>
-            <Button onClick={reload} disabled={isLoading}>
-              <RefreshCw size={16} />
-              Повторить
-            </Button>
-          </div>
+          <Banner
+            tone="destructive"
+            icon={CircleAlert}
+            actions={<Button size="sm" onClick={reload} disabled={isLoading}><RefreshCw size={14} />Повторить</Button>}
+          >
+            Не удалось загрузить рецепты: {loadError}
+          </Banner>
         ) : !isLoading && projectId != null && recipes.length === 0 && (
           // Выпуски, сделанные до переноса рецептов в проект, их не содержат — это шаг выката.
-          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+          <Banner tone="warning" icon={Package}>
             В prod-выпуске проекта нет рецептов. Создайте их в редакторе, выпустите проект
             и назначьте выпуск prod.
-          </div>
+          </Banner>
         )}
 
         {status && (
-          <div className={cn(
-            "rounded-xl border px-4 py-3 text-sm",
-            status.completed
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : status.paused || status.stalled
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-          )}>
-            <div className="flex items-center gap-2 font-medium">
-              {status.completed ? <CheckCircle2 size={15} />
-                : status.paused ? <Pause size={15} />
-                : status.stalled ? <AlertTriangle size={15} /> : null}
-              {status.completed
-                ? "Процедура завершена"
-                : `Шаг ${status.stepIndex + 1}${status.stepName ? ` — ${status.stepName}` : ""}`}
-            </div>
+          // role="note": время на шаге меняется каждую секунду — объявлять его скринридеру нельзя.
+          <Banner
+            role="note"
+            tone={status.completed ? "success" : status.paused || status.stalled ? "warning" : "info"}
+            icon={status.completed ? CheckCircle2 : status.paused ? Pause : status.stalled ? AlertTriangle : Play}
+            title={status.completed
+              ? "Процедура завершена"
+              : `Шаг ${status.stepIndex + 1}${status.stepName ? ` — ${status.stepName}` : ""}`}
+          >
             {!status.completed && (
-              <div className="text-gray-600 dark:text-gray-400">
+              <div className="text-muted-foreground">
                 На шаге: {formatElapsed(elapsed)}
                 {status.stalled && " · шаг подозрительно долго не завершается"}
               </div>
@@ -137,41 +132,41 @@ export function ProcedurePanel() {
             {/* Причина паузы — отдельной строкой и заметно: по ней оператор решает,
                 можно ли продолжать, и она же объясняет отказ «Продолжить». */}
             {status.paused && !status.completed && (
-              <div className="mt-1 font-medium">
+              <div className="mt-1 font-medium text-warning">
                 Процедура на паузе{status.pauseReason ? `: ${status.pauseReason}` : ""}
               </div>
             )}
-          </div>
+          </Banner>
         )}
 
         {steps.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+          <div className="overflow-hidden rounded-xl border">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-gray-100 dark:bg-gray-800/80 text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                <tr className="bg-muted text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium w-12">№</th>
                   <th className="px-4 py-2.5 font-medium">Шаг</th>
                   <th className="px-4 py-2.5 font-medium">Записывает</th>
                   <th className="px-4 py-2.5 font-medium w-28" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70">
+              <tbody className="divide-y">
                 {steps.map((step, index) => {
                   const current = !status?.completed && status?.stepIndex === index;
                   return (
-                    <tr key={index} className={cn(current && "bg-blue-500/10")}>
-                      <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{index + 1}</td>
-                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                        {step.name || <span className="text-gray-400 italic">без названия</span>}
+                    <tr key={index} className={cn(current && "bg-info/10")}>
+                      <td className="px-4 py-2 text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-2 text-foreground">
+                        {step.name || <span className="text-muted-foreground italic">без названия</span>}
                       </td>
-                      <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                      <td className="px-4 py-2 text-muted-foreground">
                         {step.action.length
                           ? step.action.map(a => `${a.tag} = ${String(a.value)}`).join(", ")
                           : "—"}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <button
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
+                          className="text-xs text-primary hover:underline disabled:opacity-40"
                           disabled={busy || !recipeId || !!denied.jump}
                           title={denied.jump ?? undefined}
                           onClick={() => recipeId && jump(recipeId, index)}
@@ -188,9 +183,7 @@ export function ProcedurePanel() {
         )}
 
         {!recipeId && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Выберите процедуру, чтобы увидеть её шаги и запустить выполнение.
-          </p>
+          <EmptyState size="sm" title="Выберите процедуру, чтобы увидеть её шаги и запустить выполнение." />
         )}
       </div>
     </div>

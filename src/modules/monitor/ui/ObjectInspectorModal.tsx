@@ -5,6 +5,8 @@ import {AlertTriangle, SlidersHorizontal, Waypoints} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
 import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
@@ -226,17 +228,17 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {loadError ? (
-          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-            {loadError}
-          </div>
+          <Banner tone="warning" icon={AlertTriangle}>{loadError}</Banner>
         ) : loading && !objects.length ? (
           <Spinner label="Загрузка объектов…" className="min-h-[120px] justify-center" />
         ) : !selected ? (
-          <div className="flex min-h-[120px] items-center justify-center text-sm text-gray-500 italic">
-            {initialObjectId != null && selectedId === initialObjectId
+          <EmptyState
+            size="sm"
+            className="min-h-[120px] justify-center"
+            title={initialObjectId != null && selectedId === initialObjectId
               ? "У этого объекта нет свойств в выпуске — выберите другой"
               : "Выберите объект"}
-          </div>
+          />
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
             {selected.properties.map(p => {

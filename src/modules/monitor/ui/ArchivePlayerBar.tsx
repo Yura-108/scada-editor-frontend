@@ -3,6 +3,8 @@
 import React, {useEffect, useState} from "react";
 import {Info, Pause, Play} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
 import {REPLAY_SPEEDS, useArchiveReplayStore} from "../model/useArchiveReplayStore";
 import type {ArchiveReplayControls} from "../model/archive/useArchiveReplay";
 import {ARCHIVE_DEPTH_MS} from "../model/archive/archive";
@@ -48,7 +50,7 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
   const periodDirty = draftFrom !== toLocalInput(from) || draftTo !== toLocalInput(to);
 
   return (
-    <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2 border-b border-amber-500/30 bg-amber-500/5 text-xs text-neutral-700 dark:text-neutral-300">
+    <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2 border-b border-warning/30 bg-warning/5 text-xs text-foreground">
       <label className="flex items-center gap-1.5">
         с
         <Input size="sm" className="w-auto" type="datetime-local" step={1} value={draftFrom} min={oldest}
@@ -59,26 +61,23 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
         <Input size="sm" className="w-auto" type="datetime-local" step={1} value={draftTo} min={oldest}
           onChange={e => setDraftTo(e.target.value)} />
       </label>
-      <button
-        type="button"
+      <Button
+        size="sm"
         disabled={!periodDirty}
         onClick={() => controls.setPeriod(fromLocalInput(draftFrom), fromLocalInput(draftTo))}
-        className="rounded-md px-2 py-1 font-medium bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
       >
         Показать период
-      </button>
+      </Button>
 
-      <div className="h-5 w-px bg-neutral-300 dark:bg-neutral-700" />
+      <div className="h-5 w-px bg-border" />
 
-      <button
-        type="button"
+      <IconButton
+        icon={playing ? Pause : Play}
+        label={playing ? "Пауза" : ended ? "Сначала" : "Воспроизвести"}
+        variant="secondary"
         onClick={playing ? controls.pause : controls.play}
         disabled={loading && !playing}
-        title={playing ? "Пауза" : ended ? "Сначала" : "Воспроизвести"}
-        className="rounded-full p-1.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
-      >
-        {playing ? <Pause size={14} /> : <Play size={14} />}
-      </button>
+      />
 
       <Select
         aria-label="Скорость"
@@ -92,7 +91,7 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
       <input
         type="range"
         aria-label="Момент воспроизведения"
-        className="min-w-48 flex-1 accent-amber-500"
+        className="min-w-48 flex-1 accent-warning"
         min={from}
         max={to}
         step={1000}
@@ -107,11 +106,11 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
       {(loading || buffering) && (
         <Spinner size={12} label="Загрузка…" className="gap-1 text-xs text-warning" />
       )}
-      {ended && !loading && <span className="text-neutral-500">Конец периода</span>}
-      {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
+      {ended && !loading && <span className="text-muted-foreground">Конец периода</span>}
+      {error && <span className="text-destructive">{error}</span>}
 
       <span
-        className="ml-auto flex items-center gap-1 text-neutral-500"
+        className="ml-auto flex items-center gap-1 text-muted-foreground"
         title="Архив хранит значения тегов. Свойства, которые серверные скрипты вычисляют сами, в него не попадают — зависящие от них привязки в архиве не срабатывают."
       >
         <Info size={12} />
