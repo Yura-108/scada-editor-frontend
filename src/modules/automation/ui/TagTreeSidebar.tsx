@@ -2,6 +2,7 @@
 
 import React, {useCallback, useRef, useState} from "react";
 import {PanelRightClose, PanelRightOpen} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
 import {DeviceTreePanel} from "@/core/devices";
 import {fieldLabelSmClass as label} from "@/shared/ui/field/fieldStyles";
@@ -121,15 +122,7 @@ export function TagTreeSidebar() {
       </div>
       <div className="flex items-center justify-between">
         <span className={cn(label, "mb-0")}>Дерево тегов</span>
-        <button
-          type="button"
-          onClick={() => toggle(false)}
-          title="Свернуть дерево тегов"
-          aria-label="Свернуть дерево тегов"
-          className="p-1 rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-        >
-          <PanelRightClose size={16} />
-        </button>
+        <IconButton icon={PanelRightClose} label="Свернуть дерево тегов" onClick={() => toggle(false)} />
       </div>
       <div className="flex-1 min-h-0">
         <DeviceTreePanel fill />

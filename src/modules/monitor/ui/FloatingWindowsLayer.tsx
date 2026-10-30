@@ -2,6 +2,7 @@
 
 import React, {useCallback, useLayoutEffect, useRef, useState} from "react";
 import {GripVertical, X} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
 import {
   closeFloatingWindow, focusFloatingWindow, useFloatingWindowsStore, type FloatingWindow,
@@ -97,22 +98,14 @@ function FloatingWindowView({win, cascadeIndex}: {win: FloatingWindow; cascadeIn
     >
       <div
         onPointerDown={handleDragStart}
-        className="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-neutral-200 dark:border-neutral-800 cursor-grab active:cursor-grabbing touch-none select-none"
+        className="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b cursor-grab active:cursor-grabbing touch-none select-none"
         title="Перетащить"
       >
-        <GripVertical size={16} className="shrink-0 text-neutral-400" />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900 dark:text-white">
+        <GripVertical size={16} className="shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
           {win.title}
         </span>
-        <button
-          type="button"
-          onClick={() => closeFloatingWindow(win.id)}
-          className="shrink-0 rounded-md p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
-          title="Закрыть"
-          aria-label={`Закрыть «${win.title}»`}
-        >
-          <X size={16} />
-        </button>
+        <IconButton icon={X} label={`Закрыть «${win.title}»`} title="Закрыть" size="xs" onClick={() => closeFloatingWindow(win.id)} />
       </div>
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <React.Fragment key={win.nonce}>{win.content}</React.Fragment>

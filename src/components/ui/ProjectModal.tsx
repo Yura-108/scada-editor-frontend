@@ -3,6 +3,7 @@
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {Badge} from "@/shared/ui/Badge";
 import {useState, useEffect, useMemo} from "react";
 import {useEditorStore, type EditorProject, openReleasesModal, openProcedureLevelsModal} from "@/modules/editor";
@@ -184,65 +185,56 @@ export function ProjectContent() {
                 {(() => {
                   const grant = grantOf(proj, admin);
                   return (<>
-                <button
-                  type="button"
+                <IconButton
+                  icon={Gauge}
+                  size="xs"
+                  className="ml-2"
                   onClick={(e) => { e.stopPropagation(); openProcedureLevelsModal(proj.id, proj.name, grant.edit); }}
-                  className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
                   title="Уровни доступа операций процедур"
-                  aria-label={`Уровни процедур проекта «${proj.name}»`}
-                >
-                  <Gauge size={14} />
-                </button>
+                  label={`Уровни процедур проекта «${proj.name}»`}
+                />
                 {/* Выпуски, эксплуатация и автопривязка — только с правом правки (бэкенд: 403 NO_EDIT). */}
                 {grant.edit && <>
-                <button
-                  type="button"
+                <IconButton
+                  icon={Rocket}
+                  size="xs"
+                  className="ml-2"
                   onClick={(e) => { e.stopPropagation(); openReleasesModal(proj.id, proj.name); }}
-                  className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
                   title="Выпуски проекта: выпустить черновик, сделать prod"
-                  aria-label={`Выпуски проекта «${proj.name}»`}
-                >
-                  <Rocket size={14} />
-                </button>
-                <button
-                  type="button"
+                  label={`Выпуски проекта «${proj.name}»`}
+                />
+                <IconButton
+                  icon={runtimeFlags[proj.id] ? Power : PowerOff}
+                  size="xs"
                   aria-pressed={runtimeFlags[proj.id] === true}
+                  className={cn("ml-2", runtimeFlags[proj.id] && "text-success enabled:hover:text-success")}
                   onClick={(e) => void handleToggleOperation(e, proj)}
-                  className={cn(
-                    "ml-2 shrink-0 p-0.5 rounded transition-colors",
-                    runtimeFlags[proj.id]
-                      ? "text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-                      : "text-neutral-400 hover:text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40",
-                  )}
                   title={runtimeFlags[proj.id]
                     ? "В эксплуатации: рантайм исполняет проект. Нажмите, чтобы вывести"
                     : "Не в эксплуатации: рантайм проект не исполняет. Нажмите, чтобы ввести"}
-                  aria-label={runtimeFlags[proj.id]
+                  label={runtimeFlags[proj.id]
                     ? `Вывести проект «${proj.name}» из эксплуатации`
                     : `Ввести проект «${proj.name}» в эксплуатацию`}
-                >
-                  {runtimeFlags[proj.id] ? <Power size={14} /> : <PowerOff size={14} />}
-                </button>
-                <button
-                  type="button"
+                />
+                <IconButton
+                  icon={Link2}
+                  size="xs"
+                  className="ml-2"
                   onClick={(e) => handleAutobind(e, proj)}
-                  className="ml-2 shrink-0 p-0.5 rounded text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
                   title="Автопривязка к базе каналов"
-                  aria-label={`Автопривязка проекта «${proj.name}» к базе каналов`}
-                >
-                  <Link2 size={14} />
-                </button>
+                  label={`Автопривязка проекта «${proj.name}» к базе каналов`}
+                />
                 </>}
                 {/* Удалять проект может только администратор. */}
-                {admin && <button
-                  type="button"
+                {admin && <IconButton
+                  icon={X}
+                  size="xs"
+                  variant="danger"
+                  className="ml-2"
                   onClick={(e) => void handleDelete(e, proj)}
-                  className="ml-2 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
                   title="Удалить проект"
-                  aria-label={`Удалить проект «${proj.name}»`}
-                >
-                  <X size={14} />
-                </button>}
+                  label={`Удалить проект «${proj.name}»`}
+                />}
                   </>);
                 })()}
               </li>

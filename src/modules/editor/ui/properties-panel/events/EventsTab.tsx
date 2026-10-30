@@ -2,6 +2,7 @@
 
 import React from "react";
 import {MousePointerClick, Pencil, Plus, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement} from "@/types/editorElement.type";
 import {ElementEventName, ElementEvents} from "@/types/binding.types";
@@ -59,20 +60,8 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
                 <div className="ml-auto flex items-center gap-1.5">
                   {handler ? (
                     <>
-                      <button
-                        className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
-                        title="Редактировать скрипт"
-                        onClick={() => openEventScriptModal({element, event: name})}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
-                        title="Удалить обработчик"
-                        onClick={() => removeHandler(name)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <IconButton icon={Pencil} label="Редактировать скрипт" size="xs" onClick={() => openEventScriptModal({element, event: name})} />
+                      <IconButton icon={Trash2} label="Удалить обработчик" size="xs" variant="danger" onClick={() => removeHandler(name)} />
                     </>
                   ) : (
                     <button

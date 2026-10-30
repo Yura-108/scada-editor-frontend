@@ -12,6 +12,7 @@ import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObject
 import {pickTag} from "@/core/devices";
 import {shortTagPath} from "@/core/scene";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {IconButton} from "@/shared/ui/IconButton";
 import {EmptyState} from "@/shared/ui/EmptyState";
 
 interface BindingsTabProps {
@@ -133,21 +134,9 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
                 )}
 
                 {!binding.direct && (
-                  <button
-                    className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
-                    title="Редактировать"
-                    onClick={() => openBindingEditorModal({element, binding})}
-                  >
-                    <Pencil size={14} />
-                  </button>
+                  <IconButton icon={Pencil} label="Редактировать" size="xs" onClick={() => openBindingEditorModal({element, binding})} />
                 )}
-                <button
-                  className="p-1 text-gray-500 hover:text-red-500 transition-colors"
-                  title="Удалить привязку"
-                  onClick={() => removeBinding(element.key, binding.id)}
-                >
-                  <Trash2 size={14} />
-                </button>
+                <IconButton icon={Trash2} label="Удалить привязку" size="xs" variant="danger" onClick={() => removeBinding(element.key, binding.id)} />
               </div>
             );
           })}

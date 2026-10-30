@@ -2,6 +2,7 @@
 
 import React from "react";
 import {Pencil, Plus, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
 import OpenAddPropertyModal from "../property/PropertyModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
@@ -162,22 +163,8 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
                 </div>
                 {property && (
                   <>
-                    <button
-                      type="button"
-                      title="Изменить тег и подпись"
-                      className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-neutral-800"
-                      onClick={() => OpenAddPropertyModal({elementKey: element.key, property})}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      title="Удалить перо"
-                      className="rounded p-1 text-red-500 hover:bg-red-500/10"
-                      onClick={() => void confirmDeleteProperty(property, element.key)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <IconButton icon={Pencil} label="Изменить тег и подпись" size="xs" onClick={() => OpenAddPropertyModal({elementKey: element.key, property})} />
+                    <IconButton icon={Trash2} label="Удалить перо" size="xs" variant="danger" onClick={() => void confirmDeleteProperty(property, element.key)} />
                   </>
                 )}
               </div>

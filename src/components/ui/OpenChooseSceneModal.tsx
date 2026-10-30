@@ -3,6 +3,7 @@
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import {Pin, PinOff, X} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {useState} from "react";
 import {canWriteCurrentProject, useEditorStore, openSceneGuarded} from "@/modules/editor";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
@@ -126,37 +127,31 @@ export function ChooseSceneContent({
                 {/* Закрепление — вкладки быстрого доступа для всех пользователей проекта (в
                     редакторе и мониторе). Менять их можно только здесь, в редакторе. */}
                 {!readOnly && <>
-                <button
-                  type="button"
-                  aria-pressed={pins.some(p => p.id === scene.id)}
+                <IconButton
+                  icon={pins.some(p => p.id === scene.id) ? PinOff : Pin}
+                  size="xs"
+                  className="ml-2"
+                  pressed={pins.some(p => p.id === scene.id)}
                   onClick={(e) => {
                     e.stopPropagation();
                     togglePin({id: scene.id, name: scene.name});
                   }}
-                  className={cn(
-                    "ml-2 shrink-0 p-0.5 rounded transition-colors",
-                    pins.some(p => p.id === scene.id)
-                      ? "text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
-                      : "text-neutral-400 hover:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
-                  )}
                   title={pins.some(p => p.id === scene.id)
                     ? `Открепить схему${pinsShared ? " для всех пользователей проекта" : ""}`
                     : `Закрепить схему${pinsShared ? " для всех пользователей проекта" : ""}`}
-                  aria-label={pins.some(p => p.id === scene.id)
+                  label={pins.some(p => p.id === scene.id)
                     ? `Открепить схему «${scene.name}»`
                     : `Закрепить схему «${scene.name}»`}
-                >
-                  {pins.some(p => p.id === scene.id) ? <PinOff size={14} /> : <Pin size={14} />}
-                </button>
-                <button
-                  type="button"
+                />
+                <IconButton
+                  icon={X}
+                  size="xs"
+                  variant="danger"
+                  className="ml-1"
                   onClick={(e) => handleDelete(e, scene.id)}
-                  className="ml-1 shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-neutral-400 hover:text-red-500 transition-colors"
                   title="Удалить схему"
-                  aria-label={`Удалить схему «${scene.name}»`}
-                >
-                  <X size={14} />
-                </button>
+                  label={`Удалить схему «${scene.name}»`}
+                />
                 </>}
               </li>
             ))}

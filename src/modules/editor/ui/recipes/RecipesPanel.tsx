@@ -8,6 +8,7 @@ import {Spinner} from "@/shared/ui/Spinner";
 import {Badge} from "@/shared/ui/Badge";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations, useRecipes} from "../../api/recipes";
@@ -210,33 +211,19 @@ export function RecipesPanel() {
                         <div className="flex items-center justify-center gap-3">
                           {/* История доступна и на чтение: смотреть версии может и `view`. */}
                           {recipe.document_id != null && (
-                            <button
-                              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                              title="История версий"
+                            <IconButton
+                              icon={History}
+                              label="История версий"
                               onClick={() => openRecipeHistoryModal({
                                 recipe,
                                 documentId: recipe.document_id!,
                                 editable: canEditRecipes,
                                 dirty,
                               })}
-                            >
-                              <History size={16} />
-                            </button>
+                            />
                           )}
-                          {canEditRecipes && <button
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors"
-                            title="Редактировать"
-                            onClick={() => openRecipeEditorModal({recipe})}
-                          >
-                            <Pencil size={16} />
-                          </button>}
-                          {canEditRecipes && <button
-                            className="text-red-600 dark:text-red-400 hover:text-red-500 transition-colors"
-                            title="Удалить"
-                            onClick={() => void handleDelete(recipe)}
-                          >
-                            <Trash2 size={16} />
-                          </button>}
+                          {canEditRecipes && <IconButton icon={Pencil} label="Редактировать" onClick={() => openRecipeEditorModal({recipe})} />}
+                          {canEditRecipes && <IconButton icon={Trash2} label="Удалить рецепт" title="Удалить" variant="danger" onClick={() => void handleDelete(recipe)} />}
                         </div>
                       </td>
                     </tr>

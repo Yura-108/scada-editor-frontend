@@ -5,6 +5,7 @@ import {usePaletteStore} from "@/store/usePaletteStore";
 import {useEditorStore} from "../../model/editorStore";
 import {ElementType} from "@/types/editorElement.type";
 import {Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
@@ -50,7 +51,11 @@ export default function PaletteItem({item}: PaletteItemProps) {
       </button>
 
       {!isStatic && (
-        <button
+        <IconButton
+          icon={Trash2}
+          variant="danger"
+          size="xs"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={async () => {
             // Серверное удаление, undo его не откатит — спрашиваем подтверждение.
@@ -62,14 +67,9 @@ export default function PaletteItem({item}: PaletteItemProps) {
             });
             if (confirmed) void deletePaletteItem(item.id);
           }}
-          className="p-1.5 rounded text-neutral-400 hover:text-red-500
-                   hover:bg-red-500/10 shrink-0 opacity-0 group-hover:opacity-100
-                   focus-visible:opacity-100 transition-all duration-200"
           title="Удалить шаблон"
-          aria-label={`Удалить шаблон «${item.name}»`}
-        >
-          <Trash2 size={14} />
-        </button>
+          label={`Удалить шаблон «${item.name}»`}
+        />
       )}
     </div>
   );

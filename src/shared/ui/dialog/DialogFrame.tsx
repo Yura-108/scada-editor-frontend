@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
@@ -94,13 +95,7 @@ export function DialogFrame({
         >
           {showClose && (
             <Dialog.Close asChild>
-              <button
-                type="button"
-                aria-label="Закрыть"
-                className="absolute right-4 top-4 z-10 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <X size={18} />
-              </button>
+              <IconButton icon={X} label="Закрыть" size="md" className="absolute right-4 top-4 z-10" />
             </Dialog.Close>
           )}
           <DialogFrameContext.Provider value={{ showClose, depth }}>{children}</DialogFrameContext.Provider>

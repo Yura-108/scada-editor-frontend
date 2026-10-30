@@ -180,7 +180,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
                   <button
                     type="button"
                     onClick={() => set({writes_variables: draft.writes_variables.filter(v => v !== name)})}
-                    className="text-neutral-500 hover:text-red-500"
+                    className="text-muted-foreground hover:text-destructive"
                     aria-label={`Убрать ${name}`}
                   >
                     <X size={12} />

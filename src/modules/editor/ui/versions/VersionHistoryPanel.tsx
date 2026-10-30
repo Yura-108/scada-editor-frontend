@@ -4,6 +4,7 @@ import React, {useEffect, useState} from "react";
 import {Clock, Eye, RotateCcw, X} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Badge} from "@/shared/ui/Badge";
+import {IconButton} from "@/shared/ui/IconButton";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useCurrentProjectGrant} from "@/core/access";
@@ -99,18 +100,11 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
       // fixed, а не absolute: панель монтируется из тулбара (он сам fixed и высотой в
       // одну строку), но должна занимать всю высоту рабочей области под шапкой.
       className="fixed right-0 top-(--app-header-h) bottom-0 z-panel flex w-[360px] flex-col border-l
-                 border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/95 backdrop-blur-md"
+                 bg-card/95 backdrop-blur-md"
     >
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-neutral-200 dark:border-neutral-800 px-3">
+      <header className="flex h-11 shrink-0 items-center justify-between border-b px-3">
         <span className="text-sm font-semibold">История версий</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Закрыть историю версий"
-          className="rounded-md p-1 text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
-        >
-          <X size={16} />
-        </button>
+        <IconButton icon={X} label="Закрыть историю версий" onClick={onClose} />
       </header>
 
       <div className="shrink-0 space-y-3 border-b border-neutral-200 dark:border-neutral-800 p-3">

@@ -1,5 +1,6 @@
 import React from "react";
 import {Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {shortTagPath} from "@/core/scene";
 import {actionValueText, coerceActionValue} from "../../../lib/recipeValidation";
 import type {RecipeStepAction, RecipeTag} from "@/types/recipe.types";
@@ -40,11 +41,7 @@ export function TagWriteRow({action, tags, onChange, onRemove}: {
       <span className="text-xs text-gray-400 dark:text-gray-600 truncate max-w-[28%]" title={tag?.tag}>
         {tag ? shortTagPath(tag.tag) : "тег не найден"}
       </span>
-      <button type="button" className="p-1 text-red-600 dark:text-red-400 hover:text-red-500"
-              title="Убрать запись"
-              onClick={onRemove}>
-        <Trash2 size={14} />
-      </button>
+      <IconButton icon={Trash2} label="Убрать запись" size="xs" variant="danger" onClick={onRemove} />
     </div>
   );
 }

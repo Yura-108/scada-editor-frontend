@@ -2,6 +2,7 @@
 
 import React, {useEffect, useRef, useState} from "react";
 import {Ban} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
 import type {EditSession} from "./editSession";
 import {fieldBase, fieldLabelSmClass, fieldSizes} from "./fieldStyles";
@@ -103,19 +104,14 @@ export function ColorField({id, label, value, onChange, inputClassName, onEditSt
             }
           }}
         />
-        <button
-          type="button"
-          title="Прозрачный"
+        <IconButton
+          icon={Ban}
+          label="Прозрачный"
+          variant="secondary"
+          pressed={isTransparent}
+          className={cn(isTransparent && "border-primary/60")}
           onClick={() => { setDraft(null); onChange(isTransparent ? pickerValue : "transparent"); }}
-          className={cn(
-            "shrink-0 h-8 w-8 grid place-items-center rounded-lg border transition-colors",
-            isTransparent
-              ? "border-primary/60 bg-primary/15 text-primary"
-              : "border-input text-muted-foreground hover:border-ring",
-          )}
-        >
-          <Ban size={14} />
-        </button>
+        />
       </div>
     </div>
   );

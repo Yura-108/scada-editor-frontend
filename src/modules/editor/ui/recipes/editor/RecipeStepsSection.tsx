@@ -1,5 +1,6 @@
 import React, {type Dispatch, type SetStateAction} from "react";
 import {ChevronDown, ChevronUp, Plus, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
 import {coerceActionValue} from "../../../lib/recipeValidation";
 import type {RecipeStep, RecipeTag} from "@/types/recipe.types";
 import {Input} from "@/shared/ui/field/Input";
@@ -58,19 +59,10 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
                 placeholder="Название шага"
                 onChange={(e) => patchStep(index, {name: e.target.value})}
               />
-              <button type="button" className="p-1 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-30"
-                      disabled={index === 0} title="Выше" onClick={() => moveStep(index, -1)}>
-                <ChevronUp size={16} />
-              </button>
-              <button type="button" className="p-1 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-30"
-                      disabled={index === steps.length - 1} title="Ниже" onClick={() => moveStep(index, 1)}>
-                <ChevronDown size={16} />
-              </button>
-              <button type="button" className="p-1 text-red-600 dark:text-red-400 hover:text-red-500 disabled:opacity-30"
-                      disabled={steps.length === 1} title="Удалить шаг"
-                      onClick={() => setSteps(prev => prev.filter((_, i) => i !== index))}>
-                <Trash2 size={16} />
-              </button>
+              <IconButton icon={ChevronUp} label="Выше" size="xs" disabled={index === 0} onClick={() => moveStep(index, -1)} />
+              <IconButton icon={ChevronDown} label="Ниже" size="xs" disabled={index === steps.length - 1} onClick={() => moveStep(index, 1)} />
+              <IconButton icon={Trash2} label="Удалить шаг" size="xs" variant="danger" disabled={steps.length === 1}
+                onClick={() => setSteps(prev => prev.filter((_, i) => i !== index))} />
             </div>
 
             {/* Действие */}
