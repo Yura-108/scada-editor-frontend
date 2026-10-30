@@ -306,6 +306,21 @@
     border-radius: inherit;
   }
 
+  /* Курсор ввода над полями. Системный курсор Windows рисуется инверсией фона, но на части
+     видеокарт выходит просто белым — и на светлом поле пропадает. Свой — тёмная черта с белой
+     обводкой: виден на любом фоне и в обеих темах. `:where()` даёт нулевую специфичность:
+     `disabled:cursor-not-allowed` и собственный курсор поля по-прежнему перебивают правило.
+     Цепочка `:not()`, а не `:not(a, b)`: со списком внутри `:where()` dev-сборщик Next молча
+     выбрасывает всё правило. */
+  :where(
+      input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+      textarea,
+      [contenteditable='true'],
+      [contenteditable='']
+    ) {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M5 2.5h6M8 2.5v19M5 21.5h6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M5 2.5h6M8 2.5v19M5 21.5h6' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 8 12, text;
+  }
+
   /* Гаттер уже зарезервирован выше, поэтому компенсация ширины полосы
      прокрутки от react-remove-scroll не нужна — иначе контент сдвинется. */
   body[data-scroll-locked] {
