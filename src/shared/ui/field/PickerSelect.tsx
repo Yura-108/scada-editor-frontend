@@ -5,6 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 import {Check, ChevronDown} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {EmptyState} from "../EmptyState";
+import {usePortalContainer} from "../portalContainer";
 import {fieldBase, fieldSizes} from "./fieldStyles";
 import {SearchInput} from "./SearchInput";
 
@@ -63,6 +64,7 @@ export function PickerSelect({
   "aria-label": string;
 }) {
   const [innerOpen, setInnerOpen] = useState(false);
+  const portalContainer = usePortalContainer();
   const isOpen = open ?? innerOpen;
   const setOpen = (next: boolean) => {
     if (open === undefined) setInnerOpen(next);
@@ -109,7 +111,7 @@ export function PickerSelect({
         </button>
       </Popover.Trigger>
 
-      <Popover.Portal>
+      <Popover.Portal container={portalContainer}>
         <Popover.Content
           align="start"
           sideOffset={4}

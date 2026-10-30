@@ -1,13 +1,14 @@
 "use client";
 
-import React from "react";
+import React, {useState} from "react";
 import {cn} from "@/shared/lib/cn";
+import {PortalContainerProvider} from "@/shared/ui/portalContainer";
 
 /**
  * Раздел каталога: одно и то же содержимое в светлой и тёмной колонке. Колонки задают тему
  * классом (`.light` / `.dark` переопределяют токены), поэтому видны обе сразу, какая бы ни
- * была у страницы. Списки, поповеры и окна открываются в портале у `body` — они берут тему
- * страницы, её переключает кнопка в шапке каталога.
+ * была у страницы. Выпадающие списки открываются внутри своей колонки; окна — в корне
+ * страницы и берут её тему, её переключает кнопка в шапке каталога.
  */
 export function CatalogSection({id, title, description, children}: {
   id: string;
@@ -29,13 +30,20 @@ export function CatalogSection({id, title, description, children}: {
   );
 }
 
+/**
+ * Колонка — ещё и контейнер портала для выпадающих списков: так их меню лежит внутри
+ * `.light`/`.dark` и берёт тему колонки. Окна (`ModalRoot`) рисуются в корне — у них тема страницы.
+ */
 function ThemeColumn({theme, children}: {theme: "light" | "dark"; children: React.ReactNode}) {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   return (
-    <div className={cn(theme, "min-w-0 rounded-xl border bg-background p-4 text-foreground")}>
+    <div ref={setContainer} className={cn(theme, "min-w-0 rounded-xl border bg-background p-4 text-foreground")}>
       <div className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
         {theme === "light" ? "Светлая тема" : "Тёмная тема"}
       </div>
-      <div className="space-y-5">{children}</div>
+      <PortalContainerProvider container={container}>
+        <div className="space-y-5">{children}</div>
+      </PortalContainerProvider>
     </div>
   );
 }
