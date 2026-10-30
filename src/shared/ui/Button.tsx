@@ -13,7 +13,11 @@ import { cn } from "@/shared/lib/cn";
  * dark:text-white` поверх индигового градиента, то есть почти чёрный текст на
  * тёмно-синем. Здесь один источник правды.
  */
-type Variant = "primary" | "secondary" | "danger";
+/**
+ * `ghost` — без рамки и фона, подсветка при наведении: текстовая кнопка внутри плашки, строки
+ * списка, ряда быстрых периодов — там, где рамка спорила бы с рамкой блока.
+ */
+type Variant = "primary" | "secondary" | "danger" | "ghost";
 /**
  * `md` — кнопки окон и форм (40px), `sm` — компактные кнопки в панелях и строках таблиц (32px).
  * Высоты те же, что у полей (`shared/ui/field`): кнопка рядом с полем в одной строке вровень.
@@ -37,6 +41,7 @@ const variants: Record<Variant, string> = {
     disabledSolid,
   ),
   secondary: "border-input bg-transparent text-foreground enabled:hover:bg-accent disabled:opacity-60",
+  ghost: "border-transparent bg-transparent text-foreground enabled:hover:bg-accent disabled:opacity-60",
   danger: cn(
     "border-transparent bg-destructive text-destructive-foreground shadow-sm enabled:hover:bg-destructive/90",
     disabledSolid,
