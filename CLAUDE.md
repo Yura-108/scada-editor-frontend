@@ -48,6 +48,9 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
   `text-warning`…), без `gray-500`/`indigo-600`/`[#hex]`. Таблица — `docs/architecture.md`, «UI-kit: цвета».
 - **Поля — только из `shared/ui/field`** (`Field`, `Input`, `Textarea`, `Checkbox`, `Select`, `SearchInput`),
   свой класс поля в файле не заводить. Что когда брать — `docs/architecture.md`, «UI-kit: поля».
+- **Вкладки, значки, плашки, заглушки, спиннер, шапка страницы, кнопка-иконка — только из `shared/ui`**
+  (`Tabs`, `Badge`, `Banner`, `EmptyState`, `Spinner`, `PageFrame`/`PageHeader`, `IconButton`). Что когда брать —
+  `docs/architecture.md`, «UI-kit: общие компоненты».
 - **Окна — только из `shared/ui/dialog`** (`openModal`/`pushModal`, `confirmModal`/`promptModal`/
   `choiceModal`, локальный `Modal`), свой `Dialog.Root` не заводить. Что когда брать —
   `docs/architecture.md`, «UI-kit: окна».
