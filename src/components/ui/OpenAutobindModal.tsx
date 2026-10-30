@@ -235,7 +235,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
 }
 
 /**
- * Автопривязка — поверх окна, из которого открыли (список проектов): закрыли — список на месте.
+ * Автопривязка — из выбора проекта в шапке редактора; поверх открытого окна, если оно есть.
  */
 export function openAutobindModal(projectId: number, projectName: string) {
   useModalStore.getState().pushModal(

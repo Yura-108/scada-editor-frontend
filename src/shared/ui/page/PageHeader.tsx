@@ -34,7 +34,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex h-12 shrink-0 items-center gap-3 overflow-x-auto whitespace-nowrap border-b bg-card px-4",
+        "flex h-(--page-header-h) shrink-0 items-center gap-3 overflow-x-auto whitespace-nowrap border-b bg-card px-4",
         className,
       )}
     >

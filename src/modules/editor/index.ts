@@ -52,7 +52,7 @@ export {createClipboardSlice, type ClipboardSlice} from "./model/slices/clipboar
 export {createGroupsSlice, type GroupsSlice} from "./model/slices/groups.slice";
 export {beginHistoryGroup, cancelHistoryGroup, endHistoryGroup} from "./model/historyGroup";
 export {restoreLastProject, useEditableProject} from "./model/lastProject";
-export {openSceneGuarded} from "./model/openScene";
+export {openSceneGuarded, selectProjectGuarded} from "./model/openScene";
 export {confirmDeleteProperty} from "./lib/confirmDeleteProperty";
 
 // UI — последним: компонентам нужен уже загруженный стор, а не наоборот.
