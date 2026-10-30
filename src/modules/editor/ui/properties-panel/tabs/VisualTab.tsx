@@ -4,7 +4,7 @@ import {useMemo} from "react";
 import {cn} from "@/shared/lib/cn";
 import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
 import {basePropertySchema, elementPropertyMap} from "@/constants/propertiesPanel";
-import {StateSelect} from "@/components/ui/StateSelect";
+import {StateSelect} from "../StateSelect";
 import {useEditorStore} from "../../../model/editorStore";
 import {EditAllStatesToggle} from "../EditAllStatesToggle";
 import {PropertyInput} from "../PropertyInput";

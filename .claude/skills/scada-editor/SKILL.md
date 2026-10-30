@@ -171,7 +171,7 @@ leaves whose live position sits in overrides.
   round dots (6/zoom) with `padding` so they sit OUTSIDE the widget; the shape's own dashed
   selection rect is suppressed via `ctx.transformerKey` (in ShapeElement dispatcher) — one
   border, not two.
-- **Colors**: all color props go through `src/components/ui/ColorField.tsx` (picker + hex input
+- **Colors**: all color props go through `src/shared/ui/field/ColorField.tsx` (picker + hex input
   + «прозрачный» button). `"transparent"` is a valid stored color value — Konva renders it as
   fully transparent; renderers' `rendered.color || fallback` chains treat it as truthy (kept).
 - **Smart guides** (`src/modules/editor/lib/smartGuides.ts` + guide session in Canvas): on dragstart

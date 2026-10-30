@@ -12,7 +12,7 @@ import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {checkScriptSyntax} from "@/core/runtime";
-import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
+import {AccessLevelSelect} from "@/core/access";
 
 interface ScriptModalProps {
   title: string;

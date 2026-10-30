@@ -5,7 +5,7 @@ import {Save} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
 import {Spinner} from "@/shared/ui/Spinner";
-import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
+import {AccessLevelSelect} from "@/core/access";
 import {useOpenScene} from "@/core/project";
 import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
 import {fetchUserGrants, putUserGrant, type UserGrants} from "../api/adminApi";

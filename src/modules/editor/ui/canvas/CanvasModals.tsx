@@ -1,7 +1,7 @@
 "use client";
 
-import { MoveToGroupModal } from "@/components/ui/MoveToGroupModal";
-import { AddComponentModal } from "@/components/ui/AddComponentModal";
+import { MoveToGroupModal } from "./MoveToGroupModal";
+import { AddComponentModal } from "./AddComponentModal";
 import type { AddComponentState, MoveToGroupState } from "./hooks/useEditorContextMenu";
 
 interface CanvasModalsProps {

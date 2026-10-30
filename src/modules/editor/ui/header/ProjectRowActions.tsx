@@ -5,7 +5,7 @@ import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {IconButton} from "@/shared/ui/IconButton";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
+import {openAutobindModal} from "../project/OpenAutobindModal";
 import type {EditorProject} from "@/core/project";
 import {useEditorStore} from "../../model/editorStore";
 import {openProcedureLevelsModal} from "../project/ProcedureLevelsModal";

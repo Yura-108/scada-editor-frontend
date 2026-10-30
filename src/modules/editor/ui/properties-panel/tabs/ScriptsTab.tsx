@@ -4,7 +4,7 @@ import {useMemo} from "react";
 import {Plus} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {createUuid} from "@/shared/lib/createUuid";
-import {openScriptEditorModal} from "@/components/ui/OpenScriptEditorModal";
+import {openScriptEditorModal} from "../script/OpenScriptEditorModal";
 import {useEditorStore} from "../../../model/editorStore";
 import {baseAddButtonClasses} from "../panelClasses";
 import {EmptyState} from "@/shared/ui/EmptyState";

@@ -12,3 +12,4 @@ export * from "./versions/versionContentCache";
 export * from "./releases/releasesApi";
 export * from "./settings/projectSettingsApi";
 export {ProjectSelect} from "./ui/ProjectSelect";
+export {ProjectPlaceholder} from "./ui/ProjectPlaceholder";
