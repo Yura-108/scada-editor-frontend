@@ -32,7 +32,7 @@ export async function openSceneGuarded(id: number): Promise<boolean> {
   }
 
   await loadScene(id);
-  // Палитра зависит от проекта и подгружается вместе со схемой — как в openChooseSceneModal.
+  // Палитра зависит от проекта и подгружается вместе со схемой.
   await usePaletteStore.getState().loadPaletteItems();
   return true;
 }
