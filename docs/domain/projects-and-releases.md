@@ -27,7 +27,7 @@ draw exactly it, not the editor's draft.
 - Release responses: 409 = project not in operation (`releaseError`, shown on the canvas, not a
   toast); 404 on a scene = not in this release (toast, the shown scene stays). The BFF must forward
   `X-Release-Version` (`passThroughRelease`) — `passThrough` drops headers.
-- Editor: «Выпуски» (`ReleasesModal`, from `ProjectModal` and `ToolsPanel`) — release the **saved**
+- Editor: «Выпуски» (`ReleasesModal`, from the project picker in the editor header and `ToolsPanel`) — release the **saved**
   draft (unsaved work is offered to be saved first; `unchanged: true` = nothing changed since the last
   release), list them (the generic versions API with doc type `projects`), make one prod. Enabling
   operation without prod answers 409 `no_prod_release`; the store offers to release, make prod and
