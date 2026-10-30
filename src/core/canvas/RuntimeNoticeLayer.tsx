@@ -39,10 +39,10 @@ export default function RuntimeNoticeLayer() {
       // Над точкой нажатия и чуть выше: палец или курсор не закрывают текст.
       style={{left: notice.point.x, top: notice.point.y - 12}}
       className="fixed z-dropdown -translate-x-1/2 -translate-y-full flex items-center gap-1.5 whitespace-nowrap
-        rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/90 px-2.5 py-1.5 text-xs font-medium
-        text-amber-800 dark:text-amber-200 shadow-lg animate-in fade-in-0 zoom-in-95"
+        rounded-lg border border-warning/40 bg-popover bg-linear-to-r from-warning/10 to-warning/10 px-2.5 py-1.5
+        text-xs font-medium text-foreground shadow-lg animate-in fade-in-0 zoom-in-95"
     >
-      <ShieldAlert size={14} />
+      <ShieldAlert size={14} className="text-warning" />
       {notice.text}
     </div>
   );
