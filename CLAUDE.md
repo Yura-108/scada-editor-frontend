@@ -52,7 +52,7 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
   (`Tabs`, `Badge`, `Banner`, `EmptyState`, `Spinner`, `PageFrame`/`PageHeader`, `IconButton`). Что когда брать —
   `docs/architecture.md`, «UI-kit: общие компоненты».
 - **Окна — только из `shared/ui/dialog`** (`openModal`/`pushModal`, `confirmModal`/`promptModal`/
-  `choiceModal`, локальный `Modal`), свой `Dialog.Root` не заводить. Что когда брать —
+  `choiceModal`, локальный `Modal`), свой `Dialog.Root` не заводить (ESLint предупредит). Что когда брать —
   `docs/architecture.md`, «UI-kit: окна».
 
 ## Как работать над задачей
