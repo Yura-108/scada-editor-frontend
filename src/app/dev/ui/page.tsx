@@ -1,7 +1,8 @@
 import {notFound} from "next/navigation";
 import {UiCatalog} from "@/modules/ui-catalog";
 
-export const metadata = {title: "Каталог UI-kit"};
+// Вне dev страницы нет: и заголовок вкладки у её 404 не должен говорить «каталог».
+export const metadata = process.env.NODE_ENV === "development" ? {title: "Каталог UI-kit"} : {};
 
 /**
  * Каталог общих компонентов (`shared/ui`) — только в dev-сборке. Вне группы `(app)`: без шапки
