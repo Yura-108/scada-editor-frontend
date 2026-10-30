@@ -3,7 +3,7 @@
 import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
-import ParamWrapper from "@/components/ui/ParamWrapper";
+import ParamWrapper from "./ParamWrapper";
 import {
   DeviceContextMenu as ContextMenu, handleContextParamAction, isParamChecked, openChooseParamTypeModal, removeParam,
   resolveParamWidget, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore, useEditingDevices,

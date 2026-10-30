@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from "react";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {useEditorStore} from "@/modules/editor";
+import {useEditorStore} from "../../model/editorStore";
 import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
 import {Field} from "@/shared/ui/field/Field";

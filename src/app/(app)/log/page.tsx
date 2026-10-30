@@ -3,14 +3,14 @@
 import {useEffect} from "react";
 import {CircleAlert, RefreshCw} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
-import {useLogsFilterStore, useLogsSearch} from "@/modules/logs";
-import LogsList from "@/components/logs/LogsList";
+import {
+  journalFilterBar, JournalField, JournalPresets, LogsList, toLocalInput, useLogsFilterStore, useLogsSearch,
+} from "@/modules/logs";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {Spinner} from "@/shared/ui/Spinner";
-import {journalFilterBar, JournalField, JournalPresets, toLocalInput} from "@/components/journal/journalUi";
 import {Input} from "@/shared/ui/field/Input";
 
 const DAY_MS = 24 * 3600_000;

@@ -3,7 +3,7 @@
 import {Pencil, Plus, Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {DiagramElement} from "@/types/editorElement.type";
-import {StateSelect} from "@/components/ui/StateSelect";
+import {StateSelect} from "../StateSelect";
 import {EditAllStatesToggle} from "../EditAllStatesToggle";
 import {useStateActions} from "../hooks/useStateActions";
 import {baseAddButtonClasses} from "../panelClasses";

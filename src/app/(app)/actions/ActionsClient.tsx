@@ -11,7 +11,7 @@ import {Spinner} from "@/shared/ui/Spinner";
 import {
   formatTs, journalFilterBar, journalTableBox, journalTbody,
   journalTd, journalTh, journalThead, JournalEmptyRow, JournalField, JournalPresets, toLocalInput,
-} from "@/components/journal/journalUi";
+} from "@/modules/logs";
 import {useEditorStore} from "@/modules/editor";
 import {shortTagPath} from "@/core/scene";
 import {

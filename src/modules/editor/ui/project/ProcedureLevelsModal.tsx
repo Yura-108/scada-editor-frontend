@@ -6,7 +6,7 @@ import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
-import {AccessLevelSelect} from "@/components/ui/AccessLevelSelect";
+import {AccessLevelSelect} from "@/core/access";
 import {Banner} from "@/shared/ui/Banner";
 import {Spinner} from "@/shared/ui/Spinner";
 import {readBackendError, parseProcedureLevels} from "@/core/access";

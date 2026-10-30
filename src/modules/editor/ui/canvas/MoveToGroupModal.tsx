@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useState, useEffect, useMemo} from "react";
-import { useEditorStore } from "@/modules/editor";
+import { useEditorStore } from "../../model/editorStore";
 import { toast } from "sonner";
 import { MoveRight } from "lucide-react";
 

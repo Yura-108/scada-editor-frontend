@@ -1,13 +1,13 @@
 'use client';
 
-import { useLogsSearch } from '@/modules/logs';
+import { useLogsSearch } from '../model/useLogsSearch';
 import { LogEntry } from '@/types/logs.type';
-import LogDetailsModal from '@/components/ui/LogDetailsModal';
+import LogDetailsModal from './LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
 import { toast } from "sonner";
 import {
   formatTs, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
-} from '@/components/journal/journalUi';
+} from './journalUi';
 import {useDeviceTreeStore} from "@/core/devices";
 import {Badge} from "@/shared/ui/Badge";
 import type {Tone} from "@/shared/ui/tone";

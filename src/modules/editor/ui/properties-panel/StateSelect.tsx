@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {useEditorStore} from "@/modules/editor";
+import {useEditorStore} from "../../model/editorStore";
 import {Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue} from "@/shared/ui/field/Select";
 
 interface Props {

@@ -14,8 +14,8 @@ import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore, useEditableProject} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/core/access";
-import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
-import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
+import {ProjectPlaceholder} from "@/core/project";
+import {ReadOnlyBanner} from "@/core/access";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/core/automation";
 import {
   confirmRemoveTable, DataDiffView, DataVersionChanges, diffDataVersions, fetchProjectData,
