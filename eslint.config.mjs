@@ -30,6 +30,49 @@ const restrict = (files, patterns) => ({
   rules: { 'no-restricted-imports': ['warn', { patterns }] },
 });
 
+// UI-kit: файлы, которым поля и спиннер собирать можно (сами компоненты ui-kit).
+const UI_KIT_FIELD_FILES = [
+  'src/shared/ui/field/**',
+  'src/shared/ui/Spinner.tsx',
+  // Редактор текста прямо на холсте: обязан выглядеть как текст фигуры, а не как поле.
+  'src/modules/editor/ui/canvas/TextEditorOverlay.tsx',
+];
+const UI_KIT_FIELD_RULES = [
+  {
+    selector: "ImportDeclaration[source.value='@radix-ui/react-select']",
+    message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+  },
+  {
+    selector: "ImportDeclaration[source.value='radix-ui'] > ImportSpecifier[imported.name='Select']",
+    message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+  },
+  {
+    selector: "JSXOpeningElement[name.name='select']",
+    message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
+  },
+  {
+    selector: "JSXOpeningElement[name.name='textarea']",
+    message: 'Многострочное поле — Textarea из @/shared/ui/field/Textarea.',
+  },
+  {
+    selector: 'Literal[value=/animate-spin/]',
+    message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
+  },
+  {
+    selector: 'TemplateElement[value.raw=/animate-spin/]',
+    message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
+  },
+];
+const DIALOG_MESSAGE = 'Окно — openModal/confirmModal/promptModal/choiceModal или Modal из @/shared/ui/dialog.';
+const UI_KIT_DIALOG_RULES = [
+  { selector: "ImportDeclaration[source.value='@radix-ui/react-dialog']", message: DIALOG_MESSAGE },
+  { selector: "ImportDeclaration[source.value='@radix-ui/react-alert-dialog']", message: DIALOG_MESSAGE },
+  {
+    selector: "ImportDeclaration[source.value='radix-ui'] > ImportSpecifier[imported.name=/^(Alert)?Dialog$/]",
+    message: DIALOG_MESSAGE,
+  },
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -75,51 +118,21 @@ const eslintConfig = defineConfig([
     ['src/store/**'],
     [{ group: ['@/components/*'], message: 'Стор не импортирует компоненты: вынесите логику в lib.' }],
   ),
-  restrict(
-    ['src/components/ui/**'],
-    [{ group: ['@/store/*'], message: 'ui-kit не знает про сторы: бизнес-компонент — в свою область.' }],
-  ),
 
   // UI-kit: поля только из shared/ui/field (docs/architecture.md, «UI-kit: поля»), спиннер —
-  // только Spinner («UI-kit: общие компоненты»). Своё правило, а не no-restricted-imports: тот уже
-  // настроен по слоям выше, и второй блок с ним перезаписал бы те ограничения для тех же файлов.
-  // По той же причине спиннер здесь же: отдельный блок no-restricted-syntax затёр бы правила полей.
+  // только Spinner («UI-kit: общие компоненты»), окна — только из shared/ui/dialog («UI-kit: окна»).
+  // Своё правило, а не no-restricted-imports: тот уже настроен по слоям выше, и второй блок с ним
+  // перезаписал бы те ограничения для тех же файлов. По той же причине блоков no-restricted-syntax
+  // два и они не пересекаются: второй блок для тех же файлов затёр бы первый.
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/shared/ui/field/**',
-      'src/shared/ui/Spinner.tsx',
-      // Редактор текста прямо на холсте: обязан выглядеть как текст фигуры, а не как поле.
-      'src/modules/editor/ui/canvas/TextEditorOverlay.tsx',
-    ],
-    rules: {
-      'no-restricted-syntax': ['warn',
-        {
-          selector: "ImportDeclaration[source.value='@radix-ui/react-select']",
-          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
-        },
-        {
-          selector: "ImportDeclaration[source.value='radix-ui'] > ImportSpecifier[imported.name='Select']",
-          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
-        },
-        {
-          selector: "JSXOpeningElement[name.name='select']",
-          message: 'Выпадающий список — Select из @/shared/ui/field/Select.',
-        },
-        {
-          selector: "JSXOpeningElement[name.name='textarea']",
-          message: 'Многострочное поле — Textarea из @/shared/ui/field/Textarea.',
-        },
-        {
-          selector: 'Literal[value=/animate-spin/]',
-          message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
-        },
-        {
-          selector: 'TemplateElement[value.raw=/animate-spin/]',
-          message: 'Индикатор загрузки — Spinner из @/shared/ui/Spinner.',
-        },
-      ],
-    },
+    ignores: [...UI_KIT_FIELD_FILES, 'src/shared/ui/dialog/**'],
+    rules: { 'no-restricted-syntax': ['warn', ...UI_KIT_DIALOG_RULES, ...UI_KIT_FIELD_RULES] },
+  },
+  // Оболочка окон сама собирает Radix Dialog — для неё только правила полей и спиннера.
+  {
+    files: ['src/shared/ui/dialog/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['warn', ...UI_KIT_FIELD_RULES] },
   },
 
   // Override default ignores of eslint-config-next.
