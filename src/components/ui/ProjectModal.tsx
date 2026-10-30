@@ -6,7 +6,7 @@ import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {Badge} from "@/shared/ui/Badge";
 import {useState, useEffect, useMemo} from "react";
-import {useEditorStore, type EditorProject, openReleasesModal, openProcedureLevelsModal} from "@/modules/editor";
+import {useEditorStore, type EditorProject, openReleasesModal, openProcedureLevelsModal, selectProjectGuarded} from "@/modules/editor";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {openAutobindModal} from "@/components/ui/OpenAutobindModal";
@@ -21,17 +21,9 @@ async function selectProjectAndOpenScenes(
   projectName: string,
   opts?: {skipSceneFetch?: boolean},
 ) {
-  const {setCurrentProject, loadSceneList} = useEditorStore.getState();
-  // setCurrentProject сбрасывает sceneList в [] — сцены прошлого проекта не должны утечь.
-  setCurrentProject({id: projectId, name: projectName});
-  // Для ТОЛЬКО ЧТО созданного проекта сцен ещё нет — не запрашиваем их с бэкенда.
-  // Иначе для «пустого» project_id бэкенд может вернуть чужие сцены, и модалка выбора
-  // сцены покажет схемы другого проекта (после выбора откроется «другой проект»).
-  // sceneList уже [] после setCurrentProject, поэтому откроется пустой список с
-  // предложением создать первую схему — что и делает проект непустым.
-  if (!opts?.skipSceneFetch) {
-    await loadSceneList(projectId);
-  }
+  // Несохранённые правки — с вопросом; уже открытый проект не сбрасывается, а сразу
+  // ведёт к выбору схемы. Новый проект пуст: пустой список предложит создать первую схему.
+  if (!await selectProjectGuarded({id: projectId, name: projectName}, opts)) return;
   useModalStore.getState().closeModal();
   openChooseSceneModal();
 }
