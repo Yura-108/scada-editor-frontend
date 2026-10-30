@@ -7,6 +7,8 @@ import {Router} from 'lucide-react';
 import TitleRenderer from "./TitleRenderer";
 import {DeviceNodeType} from '@/types/nodeTypes';
 import SwitcherIcon from '@/shared/ui/SwitcherIcon';
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
 import ContextMenu from "./DeviceContextMenu";
 import {nodeMenuItems} from "@/constants/contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
@@ -225,18 +227,14 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
             ))}
           </div>
         ) : nodesError ? (
-          <div className="mx-2 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-700 dark:text-red-300">
-            <p className="font-medium">Не удалось загрузить дерево устройств</p>
-            <p className="mt-1 break-words">{nodesError}</p>
+          <Banner tone="destructive" title="Не удалось загрузить дерево устройств" className="mx-2">
+            <p className="break-words">{nodesError}</p>
             {loadedRootPath && (
-              <button
-                onClick={() => void loadNodes(loadedRootPath)}
-                className="mt-3 rounded-md bg-red-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600"
-              >
+              <Button size="sm" className="mt-3" onClick={() => void loadNodes(loadedRootPath)}>
                 Повторить
-              </button>
+              </Button>
             )}
-          </div>
+          </Banner>
         ) : treeData.length === 0 ? (
           fill ? (
             // Встроенное дерево («Автоматизация», выбор тега): выбор проекта прямо здесь, а не

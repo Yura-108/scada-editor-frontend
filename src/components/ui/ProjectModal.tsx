@@ -3,6 +3,7 @@
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {cn} from "@/shared/lib/cn";
 import {Gauge, Link2, Power, PowerOff, Rocket, X} from "lucide-react";
+import {Badge} from "@/shared/ui/Badge";
 import {useState, useEffect, useMemo} from "react";
 import {useEditorStore, type EditorProject, openReleasesModal, openProcedureLevelsModal} from "@/modules/editor";
 import {openChooseSceneModal} from "@/components/ui/OpenChooseSceneModal";
@@ -176,12 +177,9 @@ export function ProjectContent() {
                 </button>
                 {/* Какой выпуск исполняется (или будет при вводе в эксплуатацию). */}
                 {prodVersions[proj.id] != null && (
-                  <span
-                    className="ml-2 shrink-0 rounded-full bg-neutral-500/10 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
-                    title="prod-выпуск: его показывает монитор и исполняет runtime"
-                  >
+                  <Badge className="ml-2 shrink-0" title="prod-выпуск: его показывает монитор и исполняет runtime">
                     prod №{prodVersions[proj.id]}
-                  </span>
+                  </Badge>
                 )}
                 {(() => {
                   const grant = grantOf(proj, admin);

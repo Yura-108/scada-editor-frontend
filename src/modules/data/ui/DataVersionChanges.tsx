@@ -2,6 +2,7 @@
 
 import React, {useEffect, useState} from "react";
 import {loadVersionContent} from "@/core/project";
+import {Spinner} from "@/shared/ui/Spinner";
 import {
   type DataVersionDiff,
   diffDataVersions,
@@ -139,8 +140,8 @@ export function DataVersionChanges({projectId, versionNo, previousNo}: Props) {
     return () => { cancelled = true; };
   }, [projectId, versionNo, previousNo]);
 
-  if (error) return <p className="text-xs text-red-600 dark:text-red-400">{error}</p>;
-  if (!state) return <p className="text-xs text-neutral-500">Загрузка…</p>;
+  if (error) return <p className="text-xs text-destructive">{error}</p>;
+  if (!state) return <Spinner label="Загрузка…" className="text-xs" />;
 
   return (
     <div className="space-y-3">

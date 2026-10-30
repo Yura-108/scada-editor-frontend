@@ -134,7 +134,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
   // пустой список, а не 403 — иначе пользователь не узнал бы причину.
   if (sitesLoaded && availableSites.length === 0) {
     return (
-      <span className={cn("text-sm text-neutral-500", layout === "stacked" && "block text-center")}>
+      <span className={cn("text-sm text-muted-foreground", layout === "stacked" && "block text-center")}>
         Нет доступных площадок — ветки каталога выдаёт администратор.
       </span>
     );

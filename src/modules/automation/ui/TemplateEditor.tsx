@@ -5,6 +5,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import {javascript} from "@codemirror/lang-javascript";
 import {X} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCreateTemplate, useUpdateTemplate} from "../api/templates";
@@ -115,9 +116,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
 
       <DialogBody>
         {generalError && (
-          <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-destructive/10 text-destructive">
-            {generalError}
-          </div>
+          <Banner tone="destructive" className="mb-4">{generalError}</Banner>
         )}
 
         <div className="space-y-4 overflow-y-auto">

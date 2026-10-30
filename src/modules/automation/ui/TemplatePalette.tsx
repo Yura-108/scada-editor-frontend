@@ -4,6 +4,9 @@ import React, {useMemo, useState} from "react";
 import {ChevronDown, Pencil, Trash2, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {Spinner} from "@/shared/ui/Spinner";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useDeleteTemplate, useTemplates} from "../api/templates";
 import {groupTemplates} from "../lib/automationTemplates";
@@ -91,24 +94,21 @@ export function TemplatePalette({onInsert}: Props) {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
-        {status === "loading" && <p className="text-sm text-neutral-500 px-1">Загрузка…</p>}
+        {status === "loading" && <Spinner label="Загрузка…" className="px-1" />}
 
         {status === "error" && (
-          <div className="px-1 space-y-2">
-            <p className="text-sm text-neutral-500">Палитра шаблонов недоступна.</p>
-            {error && <p className="text-xs text-neutral-500 break-words">{error}</p>}
-            <Button className="w-full" onClick={() => void reload()}>Повторить</Button>
-          </div>
+          <Banner tone="destructive" title="Палитра шаблонов недоступна." className="px-3 py-2">
+            {error && <p className="text-xs break-words">{error}</p>}
+            <Button size="sm" className="mt-2 w-full" onClick={() => void reload()}>Повторить</Button>
+          </Banner>
         )}
 
         {status === "ready" && items.length === 0 && (
-          <p className="text-sm text-neutral-500 px-1">
-            Шаблонов ещё нет: сохраните готовую задачу как шаблон кнопкой «В шаблоны».
-          </p>
+          <EmptyState size="sm" title="Шаблонов ещё нет: сохраните готовую задачу как шаблон кнопкой «В шаблоны»." />
         )}
 
         {status === "ready" && items.length > 0 && groups.length === 0 && (
-          <p className="text-sm text-neutral-500 px-1">Ничего не найдено</p>
+          <EmptyState size="sm" title="Ничего не найдено" />
         )}
 
         {groups.map(group => (

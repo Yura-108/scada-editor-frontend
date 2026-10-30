@@ -8,6 +8,7 @@ import {PaletteItemType} from "@/types/palette.types";
 import {usePaletteStore} from "@/store/usePaletteStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 const STATIC_ID_THRESHOLD = 10 ** 5;
 
@@ -61,9 +62,7 @@ export default function Palette() {
       {/* Список */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 custom-scrollbar">
         {sortedCategories.length === 0 ? (
-          <div className="text-center text-neutral-500 text-sm py-10">
-            Ничего не найдено
-          </div>
+          <EmptyState size="sm" title="Ничего не найдено" className="py-10" />
         ) : (
           sortedCategories.map((category) => {
             const isExpanded = getCategoryExpandedState(category);

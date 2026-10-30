@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginSchema } from '@/schemas/authSchema';
 import {Input} from "@/shared/ui/field/Input";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Banner} from "@/shared/ui/Banner";
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -157,9 +158,7 @@ export default function LoginPage() {
 
           {/* Ошибка от сервера */}
           {serverError && (
-            <div className="p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-xl text-center font-medium">
-              {serverError}
-            </div>
+            <Banner tone="destructive" icon={CircleAlert}>{serverError}</Banner>
           )}
 
           {/* Кнопка */}

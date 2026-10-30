@@ -20,6 +20,7 @@ import debounce from 'lodash/debounce';
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {toast} from "sonner";
 import {ParamValueField} from "./ParamValueField";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 const DeviceParams = () => {
   const {
@@ -206,22 +207,14 @@ const DeviceParams = () => {
 
   if (!selectedDevice) {
     return (
-      <div className="flex flex-col items-center justify-start mt-10 h-full text-neutral-500 dark:text-neutral-400">
-        {/* Обычное пустое состояние, а не ошибка: нейтральная иконка вместо «!». */}
-        <MousePointerClick className="w-10 h-10 mb-3 opacity-60"/>
-        <p className="text-base">Выберите устройство или канал в дереве слева</p>
-      </div>
+      // Обычное пустое состояние, а не ошибка: нейтральная иконка вместо «!».
+      <EmptyState icon={MousePointerClick} title="Выберите устройство или канал в дереве слева" className="h-full" />
     );
   }
 
   if (rawParams.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-neutral-500 dark:text-neutral-400">
-        <div className="text-center">
-          <Inbox className="w-10 h-10 mx-auto mb-3 opacity-60"/>
-          <p className="text-base">Нет параметров для отображения</p>
-        </div>
-      </div>
+      <EmptyState icon={Inbox} title="Нет параметров для отображения" className="h-full" />
     );
   }
   return (

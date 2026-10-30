@@ -3,6 +3,7 @@
 import React, {useEffect, useState} from "react";
 import {Undo2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
+import {Spinner} from "@/shared/ui/Spinner";
 import {loadVersionContent} from "@/core/project";
 import {compactButton} from "./formStyles";
 import {
@@ -144,8 +145,8 @@ export function AutomationVersionChanges({projectId, versionNo, previousNo, onRe
     return () => { cancelled = true; };
   }, [projectId, versionNo, previousNo]);
 
-  if (error) return <p className="text-xs text-red-600 dark:text-red-400">{error}</p>;
-  if (!state) return <p className="text-xs text-neutral-500">Загрузка…</p>;
+  if (error) return <p className="text-xs text-destructive">{error}</p>;
+  if (!state) return <Spinner label="Загрузка…" className="text-xs" />;
 
   return (
     <div className="space-y-3">
