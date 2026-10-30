@@ -70,3 +70,24 @@ export async function selectProjectGuarded(
   if (!opts?.skipSceneFetch) await loadSceneList(project.id);
   return true;
 }
+
+/**
+ * Создаёт схему, спросив подтверждение при несохранённых правках: новая схема встаёт на
+ * место открытой, а её элементы и история отмены стираются. Раньше кнопка «Создать схему»
+ * делала это без вопроса. Имя спрашивает сама `createScene` — уже после подтверждения.
+ */
+export async function createSceneGuarded(): Promise<void> {
+  if (hasUnsavedWork()) {
+    const ok = await confirmModal({
+      title: "Схема не сохранена",
+      description: "Создать новую схему? Несохранённые изменения в открытой будут потеряны.",
+      confirmLabel: "Создать",
+      danger: true,
+    });
+    if (!ok) return;
+  }
+
+  const created = await useEditorStore.getState().createScene();
+  // Палитра зависит от проекта и подгружается вместе со схемой.
+  if (created) await usePaletteStore.getState().loadPaletteItems();
+}

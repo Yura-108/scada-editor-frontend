@@ -7,24 +7,21 @@ import {IconButton} from "@/shared/ui/IconButton";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {PickerSelect} from "@/shared/ui/field/PickerSelect";
 import {useCurrentProjectGrant} from "@/core/access";
-import {usePaletteStore} from "@/store/usePaletteStore";
 import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
 import {useEditorStore} from "../../model/editorStore";
-import {openSceneGuarded} from "../../model/openScene";
+import {createSceneGuarded, openSceneGuarded} from "../../model/openScene";
 
 /**
  * Выбор схемы в шапке редактора. Заменил окно «Выберите схему»: в строках — закрепление
  * (вкладки быстрого доступа для всех пользователей проекта) и удаление, создание — кнопкой
- * «+» рядом. Без права правки схемы только открываются. Переход к другой схеме спрашивает
- * про несохранённые правки (`openSceneGuarded`).
+ * «+» рядом. Без права правки схемы только открываются. Переход к другой схеме и создание
+ * новой спрашивают про несохранённые правки (`openSceneGuarded`, `createSceneGuarded`).
  */
 export function ScenePicker({open, onOpenChange}: {open: boolean; onOpenChange: (open: boolean) => void}) {
-  const {currentProject, scene, sceneList, deleteScene, createScene} = useEditorStore(useShallow(s => ({
-    currentProject: s.currentProject, scene: s.scene, sceneList: s.sceneList,
-    deleteScene: s.deleteScene, createScene: s.createScene,
+  const {currentProject, scene, sceneList, deleteScene} = useEditorStore(useShallow(s => ({
+    currentProject: s.currentProject, scene: s.scene, sceneList: s.sceneList, deleteScene: s.deleteScene,
   })));
   const canWrite = useCurrentProjectGrant().edit;
-  const loadPaletteItems = usePaletteStore(s => s.loadPaletteItems);
   // Подписка, а не getState(): иконка скрепки обязана переключаться сразу по клику.
   const pins = usePinnedScenesStore(s => s.pins);
   const togglePin = usePinnedScenesStore(s => s.togglePin);
@@ -44,12 +41,6 @@ export function ScenePicker({open, onOpenChange}: {open: boolean; onOpenChange: 
     await deleteScene(item.id);
     // Удалённая схема не должна остаться вкладкой быстрого доступа.
     unpin(item.id);
-  };
-
-  // Имя спрашивает сама createScene. Палитра зависит от проекта — как при открытии схемы.
-  const create = async () => {
-    await createScene();
-    await loadPaletteItems();
   };
 
   return (
@@ -93,7 +84,7 @@ export function ScenePicker({open, onOpenChange}: {open: boolean; onOpenChange: 
         })}
       />
       {canWrite && currentProject && (
-        <IconButton icon={Plus} label="Новая схема" variant="secondary" onClick={() => void create()} />
+        <IconButton icon={Plus} label="Новая схема" variant="secondary" onClick={() => void createSceneGuarded()} />
       )}
     </div>
   );
