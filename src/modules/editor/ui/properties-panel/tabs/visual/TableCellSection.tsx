@@ -36,15 +36,15 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
   if (!cellFocus || !cellTargetKey) return null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-amber-400/40 bg-amber-500/5 p-3">
+    <div className="space-y-3 rounded-xl border border-warning/40 bg-warning/5 p-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+        <h4 className="text-xs font-medium text-warning uppercase tracking-wider">
           Ячейка: строка {cellFocus.row + 1}, столбец {cellFocus.col + 1}
         </h4>
         <button
           type="button"
           onClick={() => clearTableCellSelection()}
-          className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          className="text-xs text-muted-foreground hover:text-foreground"
           title="Снять выделение ячейки"
           aria-label="Снять выделение ячейки"
         >

@@ -4,6 +4,8 @@ import {Layers} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
 import {elementTypeLabel} from "@/constants/propertiesPanel";
 import {useEditorStore} from "../../model/editorStore";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
 
 /** Заголовок панели и плашка режима «Править все состояния». */
 export function PanelHeader({element}: {element: DiagramElement}) {
@@ -29,19 +31,15 @@ export function PanelHeader({element}: {element: DiagramElement}) {
           и правка «только для Аварии» молча растекается по всем состояниям — ровно та
           ошибка, от которой режим и должен спасать. */}
       {editAllStates && (
-        <div className="shrink-0 mx-4 mt-3 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2">
-          <Layers size={14} className="shrink-0 text-amber-600 dark:text-amber-400"/>
-          <span className="text-xs text-amber-700 dark:text-amber-300">
-            Правка идёт во все состояния
-          </span>
-          <button
-            type="button"
-            onClick={() => setEditAllStates(false)}
-            className="ml-auto text-xs text-amber-700 hover:underline dark:text-amber-300"
-          >
-            Выключить
-          </button>
-        </div>
+        <Banner
+          role="note"
+          tone="warning"
+          icon={Layers}
+          className="shrink-0 mx-4 mt-3 items-center rounded-lg px-3 py-1.5 text-xs"
+          actions={<Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEditAllStates(false)}>Выключить</Button>}
+        >
+          Правка идёт во все состояния
+        </Banner>
       )}
     </>
   );

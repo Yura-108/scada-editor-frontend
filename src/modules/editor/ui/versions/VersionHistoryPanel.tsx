@@ -3,14 +3,15 @@
 import React, {useEffect, useState} from "react";
 import {Clock, Eye, RotateCcw, X} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
+import {Badge} from "@/shared/ui/Badge";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
 import {useCurrentProjectGrant} from "@/core/access";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {
   formatVersionTime,
-  VERSION_KIND_BADGE,
   VERSION_KIND_LABEL,
+  VERSION_KIND_TONE,
 } from "./formatVersion";
 import type {VersionKind} from "@/types/editorVersion.types";
 import {Button} from "@/shared/ui/Button";
@@ -168,9 +169,9 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                     <span className="ml-1 font-normal text-neutral-500">(текущая)</span>
                   )}
                 </span>
-                <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${VERSION_KIND_BADGE[v.kind] ?? ""}`}>
+                <Badge tone={VERSION_KIND_TONE[v.kind] ?? "neutral"} className="shrink-0">
                   {VERSION_KIND_LABEL[v.kind] ?? v.kind}
-                </span>
+                </Badge>
               </div>
 
               <div className="mt-0.5 text-neutral-500">

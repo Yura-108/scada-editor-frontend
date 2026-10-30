@@ -12,6 +12,7 @@ import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObject
 import {pickTag} from "@/core/devices";
 import {shortTagPath} from "@/core/scene";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {EmptyState} from "@/shared/ui/EmptyState";
 
 interface BindingsTabProps {
   element: DiagramElement;
@@ -72,7 +73,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
       </p>
 
       {!canSave && (
-        <div className="text-xs text-amber-600 dark:text-amber-400">
+        <div className="text-xs text-warning">
           У элемента нет свойств — привязать можно только тег (кнопка ниже). Для привязки
           к свойству другого компонента сначала добавьте элементу свойство на вкладке
           «Свойства».
@@ -80,7 +81,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
       )}
 
       {bindings.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400 italic py-3">Нет привязок</div>
+        <EmptyState size="sm" title="Нет привязок" className="py-3" />
       ) : (
         <div className="space-y-2">
           {bindings.map(binding => {

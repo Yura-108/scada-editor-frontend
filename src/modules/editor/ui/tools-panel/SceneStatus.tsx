@@ -2,6 +2,7 @@
 
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
+import {Badge} from "@/shared/ui/Badge";
 
 /** Левая колонка тулбара: проект, схема, право просмотра и статус сохранения. */
 export function SceneStatus({canWrite}: {canWrite: boolean}) {
@@ -31,12 +32,9 @@ export function SceneStatus({canWrite}: {canWrite: boolean}) {
           В режиме просмотра версии статус не показываем — там говорит плашка,
           а «сохранено в …» рядом со старой версией только запутает. */}
       {currentProject && !canWrite && (
-        <span
-          className="shrink-0 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400"
-          title="У вас право просмотра проекта: правки остаются локальными и не сохраняются"
-        >
+        <Badge tone="warning" className="shrink-0" title="У вас право просмотра проекта: правки остаются локальными и не сохраняются">
           только просмотр
-        </span>
+        </Badge>
       )}
       {scene && !versionPreview && canWrite && (
         <span className="shrink-0 whitespace-nowrap">

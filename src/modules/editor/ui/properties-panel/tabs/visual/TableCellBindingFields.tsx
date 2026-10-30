@@ -11,6 +11,7 @@ import {baseInputClasses} from "../../panelClasses";
 import {historyEditing} from "../../../../model/historyGroup";
 import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 import {Select} from "@/shared/ui/field/Select";
+import {IconButton} from "@/shared/ui/IconButton";
 
 /** Чем заполнена ячейка: полем свойства таблицы, свободным текстом или прежней привязкой. */
 export function TableCellBindingFields({element, cell}: {element: DiagramElement; cell: TableCellModel}) {
@@ -80,26 +81,20 @@ export function TableCellBindingFields({element, cell}: {element: DiagramElement
       )}
 
       {(element.properties?.length ?? 0) === 0 && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+        <p className="text-[11px] text-warning">
           У таблицы нет свойств — добавьте их на вкладке «Свойства», чтобы
           привязывать ячейки.
         </p>
       )}
 
       {cellBinding && cellBindingRef && (
-        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-xs">
-          <Boxes size={13} className="text-emerald-500 shrink-0" />
-          <span className="text-gray-500 dark:text-gray-400">значение ←</span>
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-success/30 bg-success/10 text-xs">
+          <Boxes size={13} className="text-success shrink-0" />
+          <span className="text-muted-foreground">значение ←</span>
           <span className="truncate flex-1">
             {cellBindingRef.componentLabel} · {cellBindingRef.propertyName}
           </span>
-          <button
-            onClick={() => removeBinding(element.key, cellBinding.id)}
-            className="text-gray-500 hover:text-red-500 transition-colors"
-            title="Отвязать"
-          >
-            <Trash2 size={13} />
-          </button>
+          <IconButton icon={Trash2} label="Отвязать" variant="danger" size="xs" onClick={() => removeBinding(element.key, cellBinding.id)} />
         </div>
       )}
     </>
