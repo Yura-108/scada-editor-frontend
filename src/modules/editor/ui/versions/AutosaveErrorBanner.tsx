@@ -24,7 +24,8 @@ import {Button} from "@/shared/ui/Button";
  * плашка появится опять.
  */
 /** Места плашек сверху вниз; классы целиком, чтобы Tailwind их нашёл. */
-const TOP_SLOTS = ["top-14", "top-28", "top-42"];
+// Отступ от верха окна: под шапкой приложения и шапкой редактора, плашки одна под другой.
+const TOP_SLOTS = ["top-[calc(3.5rem+var(--page-header-h))]", "top-[calc(7rem+var(--page-header-h))]", "top-[calc(10.5rem+var(--page-header-h))]"];
 
 export default function AutosaveErrorBanner() {
   const {autosaveError, staleBaseVersion, versionPreview} = useEditorStore(

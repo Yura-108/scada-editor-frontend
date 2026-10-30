@@ -3,6 +3,8 @@ import {SceneTabs} from "../scene-tabs/SceneTabs";
 import {EditorPanel} from "./EditorPanel";
 import {RecipesPanel} from "../recipes/RecipesPanel";
 import {useCurrentProjectGrant} from "@/core/access";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+import {EditorHeader} from "../header/EditorHeader";
 import {ToolsPanel} from "../tools-panel";
 import {usePanelResize} from "./hooks/usePanelResize";
 import {usePersistedLayout} from "./hooks/usePersistedLayout";
@@ -42,79 +44,83 @@ export function WorkSpace() {
   };
 
   return (
-    // 1. Главный контейнер фиксируем на весь экран. Он блокирует любой внешний скролл.
-    <div
-      ref={rootRef}
-      // Вся геометрия панелей выражена CSS-переменными, а не пропсами с числами:
-      // во время перетаскивания края обработчик пишет их прямо в стиль этого узла
-      // (см. handleResizeStart), и ре-рендера React на каждый пиксель не происходит.
-      // --ws-*-w — ширина панели, --ws-*-m — отступ содержимого (0 у свёрнутой панели).
-      style={{
-        "--ws-left-w": `${leftWidth}px`,
-        "--ws-right-w": `${rightWidth}px`,
-        "--ws-left-m": leftShown ? `${leftWidth}px` : "0px",
-        "--ws-right-m": rightShown ? `${rightWidth}px` : "0px",
-      } as React.CSSProperties}
-      className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200"
-    >
+    // Каркас как у остальных разделов: шапка с выбором проекта и схемы, под ней рабочая
+    // область. Сама область не прокручивается — внешний скролл заблокирован.
+    <PageFrame>
+      <EditorHeader />
+      <div
+        ref={rootRef}
+        // Вся геометрия панелей выражена CSS-переменными, а не пропсами с числами:
+        // во время перетаскивания края обработчик пишет их прямо в стиль этого узла
+        // (см. handleResizeStart), и ре-рендера React на каждый пиксель не происходит.
+        // --ws-*-w — ширина панели, --ws-*-m — отступ содержимого (0 у свёрнутой панели).
+        style={{
+          "--ws-left-w": `${leftWidth}px`,
+          "--ws-right-w": `${rightWidth}px`,
+          "--ws-left-m": leftShown ? `${leftWidth}px` : "0px",
+          "--ws-right-m": rightShown ? `${rightWidth}px` : "0px",
+        } as React.CSSProperties}
+        className="relative flex-1 min-h-0 overflow-hidden"
+      >
 
-      {/* Центральная область (Холст). Занимает 100% места, находится под панелями */}
-      <main className="absolute inset-0  flex flex-col z-canvas">
-        {showEditorPanels && <ToolsPanel />}
+        {/* Центральная область (Холст). Занимает 100% места, находится под панелями */}
+        <main className="absolute inset-0  flex flex-col z-canvas">
+          {showEditorPanels && <ToolsPanel />}
 
-        {/* Полоса вкладок — общий компонент с монитором (SceneTabs).
-            Отступы обязательны: боковые панели — absolute z-panel поверх main (z-canvas), без
-            marginLeft/Right полоса вкладок оказывается под левой панелью и не видна. */}
-        <SceneTabs
-          activeKey={activeTabKey}
-          onActivate={activateTab}
-          extraTab={RECIPES_TAB}
-          fallbackTab={EDITOR_TAB}
-          contentId="workspace-tab-content"
-          ariaLabel="Разделы редактора"
-          editable={canWrite}
-          className="transition-[margin] duration-300 ease-in-out"
-          style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
+          {/* Полоса вкладок — общий компонент с монитором (SceneTabs).
+              Отступы обязательны: боковые панели — absolute z-panel поверх main (z-canvas), без
+              marginLeft/Right полоса вкладок оказывается под левой панелью и не видна. */}
+          <SceneTabs
+            activeKey={activeTabKey}
+            onActivate={activateTab}
+            extraTab={RECIPES_TAB}
+            fallbackTab={EDITOR_TAB}
+            contentId="workspace-tab-content"
+            ariaLabel="Разделы редактора"
+            editable={canWrite}
+            className="transition-[margin] duration-300 ease-in-out"
+            style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
+          />
+
+          {/* Содержимое вкладки: занимает всё оставшееся место.
+              Для «Редактора» — Canvas между панелями; для остальных — чистый элемент вкладки. */}
+          <div
+            id="workspace-tab-content"
+            role="tabpanel"
+            aria-labelledby={`scene-tab-${activeTabKey}`}
+            className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
+          >
+            {renderTabContent()}
+          </div>
+        </main>
+
+
+        <LeftPanel
+          width={leftWidth}
+          shown={leftShown}
+          visible={leftVisible}
+          showEditorPanels={showEditorPanels}
+          resizing={resizingSide === "left"}
+          leftTab={leftTab}
+          setLeftTab={setLeftTab}
+          setVisible={setLeftVisible}
+          onResizeStart={(e) => handleResizeStart(e, "left")}
+          onResizeKey={(e) => handleResizeKey(e, "left")}
         />
 
-        {/* Содержимое вкладки: занимает всё оставшееся место.
-            Для «Редактора» — Canvas между панелями; для остальных — чистый элемент вкладки. */}
-        <div
-          id="workspace-tab-content"
-          role="tabpanel"
-          aria-labelledby={`scene-tab-${activeTabKey}`}
-          className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
-        >
-          {renderTabContent()}
-        </div>
-      </main>
+        <RightPanel
+          width={rightWidth}
+          shown={rightShown}
+          visible={rightVisible}
+          showEditorPanels={showEditorPanels}
+          resizing={resizingSide === "right"}
+          setVisible={setRightVisible}
+          onResizeStart={(e) => handleResizeStart(e, "right")}
+          onResizeKey={(e) => handleResizeKey(e, "right")}
+        />
 
-
-      <LeftPanel
-        width={leftWidth}
-        shown={leftShown}
-        visible={leftVisible}
-        showEditorPanels={showEditorPanels}
-        resizing={resizingSide === "left"}
-        leftTab={leftTab}
-        setLeftTab={setLeftTab}
-        setVisible={setLeftVisible}
-        onResizeStart={(e) => handleResizeStart(e, "left")}
-        onResizeKey={(e) => handleResizeKey(e, "left")}
-      />
-
-      <RightPanel
-        width={rightWidth}
-        shown={rightShown}
-        visible={rightVisible}
-        showEditorPanels={showEditorPanels}
-        resizing={resizingSide === "right"}
-        setVisible={setRightVisible}
-        onResizeStart={(e) => handleResizeStart(e, "right")}
-        onResizeKey={(e) => handleResizeKey(e, "right")}
-      />
-
-    </div>
+      </div>
+    </PageFrame>
   );
 }
 

@@ -42,6 +42,7 @@ export function PickerSelect({
   open,
   onOpenChange,
   className,
+  contentClassName,
   title,
   "aria-label": ariaLabel,
 }: {
@@ -56,6 +57,8 @@ export function PickerSelect({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  /** Ширина раскрытого списка, когда строкам с кнопками тесно в ширине поля. */
+  contentClassName?: string;
   title?: string;
   "aria-label": string;
 }) {
@@ -123,6 +126,7 @@ export function PickerSelect({
           className={cn(
             "z-dropdown w-(--radix-popover-trigger-width) min-w-72 max-w-[90vw] overflow-hidden rounded-lg border",
             "bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0",
+            contentClassName,
           )}
         >
           {searchable && (

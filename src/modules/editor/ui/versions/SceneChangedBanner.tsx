@@ -46,7 +46,7 @@ export default function SceneChangedBanner() {
   return (
     <div
       style={{left: "var(--ws-left-m, 0px)", right: "var(--ws-right-m, 0px)"}}
-      className={`fixed ${versionPreview ? "top-28" : "top-14"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
+      className={`fixed ${versionPreview ? "top-[calc(7rem+var(--page-header-h))]" : "top-[calc(3.5rem+var(--page-header-h))]"} z-toolbar flex items-center justify-center gap-3 px-4 pointer-events-none`}
     >
       <Banner
         layout="floating"

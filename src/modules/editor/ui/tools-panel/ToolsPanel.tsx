@@ -1,13 +1,10 @@
 import React, {useState} from "react";
-import {useShallow} from "zustand/react/shallow";
-import {useEditorStore} from "../../model/editorStore";
 import {useSceneFileImport} from "./hooks/useSceneFileImport";
 import {useToolbarAccess} from "./hooks/useToolbarAccess";
 import {ArrangeButtons} from "./ArrangeButtons";
 import {HistoryButtons} from "./HistoryButtons";
 import {SaveButton} from "./SaveButton";
 import {SceneButtons} from "./SceneButtons";
-import {SceneStatus} from "./SceneStatus";
 import {ToolbarDivider} from "./TooltipBtn";
 import VersionHistoryPanel from "../versions/VersionHistoryPanel";
 import SaveConflictDialog from "../versions/SaveConflictDialog";
@@ -23,11 +20,11 @@ import AutosaveErrorBanner from "../versions/AutosaveErrorBanner";
  *
  * Каждая группа кнопок подписана на стор сама и только на своё: подписка на весь стор
  * перерисовывала панель на каждый тик пана/зума (то же замечание, что и в WorkSpace/Canvas).
+ *
+ * Проект, схема и статус сохранения — в шапке редактора (`EditorHeader`), здесь только
+ * действия над схемой. Отступ сверху — шапка приложения, шапка раздела и полоса вкладок.
  */
 export function ToolsPanel() {
-  const {scene, currentProject} = useEditorStore(useShallow(s => ({
-    scene: s.scene, currentProject: s.currentProject,
-  })));
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const {sceneBelongsToProject, canEdit, canWrite, canSave} = useToolbarAccess();
@@ -39,17 +36,12 @@ export function ToolsPanel() {
         left: "var(--ws-left-m, 0px)",
         right: "var(--ws-right-m, 0px)",
       }}
-      className="fixed top-26 z-toolbar grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2
+      className="fixed top-[calc(var(--app-header-h)+var(--page-header-h)+2.5rem)] z-toolbar flex justify-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      {/* Проект и сцена: отдельная колонка слева, не влияет на центрирование тулбара */}
-      <div className="min-w-0 flex justify-start">
-        <SceneStatus canWrite={canWrite} />
-      </div>
+      <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto">
 
-      <div className="flex gap-1.5 p-1.5 bg-white dark:bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto justify-self-center">
-
-        <SceneButtons canEdit={canEdit} canWrite={canWrite} onImport={handleImport} />
+        <SceneButtons canEdit={canEdit} onImport={handleImport} />
 
         <ToolbarDivider />
 
@@ -60,14 +52,6 @@ export function ToolsPanel() {
         <ArrangeButtons canEdit={canEdit} />
 
         {canWrite && <SaveButton canSave={canSave} />}
-      </div>
-
-      <div className="min-w-0 flex justify-end">
-        {scene && currentProject && !sceneBelongsToProject && (
-          <div className="truncate text-xs font-medium text-red-500 dark:text-red-400 pointer-events-auto">
-            Сцена не принадлежит проекту «{currentProject.name}». Выберите сцену из списка.
-          </div>
-        )}
       </div>
 
       <input
