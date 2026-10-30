@@ -4,6 +4,7 @@ import {Check, ChevronDown, Search, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {fieldBase, fieldSizes} from "./field/fieldStyles";
 import {EmptyState} from "./EmptyState";
+import {usePortalContainer} from "./portalContainer";
 
 interface MultiSelectProps {
   options: { value: string; label: string }[];
@@ -27,6 +28,7 @@ const FILTER_FROM = 8;
  */
 export const MultiSelect = ({options, selected, onChange, placeholder, icon, disabled, isLoading, labelId, className}: MultiSelectProps) => {
   const [filter, setFilter] = useState("");
+  const portalContainer = usePortalContainer();
 
   const toggleOption = (value: string) => {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
@@ -68,7 +70,7 @@ export const MultiSelect = ({options, selected, onChange, placeholder, icon, dis
         </button>
       </Popover.Trigger>
 
-      <Popover.Portal>
+      <Popover.Portal container={portalContainer}>
         <Popover.Content
           align="start"
           sideOffset={6}

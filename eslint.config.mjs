@@ -7,7 +7,7 @@ import nextTs from 'eslint-config-next/typescript';
 // Когда нарушений в слое не останется, его правило можно перевести в 'error'.
 
 // Продуктовые модули src/modules/<имя>. Новый модуль — добавить имя сюда.
-const MODULES = ['editor', 'monitor', 'channels', 'automation', 'data', 'logs', 'journal', 'admin', 'auth', 'actions'];
+const MODULES = ['editor', 'monitor', 'channels', 'automation', 'data', 'logs', 'journal', 'admin', 'auth', 'actions', 'ui-catalog'];
 
 // Импорты только вниз: app → modules → core → shared; app/api → server → shared.
 const UP_TO_APP = { group: ['@/app/*'], message: 'Слой app — верхний, из него не импортируют.' };

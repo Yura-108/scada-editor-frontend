@@ -5,6 +5,7 @@ import { Select as SelectPrimitive } from "radix-ui"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
 import { cn } from "@/shared/lib/cn"
+import { usePortalContainer } from "../portalContainer"
 import { useFieldContext } from "./Field"
 import { fieldBase, type FieldSize } from "./fieldStyles"
 
@@ -140,8 +141,9 @@ function SelectContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const container = usePortalContainer()
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={container}>
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
