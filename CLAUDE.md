@@ -50,7 +50,8 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
   свой класс поля в файле не заводить. Что когда брать — `docs/architecture.md`, «UI-kit: поля».
 - **Вкладки, значки, плашки, заглушки, спиннер, шапка страницы, кнопка-иконка — только из `shared/ui`**
   (`Tabs`, `Badge`, `Banner`, `EmptyState`, `Spinner`, `PageFrame`/`PageHeader`, `IconButton`). Что когда брать —
-  `docs/architecture.md`, «UI-kit: общие компоненты».
+  `docs/architecture.md`, «UI-kit: общие компоненты». Перед новым компонентом загляните в каталог `/dev/ui`
+  (`npm run dev`); новый компонент `shared/ui` добавьте и туда.
 - **Окна — только из `shared/ui/dialog`** (`openModal`/`pushModal`, `confirmModal`/`promptModal`/
   `choiceModal`, локальный `Modal`), свой `Dialog.Root` не заводить (ESLint предупредит). Что когда брать —
   `docs/architecture.md`, «UI-kit: окна».
