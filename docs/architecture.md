@@ -225,6 +225,8 @@ ui/properties-panel/
 - ESLint (`no-restricted-syntax`, warn) отмечает свой `<select>`/`<textarea>` и прямой импорт Radix Select вне
   `shared/ui/field`. Исключение одно — редактор текста на холсте (`TextEditorOverlay`): он обязан выглядеть
   как текст фигуры.
+- Курсор над полями ввода — свой, тёмный с белой обводкой (`globals.css`): системный курсор Windows на части
+  машин рисуется белым и на светлом поле пропадает.
 
 ### UI-kit: общие компоненты
 
