@@ -1,9 +1,8 @@
 import {FileUp} from 'lucide-react';
 import {Button} from "@/shared/ui/Button";
+import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {ChannelsProjectPicker} from "@/core/devices";
 import {openImportCdbxModal} from "./OpenImportCdbxModal";
-
-const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
 
 /**
  * Верхняя панель «Базы каналов»: какие площадки и проекты загрузить в дерево, плюс импорт.
@@ -14,18 +13,17 @@ const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
  */
 export default function ChannelsToolbar() {
   return (
-    <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
-      <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">База каналов</span>
-
+    <PageHeader
+      title="База каналов"
+      actions={
+        // Импорт создаёт НОВЫЙ проект: после отчёта он сам подгружается в дерево и появляется
+        // в списке проектов слева.
+        <Button size="sm" onClick={openImportCdbxModal} title="Создать проект из файла базы каналов .cdbx">
+          <FileUp size={14} />Импорт .cdbx
+        </Button>
+      }
+    >
       <ChannelsProjectPicker />
-
-      <div className="flex-1" />
-
-      {/* Импорт создаёт НОВЫЙ проект: после отчёта он сам подгружается в дерево и появляется
-          в списке проектов слева. */}
-      <Button className={compact} onClick={openImportCdbxModal} title="Создать проект из файла базы каналов .cdbx">
-        <FileUp size={14} />Импорт .cdbx
-      </Button>
-    </div>
+    </PageHeader>
   );
 }

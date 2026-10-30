@@ -7,6 +7,9 @@ import {cn} from "@/shared/lib/cn";
  * справа действия (`actions`). Строка не переносится: на узком окне она прокручивается
  * вбок, а название раздела прячется — оно есть в шапке приложения и во вкладке браузера.
  * `alwaysShowTitle` — для раздела, где в строке почти ничего нет (администрирование).
+ *
+ * Без `actions` строку делит сам владелец (`<div className="flex-1" />` в `children`) — так у
+ * монитора, где справа длинный ряд статусов.
  */
 export function PageHeader({
   title,
@@ -41,8 +44,10 @@ export function PageHeader({
         {description && <span className="text-xs text-muted-foreground">{description}</span>}
       </div>
       {children}
-      <div className="flex-1" />
-      {actions}
+      {actions && <>
+        <div className="flex-1" />
+        {actions}
+      </>}
     </div>
   );
 }

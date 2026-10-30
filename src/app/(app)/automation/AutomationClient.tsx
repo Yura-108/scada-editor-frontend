@@ -2,10 +2,16 @@
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import Link from "next/link";
-import {Plus, RefreshCw, Save, Send, X} from "lucide-react";
+import {CircleAlert, Plus, RefreshCw, Save, Send, X} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
+import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {Spinner} from "@/shared/ui/Spinner";
+import {Tabs, type TabItem} from "@/shared/ui/Tabs";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore, useEditableProject} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/core/access";
@@ -45,7 +51,7 @@ import {ProjectSelect} from "@/core/project";
 
 type Tab = "tasks" | "watchdog" | "history";
 
-const TAB_LABELS: Record<Tab, string> = {tasks: "Задачи", watchdog: "Watchdog", history: "История"};
+const TABS: TabItem<Tab>[] = [{value: "tasks", label: "Задачи"}, {value: "watchdog", label: "Watchdog"}, {value: "history", label: "История"}];
 
 const newTask = (index: number): AutomationTask => ({
   id: null,
@@ -467,10 +473,20 @@ export default function AutomationClient() {
   };
 
   return (
-    <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
-      {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
-      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
-        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Автоматизация</span>
+    <PageFrame>
+      <PageHeader
+        title="Автоматизация"
+        actions={<>
+          {saved?.version != null && <span className="text-xs text-muted-foreground" title="Версия сохранённого набора">v{saved.version}</span>}
+          <IconButton icon={RefreshCw} label="Перечитать с сервера" variant="secondary" onClick={() => void handleReload()} disabled={!draft || saving} />
+          {canWrite ? <>
+            <IconButton icon={Send} label="Отправить сохранённый набор в automation заново" variant="secondary" onClick={handleRepublish} disabled={!draft || dirty} />
+            <Button variant="primary" size="sm" onClick={handleSaveAll} disabled={!draft || !dirty || saving} title="Сохранить все задачи и watchdog одним набором">
+              <Save size={14} />{saving ? "Сохранение…" : unsavedCount > 1 ? `Сохранить всё (${unsavedCount})` : "Сохранить всё"}
+            </Button>
+          </> : null}
+        </>}
+      >
         <ProjectSelect
           projects={projectList}
           value={projectId}
@@ -480,36 +496,13 @@ export default function AutomationClient() {
             if (await confirmLeave()) setCurrentProject(next);
           }}
         />
-        {(Object.keys(TAB_LABELS) as Tab[]).map(key => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={cn("px-3 py-1 rounded-lg text-sm", tab === key ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")}
-          >
-            {TAB_LABELS[key]}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {saved?.version != null && <span className="text-xs text-neutral-500" title="Версия сохранённого набора">v{saved.version}</span>}
-        <Button className={compactButton} onClick={() => void handleReload()} disabled={!draft || saving} title="Перечитать с сервера"><RefreshCw size={14} /></Button>
-        {canWrite ? <>
-        <Button className={compactButton} onClick={handleRepublish} disabled={!draft || dirty} title="Отправить сохранённый набор в automation заново"><Send size={14} /></Button>
-        <Button
-          variant="primary"
-          className={compactButton}
-          onClick={handleSaveAll}
-          disabled={!draft || !dirty || saving}
-          title="Сохранить все задачи и watchdog одним набором"
-        >
-          <Save size={14} />{saving ? "Сохранение…" : unsavedCount > 1 ? `Сохранить всё (${unsavedCount})` : "Сохранить всё"}
-        </Button>
-        </> : null}
-      </div>
+        <Tabs aria-label="Разделы автоматизации" value={tab} onValueChange={setTab} items={TABS} />
+      </PageHeader>
 
       {project && draft && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
       {projectErrors.length > 0 && (
-        <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300 space-y-0.5">
+        <Banner layout="bar" tone="destructive" icon={CircleAlert}>
           {projectErrors.map((e, i) => <div key={i}>{e.field}: {e.message}</div>)}
           {hasVariableErrors && (
             <div>
@@ -517,13 +510,13 @@ export default function AutomationClient() {
               <Link href="/data" className="underline">«Данные проекта» → «Переменные»</Link>.
             </div>
           )}
-        </div>
+        </Banner>
       )}
 
       {!draft || !saved ? (
         projectId == null
           ? <ProjectPlaceholder listLoaded={listLoaded} projectCount={projectList.length} unavailable={unavailable} />
-          : <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">Загрузка…</div>
+          : <Spinner label="Загрузка…" fill />
       ) : tab === "tasks" ? (
         <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex-1 min-h-0 flex">
@@ -622,7 +615,7 @@ export default function AutomationClient() {
         />
       )}
       {draft && <FloatingHelp storageKey="help.automation" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
-    </div>
+    </PageFrame>
   );
 }
 

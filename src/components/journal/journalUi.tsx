@@ -26,19 +26,14 @@ export const formatTs = (iso: string) => {
     : `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU")}`;
 };
 
-/** Каркас страницы журнала: под шапкой, на всю высоту. */
-export const journalPage =
-  "fixed inset-0 top-(--app-header-h) flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100";
-
-/** Панель фильтров — форма в строку под заголовком журнала. */
+/** Панель фильтров — форма в строку под шапкой журнала (`PageHeader`). */
 export const journalFilterBar =
-  "shrink-0 flex flex-wrap items-end justify-center gap-3 px-4 pt-1 pb-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80";
+  "shrink-0 flex flex-wrap items-end justify-center gap-3 px-4 py-3 border-b bg-card";
 
-export const journalTableBox =
-  "overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900";
-export const journalThead = "bg-neutral-50 dark:bg-neutral-800/60 text-left text-xs uppercase tracking-wide text-neutral-500";
+export const journalTableBox = "overflow-x-auto rounded-xl border bg-card";
+export const journalThead = "bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground";
 export const journalTh = "px-3 py-2";
-export const journalTbody = "divide-y divide-neutral-100 dark:divide-neutral-800";
+export const journalTbody = "divide-y";
 export const journalTd = "px-3 py-2";
 
 /** Бейдж статуса в ячейке: «OK», «Ошибка», вид операции. */
@@ -50,19 +45,6 @@ export const journalBadge = (tone: "ok" | "error" | "warn" | "neutral") =>
     tone === "warn" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
     tone === "neutral" && "bg-neutral-500/10 text-neutral-600 dark:text-neutral-300",
   );
-
-/**
- * Заголовок журнала — отдельной строкой над панелью фильтров. В одной строке с полями
- * он смотрелся как ещё один фильтр и пропадал на узком окне.
- */
-export function JournalTitle({title, description}: {title: string; description: string}) {
-  return (
-    <div className="shrink-0 px-4 pt-3 pb-1 text-center bg-white dark:bg-neutral-900/80">
-      <h1 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h1>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">{description}</p>
-    </div>
-  );
-}
 
 /** Поле фильтра с подписью над ним. */
 /** Поле фильтра журнала: компактная подпись над `Input`/`Select` размера `sm`. */
@@ -79,7 +61,7 @@ export function JournalPresets({onPick}: {onPick: (ms: number) => void}) {
           key={p.label}
           type="button"
           onClick={() => onPick(p.ms)}
-          className="rounded-lg px-2 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           {p.label}
         </button>
@@ -92,7 +74,7 @@ export function JournalPresets({onPick}: {onPick: (ms: number) => void}) {
 export function JournalEmptyRow({colSpan, children}: {colSpan: number; children: React.ReactNode}) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-8 text-center text-neutral-500">{children}</td>
+      <td colSpan={colSpan} className="px-3 py-8 text-center text-muted-foreground">{children}</td>
     </tr>
   );
 }

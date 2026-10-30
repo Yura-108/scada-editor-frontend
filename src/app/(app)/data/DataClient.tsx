@@ -2,10 +2,15 @@
 
 import React, {useCallback, useEffect, useState} from "react";
 import Link from "next/link";
-import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
+import {CircleAlert, RefreshCw, Save, Trash2, Upload} from "lucide-react";
 import {toast} from "sonner";
-import {cn} from "@/shared/lib/cn";
+import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {Spinner} from "@/shared/ui/Spinner";
+import {Tabs} from "@/shared/ui/Tabs";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore, useEditableProject} from "@/modules/editor";
 import {useCurrentProjectGrant} from "@/core/access";
@@ -13,7 +18,7 @@ import {ProjectPlaceholder} from "@/components/ui/ProjectPlaceholder";
 import {ReadOnlyBanner} from "@/components/ui/ReadOnlyBanner";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/core/automation";
 import {
-  compactButton, confirmRemoveTable, DataDiffView, DataVersionChanges, diffDataVersions, fetchProjectData,
+  confirmRemoveTable, DataDiffView, DataVersionChanges, diffDataVersions, fetchProjectData,
   fetchProjectDataVersions, loadDataVersion, ProjectDataSaveError, reloadProjectData,
   restoreProjectDataVersion, saveProjectData, TablesEditor, VariablesEditor,
 } from "@/modules/data";
@@ -28,7 +33,6 @@ import {ProjectSelect} from "@/core/project";
 
 type Tab = "tables" | "variables" | "history";
 
-const TAB_LABELS: Record<Tab, string> = {tables: "Таблицы", variables: "Переменные", history: "История таблиц"};
 
 /** Справка раздела: по вкладке — своя инструкция. */
 const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
@@ -347,78 +351,69 @@ export default function DataClient() {
     : dataBanner.map(e => `${e.field}: ${e.message}`);
 
   return (
-    <div className="fixed inset-0 top-(--app-header-h) overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 flex flex-col">
-      {/* В одну строку: название раздела есть в шапке и во вкладке браузера, на узком окне его прячем. */}
-      <div className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 whitespace-nowrap overflow-x-auto">
-        <span className="hidden xl:inline text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Данные проекта</span>
+    <PageFrame>
+      <PageHeader
+        title="Данные проекта"
+        actions={<>
+          {loaded && version != null && (
+            <span className="text-xs text-muted-foreground" title={onVariablesTab ? "Версия набора автоматизации" : "Версия таблиц"}>v{version}</span>
+          )}
+          <IconButton icon={RefreshCw} label="Перечитать с сервера" variant="secondary" disabled={!loaded}
+            onClick={() => void (onVariablesTab ? reloadAutomation() : reloadData())} />
+          {canWrite && tab === "tables" && data && data.tables.length > 0 && (
+            <Button
+              size="sm"
+              className="text-destructive"
+              onClick={() => void handleRemoveTable()}
+              title="Удалить выбранную таблицу (применится при сохранении)"
+            >
+              <Trash2 size={14} />Удалить таблицу
+            </Button>
+          )}
+          {canWrite ? <>
+            <Button
+              size="sm"
+              onClick={() => void handleApply()}
+              disabled={!data || dataDirty}
+              title={dataDirty ? "Сначала сохраните таблицы" : "Попросить automation перечитать сохранённые данные"}
+            >
+              <Upload size={14} />Применить данные
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={!loaded || !dirty || saving || (!onVariablesTab && invalidCells > 0)}
+              title={!onVariablesTab && invalidCells > 0 ? "Исправьте ячейки с неверным значением" : undefined}
+            >
+              <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
+            </Button>
+          </> : null}
+        </>}
+      >
         <ProjectSelect projects={projectList} value={projectId} onChange={id => void switchProject(id)} />
-        {(Object.keys(TAB_LABELS) as Tab[]).map(key => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={cn("px-3 py-1 rounded-lg text-sm", tab === key ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")}
-          >
-            {TAB_LABELS[key]}
-            {((key === "tables" && dataDirty) || (key === "variables" && automationDirty)) && <span className="ml-1 text-amber-500">•</span>}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {loaded && version != null && (
-          <span className="text-xs text-neutral-500" title={onVariablesTab ? "Версия набора автоматизации" : "Версия таблиц"}>v{version}</span>
-        )}
-        <Button
-          className={compactButton}
-          onClick={() => void (onVariablesTab ? reloadAutomation() : reloadData())}
-          disabled={!loaded}
-          title="Перечитать с сервера"
-        >
-          <RefreshCw size={14} />
-        </Button>
-        {canWrite && tab === "tables" && data && data.tables.length > 0 && (
-          <Button
-            className={cn(compactButton, "text-red-600 dark:text-red-400 hover:text-red-700")}
-            onClick={() => void handleRemoveTable()}
-            title="Удалить выбранную таблицу (применится при сохранении)"
-          >
-            <Trash2 size={14} />Удалить таблицу
-          </Button>
-        )}
-        {canWrite ? <>
-        <Button
-          className={compactButton}
-          onClick={() => void handleApply()}
-          disabled={!data || dataDirty}
-          title={dataDirty ? "Сначала сохраните таблицы" : "Попросить automation перечитать сохранённые данные"}
-        >
-          <Upload size={14} />Применить данные
-        </Button>
-        <Button
-          variant="primary"
-          className={compactButton}
-          onClick={() => void handleSave()}
-          disabled={!loaded || !dirty || saving || (!onVariablesTab && invalidCells > 0)}
-          title={!onVariablesTab && invalidCells > 0 ? "Исправьте ячейки с неверным значением" : undefined}
-        >
-          <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
-        </Button>
-        </> : null}
-      </div>
+        <Tabs aria-label="Разделы данных проекта" value={tab} onValueChange={setTab} items={[
+          {value: "tables", label: "Таблицы", dirty: dataDirty},
+          {value: "variables", label: "Переменные", dirty: automationDirty},
+          {value: "history", label: "История таблиц"},
+        ]} />
+      </PageHeader>
 
       {project && loaded && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
       {banner.length > 0 && (
-        <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300 space-y-0.5">
+        <Banner layout="bar" tone="destructive" icon={CircleAlert}>
           {banner.map((line, i) => <div key={i}>{line}</div>)}
           {onVariablesTab && (
             <div>Эти нарушения исправляются на странице <Link href="/automation" className="underline">«Автоматизация»</Link>.</div>
           )}
-        </div>
+        </Banner>
       )}
 
       {projectId == null ? (
         <ProjectPlaceholder listLoaded={listLoaded} projectCount={projectList.length} unavailable={unavailable} />
       ) : !loaded ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-neutral-500">Загрузка…</div>
+        <Spinner label="Загрузка…" fill />
       ) : tab === "tables" ? (
         <TablesEditor
           tables={data!.tables}
@@ -466,6 +461,6 @@ export default function DataClient() {
         />
       )}
       {loaded && <FloatingHelp storageKey="help.data" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
-    </div>
+    </PageFrame>
   );
 }

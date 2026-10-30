@@ -1,14 +1,15 @@
 'use client';
 
 import {useEffect} from "react";
-import {Loader2, RefreshCw} from "lucide-react";
+import {CircleAlert, Loader2, RefreshCw} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useLogsFilterStore, useLogsSearch} from "@/modules/logs";
 import LogsList from "@/components/logs/LogsList";
+import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
-import {
-  journalFilterBar, journalPage, JournalField, JournalPresets, JournalTitle, toLocalInput,
-} from "@/components/journal/journalUi";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+import {PageHeader} from "@/shared/ui/page/PageHeader";
+import {journalFilterBar, JournalField, JournalPresets, toLocalInput} from "@/components/journal/journalUi";
 import {Input} from "@/shared/ui/field/Input";
 
 const DAY_MS = 24 * 3600_000;
@@ -45,10 +46,11 @@ export default function LogsPage() {
   };
 
   return (
-    <div className={journalPage}>
-      <JournalTitle
+    <PageFrame>
+      <PageHeader
         title="Логирование"
         description="Изменения устройств и параметров в базе каналов — с возможностью отмены"
+        alwaysShowTitle
       />
       <form className={journalFilterBar} onSubmit={e => { e.preventDefault(); search(); }}>
         <JournalField label="С">
@@ -73,15 +75,13 @@ export default function LogsPage() {
         <JournalPresets onPick={applyPreset} />
       </form>
 
-      {error && (
-        <div className="shrink-0 px-4 py-2 text-sm bg-red-500/10 text-red-700 dark:text-red-300">{error}</div>
-      )}
+      {error && <Banner layout="bar" tone="destructive" icon={CircleAlert}>{error}</Banner>}
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="max-w-6xl mx-auto space-y-4">
           <LogsList />
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }
