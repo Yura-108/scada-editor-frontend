@@ -7,7 +7,8 @@ import {BindingsTab} from "./bindings/BindingsTab";
 import {EventsTab} from "./events/EventsTab";
 import {useEditorStore} from "../../model/editorStore";
 import {PanelHeader} from "./PanelHeader";
-import {PanelTabs, type TabType} from "./PanelTabs";
+import {tabPanelProps} from "@/shared/ui/Tabs";
+import {PANEL_TABS_ID, PanelTabs, type TabType} from "./PanelTabs";
 import {baseAddButtonClasses} from "./panelClasses";
 import {PropertiesTab} from "./tabs/PropertiesTab";
 import {ScriptsTab} from "./tabs/ScriptsTab";
@@ -59,7 +60,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
       <PanelTabs activeTab={activeTab} onChange={setActiveTab}/>
 
       {/* Контент вкладок */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
+      <div {...tabPanelProps(PANEL_TABS_ID, activeTab)} className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
 
         {/* Визуальные параметры */}
         {activeTab === "visual" && <VisualTab element={element} values={renderedElementValues}/>}

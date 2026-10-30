@@ -3,10 +3,11 @@ import {List} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {shortTagPath} from "@/core/scene";
 import {TagTree} from "@/core/devices";
+import {Tabs, type TabItem} from "@/shared/ui/Tabs";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
 import type {TagSource} from "./propertyOptions";
 
-const SOURCES: Array<{value: TagSource; label: string}> = [
+const SOURCES: TabItem<TagSource>[] = [
   {value: "channel", label: "Канал"},
   {value: "variable", label: "Переменная проекта"},
 ];
@@ -40,21 +41,7 @@ export function PropertyTagSource({isTagType, propertyType, tagSource, onTagSour
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        {SOURCES.map(source => (
-          <button
-            key={source.value}
-            type="button"
-            onClick={() => onTagSource(source.value)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm",
-              tagSource === source.value ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent",
-            )}
-          >
-            {source.label}
-          </button>
-        ))}
-      </div>
+      <Tabs aria-label="Источник тега" value={tagSource} onValueChange={onTagSource} items={SOURCES} />
 
       {tagSource === "channel" ? (
         <>
