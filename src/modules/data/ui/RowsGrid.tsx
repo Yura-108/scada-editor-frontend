@@ -4,7 +4,8 @@ import React, {useCallback, useEffect, useState} from "react";
 import {Plus, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
-import {compactButton, fieldHint, iconButton} from "./ColumnsEditor";
+import {IconButton} from "@/shared/ui/IconButton";
+import {compactButton, fieldHint} from "./ColumnsEditor";
 import {formatCell, parseCell, setCellValue} from "../lib/values";
 import type {
   ProjectDataColumn,
@@ -196,7 +197,7 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
                       </td>
                     ))}
                     <td className="align-top">
-                      <Button className={iconButton} onClick={() => onChange(rows.filter((_, i) => i !== ri))} title="Удалить строку"><Trash2 size={14} /></Button>
+                      <IconButton icon={Trash2} label="Удалить строку" variant="danger" onClick={() => onChange(rows.filter((_, i) => i !== ri))} />
                     </td>
                   </tr>
                 );

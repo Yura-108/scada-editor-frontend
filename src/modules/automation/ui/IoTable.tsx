@@ -3,8 +3,9 @@
 import React from "react";
 import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
-import {compactButton, iconButton} from "./formStyles";
+import {compactButton} from "./formStyles";
 import {useDeviceTreeStore} from "@/core/devices";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
@@ -49,21 +50,21 @@ export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
             onChange={e => patch(i, {tag: e.target.value})}
             title={row.tag || (row.example_tag ? `Пример из шаблона: ${row.example_tag}` : undefined)}
           />
-          <Button
-            className={iconButton}
+          <IconButton
+            icon={ArrowLeftToLine}
+            label="Подставить тег из дерева"
+            variant="secondary"
             onClick={() => selectedDevice && patch(i, {tag: selectedDevice})}
             disabled={!selectedDevice}
             title={selectedDevice ? `Подставить ${selectedDevice}` : "Выберите тег в дереве справа"}
-          >
-            <ArrowLeftToLine size={14} />
-          </Button>
+          />
           <Select
             size="sm"
             value={row.value_type}
             onValueChange={v => patch(i, {value_type: v as AutomationValueType})}
             options={AUTOMATION_VALUE_TYPES.map(t => ({value: t, label: t}))}
           />
-          <Button className={iconButton} onClick={() => onChange(rows.filter((_, j) => j !== i))} title="Удалить строку"><Trash2 size={14} /></Button>
+          <IconButton icon={Trash2} label="Удалить строку" variant="danger" onClick={() => onChange(rows.filter((_, j) => j !== i))} />
         </div>
       ))}
     </div>
