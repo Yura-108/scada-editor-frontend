@@ -8,7 +8,7 @@ import {Select} from "@/shared/ui/field/Select";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addDevice} from "../../model/deviceActions";
-import {useDeviceDictionaries} from "../../model/deviceDictionaries";
+import {getDeviceTemplates} from "../../model/deviceDictionaries";
 
 interface Props {
   onLoadAction: (node: {
@@ -73,7 +73,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
 
 export function OpenCreateDeviveModal(nodeKey: string) {
   const {openModal} = useModalStore.getState();
-  const { deviceTemplateList } = useDeviceDictionaries.getState();
+  const deviceTemplateList = getDeviceTemplates();
 
   const templates = deviceTemplateList?.templates ?? [];
 

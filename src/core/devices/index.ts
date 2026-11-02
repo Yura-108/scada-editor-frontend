@@ -3,7 +3,7 @@
 // импортируют друг друга относительно, а не через этот index.
 export {useDeviceTreeStore} from "./model/deviceTreeStore";
 export {useDeviceLocksStore} from "./model/deviceLocksStore";
-export {useDeviceDictionaries} from "./model/deviceDictionaries";
+export {loadParamTypes} from "./model/deviceDictionaries";
 export * from "./model/deviceActions";
 export {useEditingDevices} from "./model/useIsEditingDevice";
 export {useUnlockEditingOnUnload} from "./model/useUnlockEditingOnUnload";
