@@ -7,18 +7,9 @@ import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
-import {logoutToLogin, readBackendError} from "@/core/access";
+import {logoutToLogin, PASSWORD_MAX, PASSWORD_MIN, passwordProblem, readBackendError} from "@/core/access";
 
 const RELOGIN_DELAY_MS = 1500;
-
-/** Те же пределы, что проверяет auth (`ChangePasswordDto`). */
-export const PASSWORD_MIN = 6;
-export const PASSWORD_MAX = 100;
-
-export const passwordProblem = (password: string): string | null =>
-  password.length < PASSWORD_MIN ? `Пароль — не короче ${PASSWORD_MIN} символов`
-    : password.length > PASSWORD_MAX ? `Пароль — не длиннее ${PASSWORD_MAX} символов`
-      : null;
 
 /** Смена своего пароля: `PUT /api/auth/me/password` → 204, неверный текущий — 400. */
 export function ChangePasswordModal() {

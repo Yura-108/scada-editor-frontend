@@ -9,5 +9,6 @@ export * from "./actionAccess";
 export * from "./authInterceptor";
 export * from "./sessionUser";
 export * from "./sessionApi";
+export * from "./password";
 export {AccessLevelSelect} from "./ui/AccessLevelSelect";
 export {ReadOnlyBanner} from "./ui/ReadOnlyBanner";
