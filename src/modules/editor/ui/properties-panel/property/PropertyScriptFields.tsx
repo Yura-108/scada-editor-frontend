@@ -1,6 +1,7 @@
 import React from "react";
 import {Field} from "@/shared/ui/field/Field";
 import {Textarea} from "@/shared/ui/field/Textarea";
+import {AssistantScriptDraft} from "../../assistant/AssistantScriptDraft";
 
 /**
  * Скрипты свойства. onChange бэкенд разбирает как JavaScript и при ошибке отклоняет всю
@@ -16,6 +17,8 @@ export function PropertyScriptFields({onChange, setOnChange, onCanChange, setOnC
 }) {
   return (
     <>
+      <AssistantScriptDraft kind="ON_CHANGE" currentCode={onChange} onInsert={setOnChange} />
+
       <Field label="onChange" error={onChangeError && `Синтаксическая ошибка: ${onChangeError}`}>
         <Textarea
           value={onChange}

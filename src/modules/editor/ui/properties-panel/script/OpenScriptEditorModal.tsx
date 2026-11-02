@@ -13,6 +13,7 @@ import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogP
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {checkScriptSyntax} from "@/core/runtime";
 import {AccessLevelSelect} from "@/core/access";
+import {AssistantScriptDraft} from "../../assistant/AssistantScriptDraft";
 
 interface ScriptModalProps {
   title: string;
@@ -105,6 +106,8 @@ export function ScriptEditorModalContent({
             (оператор с уровнем ниже не сможет запустить скрипт; действует после выпуска и prod)
           </span>
         </div>
+
+        <AssistantScriptDraft kind="ACTION" currentCode={content} onInsert={setContent} />
 
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between mb-1 ml-1">

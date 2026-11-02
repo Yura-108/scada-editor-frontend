@@ -12,6 +12,7 @@ import {ScriptCodeField} from "../script/ScriptCodeField";
 import {ScriptTestRun} from "../script/ScriptTestRun";
 import {PropertyRefChips, TagChips} from "../script/ScopeChips";
 import {chipClasses} from "../script/scriptStyles";
+import {AssistantScriptDraft} from "../../assistant/AssistantScriptDraft";
 
 const EVENT_LABEL: Record<ElementEventName, string> = {
   onClick: "onClick (клик)",
@@ -110,6 +111,10 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
             </div>
           )}
         </div>
+
+        {/* Отдельного вида для двойного клика в контракте помощника нет: API обработчиков
+            событий общий, поэтому оба — ON_CLICK. */}
+        <AssistantScriptDraft kind="ON_CLICK" currentCode={code} onInsert={setCode} />
 
         <ScriptCodeField code={code} setCode={setCode} viewRef={viewRef} />
 

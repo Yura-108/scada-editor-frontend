@@ -9,6 +9,7 @@ import {TagBinding} from "@/core/scene";
 import {ChooseObjectPropertyModal} from "./OpenChooseObjectPropertyModal";
 import {useBindingEditor} from "./useBindingEditor";
 import {ScriptCodeField} from "../script/ScriptCodeField";
+import {AssistantScriptDraft} from "../../assistant/AssistantScriptDraft";
 import {ScriptTestRun} from "../script/ScriptTestRun";
 import {PropertyRefChips, TagChips} from "../script/ScopeChips";
 import {chipClasses} from "../script/scriptStyles";
@@ -99,6 +100,8 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
             </div>
           )}
         </div>
+
+        <AssistantScriptDraft kind="BINDING" currentCode={code} onInsert={setCode} />
 
         <ScriptCodeField code={code} setCode={setCode} viewRef={viewRef} />
 
