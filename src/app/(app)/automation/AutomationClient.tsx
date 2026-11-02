@@ -37,7 +37,7 @@ import {
 import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
-import {confirmLeave, useUnsavedGuard} from "@/lib/unsavedGuard";
+import {confirmLeave, useUnsavedGuard} from "@/shared/lib/unsavedGuard";
 import type {
   AutomationSet,
   AutomationTask,

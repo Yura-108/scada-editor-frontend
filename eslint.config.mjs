@@ -7,7 +7,7 @@ import nextTs from 'eslint-config-next/typescript';
 // Когда нарушений в слое не останется, его правило можно перевести в 'error'.
 
 // Продуктовые модули src/modules/<имя>. Новый модуль — добавить имя сюда.
-const MODULES = ['editor', 'monitor', 'channels', 'automation', 'data', 'logs', 'journal', 'admin', 'auth', 'actions', 'ui-catalog'];
+const MODULES = ['editor', 'monitor', 'channels', 'automation', 'data', 'logs', 'journal', 'admin', 'auth', 'actions', 'ui-catalog', 'shell'];
 
 // Импорты только вниз: app → modules → core → shared; app/api → server → shared.
 const UP_TO_APP = { group: ['@/app/*'], message: 'Слой app — верхний, из него не импортируют.' };
@@ -21,7 +21,7 @@ const DEEP_MODULE = {
 const DEEP_CORE = { group: ['@/core/*/*'], message: 'В раздел core заходят через его index.ts: @/core/<раздел>.' };
 // Старые папки — нижний слой их не знает
 const LEGACY = {
-  group: ['@/components/*', '@/store/*', '@/lib/*'],
+  group: ['@/store/*', '@/lib/*'],
   message: 'Новая структура не зависит от старых папок: сначала перенесите нужный код.',
 };
 
@@ -108,16 +108,6 @@ const eslintConfig = defineConfig([
   ),
   // Маршруты берут модули и core только через публичный API
   restrict(['src/app/**'], [DEEP_MODULE, DEEP_CORE]),
-
-  // Старые папки: самые вредные обратные зависимости (счётчик для переезда)
-  restrict(
-    ['src/lib/**'],
-    [{ group: ['@/components/*'], message: 'lib — нижний слой, он не импортирует компоненты.' }],
-  ),
-  restrict(
-    ['src/store/**'],
-    [{ group: ['@/components/*'], message: 'Стор не импортирует компоненты: вынесите логику в lib.' }],
-  ),
 
   // UI-kit: поля только из shared/ui/field (docs/architecture.md, «UI-kit: поля»), спиннер —
   // только Spinner («UI-kit: общие компоненты»), окна — только из shared/ui/dialog («UI-kit: окна»).

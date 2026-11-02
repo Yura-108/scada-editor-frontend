@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import {Plus} from "lucide-react";
 import {toast} from "sonner";
 import {Button} from "@/shared/ui/Button";
-import {passwordProblem} from "@/components/auth/ChangePasswordModal";
+import {passwordProblem} from "@/core/access";
 import {createUser, type AdminUser} from "../api/adminApi";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Input} from "@/shared/ui/field/Input";

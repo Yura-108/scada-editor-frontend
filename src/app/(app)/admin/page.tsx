@@ -1,5 +1,5 @@
 import {redirect} from "next/navigation";
-import {getUser} from "@/lib/getUser";
+import {getUser} from "@/server/auth/getUser";
 import AdminClient from "./AdminClient";
 
 /**
