@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { Group, Rect, Circle, Line, Arrow } from "react-konva";
-import Konva from "konva";
+import { Group, Rect, Arrow } from "react-konva";
 import { DiagramElement, LeafElement } from "@/core/scene";
 import {getRenderedElementWith, parseDashArray} from "@/core/scene";
 import { EditorRenderContext } from "../types";
 import { Anchor } from "./Anchor";
-import { CircleResizeHandle } from "./CircleResizeHandle";
+import { PolygonShapeElement } from "./PolygonShapeElement";
+import { CircleShapeElement } from "./CircleShapeElement";
 import { TextShapeElement } from "./TextShapeElement";
 import { CheckboxShapeElement } from "./CheckboxShapeElement";
 import { ProgressBarShapeElement } from "./ProgressBarShapeElement";
@@ -49,10 +49,6 @@ interface ShapeElementProps {
  */
 function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId, runtime }: ShapeElementProps) {
   const { snap, updateElementVisual, onElementClick, closeMenu, themeColors } = ctx;
-  // Ref объявляем на верхнем уровне (правила хуков — ниже идут условные return).
-  // Раньше в ветке круга вызывался React.createRef() прямо в рендере: он создаёт
-  // НОВЫЙ ref на каждый рендер, и CircleResizeHandle мог получить отцепленный.
-  const circleRef = React.useRef<Konva.Circle>(null);
   // Именно `…With`, а не `getRenderedElement`: тот читает активное состояние из стора
   // нереактивно, и фигура под `React.memo` не узнавала бы о его смене.
   const rendered = getRenderedElementWith(el, stateId, runtime) as LeafElement;
@@ -63,153 +59,18 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
   const leafProps = { el, isSelected, snap, onElementClick, updateElementVisual, stateId, runtime };
 
   if (rendered.type === "polygon") {
-    let pts: number[] = [];
-    const pointsData = rendered.points as string | number[] | undefined;
-
-    if (typeof pointsData === "string") {
-      try { pts = JSON.parse(pointsData); } catch { pts = []; }
-    } else if (Array.isArray(pointsData)) {
-      pts = pointsData;
-    }
-
-    const expectedLen = (rendered.sides || 3) * 2;
-    if (pts.length !== expectedLen) {
-      const sides = rendered.sides || 3;
-      const radius = rendered.radius || 40;
-
-      const cx = rendered.w / 2;
-      const cy = rendered.h / 2;
-
-      pts = [];
-      for (let i = 0; i < sides; i++) {
-        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-        pts.push(cx + radius * Math.cos(angle));
-        pts.push(cy + radius * Math.sin(angle));
-      }
-    }
-
-    return (
-      <Group key={el.key} id={el.key} x={rendered.x} y={rendered.y}>
-        <Line
-          points={pts as number[]}
-          closed={true}
-          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-          stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
-          strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
-          dash={parseDashArray(rendered.strokeDasharray)}
-          draggable
-          onDragEnd={(e) => {
-            const node = e.target;
-            const dx = node.x();
-            const dy = node.y();
-            node.position({ x: 0, y: 0 });
-            // Смещение уже привязано общим обработчиком Stage (сетка +
-            // направляющие, см. useMultiDragAndGuides) — повторно не снапим.
-            updateElementVisual(el.key, {
-              x: rendered.x + dx,
-              y: rendered.y + dy,
-            });
-          }}
-          onClick={(e) => {
-            e.cancelBubble = true;
-            closeMenu();
-            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
-          }}
-        />
-        {isSelected && (pts as number[]).map((p, i) => {
-          if (i % 2 !== 0) return null; // skip y
-          return (
-            <Anchor
-              key={`${el.key}-anc-${i}`}
-              x={p}
-              y={(pts as number[])[i + 1]}
-              themeColors={themeColors}
-              onDragMove={(e) => {
-                const sx = snap(e.target.x());
-                const sy = snap(e.target.y());
-                e.target.position({ x: sx, y: sy });
-                // Пишем в стор только при пересечении шага сетки.
-                if (sx !== (pts as number[])[i] || sy !== (pts as number[])[i + 1]) {
-                  const cp = [...(pts as number[])];
-                  cp[i] = sx;
-                  cp[i + 1] = sy;
-                  updateElementVisual(el.key, { points: cp });
-                }
-              }}
-            />
-          );
-        })}
-      </Group>
-    );
+    return <PolygonShapeElement {...leafProps} rendered={rendered} themeColors={themeColors} closeMenu={closeMenu} />;
   }
 
   if (rendered.type === "circle") {
-    const r = rendered.radius || rendered.w / 2 || 40;
-    const cx = rendered.x + r;
-    const cy = rendered.y + r;
     return (
-      <Group key={el.key} id={el.key}>
-        <Circle
-          ref={circleRef}
-          x={cx}
-          y={cy}
-          radius={r}
-          fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-          stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
-          strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
-          draggable
-          onDragEnd={(e) => {
-            // Позиция узла круга — это его ЦЕНТР, и он уже привязан к сетке общим
-            // обработчиком Stage (useMultiDragAndGuides). В модели у элемента лежит
-            // левый верхний угол габарита, поэтому вычитаем радиус.
-            const nx = e.target.x();
-            const ny = e.target.y();
-            e.target.position({ x: cx, y: cy });
-            updateElementVisual(el.key, { x: nx - r, y: ny - r });
-          }}
-          onClick={(e) => {
-            e.cancelBubble = true;
-            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
-          }}
-          onDblClick={(e) => {
-            // Тот же жест, что у текстового элемента: двойной клик — правка надписи
-            // на месте. Оверлей пишет в `text`, то есть ровно в то поле, что рисуется ниже.
-            e.cancelBubble = true;
-            ctx.onStartTextEdit?.(el.key);
-          }}
-          onDblTap={(e) => {
-            e.cancelBubble = true;
-            ctx.onStartTextEdit?.(el.key);
-          }}
-        />
-        {/* Надпись внутри круга: на схемах обозначение устройства пишут прямо в нём.
-            `inset` в 15% диаметра — примерно вписанный в окружность квадрат, иначе длинная
-            строка вылезала бы за края там, где круг уже сузился. */}
-        <ShapeInscription
-          text={isEditing ? "" : (rendered.text ?? "")}
-          x={rendered.x}
-          y={rendered.y}
-          w={2 * r}
-          h={2 * r}
-          inset={0.15 * 2 * r}
-          fontSize={rendered.fontSize ?? 14}
-          fontFamily={rendered.fontFamily}
-          bold={rendered.bold}
-          color={rendered.textColor || themeColors.labelDefault}
-        />
-        {isSelected && (
-          <CircleResizeHandle
-            key={`${el.key}-resize`}
-            cx={cx}
-            cy={cy}
-            r={r}
-            elKey={el.key}
-            snap={snap}
-            updateElementVisual={updateElementVisual}
-            circleRef={circleRef}
-          />
-        )}
-      </Group>
+      <CircleShapeElement
+        {...leafProps}
+        rendered={rendered}
+        themeColors={themeColors}
+        isEditing={isEditing}
+        onStartTextEdit={ctx.onStartTextEdit}
+      />
     );
   }
 
