@@ -4,7 +4,7 @@
  * сверено с кодом бэкенда (коммит f006791, 16.09.2026).
  */
 
-import type {AutomationValueType} from "@/types/automation.types";
+import type {AutomationValueType} from "@/core/automation";
 
 export interface AutomationTemplateIo {
   alias: string;

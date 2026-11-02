@@ -4,7 +4,7 @@ import React from "react";
 import {cn} from "@/shared/lib/cn";
 import {Select} from "@/shared/ui/field/Select";
 import type {FieldSize} from "@/shared/ui/field/fieldStyles";
-import {MAX_ACCESS_LEVEL, MIN_ACCESS_LEVEL} from "@/types/access.types";
+import {MAX_ACCESS_LEVEL, MIN_ACCESS_LEVEL} from "../types/access.types";
 
 const LEVELS = Array.from({length: MAX_ACCESS_LEVEL - MIN_ACCESS_LEVEL + 1}, (_, i) => MIN_ACCESS_LEVEL + i);
 

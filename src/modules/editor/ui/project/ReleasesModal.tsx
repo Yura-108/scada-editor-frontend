@@ -15,7 +15,7 @@ import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogP
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {fetchReleases} from "@/core/project";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "@/core/project";
 
 const PAGE = 30;
 

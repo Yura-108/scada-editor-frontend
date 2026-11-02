@@ -1,5 +1,5 @@
 import type {SelectOption} from "@/shared/ui/field/Select";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "@/core/project";
 
 /** Выдуманные данные каталога — к сторам и бэкенду каталог не обращается. */
 

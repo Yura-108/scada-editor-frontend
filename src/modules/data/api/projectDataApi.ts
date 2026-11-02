@@ -3,7 +3,7 @@ import type {
   ProjectDataSet,
   ProjectDataValidationError,
 } from "../types/projectData.types";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "@/core/project";
 import {fetchVersions} from "@/core/project";
 import {errorTextFromJson} from "@/core/access";
 

@@ -12,7 +12,7 @@ import {IconButton} from "@/shared/ui/IconButton";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations, useRecipes} from "../../api/recipes";
-import {Recipe, RecipeStep} from "@/types/recipe.types";
+import {Recipe, RecipeStep} from "@/core/project";
 import openRecipeEditorModal from "./RecipeEditorModal";
 import {openRecipeHistoryModal} from "./RecipeHistoryModal";
 import {setStepValueAt, stepValueText, stepsChanged} from "../../lib/recipeSteps";

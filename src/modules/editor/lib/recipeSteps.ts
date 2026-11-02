@@ -1,4 +1,4 @@
-import type {RecipeStep, RecipeTag} from "@/types/recipe.types";
+import type {RecipeStep, RecipeTag} from "@/core/project";
 import {actionValueText, coerceActionValue} from "./recipeValidation";
 
 /**

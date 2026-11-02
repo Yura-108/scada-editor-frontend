@@ -1,4 +1,4 @@
-import {EMPTY_PROCEDURE_LEVELS, PROCEDURE_OPERATIONS, type ProcedureLevels} from "@/types/access.types";
+import {EMPTY_PROCEDURE_LEVELS, PROCEDURE_OPERATIONS, type ProcedureLevels} from "./types/access.types";
 
 /** Ответ бэкенда как есть, но без лишних ключей и с `null` на месте отсутствующих. */
 export const parseProcedureLevels = (raw: unknown): ProcedureLevels => {

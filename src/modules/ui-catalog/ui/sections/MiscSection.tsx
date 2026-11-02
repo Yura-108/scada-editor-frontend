@@ -5,7 +5,7 @@ import {Badge} from "@/shared/ui/Badge";
 import {Button} from "@/shared/ui/Button";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
-import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
+import {VersionHistoryList} from "@/core/project";
 import {Collapsible} from "@/shared/ui/codeModalParts";
 import {CatalogSection, Demo} from "../CatalogSection";
 import {SAMPLE_VERSIONS} from "../../lib/sampleData";

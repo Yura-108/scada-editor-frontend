@@ -3,8 +3,8 @@ import type {
   AutomationSet,
   AutomationTaskStatusRow,
   AutomationValidationError,
-} from "@/types/automation.types";
-import type {VersionSummary} from "@/types/editorVersion.types";
+} from "./types/automation.types";
+import type {VersionSummary} from "@/core/project";
 import {fetchVersions} from "@/core/project";
 import {errorTextFromJson} from "@/core/access";
 

@@ -16,7 +16,7 @@ import {
   normalizeTagWriteResults,
   tagWriteOutcome,
   tagWriteStatusLabel,
-} from "@/types/runtimeWrite.types";
+} from "@/core/runtime";
 import {useOpenScene} from "@/core/project";
 import {ValueWriteRow} from "./ValueWriteRow";
 

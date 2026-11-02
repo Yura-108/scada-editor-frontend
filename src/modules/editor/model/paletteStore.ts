@@ -4,7 +4,7 @@ import {paletteItems as paletteItemsStatic} from "../lib/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree, transformElements, findTemplateRoot} from "@/core/scene";
 import {DiagramElement} from "@/types/editorElement.type";
-import {isSaveConflictBody, SaveConflictError} from "@/types/editorVersion.types";
+import {isSaveConflictBody, SaveConflictError} from "@/core/project";
 
 /**
  * Нормализует шаблон перед сохранением в палитру.

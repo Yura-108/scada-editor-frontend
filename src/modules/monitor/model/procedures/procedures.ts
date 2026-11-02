@@ -1,4 +1,4 @@
-import type {ProcedureStatus} from "@/types/recipe.types";
+import type {ProcedureStatus} from "@/core/project";
 import {describeDenial, isAccessDenial} from "@/core/access";
 
 /**

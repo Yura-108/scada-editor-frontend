@@ -7,7 +7,7 @@ import {Button} from "@/shared/ui/Button";
 import {Spinner} from "@/shared/ui/Spinner";
 import {AccessLevelSelect} from "@/core/access";
 import {useOpenScene} from "@/core/project";
-import {NO_GRANT, type ProjectGrant} from "@/types/access.types";
+import {NO_GRANT, type ProjectGrant} from "@/core/access";
 import {fetchUserGrants, putUserGrant, type UserGrants} from "../api/adminApi";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 

@@ -1,6 +1,6 @@
 import type {
   Recipe, RecipeCreatePayload, RecipeStepAction, RecipeTag, RecipeValueType,
-} from "@/types/recipe.types";
+} from "@/core/project";
 
 /**
  * Клиентская проверка рецепта — зеркало серверной (`RecipeServiceImpl`).

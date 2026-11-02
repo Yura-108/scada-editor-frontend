@@ -14,7 +14,7 @@ import {
   VERSION_KIND_LABEL,
   VERSION_KIND_TONE,
 } from "./formatVersion";
-import type {VersionKind} from "@/types/editorVersion.types";
+import type {VersionKind} from "@/core/project";
 import {Button} from "@/shared/ui/Button";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Input} from "@/shared/ui/field/Input";

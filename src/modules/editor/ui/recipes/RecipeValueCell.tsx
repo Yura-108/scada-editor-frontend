@@ -1,7 +1,7 @@
 import React from "react";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
-import type {RecipeValueType} from "@/types/recipe.types";
+import type {RecipeValueType} from "@/core/project";
 
 const BOOL_OPTIONS = [
   {value: "", label: "не пишется"},

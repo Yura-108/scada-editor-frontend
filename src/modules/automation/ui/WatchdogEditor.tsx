@@ -5,7 +5,7 @@ import {FolderTree} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {pickTag} from "@/core/devices";
 import {compactButton} from "./formStyles";
-import type {AutomationValidationError, AutomationWatchdog} from "@/types/automation.types";
+import type {AutomationValidationError, AutomationWatchdog} from "@/core/automation";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";

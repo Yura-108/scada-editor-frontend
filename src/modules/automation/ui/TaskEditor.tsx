@@ -10,7 +10,7 @@ import {IoTable} from "./IoTable";
 import {TagTreeSidebar} from "./TagTreeSidebar";
 import {compactButton} from "./formStyles";
 import type {TaskDraftState} from "../lib/automationDraft";
-import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/types/automation.types";
+import type {AutomationTask, AutomationValidationError, AutomationVariable} from "@/core/automation";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";

@@ -25,10 +25,10 @@ import {
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {useUnsavedGuard} from "@/shared/lib/unsavedGuard";
-import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
-import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";
+import {VersionHistoryList} from "@/core/project";
+import type {AutomationSet, AutomationValidationError} from "@/core/automation";
 import type {ProjectDataSet, ProjectDataValidationError} from "@/modules/data";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "@/core/project";
 import {ProjectSelect} from "@/core/project";
 
 type Tab = "tables" | "variables" | "history";

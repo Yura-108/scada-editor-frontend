@@ -12,7 +12,7 @@ import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
-import type {Recipe, RecipeStep, RecipeTag} from "@/types/recipe.types";
+import type {Recipe, RecipeStep, RecipeTag} from "@/core/project";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
 import {RecipeManifestSection} from "./editor/RecipeManifestSection";

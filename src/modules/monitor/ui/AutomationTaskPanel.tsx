@@ -7,7 +7,7 @@ import {EmptyState} from "@/shared/ui/EmptyState";
 import {IconButton} from "@/shared/ui/IconButton";
 import type {Tone} from "@/shared/ui/tone";
 import {useAutomationTasksStore} from "../model/useAutomationTasksStore";
-import type {AutomationTaskState, AutomationTaskStatus} from "@/types/automation.types";
+import type {AutomationTaskState, AutomationTaskStatus} from "@/core/automation";
 
 /** Подпись и тон значка состояния задачи — здесь и в списке задач «Автоматизации». */
 export const TASK_STATE_VIEW: Record<AutomationTaskState, {label: string; tone: Tone}> = {

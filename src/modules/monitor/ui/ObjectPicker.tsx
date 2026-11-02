@@ -4,7 +4,7 @@ import React, {useEffect, useId, useMemo, useRef, useState} from "react";
 import {ChevronDown, Search} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Input} from "@/shared/ui/field/Input";
-import type {InspectorObjectDto} from "@/types/runtimeWrite.types";
+import type {InspectorObjectDto} from "@/core/runtime";
 
 const objectLabel = (o: InspectorObjectDto) => o.name ?? `#${o.id}`;
 

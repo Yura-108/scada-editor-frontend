@@ -2,7 +2,7 @@ import {useCallback} from "react";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {toast} from "sonner";
 import {readBackendError} from "@/core/access"; // переедет в core/access (шаг 8)
-import type {Recipe, RecipeCreatePayload} from "@/types/recipe.types";
+import type {Recipe, RecipeCreatePayload} from "@/core/project";
 
 /**
  * Процедурные рецепты ОТКРЫТОГО ПРОЕКТА в редакторе (черновик).

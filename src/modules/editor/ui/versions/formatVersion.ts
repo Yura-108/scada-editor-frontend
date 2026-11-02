@@ -1,4 +1,4 @@
-import type {ConflictKind, VersionKind} from "@/types/editorVersion.types";
+import type {ConflictKind, VersionKind} from "@/core/project";
 import type {Tone} from "@/shared/ui/tone";
 
 /** Подписи видов версий: `kind` отделяет осознанные сохранения от автоматических. */

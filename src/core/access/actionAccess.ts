@@ -1,4 +1,4 @@
-import type {ProjectGrant} from "@/types/access.types";
+import type {ProjectGrant} from "./types/access.types";
 import {levelRequiredText} from "./accessErrors";
 import {DIRECT_WRITE_LEVEL, operateLevelOf, requiredLevelOf} from "./grants";
 

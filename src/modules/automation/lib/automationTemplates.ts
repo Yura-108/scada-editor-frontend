@@ -7,7 +7,7 @@
  * buildComponentTree/transformElements.
  */
 
-import type {AutomationIo, AutomationTask, AutomationVariable} from "@/types/automation.types";
+import type {AutomationIo, AutomationTask, AutomationVariable} from "@/core/automation";
 import type {AutomationTaskTemplate, AutomationTemplateIo} from "../types/automationTemplate.types";
 
 /** Группа для шаблонов без категории: бэкенд хранит там null. */

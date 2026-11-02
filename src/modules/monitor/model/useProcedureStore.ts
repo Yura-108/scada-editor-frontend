@@ -1,6 +1,6 @@
 import {create} from "zustand";
-import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
-import {isProcedureAlert, isTerminalProcedureEvent} from "@/types/recipe.types";
+import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
+import {isProcedureAlert, isTerminalProcedureEvent} from "@/core/project";
 
 /**
  * Состояние выполняющейся процедуры и журнал её событий.

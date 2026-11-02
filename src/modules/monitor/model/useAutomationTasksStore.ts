@@ -1,5 +1,5 @@
 import {create} from "zustand";
-import type {AutomationTaskStatus} from "@/types/automation.types";
+import type {AutomationTaskStatus} from "@/core/automation";
 
 interface AutomationTasksState {
   /** Статусы задач текущего проекта монитора по taskId. */

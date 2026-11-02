@@ -4,7 +4,7 @@ import React from "react";
 import {ArrowLeftToLine, Plus, Trash2} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
-import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/types/automation.types";
+import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/core/automation";
 import {compactButton} from "./formStyles";
 import {useDeviceTreeStore} from "@/core/devices";
 import {Input} from "@/shared/ui/field/Input";

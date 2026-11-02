@@ -1,4 +1,4 @@
-import type {ProjectGrant} from "@/types/access.types";
+import type {ProjectGrant} from "./types/access.types";
 
 /** Проект с правами пользователя — то, что нужно `grantOf`. */
 export interface ProjectWithAccess {

@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "@/core/project";
 
 /**
  * Ближайшее ручное сохранение старше того, что лежит на холсте, — для «Вернуться к

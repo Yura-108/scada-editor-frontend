@@ -1,5 +1,5 @@
 import {fetchVersions} from "../versions/versionsApi";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import type {VersionSummary} from "../types/editorVersion.types";
 
 /**
  * Выпуски проекта (контракт docs/contract/2026-09-29-project-release-contract.md).

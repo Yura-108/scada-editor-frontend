@@ -8,7 +8,7 @@
 import {toast} from "sonner";
 import type {DiagramElement, SceneType} from "@/types/editorElement.type";
 import type {PropertyCreateRequestDto} from "@/types/tags.types";
-import type {MergeReport, VersionPreview} from "@/types/editorVersion.types";
+import type {MergeReport, VersionPreview} from "@/core/project";
 import {useRuntimeOverlayStore, transformElements} from "@/core/scene";
 import {useSessionUserStore, errorTextFromBody, grantOf} from "@/core/access";
 // переедут в core/scene и core/access вместе с остальным lib (шаг 8)

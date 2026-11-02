@@ -1,4 +1,4 @@
-import {ADMIN_GRANT, NO_GRANT, type ProjectGrant} from "@/types/access.types";
+import {ADMIN_GRANT, NO_GRANT, type ProjectGrant} from "./types/access.types";
 
 /**
  * Права текущего пользователя в проекте. Источник — поле `access` в списке проектов

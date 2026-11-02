@@ -1,4 +1,4 @@
-import {VARIABLE_TAG_PREFIX} from "@/types/automation.types";
+import {VARIABLE_TAG_PREFIX} from "@/core/automation";
 
 export type PropertyType = "Тег" | "Глобальный" | "Локальный";
 
