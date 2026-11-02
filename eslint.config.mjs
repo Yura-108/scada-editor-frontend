@@ -2,9 +2,9 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 
-// Архитектурные правила (docs/architecture.md). Пока всё в режиме 'warn':
-// число предупреждений — это счётчик того, сколько ещё переезжать.
-// Когда нарушений в слое не останется, его правило можно перевести в 'error'.
+// Архитектурные правила (docs/architecture.md). Границы слоёв (no-restricted-imports) — 'error':
+// нарушений не осталось, и новое сломает lint. Размеры файлов и функций пока 'warn': число
+// предупреждений — счётчик того, сколько ещё резать; когда их не останется — тоже в 'error'.
 
 // Продуктовые модули src/modules/<имя>. Новый модуль — добавить имя сюда.
 const MODULES = ['editor', 'monitor', 'channels', 'automation', 'data', 'logs', 'journal', 'admin', 'auth', 'actions', 'ui-catalog', 'shell'];
@@ -22,7 +22,7 @@ const DEEP_CORE = { group: ['@/core/*/*'], message: 'В раздел core зах
 
 const restrict = (files, patterns) => ({
   files,
-  rules: { 'no-restricted-imports': ['warn', { patterns }] },
+  rules: { 'no-restricted-imports': ['error', { patterns }] },
 });
 
 // UI-kit: файлы, которым поля и спиннер собирать можно (сами компоненты ui-kit).
