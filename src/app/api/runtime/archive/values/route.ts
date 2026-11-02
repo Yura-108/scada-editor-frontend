@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {parsePositiveProjectId, proxyProcedure} from "@/lib/procedureProxy";
+import {parsePositiveProjectId, proxyProcedure} from "@/server/proxy/procedureProxy";
 
 /** `runtime.archive.max-tags-per-request` — больше бэкенд отвергнет 400. */
 const MAX_TAGS = 20;

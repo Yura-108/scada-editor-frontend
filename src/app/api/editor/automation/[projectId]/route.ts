@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/lib/editorHistoryProxy";
+import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/server/proxy/editorHistoryProxy";
 
 /**
  * Набор фоновых задач проекта: `GET/PUT /api/editor/projects/{projectId}/automation`.

@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from "next/server";
-import {backendErrorResponse} from "@/lib/backendProxy";
+import {backendErrorResponse} from "@/server/proxy/backendProxy";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, EDITOR_BACKEND_URL, parseDocType, parseId} from "@/lib/editorHistoryProxy";
+import {badPath, EDITOR_BACKEND_URL, parseDocType, parseId} from "@/server/proxy/editorHistoryProxy";
 
 /**
  * Восстановление версии.

@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, EDITOR_BACKEND_URL, parseId} from "@/lib/editorHistoryProxy";
+import {badPath, EDITOR_BACKEND_URL, parseId} from "@/server/proxy/editorHistoryProxy";
 
 /** Повторная отправка сохранённого набора в automation (ответ бэкенда — 202). */
 export const POST = protectedRoute(async (_req: NextRequest, {token, params}) => {

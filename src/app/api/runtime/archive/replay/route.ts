@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {parsePositiveProjectId, proxyProcedure} from "@/lib/procedureProxy";
+import {parsePositiveProjectId, proxyProcedure} from "@/server/proxy/procedureProxy";
 
 /** Предел тегов на запрос у бэкенда. */
 const MAX_TAGS = 5000;
