@@ -3,10 +3,8 @@
 import {useShallow} from "zustand/react/shallow";
 import {
   Group, Ungroup, RotateCw, RotateCcw, FlipHorizontal, FlipVertical,
-  // Иконки закомментированного блока выравнивания ниже.
-  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
+  // Блоку выравнивания ниже (закомментирован) нужны ещё AlignStart/Center/EndVertical,
+  // AlignStart/Center/EndHorizontal, AlignHorizontal/VerticalSpaceBetween — вернуть вместе с ним.
 } from "lucide-react";
 import {useEditorStore} from "../../model/editorStore";
 import {ToolbarDivider, TooltipBtn} from "./TooltipBtn";

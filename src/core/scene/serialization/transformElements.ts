@@ -276,7 +276,6 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
         const compArr = Array.isArray(rawImg.composition) ? (rawImg.composition as Record<string, unknown>[]) : [];
         const d = compArr[i] ?? desc;
         // scripts/bindings/properties/events — данные примитива, не визуальные overrides.
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type: _t, key: _k, scripts: _s, bindings: _b, properties: _p, events: _e, zIndex: _z, monitorMenu: _mm, trend: _tr, optionsWindow: _ow, ...overrides } = d;
         return {
           id: createUuid(),

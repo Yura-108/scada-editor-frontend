@@ -1,4 +1,3 @@
-import { DeviceNodeType} from '../types/nodeTypes';
 import {NodeType} from "../types/channelsTypes";
 
 export const treeSearch = (key: string, nodes: NodeType[]) => {

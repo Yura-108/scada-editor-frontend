@@ -18,7 +18,6 @@ import {createUuid} from "@/shared/lib/createUuid";
 export const detachServerStateIds = (states: DiagramElement["states"] | undefined): DiagramElement["states"] =>
   (states ?? []).map(state => {
     if (state.serverId == null) return state;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {serverId: _serverId, ...rest} = state;
     return rest;
   });
@@ -27,7 +26,6 @@ export const detachServerStateIds = (states: DiagramElement["states"] | undefine
 export const detachServerScriptIds = (
   scripts: DiagramElement["scripts"] | undefined,
 ): DiagramElement["scripts"] =>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (Array.isArray(scripts) ? scripts : []).map(({serverId: _serverId, ...s}) => ({
     ...s,
     id: createUuid(),
@@ -38,7 +36,6 @@ export const detachServerBindingIds = (
   bindings: DiagramElement["bindings"] | undefined,
 ): DiagramElement["bindings"] =>
   (Array.isArray(bindings) ? bindings : []).map(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ({serverId: _s, componentPropertyId: _pid, componentPropertyName: _pname, ...b}) => b,
   );
 
@@ -53,7 +50,6 @@ export const detachPropertyIds = (
   properties: DiagramElement["properties"] | undefined,
 ): DiagramElement["properties"] =>
   (Array.isArray(properties) ? properties : []).map(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ({id: _id, component_id: _cid, ...rest}) => rest as DiagramElement["properties"][number],
   );
 
@@ -61,7 +57,6 @@ export const detachPropertyIds = (
 export const detachServerEventIds = (
   events: DiagramElement["events"] | undefined,
 ): DiagramElement["events"] =>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (Array.isArray(events) ? events : []).map(({serverId: _serverId, ...e}) => e);
 
 /**
@@ -82,7 +77,6 @@ export const remapPropertyRefs = <T extends {propertyRefs?: PropertyRef[]}>(
     ...owner,
     propertyRefs: owner.propertyRefs.map(ref => {
       const componentKey = keyMap[ref.componentKey] ?? ref.componentKey;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const {propertyId: _pid, componentId: _cid, ...rest} = ref;
       return {...rest, componentKey} as PropertyRef;
     }),
