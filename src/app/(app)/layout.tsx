@@ -1,8 +1,8 @@
 import React from 'react';
 import { Cpu } from 'lucide-react';
 import { getUser } from '@/server/auth/getUser';
-import { HeaderNav, LogoLink, SessionUserBootstrap, UserMenu } from '@/modules/shell';
-import DocumentTitle from './DocumentTitle';
+import { DocumentTitle, HeaderNav, LogoLink, SessionUserBootstrap, UserMenu } from '@/modules/shell';
+import EditorStoreBinding from './EditorStoreBinding';
 import { ThemeToggle } from '@/shared/ui/ThemeToggle';
 
 /**
@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       {user && <SessionUserBootstrap login={user.login} admin={user.admin} />}
+      <EditorStoreBinding />
       <DocumentTitle />
       <header className="sticky top-0 z-header w-full border-b border-gray-200 dark:border-gray-800/60 bg-white dark:bg-gray-900/70 backdrop-blur-md">
         {/* Во всю ширину, а не `container`: разделов стало 7, и в фиксированную ширину

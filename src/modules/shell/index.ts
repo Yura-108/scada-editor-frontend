@@ -1,3 +1,4 @@
+export {default as DocumentTitle} from "./ui/DocumentTitle";
 export {default as HeaderNav} from "./ui/HeaderNav";
 export {default as LogoLink} from "./ui/LogoLink";
 export {default as SessionUserBootstrap} from "./ui/SessionUserBootstrap";
