@@ -3,6 +3,8 @@ import type {AutomationTaskStatus} from "@/core/automation";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/shared/lib/gatewayOrigin";
 import {ACCESS_NOT_READY_DELAY_MS, createRuntimeSession, deleteRuntimeSession} from "../../api/runtimeSession";
+import {classifyClose} from "./runtimeCloseCodes";
+import {routeRuntimeFrame} from "./runtimeFrames";
 
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -51,12 +53,6 @@ export interface ActionDenied {
   /** null — у NO_OPERATE / NO_PROJECT_ACCESS. */
   requiredLevel: number | null;
 }
-
-/** Коды закрытия WS, введённые правами доступа. */
-const CLOSE_ACCESS_REVOKED = 4403;
-const CLOSE_POLICY_VIOLATION = 1008;
-/** Try Again Later: сервер после рестарта ещё не загрузил права — это не отказ. */
-const CLOSE_TRY_AGAIN_LATER = 1013;
 
 export interface RuntimeConnectionHandlers {
   onUpdate: (
@@ -241,75 +237,9 @@ export function openRuntimeConnection(
     };
 
     socket.onmessage = (e) => {
-      let msg: {
-        type?: string;
-        tags?: RuntimeTagUpdate[] | null;
-        properties?: RuntimePropertyUpdate[] | null;
-        // В UPDATE — события хода рецепта, в SNAPSHOT — статусы активных процедур проекта.
-        procedures?: ProcedureEvent[] | ProcedureStatus[] | null;
-        // Статусы задач automation — только после SUBSCRIBE_TASKS.
-        tasks?: AutomationTaskStatus[] | null;
-        // TREE_CHANGED — номер нового prod-выпуска.
-        versionNo?: number;
-        // ACTION_DENIED — какое нажатие отклонено и почему.
-        scriptId?: number;
-        reason?: string;
-        requiredLevel?: number | null;
-      };
-      try {
-        msg = JSON.parse(String(e.data));
-      } catch {
-        console.warn("[monitor:ws] битый JSON в сообщении, игнорирую:", e.data);
-        return;
-      }
-      if (msg?.type === "SNAPSHOT") {
-        const tags = msg.tags ?? [];
-        const properties = msg.properties ?? [];
-        const procedures = (msg.procedures ?? []) as ProcedureStatus[];
-        log(
-          `SNAPSHOT — тегов: ${tags.length}, свойств: ${properties.length},`
-          + ` активных процедур: ${procedures.length}`,
-        );
-        onSnapshot?.(tags, properties, procedures);
-        return;
-      }
-      if (msg?.type === "TREE_CHANGED") {
-        log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}, подписка на сцену снята сервером`);
+      routeRuntimeFrame(e.data, {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied}, () => {
         sceneWanted = null;
-        if (typeof msg.versionNo === "number") onRelease?.(msg.versionNo, true);
-        return;
-      }
-      if (msg?.type === "ACTION_DENIED") {
-        log(`ACTION_DENIED — scriptId=${msg.scriptId}, причина ${msg.reason}${msg.requiredLevel != null ? `, нужен уровень ${msg.requiredLevel}` : ""}`);
-        if (typeof msg.scriptId === "number" && typeof msg.reason === "string") {
-          onActionDenied?.({
-            scriptId: msg.scriptId,
-            reason: msg.reason,
-            requiredLevel: typeof msg.requiredLevel === "number" ? msg.requiredLevel : null,
-          });
-        }
-        return;
-      }
-      if (msg?.type !== "UPDATE") {
-        log(`сообщение неизвестного типа «${msg?.type}», игнорирую`);
-        return;
-      }
-      // Ответ на ACTION приходит с tags === null (не []) — нормализация обязательна.
-      const tags = msg.tags ?? [];
-      const properties = msg.properties ?? [];
-      const procedures = msg.procedures ?? [];
-      if (tags.length || properties.length || procedures.length) {
-        console.groupCollapsed(
-          `[monitor:ws] UPDATE — тегов: ${tags.length}, свойств: ${properties.length},`
-          + ` событий процедуры: ${procedures.length}`,
-        );
-        if (tags.length) console.table(tags);
-        if (properties.length) console.table(properties);
-        if (procedures.length) console.table(procedures);
-        console.groupEnd();
-      }
-      onUpdate(tags, properties, procedures as ProcedureEvent[]);
-      if (msg.tasks?.length) onTasks?.(msg.tasks);
+      });
     };
 
     socket.onclose = (e) => {
@@ -319,25 +249,18 @@ export function openRuntimeConnection(
       // `GET /sessions/{id}/snapshot` уже не ответит. Сама работа проекта продолжается.
       currentSessionId = null;
 
-      // 1003 — окончательный отказ (у сессии уже есть живое соединение, либо она
-      // неизвестна/закрыта): реконнект-цикл тут будет крутиться вечно без толку.
-      // 1008 — подключение к чужой сессии: тоже окончательно.
-      if (e.code === 1003 || e.code === CLOSE_POLICY_VIOLATION) {
+      const outcome = classifyClose(e.code, e.reason);
+      if (outcome.kind === "rejected") {
         log(`соединение отклонено (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", e.code === CLOSE_POLICY_VIOLATION ? "Сессия принадлежит другому пользователю" : e.reason);
+        if (!closed) setStatus("rejected", outcome.detail);
         return;
       }
-
-      // 4403 — права в проекте отозваны (или учётка отключена). Переподключение лишь
-      // получило бы тот же отказ; монитор сам уведёт к выбору проекта.
-      if (e.code === CLOSE_ACCESS_REVOKED) {
+      if (outcome.kind === "revoked") {
         log(`доступ к проекту отозван (code=4403${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
         if (!closed) setStatus("revoked", "Доступ к проекту отозван");
         return;
       }
-
-      // 1013 — сервер после рестарта ещё не загрузил права: обычный реконнект, но с паузой.
-      if (e.code === CLOSE_TRY_AGAIN_LATER) {
+      if (outcome.kind === "retry-later") {
         log("сервер ещё загружает права (code=1013) — переподключусь с паузой");
         scheduleReconnect("Сервер запускается, переподключение…", ACCESS_NOT_READY_DELAY_MS);
         return;
