@@ -76,6 +76,8 @@ const eslintConfig = defineConfig([
   {
     files: ['src/**/*.{ts,tsx}'],
     rules: {
+      // `{id: _id, ...rest}` — отбросить поле, оставив остальное; это не забытая переменная.
+      '@typescript-eslint/no-unused-vars': ['warn', {ignoreRestSiblings: true}],
       'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
       'max-lines-per-function': ['error', { max: 200, skipBlankLines: true, skipComments: true }],
     },

@@ -40,7 +40,6 @@ const firstSavedPropertyName = (el: DiagramElement): string | undefined => {
  */
 const stripRefIds = (refs: unknown): unknown => {
   if (!Array.isArray(refs)) return refs;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return refs.map(({propertyId: _pid, componentId: _cid, ...rest}) => rest);
 };
 
@@ -175,13 +174,11 @@ const buildShapeDescriptor = (
     // слиянии `image` сравнивается целым блобом — любая необязательная величина внутри
     // означала бы конфликт там, где визуально ничего не менялось.
     ...(primitive.scripts?.length
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ? {scripts: primitive.scripts.map(({serverId, ...s}) => s)}
       : {}),
     ...(Array.isArray(primitive.bindings) && primitive.bindings.length
       ? {
           bindings: primitive.bindings.map(
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             ({serverId, componentPropertyId, componentPropertyName, ...b}) => b,
           ),
         }

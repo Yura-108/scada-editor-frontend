@@ -97,7 +97,6 @@ export function normalizeImportedElements(
         }))
       : [{ id: createUuid(), name: "Нормальное", overrides: {}, isDefault: true }];
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { __newKey, ...rest } = raw as Record<string, unknown>;
 
     return {

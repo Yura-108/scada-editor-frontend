@@ -109,7 +109,6 @@ export const createClipboardSlice = (set: EditorSet, get: () => EditorState): Cl
       // Серверные id снимаем те же, что и при копировании (см. detachServer*Ids):
       // файл может уехать в другую сцену или другой проект, и чужой id там означает
       // «эта сущность переехала» — оригинал потеряет своё, а слияние выдаст конфликт.
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const {id: _id, parentId: _parentId, ...rest} = el as unknown as Record<string, unknown>;
 
       return {

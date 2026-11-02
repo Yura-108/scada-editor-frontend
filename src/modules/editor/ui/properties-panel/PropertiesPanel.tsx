@@ -37,6 +37,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
 
   // `getRenderedElement` читает активное состояние из стора нереактивно, поэтому оно —
   // в зависимостях: сменили состояние — поля показывают его значения.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const renderedElement = useMemo(() => element ? getRenderedElement(element) : null, [element, currentComponentStateId]);
   const renderedElementValues = useMemo(
     () => renderedElement ? (renderedElement as unknown as Record<string, unknown>) : {},

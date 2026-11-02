@@ -18,7 +18,6 @@ import {ParamGrid} from "./ParamGrid";
 const DeviceParams = () => {
   const {
     nodes,
-    getParams,
     params,
   } = useDeviceTreeStore();
   const selectedDevice = useDeviceSelection(s => s.selectedDevice);
@@ -33,9 +32,11 @@ const DeviceParams = () => {
   useReleaseEditingOnLeave();
   const {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave} = useParamDraft(selectedDevice);
 
-  const rawParams = useMemo(() => {
-    return selectedDevice ? getParams(selectedDevice) : [];
-  }, [selectedDevice, params, getParams]);
+  // Тот же отбор, что у getParams, но по params из подписки — иначе список не узнал бы о правке.
+  const rawParams = useMemo(
+    () => (selectedDevice ? params.filter(p => p.parentKey === selectedDevice) : []),
+    [selectedDevice, params],
+  );
 
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
   const optionItems = rawParams.filter(param => resolveParamWidget(param.type) === 'option');
