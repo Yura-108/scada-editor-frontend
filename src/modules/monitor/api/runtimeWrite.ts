@@ -14,3 +14,11 @@ export function postTagWrites(payload: TagWriteRequestDto, init?: {signal?: Abor
     signal: init?.signal,
   });
 }
+
+/** Запись локальных свойств runtime (инспектор объектов). Ответ разбирает вызывающий. */
+export function postPropertyWrites(projectId: number, writes: {propertyId: number; value: string}[]) {
+  return fetch(`/api/runtime/projects/${projectId}/properties/write`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({writes}),
+  });
+}
