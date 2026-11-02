@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import type {DeviceAction, ParamAction} from "@/constants/contextMenuItems";
+import type {DeviceAction, ParamAction} from "../ui/contextMenuItems";
 import type {NodeParamType} from "@/types/channelsTypes";
 import {OpenCreateDeviveModal} from "../ui/modals/OpenCreateDeviceModal";
 import {OpenCreateProjectModal, OpenCreateSiteModal} from "../ui/modals/OpenCreateContainerModal";

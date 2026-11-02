@@ -1,6 +1,6 @@
 import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
 import {create} from "zustand";
-import {paletteItems as paletteItemsStatic} from "@/constants/palette";
+import {paletteItems as paletteItemsStatic} from "../lib/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree, transformElements, findTemplateRoot} from "@/core/scene";
 import {DiagramElement} from "@/types/editorElement.type";

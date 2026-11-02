@@ -10,7 +10,7 @@ import SwitcherIcon from '@/shared/ui/SwitcherIcon';
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import ContextMenu from "./DeviceContextMenu";
-import {nodeMenuItems} from "@/constants/contextMenuItems";
+import {nodeMenuItems} from "./contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "@/types/contextMenu.type";
 import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "../lib/deviceTreeData";
 import ChannelsProjectPicker from "./ChannelsProjectPicker";

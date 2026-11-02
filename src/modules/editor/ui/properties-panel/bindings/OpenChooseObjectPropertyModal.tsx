@@ -6,7 +6,7 @@ import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import Modal from "@/shared/ui/dialog/Modal";
 import {useEditorStore} from "../../../model/editorStore";
-import {elementRegistry} from "@/constants/propertiesPanel";
+import {elementRegistry} from "../../../lib/propertiesPanel";
 import {DiagramElement, ElementType} from "@/types/editorElement.type";
 
 /** Результат выбора свойства другого компонента для ссылки в биндинге. */

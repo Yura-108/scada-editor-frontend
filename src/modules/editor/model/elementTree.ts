@@ -12,7 +12,7 @@ import {
   detachServerScriptIds,
   detachServerStateIds,
 } from "./detachServerIds";
-import {elementRegistry} from "@/constants/propertiesPanel";
+import {elementRegistry} from "../lib/propertiesPanel";
 import {createUuid} from "@/shared/lib/createUuid";
 
 export const isGroup = (el: DiagramElement) => el.type === "group";

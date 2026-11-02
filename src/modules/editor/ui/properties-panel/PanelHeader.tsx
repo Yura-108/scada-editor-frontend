@@ -2,7 +2,7 @@
 
 import {Layers} from "lucide-react";
 import {DiagramElement} from "@/types/editorElement.type";
-import {elementTypeLabel} from "@/constants/propertiesPanel";
+import {elementTypeLabel} from "../../lib/propertiesPanel";
 import {useEditorStore} from "../../model/editorStore";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
