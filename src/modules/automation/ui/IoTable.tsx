@@ -6,7 +6,7 @@ import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
 import {AUTOMATION_VALUE_TYPES, type AutomationIo, type AutomationValueType} from "@/core/automation";
 import {compactButton} from "./formStyles";
-import {useDeviceTreeStore} from "@/core/devices";
+import {useDeviceSelection} from "@/core/devices";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
 import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
@@ -26,7 +26,7 @@ interface Props {
  * (AutomationSetValidator.checkIo) — скрипт читает переменные через `vars`, пишет через `setVar`.
  */
 export function IoTable({title, rows, onChange, tagPlaceholder}: Props) {
-  const selectedDevice = useDeviceTreeStore(s => s.selectedDevice);
+  const selectedDevice = useDeviceSelection(s => s.selectedDevice);
 
   const patch = (index: number, value: Partial<AutomationIo>) =>
     onChange(rows.map((row, i) => (i === index ? {...row, ...value} : row)));

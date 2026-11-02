@@ -8,11 +8,12 @@ import type {NodeParamType, NodeType} from "../types/channelsTypes";
 import {errorMessage, fetchFullHierarchy, fetchSiteHierarchy} from "../api/devicesApi";
 
 /**
- * База каналов: дерево узлов и их параметры, выбранный узел.
+ * База каналов: дерево узлов и их параметры.
  *
  * Общая для «Каналов», редактора (выбор тегов, теги рецепта) и «Автоматизации»: дерево
  * грузится в «Каналах» и дальше читается всеми. Правка дерева — `deviceActions`,
- * блокировки — `deviceLocksStore`, справочники — `deviceDictionaries`.
+ * блокировки — `deviceLocksStore`, справочники — `deviceDictionaries`, выбранный узел —
+ * `deviceSelectionStore`.
  */
 interface DeviceTreeState {
   nodes: NodeType[];
@@ -25,7 +26,6 @@ interface DeviceTreeState {
   markStale: () => void;
   refreshIfStale: () => Promise<void>;
 
-  selectedDevice: string | null;
 
   getParams(deviceKey: string | null): DeviceParamsType[];
 
@@ -46,7 +46,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       isStale: false,
       isLoadingNodes: false,
       nodesError: null,
-      selectedDevice: null,
       markStale: () => set({isStale: true}),
       refreshIfStale: async () => {
         const {isStale, loadedRootPath} = get();

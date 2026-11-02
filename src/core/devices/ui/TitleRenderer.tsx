@@ -14,7 +14,7 @@ import {
   isContextMenuKey,
 } from '../types/contextMenu.type';
 import {useDeviceLocksStore} from "../model/deviceLocksStore";
-import {useDeviceTreeStore} from "../model/deviceTreeStore";
+import {useDeviceSelection} from "../model/deviceSelectionStore";
 
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
@@ -54,7 +54,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
   onContextMenu,
   highlighted = false,
 }) => {
-  const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
+  const selectedDevice = useDeviceSelection((s) => s.selectedDevice);
   const editingDevices = useDeviceLocksStore((s) => s.editingDevices);
 
   const isSelected = selectedDevice === node.key;
