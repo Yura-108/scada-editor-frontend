@@ -1,23 +1,20 @@
 "use client";
 
 import React, {useState} from "react";
-import {ChevronDown, ChevronRight, History, ListOrdered, Pencil, Plus, RefreshCw, Save, Tags, Trash2, Undo2} from "lucide-react";
+import {ListOrdered, Plus, RefreshCw} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Spinner} from "@/shared/ui/Spinner";
-import {Badge} from "@/shared/ui/Badge";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
-import {IconButton} from "@/shared/ui/IconButton";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipes} from "../../api/recipes";
 import {Recipe} from "@/core/project";
 import openRecipeEditorModal from "./RecipeEditorModal";
-import {openRecipeHistoryModal} from "./RecipeHistoryModal";
-import {stepValueText} from "../../lib/recipeSteps";
-import {shortTagPath} from "@/core/scene";
 import {useCurrentProjectGrant} from "@/core/access";
-import {RecipeValueCell} from "./RecipeValueCell";
+import {RecipeRow} from "./RecipeRow";
+import {RecipeStepEditor} from "./RecipeStepEditor";
+import {headClass} from "./tableClasses";
 import {useRecipeDrafts} from "./useRecipeDrafts";
 
 /**
@@ -30,16 +27,7 @@ import {useRecipeDrafts} from "./useRecipeDrafts";
  * в пределах ВЫБРАННОГО шага: собственного значения у тега в контракте нет, оно
  * принадлежит действию шага.
  */
-const VALUE_TYPE_LABELS: Record<string, string> = {
-  number: "число",
-  bool: "логический",
-  string: "строка",
-};
-
 const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []` давал бы новый массив на каждый рендер
-
-const cellClass = "px-4 py-2 align-top";
-const headClass = "px-4 py-2 font-medium";
 
 export function RecipesPanel() {
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
@@ -109,7 +97,6 @@ export function RecipesPanel() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70 text-sm text-gray-700 dark:text-gray-300">
               {recipes.map((recipe) => {
                 const isOpen = expanded === recipe.id;
-                const tags = recipe.tags ?? [];
                 const steps = stepsOf(recipe);
                 const dirty = isDirty(recipe);
                 const index = Math.min(stepIndex, Math.max(0, steps.length - 1));
@@ -117,171 +104,30 @@ export function RecipesPanel() {
 
                 return (
                   <React.Fragment key={recipe.id}>
-                    <tr
-                      className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                      onClick={() => toggle(recipe)}
-                    >
-                      <td className="pl-4 text-gray-400">
-                        {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      </td>
-                      <td className="px-4 py-4 font-medium text-gray-900 dark:text-gray-100">
-                        {recipe.name}
-                        {dirty && (
-                          <Badge tone="warning" className="ml-2 font-normal">не сохранено</Badge>
-                        )}
-                        <div className="text-xs font-normal text-gray-400 dark:text-gray-600">{recipe.id}</div>
-                      </td>
-                      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
-                        <span className="inline-flex items-center gap-1.5"><Tags size={14} />{tags.length}</span>
-                      </td>
-                      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
-                        <span className="inline-flex items-center gap-1.5"><ListOrdered size={14} />{steps.length}</span>
-                      </td>
-                      {/* Клик по кнопкам не должен заодно сворачивать строку. */}
-                      <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-3">
-                          {/* История доступна и на чтение: смотреть версии может и `view`. */}
-                          {recipe.document_id != null && (
-                            <IconButton
-                              icon={History}
-                              label="История версий"
-                              onClick={() => openRecipeHistoryModal({
-                                recipe,
-                                documentId: recipe.document_id!,
-                                editable: canEditRecipes,
-                                dirty,
-                              })}
-                            />
-                          )}
-                          {canEditRecipes && <IconButton icon={Pencil} label="Редактировать" onClick={() => openRecipeEditorModal({recipe})} />}
-                          {canEditRecipes && <IconButton icon={Trash2} label="Удалить рецепт" title="Удалить" variant="danger" onClick={() => void handleDelete(recipe)} />}
-                        </div>
-                      </td>
-                    </tr>
+                    <RecipeRow
+                      recipe={recipe}
+                      isOpen={isOpen}
+                      dirty={dirty}
+                      stepCount={steps.length}
+                      canEditRecipes={canEditRecipes}
+                      toggle={toggle}
+                      handleDelete={handleDelete}
+                    />
 
                     {isOpen && (
-                      <tr className="bg-gray-50/60 dark:bg-gray-950/40">
-                        <td colSpan={5} className="px-6 py-4 space-y-5">
-                          {steps.length === 0 ? (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                              У рецепта нет шагов — задавать значения негде.
-                            </p>
-                          ) : (
-                            <>
-                              {/* ─── Выбор шага ─── */}
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                  Шаг
-                                </span>
-                                {steps.map((s, i) => (
-                                  <button
-                                    key={i}
-                                    onClick={() => setStepIndex(i)}
-                                    className={cn(
-                                      "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                                      i === index
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700",
-                                    )}
-                                  >
-                                    {i + 1}. {s.name || "без названия"}
-                                  </button>
-                                ))}
-                              </div>
-
-                              {/* ─── Манифест со значениями выбранного шага ─── */}
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    Теги и значения на шаге {index + 1}
-                                  </span>
-                                  {canEditRecipes && <div className="flex items-center gap-2">
-                                    {dirty && (
-                                      <button
-                                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                                        onClick={() => dropDraft(recipe.id)}
-                                      >
-                                        <Undo2 size={14} />
-                                        Сбросить
-                                      </button>
-                                    )}
-                                    <button
-                                      className={cn(
-                                        "flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition-colors",
-                                        dirty && savingId !== recipe.id
-                                          ? "bg-blue-600 text-white hover:bg-blue-500"
-                                          : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed",
-                                      )}
-                                      disabled={!dirty || savingId === recipe.id}
-                                      onClick={() => void handleSave(recipe)}
-                                    >
-                                      <Save size={14} />
-                                      {savingId === recipe.id ? "Сохранение…" : "Сохранить"}
-                                    </button>
-                                  </div>}
-                                </div>
-
-                                {tags.length === 0 ? (
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                                    Манифест пуст — шагам нечего записывать.
-                                  </p>
-                                ) : (
-                                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60">
-                                    <table className="w-full text-left border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-100 dark:bg-gray-800/80 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                          <th className={cn(headClass, "w-10")}>№</th>
-                                          <th className={headClass}>Имя</th>
-                                          <th className={headClass}>Тег</th>
-                                          <th className={headClass}>Тип</th>
-                                          <th className={headClass}>Описание</th>
-                                          <th className={cn(headClass, "w-44")}>Значение</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70">
-                                        {tags.map((tag, i) => {
-                                          const text = step ? stepValueText(step, tag.name) : "";
-                                          return (
-                                            <tr key={tag.name}>
-                                              <td className={cn(cellClass, "text-gray-400")}>{i + 1}</td>
-                                              <td className={cn(cellClass, "font-medium text-gray-900 dark:text-gray-100")}>
-                                                {tag.name}
-                                              </td>
-                                              {/* Полный путь — в подсказке: в строку он не помещается. */}
-                                              <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")} title={tag.tag}>
-                                                {shortTagPath(tag.tag)}
-                                              </td>
-                                              <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")}>
-                                                {tag.value_type
-                                                  ? VALUE_TYPE_LABELS[tag.value_type] ?? tag.value_type
-                                                  : <span className="italic text-gray-400">без проверки</span>}
-                                              </td>
-                                              <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")}>
-                                                {tag.description || "—"}
-                                              </td>
-                                              <td className={cellClass}>
-                                                <RecipeValueCell
-                                                  valueType={tag.value_type}
-                                                  text={text}
-                                                  onChange={(v) => editValue(recipe, index, tag.name, v)}
-                                                />
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                                <p className="text-xs text-gray-500 dark:text-gray-500">
-                                  Пустое поле — тег на этом шаге не записывается. Условие перехода
-                                  и таймаут шага правятся в редакторе рецепта.
-                                </p>
-                              </div>
-                            </>
-                          )}
-                        </td>
-                      </tr>
+                      <RecipeStepEditor
+                        recipe={recipe}
+                        steps={steps}
+                        index={index}
+                        step={step}
+                        dirty={dirty}
+                        canEditRecipes={canEditRecipes}
+                        savingId={savingId}
+                        setStepIndex={setStepIndex}
+                        dropDraft={dropDraft}
+                        handleSave={handleSave}
+                        onEditValue={(i, name, v) => editValue(recipe, i, name, v)}
+                      />
                     )}
                   </React.Fragment>
                 );
