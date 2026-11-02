@@ -5,18 +5,8 @@ import {X} from "lucide-react";
 import {Badge} from "@/shared/ui/Badge";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {IconButton} from "@/shared/ui/IconButton";
-import type {Tone} from "@/shared/ui/tone";
 import {useAutomationTasksStore} from "../model/useAutomationTasksStore";
-import type {AutomationTaskState, AutomationTaskStatus} from "@/core/automation";
-
-/** Подпись и тон значка состояния задачи — здесь и в списке задач «Автоматизации». */
-export const TASK_STATE_VIEW: Record<AutomationTaskState, {label: string; tone: Tone}> = {
-  RUNNING: {label: "Работает", tone: "success"},
-  DISABLED: {label: "Выключена", tone: "neutral"},
-  INPUT_STALE: {label: "Нет свежих входов", tone: "warning"},
-  OVERRUN: {label: "Не укладывается в период", tone: "warning"},
-  ERROR: {label: "Ошибка", tone: "destructive"},
-};
+import {TASK_STATE_VIEW, type AutomationTaskState, type AutomationTaskStatus} from "@/core/automation";
 
 const PROBLEM_STATES = new Set<AutomationTaskState>(["ERROR", "INPUT_STALE", "OVERRUN"]);
 

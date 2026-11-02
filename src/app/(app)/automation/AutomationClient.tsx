@@ -26,8 +26,8 @@ import {
   republishAutomation,
   restoreAutomationVersion,
   saveAutomation,
+  TASK_STATE_VIEW,
 } from "@/core/automation";
-import {TASK_STATE_VIEW} from "@/modules/monitor";
 import {
   AutomationDiffView, AutomationVersionChanges, compactButton, diffVersions, findSavedTask, freeTaskName,
   isSetDirty, loadAutomationVersion, missingVariables, openTemplateModal, sameWatchdog, stripIoHints,
