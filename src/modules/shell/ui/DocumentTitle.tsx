@@ -3,7 +3,7 @@
 import {useEffect} from "react";
 import {usePathname} from "next/navigation";
 import {useOpenScene} from "@/core/project";
-import {sectionOf} from "@/modules/shell";
+import {sectionOf} from "../lib/navItems";
 
 const APP_NAME = "SCADA";
 
