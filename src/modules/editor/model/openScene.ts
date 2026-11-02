@@ -1,6 +1,6 @@
 import {hasUnsavedWork} from "./editorStoreInternals";
 import {useEditorStore} from "./editorStore";
-import {usePaletteStore} from "./paletteStore";
+import {loadPaletteItems} from "./palette";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import type {EditorProject} from "@/core/project";
 
@@ -33,7 +33,7 @@ export async function openSceneGuarded(id: number): Promise<boolean> {
 
   await loadScene(id);
   // Палитра зависит от проекта и подгружается вместе со схемой.
-  await usePaletteStore.getState().loadPaletteItems();
+  await loadPaletteItems();
   return true;
 }
 
@@ -89,5 +89,5 @@ export async function createSceneGuarded(): Promise<void> {
 
   const created = await useEditorStore.getState().createScene();
   // Палитра зависит от проекта и подгружается вместе со схемой.
-  if (created) await usePaletteStore.getState().loadPaletteItems();
+  if (created) await loadPaletteItems();
 }

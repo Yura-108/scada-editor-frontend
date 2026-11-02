@@ -3,7 +3,7 @@
 import {RefreshCw, Users, X} from "lucide-react";
 import {hasUnsavedWork} from "../../model/editorStoreInternals";
 import {useEditorStore} from "../../model/editorStore";
-import {usePaletteStore} from "../../model/paletteStore";
+import {loadPaletteItems} from "../../model/palette";
 import {useSceneChangeStore, useVisibleSceneChange} from "../../model/sceneChangeStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {dropScene} from "@/core/project";
@@ -40,7 +40,7 @@ export default function SceneChangedBanner() {
     const {currentProject, loadScene} = useEditorStore.getState();
     if (currentProject) dropScene(currentProject.id, notice.sceneId);
     await loadScene(notice.sceneId);
-    await usePaletteStore.getState().loadPaletteItems();
+    await loadPaletteItems();
   };
 
   return (

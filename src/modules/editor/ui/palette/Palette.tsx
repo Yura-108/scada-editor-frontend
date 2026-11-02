@@ -5,7 +5,7 @@ import PaletteItem from "./PaletteItem";
 import {X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "../../lib/paletteUtils";
 import {PaletteItemType} from "../../types/palette.types";
-import {usePaletteStore} from "../../model/paletteStore";
+import {deletePaletteCategory, usePaletteItems} from "../../model/palette";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {IconButton} from "@/shared/ui/IconButton";
@@ -14,7 +14,7 @@ import {EmptyState} from "@/shared/ui/EmptyState";
 const STATIC_ID_THRESHOLD = 10 ** 5;
 
 export default function Palette() {
-  const {paletteItems, deletePaletteCategory} = usePaletteStore();
+  const paletteItems = usePaletteItems();
   const [search, setSearch] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 

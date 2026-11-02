@@ -1,7 +1,7 @@
 import {toast} from "sonner";
 import {buildDeviceLayout, type DeviceLayoutFile} from "../../../lib/deviceLayoutImport";
 import {openDeviceImportReportModal} from "../OpenDeviceImportReportModal";
-import {usePaletteStore} from "../../../model/paletteStore";
+import {getPaletteItems, loadPaletteItems} from "../../../model/palette";
 import {useEditorStore} from "../../../model/editorStore";
 import {askImportMode} from "./askImportMode";
 
@@ -14,14 +14,14 @@ import {askImportMode} from "./askImportMode";
 export async function importDeviceLayout(file: DeviceLayoutFile): Promise<void> {
   // Палитра грузится при монтировании редактора, но если запрос не прошёл, в списке
   // останутся только статические элементы — без шаблонов импортировать нечего.
-  if (!usePaletteStore.getState().paletteItems.some((i) => i.type === "custom")) {
-    await usePaletteStore.getState().loadPaletteItems();
+  if (!getPaletteItems().some((i) => i.type === "custom")) {
+    await loadPaletteItems();
   }
 
   const {scene, addImportedElements} = useEditorStore.getState();
   const {elements, report} = buildDeviceLayout(
     file,
-    usePaletteStore.getState().paletteItems,
+    getPaletteItems(),
     scene?.id ?? null,
   );
 

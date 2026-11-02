@@ -1,4 +1,4 @@
-import {QueryClient} from "@tanstack/react-query";
+import {isServer, QueryClient} from "@tanstack/react-query";
 
 /**
  * Клиент TanStack Query для серверных данных (docs/architecture.md, «Состояние»).
@@ -18,4 +18,17 @@ export function createQueryClient() {
       mutations: {retry: false},
     },
   });
+}
+
+let browserQueryClient: QueryClient | undefined;
+
+/**
+ * Клиент Query приложения. В браузере — один на вкладку: его же отдаёт `Providers`, и код вне
+ * React (действия стора, загрузка схемы) пишет и читает тот же кэш, что и компоненты. На
+ * сервере — новый на каждый вызов, чтобы кэш одного запроса SSR не утёк в другой.
+ */
+export function getQueryClient(): QueryClient {
+  if (isServer) return createQueryClient();
+  browserQueryClient ??= createQueryClient();
+  return browserQueryClient;
 }
