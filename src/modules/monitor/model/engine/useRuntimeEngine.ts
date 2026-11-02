@@ -5,16 +5,16 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {adoptProcedureStatuses, pushProcedureEvents} from "../useProcedureStore";
 import {pushTaskStatuses, resetTaskStatuses} from "../useAutomationTasksStore";
 import {
-  cellBindings, cellRuntimeKey, getRenderedElement, getSceneView, isBooleanValueType, isLiveField, propertyByName,
+  getRenderedElement, getSceneView, isBooleanValueType,
   trendPens, trendTiming, useSceneView,
 } from "@/core/scene";
 import {buildBindingIndex} from "./bindingIndex";
+import {flushEngine} from "./flushEngine";
+import {reseedScene} from "./sceneReseed";
 import {
-  computeNoDataElementKeys, dropTags, ingestOperatorWrites, ingestProperties, ingestTags, isTagQualityGood,
-  newEngineBuffers, resetArchiveBuffers, resetBindingErrors, resetSessionBuffers, setsEqual,
+  dropTags, ingestOperatorWrites, ingestProperties, ingestTags, isTagQualityGood,
+  newEngineBuffers, resetArchiveBuffers, resetSessionBuffers, setsEqual,
 } from "./engineBuffers";
-import type {CompiledBinding} from "@/core/runtime";
-import {hasKnownTrigger, runBindings} from "./runBindings";
 import {collectTagScope, withPropertyRefs, compileEventScript, executeEventScript, type ActionArgs, setRuntimeEventHandler, setRuntimeLive, setRuntimeScriptHandler, setRuntimeSessionGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, setRuntimePropertyValueGetter, setRuntimeTagQualityGetter, showRuntimeMenu, showRuntimeNotice, type ScreenPoint} from "@/core/runtime";
 import {openSceneFromScript} from "./openSceneFromScript";
 import {toast} from "sonner";
@@ -176,116 +176,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   const actionPointsRef = useRef(new Map<number, ScreenPoint | undefined>());
 
   const flush = useCallback(() => {
-    const idx = indexRef.current;
-    const pending = buffers.pending;
-    const pendingProps = buffers.pendingProps;
-    const pendingNames = buffers.pendingPropName;
-    // Пересчёт «нет данных» без значений — после сброса архива, когда у тегов ещё нет ни
-    // одной точки: оверлей обязан лечь, даже если применять нечего.
-    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size && !buffers.qualityDirty)) return;
-    buffers.pending = new Map();
-    buffers.pendingProps = new Map();
-    buffers.pendingPropName = new Map();
-
-    // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
-    //
-    // Записанное оператором значение приходит сюда тем же путём, что и телеметрия (см.
-    // мост записи ниже), и никакого приоритета не имеет: следующий кадр по этому тегу
-    // просто перезапишет его. Именно поэтому показ не «залипает» на записанном.
-    const affected = new Set<CompiledBinding>();
-    const changedTags: {tagId: string; value: string | null}[] = [];
-    for (const [tagId, value] of pending) {
-      if (buffers.values.get(tagId) === value) continue;
-      buffers.values.set(tagId, value);
-      changedTags.push({tagId, value});
-      for (const cb of idx.byTagId.get(tagId) ?? []) affected.add(cb);
-    }
-
-    // «Нет данных» (B2/B4): пересчитываем только если у какого-то тега реально
-    // сменилось quality (взводится в onUpdate) — независимо от того, изменилось
-    // ли при этом само значение (quality могла смениться при том же value).
-    let noDataKeys: Set<string> | undefined;
-    if (buffers.qualityDirty) {
-      buffers.qualityDirty = false;
-      const next = computeNoDataElementKeys(idx, buffers.tagMeta);
-      if (!setsEqual(next, buffers.noDataKeys)) {
-        buffers.noDataKeys = next;
-        noDataKeys = next;
-      }
-    }
-    const changedProps: {propertyId: number; value: string}[] = [];
-    for (const [propertyId, value] of pendingProps) {
-      if (buffers.valuesByProp.get(propertyId) === value) continue;
-      buffers.valuesByProp.set(propertyId, value);
-      changedProps.push({propertyId, value});
-      for (const cb of idx.byPropertyId.get(propertyId) ?? []) affected.add(cb);
-    }
-    const changedNames: {name: string; value: string}[] = [];
-    for (const [name, value] of pendingNames) {
-      if (buffers.valuesByPropName.get(name) === value) continue;
-      buffers.valuesByPropName.set(name, value);
-      changedNames.push({name, value});
-    }
-
-    // Живые значения ячеек таблиц (тег- и локальные, маршрутизация по tag_id/имени,
-    // НЕ через CompiledBinding — это не JS-биндинги, а прямая запись в ячейку,
-    // адрес которой задан привязкой; см. tableBindings.ts).
-    const tableRowProps: Record<string, Record<string, unknown>> = {};
-    for (const {tagId, value} of changedTags) {
-      for (const target of idx.tableCellsByTagId.get(tagId) ?? []) {
-        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, target.col)] = value;
-      }
-    }
-    for (const {name, value} of changedNames) {
-      for (const target of idx.tableCellsByPropertyName.get(name) ?? []) {
-        (tableRowProps[target.elementKey] ??= {})[cellRuntimeKey(target.row, target.col)] = value;
-      }
-    }
-
-    // Прямые привязки «значение элемента ← тег» (прогресс-бар и т.п.): тем же путём,
-    // что ячейки, — без исполнения кода, элементу не нужно собственных свойств.
-    for (const {tagId, value} of changedTags) {
-      for (const target of idx.directTagsByTagId.get(tagId) ?? []) {
-        (tableRowProps[target.elementKey] ??= {})[target.target] = value;
-      }
-    }
-
-    if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
-
-    const store = getSceneView();
-    const byKey = new Map(store.elements.map(el => [el.key, el] as const));
-
-    // Тот же прогон, что и при смене схемы (см. эффект ниже) — одна трактовка ошибок
-    // и автоотключения на оба пути.
-    const {stateNameByKey, propsByKey, errors, fired} = runBindings(affected, {
-      valuesByTagId: buffers.values,
-      valuesByPropertyId: buffers.valuesByProp,
-      selfOf: key => {
-        const el = byKey.get(key);
-        return el ? getRenderedElement(el) : null;
-      },
-      errorCounts: buffers.errorCount,
-      disabled: buffers.disabled,
-      knownErrors: runtimeErrorsRef.current,
-    }, tableRowProps);
-
-    publishRuntimeErrors(errors);
-
-    console.groupCollapsed(
-      `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
-    );
-    if (changedTags.length) console.table(changedTags);
-    if (changedProps.length) console.table(changedProps);
-    if (changedNames.length) console.table(changedNames);
-    if (fired.length) console.table(fired);
-    console.groupEnd();
-
-    if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
-      // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
-      // applyRuntimeBatch: без фактических изменений set() не вызывается.
-      log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
-      store.applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
-    }
+    flushEngine(buffers, indexRef.current, runtimeErrorsRef.current, publishRuntimeErrors);
   }, [publishRuntimeErrors, buffers]);
 
   const flushRef = useRef(flush);
@@ -351,100 +242,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!active) return;
     const idx = indexRef.current;
     if (!idx) return;
-    for (const el of getSceneView().elements) {
-      for (const p of el.properties ?? []) {
-        if (typeof p.id === "number" && idx.propertyIds.has(p.id) && !buffers.valuesByProp.has(p.id)) {
-          buffers.valuesByProp.set(p.id, String(p.default_value ?? ""));
-        }
-      }
-    }
-
-    // Сид ячеек таблиц. Локальная строка до первого WS-апдейта показывает default_value
-    // (доку: «до первого изменения»), но ТОЛЬКО если живого значения ещё нет: индекс
-    // пересобирается на каждую смену схемы, и безусловная запись дефолта затирала бы
-    // значение, уже пришедшее по WS, — ячейка навсегда оставалась бы с дефолтом, если
-    // свойство больше не менялось.
-    //
-    // Теговые ячейки сидируем из уже известных значений сессии: при возврате на схему
-    // они иначе пустые, хотя значение лежит в valuesRef. Неизвестного тега не касаемся —
-    // до первого кадра элемент под оверлеем «нет данных».
-    const propsByKey: Record<string, Record<string, unknown>> = {};
-    for (const el of getSceneView().elements) {
-      if (el.type !== "table") continue;
-      for (const {cell} of cellBindings(el)) {
-        if (!isLiveField(cell.field)) continue;
-        const p = propertyByName(el, cell.propertyName);
-        if (!p) continue;
-
-        if (p.tag_id) {
-          const live = buffers.values.get(p.tag_id);
-          if (live == null) continue;
-          (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = live;
-          continue;
-        }
-
-        const value = buffers.valuesByPropName.get(p.name) ?? String(p.default_value ?? "");
-        buffers.valuesByPropName.set(p.name, value);
-        (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = value;
-      }
-
-      // Прямые привязки к тегу: без сида схема, открытая после прихода значений,
-      // осталась бы со значением по умолчанию — flush исполняет только ИЗМЕНИВШИЕСЯ теги.
-      for (const b of el.bindings ?? []) {
-        if (b.enabled === false || !b.direct || !b.tag) continue;
-        const live = buffers.values.get(b.tag);
-        if (live == null) continue;
-        (propsByKey[el.key] ??= {})[b.directTarget || "value"] = live;
-      }
-    }
-
-    // Счётчики ошибок и автоотключение живут ровно до пересборки индекса: биндинг,
-    // отключённый после серии ошибок на прошлой схеме, обязан снова заработать на новой
-    // (и на этой же после перезагрузки). Ошибки исполнения прошлой схемы убираем из
-    // плашки «Проблемы с привязками» — тех биндингов на холсте больше нет.
-    resetBindingErrors(buffers);
-    const baseErrors: ReadonlyMap<string, string> = new Map();
-
-    // Повторный прогон биндингов по УЖЕ ИЗВЕСТНЫМ значениям.
-    //
-    // Без него схема, открытая после того как значения пришли, остаётся в состоянии по
-    // умолчанию навсегда: applyServerComponents обнуляет карту состояний, а flush
-    // исполняет только биндинги ИЗМЕНИВШИХСЯ тегов — очередной кадр приносит то же
-    // значение, страж no-op его отсекает, и биндинг не выполняется. Ровно этот путь
-    // проходит оператор, применивший рецепт на одной схеме и перешедший на другую.
-    const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
-    const toRun = idx.all.filter(cb => hasKnownTrigger(cb, buffers.values, buffers.valuesByProp));
-    const {stateNameByKey, propsByKey: nextProps, errors, fired} = runBindings(toRun, {
-      valuesByTagId: buffers.values,
-      valuesByPropertyId: buffers.valuesByProp,
-      selfOf: key => {
-        const el = byKey.get(key);
-        return el ? getRenderedElement(el) : null;
-      },
-      errorCounts: buffers.errorCount,
-      disabled: buffers.disabled,
-      knownErrors: baseErrors,
-    }, propsByKey);
-
-    publishRuntimeErrors(errors);
-    log(`повторный прогон при смене схемы: биндингов ${toRun.length} из ${idx.all.length}, сработало ${fired.length}`);
-
-    // «Нет данных» (B4): тег, по которому ещё не было ни одного сообщения (tagMetaRef
-    // пуст на самый первый маунт), считается недостоверным — элементы уходят в
-    // noDataKeys рантайм-слоя, не дожидаясь первого BAD-кадра. При смене схемы внутри той же
-    // сессии tagMetaRef уже знает часть тегов, и пересчёт это учитывает.
-    //
-    // Пишем БЕЗУСЛОВНО, без сравнения с прошлым набором: документ заменён целиком, и
-    // ключи прошлой схемы обязаны уйти из стора, даже если сам набор «равен» по составу.
-    const initialNoData = computeNoDataElementKeys(idx, buffers.tagMeta);
-    buffers.noDataKeys = initialNoData;
-
-    // Один батч на всё открытие схемы — один ре-рендер холста.
-    getSceneView().applyRuntimeBatch({
-      stateNameByKey,
-      propsByKey: nextProps,
-      noDataKeys: initialNoData,
-    });
+    reseedScene(buffers, idx, publishRuntimeErrors);
     // publishRuntimeErrors стабилен (useCallback без зависимостей) — в списке он ради
     // правила exhaustive-deps, пересчёт схемы им не запускается.
   }, [active, index, publishRuntimeErrors, buffers]);
