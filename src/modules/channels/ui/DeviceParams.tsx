@@ -1,13 +1,12 @@
 'use client';
 
-import React, {useState, useEffect, useMemo, useCallback} from 'react';
+import React, {useState, useMemo} from 'react';
 import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
 import ParamWrapper from "./ParamWrapper";
 import {
   DeviceContextMenu as ContextMenu, handleContextParamAction, isParamChecked, openChooseParamTypeModal, removeParam,
-  resolveParamWidget, updateParam, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore, useEditingDevices,
-  useUnlockEditingOnUnload,
+  resolveParamWidget, useDeviceDictionaries, useDeviceLocksStore, useDeviceTreeStore, useEditingDevices,
 } from "@/core/devices";
 import {
   ContextMenuTrigger,
@@ -16,10 +15,11 @@ import {
   isContextMenuKey,
 } from "@/core/devices";
 import {paramMenuItems} from "@/core/devices";
-import debounce from 'lodash/debounce';
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {toast} from "sonner";
 import {ParamValueField} from "./ParamValueField";
+import {useParamDraft} from "../model/useParamDraft";
+import {useReleaseEditingOnLeave} from "../model/useReleaseEditingOnLeave";
 import {EmptyState} from "@/shared/ui/EmptyState";
 
 const DeviceParams = () => {
@@ -38,9 +38,9 @@ const DeviceParams = () => {
   const editingDevices = useEditingDevices();
   const isEditingSelected = !!selectedDevice && editingDevices.includes(selectedDevice);
 
-  // Снятие redis-локов при перезагрузке/закрытии вкладки (sendBeacon).
-  // SPA-навигацию закрывает cleanup-эффект ниже.
-  useUnlockEditingOnUnload();
+  // Снятие redis-локов при уходе со страницы: перезагрузка, закрытие вкладки, SPA-навигация.
+  useReleaseEditingOnLeave();
+  const {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave} = useParamDraft(selectedDevice);
 
   const rawParams = useMemo(() => {
     return selectedDevice ? getParams(selectedDevice) : [];
@@ -50,80 +50,7 @@ const DeviceParams = () => {
   const optionItems = rawParams.filter(param => resolveParamWidget(param.type) === 'option');
   const normalParams = rawParams.filter(param => resolveParamWidget(param.type) !== 'option');
 
-  const [editedParams, setEditedParams] = useState<Map<string, string>>(new Map());
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
-
-  const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
-
-  const debouncedSaveDraft = useCallback(
-    debounce((key: string, data: { key: number; value: string; }[]) => {
-      localStorage.setItem(key, JSON.stringify(data));
-    }, 400),
-    []
-  );
-
-  useEffect(() => {
-    return () => {
-      const { editingDevices, stopEditing } = useDeviceLocksStore.getState();
-      if (editingDevices.length === 0) return;
-
-      (async () => {
-        try {
-          await stopEditing(editingDevices);
-        } catch (err) {
-          console.error("Cleanup unlock failed:", err);
-        }
-      })();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!draftKey || !selectedDevice) {
-      setEditedParams(new Map());
-      return;
-    }
-    try {
-      const saved = localStorage.getItem(draftKey);
-
-      if (saved) {
-        const arr: {key: number; value: string}[] = JSON.parse(saved);
-
-        const map = new Map<string, string>(arr.map(item => [String(item.key), item.value]));
-        setEditedParams(map);
-      }
-    } catch (error) {
-      console.warn("Ошибка чтения draft", error);
-      setEditedParams(new Map());
-    }
-  }, [selectedDevice]);
-
-  useEffect(() => {
-    if (!draftKey || !selectedDevice) return;
-
-    const arr = [...editedParams].map(([key, value]) => ({
-      key: Number(key),
-      value
-    }));
-
-
-    if (arr.length === 0) {
-      localStorage.removeItem(draftKey);
-    } else {
-      debouncedSaveDraft(draftKey, arr);
-    }
-  }, [editedParams, draftKey]);
-
-  useEffect(() => {
-    return () => {
-      debouncedSaveDraft.cancel();
-    };
-  }, [debouncedSaveDraft]);
-
-  const hasChanges = useMemo(() => {
-    return editedParams.size > 0;
-  }, [editedParams]);
 
   const handleRemoveParam = async (key: string) => {
     const confirmed = await confirmModal({
@@ -142,51 +69,6 @@ const DeviceParams = () => {
       // и пользователь считал, что удаление прошло.
       console.error('Ошибка при удалении параметра:', err);
       toast.error(err instanceof Error ? err.message : 'Не удалось удалить параметр');
-    }
-  }
-  const handleChange = (key: string, value: string) => {
-    if (!selectedDevice) return;
-    const serverValue = getParams(selectedDevice).find((param) => String(param.key) === key)?.value ?? '';
-    setEditedParams((prev) => {
-      const next = new Map(prev);
-
-      if (value === serverValue) {
-        next.delete(key);
-      } else {
-        next.set(key, value);
-      }
-      return next;
-    })
-    setSaveStatus('idle');
-  };
-  const handleSave = async () => {
-    setIsSaving(true);
-
-    try {
-      // Отправляем ТОЛЬКО черновик текущего устройства. Раньше здесь перебирался
-      // весь localStorage по префиксу 'device-params-draft:', из-за чего кнопка,
-      // активная по изменениям одного устройства (hasChanges), записывала заодно
-      // устаревшие черновики других устройств и других сессий.
-      const arrayChanges: Array<{key: string; value: string}> = [...editedParams].map(
-        ([key, value]) => ({key, value}),
-      );
-
-      if (arrayChanges.length === 0) {
-        setSaveStatus('idle');
-        return;
-      }
-
-      await updateParam(arrayChanges);
-
-      // Очистка после успеха — тоже только текущего устройства.
-      if (draftKey) localStorage.removeItem(draftKey);
-      setEditedParams(new Map());
-      setSaveStatus('success');
-    } catch (err) {
-      console.error('Ошибка сохранения параметров:', err);
-      setSaveStatus('error');
-    } finally {
-      setIsSaving(false);
     }
   }
   const handleContextMenu = (e: ContextMenuTrigger, key: string | null = null) => {
