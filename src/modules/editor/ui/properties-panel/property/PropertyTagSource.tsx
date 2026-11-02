@@ -6,6 +6,7 @@ import {TagTree} from "@/core/devices";
 import {Tabs, type TabItem} from "@/shared/ui/Tabs";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/core/automation";
 import type {TagSource} from "./propertyOptions";
+import {AssistantTagResolve} from "../../assistant/AssistantTagResolve";
 
 const SOURCES: TabItem<TagSource>[] = [
   {value: "channel", label: "Канал"},
@@ -45,6 +46,7 @@ export function PropertyTagSource({isTagType, propertyType, tagSource, onTagSour
 
       {tagSource === "channel" ? (
         <>
+          <AssistantTagResolve value={channelTag} onPick={onChannelTag} />
           <TagTree className="h-[360px]" value={channelTag} onChange={onChannelTag} />
           {/* Полный путь оставляем в `title`: подпись короткая, но проверить,
               тот ли это узел дерева, по-прежнему можно наведением. */}
