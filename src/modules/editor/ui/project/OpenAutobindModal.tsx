@@ -1,24 +1,18 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
-import {Field} from "@/shared/ui/field/Field";
 import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/field/Select";
 import type {AutobindMiss, AutobindReport} from "../../types/autobind.types";
+import {useChannelRoot} from "./useChannelRoot";
+import {ChannelRootPicker} from "./ChannelRootPicker";
 
 /** Строки несовпадений: имя компонента, свойство (у `not_found` его нет) и сцена. */
 function MissList({items}: {items: AutobindMiss[]}) {
@@ -97,56 +91,10 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
   const closeModal = useCloseModal();
   const autobindProject = useEditorStore((s) => s.autobindProject);
 
-  const [sites, setSites] = useState<string[]>([]);
-  const [site, setSite] = useState("");
-  const [roots, setRoots] = useState<string[]>([]);
-  const [root, setRoot] = useState("");
-  const [isLoadingRoots, setIsLoadingRoots] = useState(false);
+  const channelRoot = useChannelRoot();
+  const {root} = channelRoot;
   const [isBinding, setIsBinding] = useState(false);
   const [report, setReport] = useState<AutobindReport | null>(null);
-
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch("/api/device/site/");
-        if (!res.ok) return;
-        const data: unknown = await res.json();
-        setSites(Array.isArray(data) ? data.filter((s): s is string => typeof s === "string") : []);
-      } catch (err) {
-        console.error("Не удалось загрузить площадки:", err);
-      }
-    })();
-  }, []);
-
-  // Список баз перезапрашивается на каждую смену площадки. `cancelled` — защита от гонки:
-  // ответ по прежней площадке не должен перетереть свежий (тот же приём в ChannelsToolbar).
-  useEffect(() => {
-    if (!site) {
-      setRoots([]);
-      setRoot("");
-      return;
-    }
-    let cancelled = false;
-    setIsLoadingRoots(true);
-    void (async () => {
-      try {
-        const res = await fetch(`/api/device/hierarchy?site=${encodeURIComponent(site)}`);
-        if (!res.ok) throw new Error(`Ошибка ${res.status}`);
-        const data = await res.json() as {nodes?: {key: string}[]};
-        if (cancelled) return;
-        setRoots((data.nodes ?? []).map((n) => n.key));
-        setRoot("");
-      } catch (err) {
-        if (!cancelled) console.error("Не удалось загрузить базы каналов:", err);
-      } finally {
-        if (!cancelled) setIsLoadingRoots(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [site]);
 
   const handleBind = async () => {
     if (!root) return;
@@ -178,36 +126,7 @@ function AutobindContent({projectId, projectName}: {projectId: number; projectNa
           <AutobindReportView report={report} />
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Площадка">
-                <Select value={site} onValueChange={setSite}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите площадку…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Field
-                label="База каналов"
-                hint={site && !isLoadingRoots && roots.length === 0 ? "На этой площадке баз нет" : undefined}
-              >
-                <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Подпись — последний сегмент, значение — полный путь: именно он уезжает
-                        в `channel_root`. */}
-                    {roots.map((key) => (
-                      <SelectItem key={key} value={key}>{key.split(".").pop() || key}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+            <ChannelRootPicker state={channelRoot} />
 
             <Banner role="note" tone="warning" icon={AlertTriangle}>
               Совпавшие теги будут перезаписаны, даже если уже заданы. Отменить — восстановлением
