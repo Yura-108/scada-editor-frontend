@@ -1,24 +1,15 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
-import {AlertTriangle, Waypoints} from "lucide-react";
-import {toast} from "sonner";
+import React from "react";
+import {AlertTriangle} from "lucide-react";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
-import {shortTagPath, isBooleanValueType, isNumericValueType, useSceneView, getSceneView} from "@/core/scene";
-import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from "@/core/runtime";
-import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {describeDenial, isAccessDenial} from "@/core/access";
+import {useSceneView, getSceneView} from "@/core/scene";
+import {getRuntimeTagValue} from "@/core/runtime";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {PropertyCreateDto} from "@/core/scene";
-import {
-  TagWriteRequestDto,
-  TagWriteResultDto,
-  normalizeTagWriteResults,
-  tagWriteOutcome,
-  tagWriteStatusLabel,
-} from "@/core/runtime";
 import {useOpenScene} from "@/core/project";
-import {ValueWriteRow} from "./ValueWriteRow";
+import {useLiveValueTick} from "../model/useLiveValueTick";
+import {useOptionDrafts} from "../model/options/useOptionDrafts";
+import {TagPropertyRow} from "./options/TagPropertyRow";
 
 interface Props {
   elementKey: string;
@@ -29,264 +20,18 @@ interface ContentProps extends Props {
   onClose: () => void;
 }
 
-/** Как часто перечитываем живые значения, пока окно открыто. */
-const VALUE_POLL_MS = 1000;
-
-/** Общая проверка с инспектором объектов — см. core/scene/tags/valueTypes.ts. */
-const isNumericType = isNumericValueType;
-
-/** Имя свойства для оператора: `label`, а без него — технический `name` из скриптов. */
-const propertyTitle = (p: PropertyCreateDto) => p.label?.trim() || p.name;
-
-/** Строка к записи: свойство, адрес тега и значение, которое уедет в ПЛК. */
-interface WriteRow {
-  property: PropertyCreateDto;
-  tagId: string;
-  value: string;
-}
-
-/** «1 значение» / «2 значения» / «5 значений» — для заголовка подтверждения. */
-const plural = (n: number, one: string, few: string, many: string) => {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-  return many;
-};
-
 function ElementOptionsContent({elementKey, onClose}: ContentProps) {
   const element = useSceneView((s) => s.elements.find(el => el.key === elementKey));
   const projectId = useOpenScene((s) => s.currentProject?.id ?? null);
 
   const tagProps = (element?.properties ?? []).filter(p => p.property_type === "Тег");
 
-  // Черновики ввода по tag_id: правка одной строки не должна трогать соседние.
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  // Теги, по которым сейчас идёт запись. Массив, а не один ключ: «Применить для всех»
-  // занимает сразу несколько строк, и спиннер должен стоять у каждой.
-  const [writingTags, setWritingTags] = useState<string[]>([]);
-  const isBusy = writingTags.length > 0;
-  // Тик перечитывания живых значений: они лежат в рефах движка, а не в сторе,
-  // поэтому подписаться на них селектором нельзя — опрашиваем раз в секунду.
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setTick(n => n + 1), VALUE_POLL_MS);
-    return () => clearInterval(id);
-  }, []);
+  const {drafts, setDraft, writingTags, isBusy, filledRows, sendWrites, write} = useOptionDrafts(tagProps, projectId);
+  useLiveValueTick();
 
   const asText = (v: string | null | undefined) => (v == null ? "нет данных" : String(v));
   /** То же значение, что нарисовано на холсте: движок держит их в рефах, а не в сторе. */
   const shownValueOf = (tagId: string) => asText(getRuntimeTagValue(tagId));
-
-  /**
-   * Значение строки для записи.
-   *
-   * `requireTouched` — вся разница между кнопкой строки и «Применить для всех». У булева тега
-   * нетронутый чекбокс это `false`, а не пустая строка: нажав «Записать в ПЛК» напротив строки,
-   * оператор именно этого и просит. А вот «для всех» так трактовать нельзя — иначе одна кнопка
-   * разослала бы `false` во все булевы теги компонента, которых оператор не касался.
-   */
-  const rowOf = (property: PropertyCreateDto, requireTouched: boolean): WriteRow | null => {
-    const tagId = property.tag_id;
-    if (!tagId) return null;
-
-    const touched = drafts[tagId] !== undefined;
-    if (requireTouched && !touched) return null;
-
-    if (isBooleanValueType(property.value_type)) {
-      return {property, tagId, value: drafts[tagId] === "true" ? "true" : "false"};
-    }
-
-    const raw = drafts[tagId] ?? "";
-    if (!raw.trim()) return null;
-    return {property, tagId, value: raw};
-  };
-
-  /**
-   * Что уедет по «Применить для всех»: строки с назначенным тегом и заданным значением.
-   *
-   * Одинаковые теги схлопываются. Два свойства компонента могут смотреть на один тег, а
-   * черновики ключуются по `tag_id` — значит и значение у них общее, и вторая строка была бы
-   * дублем той же записи. Отправлять его нельзя: один адрес дважды в запросе — это гонка на
-   * стороне шлюза, и BFF такой запрос отвергает.
-   */
-  const filledRows = tagProps
-    .map(p => rowOf(p, true))
-    .filter((r): r is WriteRow => r !== null)
-    .filter((r, i, all) => all.findIndex(x => x.tagId === r.tagId) === i);
-
-  /**
-   * Отправка записи — единственный путь и для одной строки, и для «Применить для всех».
-   *
-   * Тело всегда массив (`writes`), даже на одну строку. Цикл одиночных запросов дал бы
-   * половину записанных значений при обрыве в середине, и оператор не увидел бы, где именно
-   * оборвалось; здесь исход один на весь запрос, а построчные отказы шлюза приходят отчётами.
-   */
-  const sendWrites = async (rows: WriteRow[]) => {
-    if (!rows.length) return;
-
-    // Сессия НЕ обязательна: по контракту записи она нужна бэкенду только для контекста и
-    // логов, тег адресуется напрямую по `tagId`. Отказывать из-за оборвавшейся сессии,
-    // когда оператор уже подтвердил запись, было бы отказом на пустом месте — в «Опции»
-    // без связи всё равно не войти, пункт меню там заблокирован.
-    const sessionId = getRuntimeSessionId() ?? undefined;
-
-    const invalid = rows.find(
-      r => isNumericType(r.property.value_type) && !Number.isFinite(Number(r.value)),
-    );
-    if (invalid) {
-      // Отправлять остальные строки без нечисловой не начинаем: оператор задавал набор
-      // значений целиком, и частичный набор в ПЛК — не то, о чём он просил.
-      toast.error(`«${propertyTitle(invalid.property)}»: значение должно быть числом`);
-      return;
-    }
-
-    // Без проекта бэкенд не знает, в чьих правах писать (projectId обязателен).
-    if (projectId == null) {
-      toast.error("Проект не выбран");
-      return;
-    }
-
-    // Запись идёт на реальное оборудование и необратима — подтверждение обязательно
-    // (тот же порядок, что у применения рецепта). Перечисляем ВСЕ строки поимённо:
-    // «применить для всех» вслепую — это способ записать в ПЛК то, о чём уже забыли.
-    const confirmed = await confirmModal({
-      title: rows.length === 1
-        ? "Записать значение в ПЛК?"
-        : `Записать ${rows.length} ${plural(rows.length, "значение", "значения", "значений")} в ПЛК?`,
-      description: (
-        <>
-          <span>Будет записано, действие необратимо:</span>
-          <ul className="mt-2 space-y-1">
-            {rows.map(r => (
-              <li key={r.tagId}>
-                «{propertyTitle(r.property)}» = «{r.value}»
-              </li>
-            ))}
-          </ul>
-        </>
-      ),
-      confirmLabel: "Записать",
-      danger: true,
-    });
-    if (!confirmed) return;
-
-    setWritingTags(rows.map(r => r.tagId));
-    try {
-      const payload: TagWriteRequestDto = {
-        // `valueType` — тип значения свойства: по нему бэкенд приводит строку к типу канала.
-        // Без него булево значение уехало бы в контроллер строкой и могло лечь неверной
-        // уставкой (контракт записи от 08.09.2026).
-        writes: rows.map(r => ({
-          tagId: r.tagId,
-          value: r.value,
-          valueType: r.property.value_type,
-        })),
-        sessionId,
-        projectId,
-      };
-
-      const res = await fetch("/api/runtime/tags/write", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-        // Тот же запас, что и у применения рецепта: ответ ждёт подтверждения брокера.
-        signal: AbortSignal.timeout(20_000),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        // Причина лежит в `message` либо в `error`, и поле зависит от того, кто ответил:
-        // наш BFF на негодный запрос отдаёт `error`, а рантайм — `message` (в том числе
-        // 409 «проект не назначен экземпляру» и 503 «экземпляр недоступен», у которых
-        // поля `error` нет вовсе). Читать только `error` значило бы показать оператору
-        // «Ошибка записи (409)» без единого слова о причине.
-        // Отказ по правам (`{error: "FORBIDDEN", reason}`) — переводим, иначе вышло бы «FORBIDDEN».
-        if (isAccessDenial(data)) throw new Error(describeDenial(data));
-        const body = data as {message?: unknown; error?: unknown} | null;
-        const raw = body?.message ?? body?.error;
-        const message = typeof raw === "string" && raw ? raw : "";
-        throw new Error(message || `Ошибка записи (${res.status})`);
-      }
-
-      const results = normalizeTagWriteResults(data);
-      if (!results.length) throw new Error("Бэкенд не вернул отчёт о записи");
-
-      const applied: {row: WriteRow; result: TagWriteResultDto}[] = [];
-      // Исход неизвестен (`NO_CONFIRMATION`) — не успех и не отказ: команда могла
-      // примениться. Считаем отдельно, иначе сводка соврала бы в обе стороны.
-      const unknown: WriteRow[] = [];
-      rows.forEach((row, i) => {
-        // Сопоставляем ПО ИНДЕКСУ: бэкенд отвечает массивом того же размера и порядка, а
-        // `tagId` в отчёте — для чтения, не для поиска (один тег может встретиться в
-        // запросе дважды, и обе строки нашли бы первый отчёт). Поиск по `tagId` оставлен
-        // запасным путём на случай, если размеры разъедутся.
-        const result = (results.length === rows.length ? results[i] : undefined)
-          ?? results.find(r => r.tagId === row.tagId);
-
-        if (!result) {
-          toast.error(`«${propertyTitle(row.property)}»: бэкенд не вернул отчёт о записи`);
-          return;
-        }
-        const outcome = tagWriteOutcome(result);
-
-        if (outcome === "unknown") {
-          // Не отказ: команда ушла в брокер, ответа шлюза нет. Значение на схему не
-          // выводим — телеметрия покажет, чем дело кончилось.
-          unknown.push(row);
-          toast.warning(
-            `«${propertyTitle(row.property)}»: результат неизвестен — сверьтесь с телеметрией`
-            + `${result.message ? ` (${result.message})` : ""}`,
-          );
-          return;
-        }
-        if (outcome === "failed") {
-          // Отказ шлюза — это не сетевая ошибка: показываем его причину дословно и НЕ
-          // выводим значение на схему, записи ведь не произошло.
-          toast.error(
-            `«${propertyTitle(row.property)}»: ${tagWriteStatusLabel(result)}${result.message ? ` — ${result.message}` : ""}`,
-          );
-          return;
-        }
-
-        applied.push({row, result});
-      });
-
-      // Записанное показываем сразу, не дожидаясь кадра телеметрии: у редко меняющихся
-      // тегов это минуты. Но именно ПОКАЗЫВАЕМ — приоритета над телеметрией у значения
-      // нет, первый же кадр по тегу его вытеснит (см. мост записи в useRuntimeEngine).
-      notifyRuntimeTagsWritten(applied.map(({row}) => ({tagId: row.tagId, value: row.value})));
-
-      if (applied.length === rows.length) {
-        toast.success(rows.length === 1
-          ? `«${propertyTitle(rows[0].property)}»: команда отправлена (${tagWriteStatusLabel(applied[0].result)})`
-          : `Отправлено команд: ${rows.length}`);
-      } else if (applied.length || unknown.length) {
-        // Частичный результат обязан читаться как частичный, причём тремя числами:
-        // «записано N из M» скрыло бы строки с неизвестным исходом среди отказов.
-        const parts = [`записано ${applied.length}`];
-        if (unknown.length) parts.push(`неизвестно ${unknown.length}`);
-        const failed = rows.length - applied.length - unknown.length;
-        if (failed) parts.push(`отказ ${failed}`);
-        toast.warning(`Из ${rows.length}: ${parts.join(", ")} — подробности в сообщениях выше`);
-      }
-    } catch (err) {
-      console.error(err);
-      const isTimeout = err instanceof Error && err.name === "TimeoutError";
-      toast.error(isTimeout
-        ? "Не дождались ответа за 20 с — проверьте результат вручную, значения могли записаться"
-        : (err instanceof Error ? err.message : "Ошибка записи значения"));
-    } finally {
-      setWritingTags([]);
-    }
-  };
-
-  /** Кнопка напротив строки: та же отправка, массивом из одного элемента. */
-  const write = (property: PropertyCreateDto) => {
-    const row = rowOf(property, false);
-    if (row) void sendWrites([row]);
-  };
 
   return (
     // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
@@ -305,50 +50,17 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
             {tagProps.map((p) => {
               const tagId = p.tag_id ?? "";
-              const isBool = isBooleanValueType(p.value_type);
-              const draft = drafts[tagId] ?? "";
-              const isWriting = writingTags.includes(tagId);
-
               return (
-                <div key={p.id ?? p.name} className="px-4 py-3 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {propertyTitle(p)}
-                      </span>
-                      {/* Полный путь — в title: подпись короткая, но узел проверить можно.
-                          Технический name — рядом, если подпись его скрыла: он нужен при
-                          отладке скриптов. */}
-                      <span
-                        className="block truncate text-xs text-gray-500 dark:text-gray-400"
-                        title={tagId || undefined}
-                      >
-                        {p.label?.trim() ? `${p.name} · ` : ""}
-                        {tagId ? shortTagPath(tagId) : "тег не назначен"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {shownValueOf(tagId)}
-                      </span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-400">
-                        текущее значение
-                      </span>
-                    </span>
-                  </div>
-
-                  <ValueWriteRow
-                    isBool={isBool}
-                    numeric={isNumericType(p.value_type)}
-                    draft={draft}
-                    onDraft={(value) => setDrafts({...drafts, [tagId]: value})}
-                    onWrite={() => write(p)}
-                    disabled={!tagId || isBusy || (!isBool && !draft.trim())}
-                    label={isWriting ? "Запись..." : "Записать в ПЛК"}
-                    danger
-                  />
-                </div>
+                <TagPropertyRow
+                  key={p.id ?? p.name}
+                  property={p}
+                  shownValue={shownValueOf(tagId)}
+                  draft={drafts[tagId] ?? ""}
+                  isWriting={writingTags.includes(tagId)}
+                  isBusy={isBusy}
+                  onDraft={(value) => setDraft(tagId, value)}
+                  onWrite={() => write(p)}
+                />
               );
             })}
           </div>
