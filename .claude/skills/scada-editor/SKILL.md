@@ -92,11 +92,14 @@ leaves whose live position sits in overrides.
   `themeColors` — keep it stable; (c) anchor/handle `onDragMove` handlers write to the store
   **only when the snapped value changes** (grid-step guard), not per mousemove pixel.
 - `core/canvas/shapes/ShapeElement.tsx` — **leaf dispatcher**: `if (rendered.type === "…")` branches →
-  a dedicated component, else a generic `<Rect>` fallback (covers rectangle/path/unknown).
+  a dedicated component; anything else falls back to `RectShapeElement` (covers rectangle/path/unknown).
+  `Polygon`/`Circle`/`Line`/`RectShapeElement` get `rendered` and `themeColors` from the dispatcher
+  (plus `closeMenu` for the polygon), the others compute them themselves.
 - `GroupNode` (inside `core/canvas/shapes/CanvasNode.tsx`) — recursive group/component; renders `[...composition, ...children]`.
 - Dedicated leaf components (all take `ShapeElementProps` from `core/canvas/types.ts`):
   `TextShapeElement`, `CheckboxShapeElement`, `ProgressBarShapeElement`, `ButtonShapeElement`,
-  `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`.
+  `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`,
+  `PolygonShapeElement`, `CircleShapeElement`, `LineShapeElement`, `RectShapeElement`, and the rest in `shapes/`.
 - Handles: `Anchor.tsx` (vertex/resize, needs `themeColors`), `CircleResizeHandle.tsx`,
   `ResizeHandleSE.tsx` (shared corner/right-edge box handle, self-contained blue square).
 - Stage interaction/pan/zoom/marquee: `canvas/hooks/useStageInteractions.ts` — marquee is
@@ -378,7 +381,7 @@ unbounded.
 | Types (DiagramElement, LeafElement, ElementType, states) | `src/core/scene/types/editorElement.type.ts` |
 | Rendered element (base + active overrides) | `src/core/scene/render/getRenderedElement.ts` |
 | Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
-| Leaf dispatch + generic fallback | `src/core/canvas/shapes/ShapeElement.tsx` |
+| Leaf dispatch + generic fallback | `src/core/canvas/shapes/ShapeElement.tsx` → `RectShapeElement.tsx` |
 | Group/component recursion | `GroupNode` in `src/core/canvas/shapes/CanvasNode.tsx` |
 | Render context / ShapeElementProps / MIN_SIZE | `src/core/canvas/types.ts` |
 | Palette items | `src/modules/editor/lib/palette.ts` |
