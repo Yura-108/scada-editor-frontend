@@ -13,7 +13,7 @@ the core of the repo. Comments and user-facing strings are **in Russian** — ma
 Goal when editing: **don't add NEW errors beyond baseline** (check the count before/after).
 `next build` is red for the same reason. There is no test runner.
 
-## Core data model (`src/types/editorElement.type.ts`, `src/modules/editor/model/editorStore.ts` + `model/slices/*`)
+## Core data model (`src/core/scene/types/editorElement.type.ts`, `src/modules/editor/model/editorStore.ts` + `model/slices/*`)
 
 `elements: DiagramElement[]` is a **flat** array. Hierarchy is by keys, not nesting:
 - `parentKey` — every element points at its container (or `String(scene.id)` at the root).
@@ -242,13 +242,13 @@ place that knows the rule is `src/core/scene/element/tableBindings.ts` (`resolve
 ## Adding a new element type (5 touch points)
 
 Example to copy: the "Управление" controls (`button/toggle/slider/dropdown/input`).
-1. **`src/constants/palette.ts`** — a `PaletteItemType` (unique `id ≥ 10**5`, `type`, `name`,
+1. **`src/modules/editor/lib/palette.ts`** — a `PaletteItemType` (unique `id ≥ 10**5`, `type`, `name`,
    `category`, `defaultProps` with **grid-aligned w/h**). Palette groups by `category`
    dynamically; a new category just appears. `id ≥ 10**5` marks it a non-deletable static item.
-2. **`src/types/editorElement.type.ts`** — add the string to the **`ElementType` union** and any
+2. **`src/core/scene/types/editorElement.type.ts`** — add the string to the **`ElementType` union** and any
    new fields to `LeafElement`. The union now lists ALL real leaf types; keeping it complete is
    what removed a pile of "no overlap" baseline errors — don't regress it.
-3. **`src/constants/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
+3. **`src/modules/editor/lib/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
    (`complex:false` for a widget) and `elementPropertyMap` (a `PropertySchema[]`). These are
    `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
 4. **`src/modules/editor/model/newElement.ts` → `TYPE_PROPS`** — an entry with the type's own fields (size, colours,
@@ -373,14 +373,14 @@ unbounded.
 | Concern | File |
 |---|---|
 | Store (assembly + undo config) / actions by zone | `src/modules/editor/model/editorStore.ts` / `model/slices/*.slice.ts`; pure helpers in `model/elementTree.ts`, `model/elementStates.ts`, `model/editorStoreInternals.ts` |
-| Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
+| Types (DiagramElement, LeafElement, ElementType, states) | `src/core/scene/types/editorElement.type.ts` |
 | Rendered element (base + active overrides) | `src/core/scene/render/getRenderedElement.ts` |
 | Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
 | Leaf dispatch + generic fallback | `src/core/canvas/shapes/ShapeElement.tsx` |
 | Group/component recursion | `GroupNode` in `src/core/canvas/shapes/CanvasNode.tsx` |
 | Render context / ShapeElementProps / MIN_SIZE | `src/core/canvas/types.ts` |
-| Palette items | `src/constants/palette.ts` |
-| Registry + property schemas | `src/constants/propertiesPanel.ts` |
+| Palette items | `src/modules/editor/lib/palette.ts` |
+| Registry + property schemas | `src/modules/editor/lib/propertiesPanel.ts` |
 | Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |
 | Drop handling | `src/app/editor/EditorClient.tsx` |
 | Save / load serialization | `src/core/scene/serialization/buildComponentTree.ts`, `src/core/scene/serialization/transformElements.ts` |
