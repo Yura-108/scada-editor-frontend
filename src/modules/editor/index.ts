@@ -65,3 +65,4 @@ export {useSceneCameraMemory} from "./ui/canvas/hooks/useSceneCameraMemory";
 export {openReleasesModal} from "./ui/project/ReleasesModal";
 export {openProcedureLevelsModal} from "./ui/project/ProcedureLevelsModal";
 export {useSceneChangedNotifications} from "./ui/hooks/useSceneChangedNotifications";
+export {useAutoSaveScene, useWarnOnUnsavedChanges} from "./ui/hooks/useAutoSaveScene";

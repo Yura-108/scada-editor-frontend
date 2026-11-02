@@ -2,8 +2,9 @@
 
 import {useEffect} from "react";
 import {usePaletteStore} from "@/store/usePaletteStore";
-import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
-import {useSceneChangedNotifications, useEditorStore, WorkSpace, restoreLastProject} from "@/modules/editor";
+import {
+  restoreLastProject, useAutoSaveScene, useEditorStore, useSceneChangedNotifications, useWarnOnUnsavedChanges, WorkSpace,
+} from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
 import {registerMonitorDialogs} from "@/modules/monitor";
 import {toast} from "sonner";
