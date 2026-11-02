@@ -12,6 +12,7 @@ import VersionPreviewBanner from "../versions/VersionPreviewBanner";
 import StaleVersionBanner from "../versions/StaleVersionBanner";
 import SceneChangedBanner from "../versions/SceneChangedBanner";
 import AutosaveErrorBanner from "../versions/AutosaveErrorBanner";
+import {AssistantButtons} from "../assistant/AssistantButtons";
 
 /**
  * Отступы тулбара от боковых панелей приходят CSS-переменными от WorkSpace
@@ -50,6 +51,8 @@ export function ToolsPanel() {
         <ToolbarDivider />
 
         <ArrangeButtons canEdit={canEdit} />
+
+        <AssistantButtons />
 
         {canWrite && <SaveButton canSave={canSave} />}
       </div>
