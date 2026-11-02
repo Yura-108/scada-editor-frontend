@@ -8,7 +8,11 @@ import {
   cellBindings, cellRuntimeKey, getRenderedElement, getSceneView, isBooleanValueType, isLiveField, propertyByName,
   trendPens, trendTiming, useSceneView,
 } from "@/core/scene";
-import {buildBindingIndex, type BindingIndex} from "./bindingIndex";
+import {buildBindingIndex} from "./bindingIndex";
+import {
+  computeNoDataElementKeys, dropTags, ingestOperatorWrites, ingestProperties, ingestTags, isTagQualityGood,
+  newEngineBuffers, resetArchiveBuffers, resetBindingErrors, resetSessionBuffers, setsEqual,
+} from "./engineBuffers";
 import type {CompiledBinding} from "@/core/runtime";
 import {hasKnownTrigger, runBindings} from "./runBindings";
 import {collectTagScope, withPropertyRefs, compileEventScript, executeEventScript, type ActionArgs, setRuntimeEventHandler, setRuntimeLive, setRuntimeScriptHandler, setRuntimeSessionGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, setRuntimePropertyValueGetter, setRuntimeTagQualityGetter, showRuntimeMenu, showRuntimeNotice, type ScreenPoint} from "@/core/runtime";
@@ -30,9 +34,6 @@ const FLUSH_INTERVAL_MS = 200;
 const STALE_THRESHOLD_MS = 10_000;
 
 const log = (...args: unknown[]) => devLog("[monitor:engine]", ...args);
-
-/** quality отсутствует или "GOOD" — достоверно; всё остальное — нет (не сравнивать на "BAD"). */
-const isTagQualityGood = (quality?: string) => quality === undefined || quality === "GOOD";
 
 /**
  * Точки трендов из кадра WS. Идут МИМО pendingRef/flush — тот буфер коалесцирует значения
@@ -85,26 +86,6 @@ export interface RuntimeArchiveInput {
 
 /** Источник значений: живой WS или воспроизведение архива. */
 export type RuntimeMode = "live" | "archive";
-
-const setsEqual = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
-  a.size === b.size && [...a].every(k => b.has(k));
-
-/**
- * Элементы, у которых хотя бы один тег-свойство сейчас недостоверен (quality != GOOD)
- * ИЛИ по нему ещё не было ни одного сообщения (холодный старт, docs/contract/TAG_CONTRACT_CHANGES.md B4).
- */
-const computeNoDataElementKeys = (
-  idx: BindingIndex,
-  tagMeta: ReadonlyMap<string, {quality: string; ts?: number}>,
-): Set<string> => {
-  const result = new Set<string>();
-  for (const [tagId, keys] of idx.elementKeysByTagId) {
-    const meta = tagMeta.get(tagId);
-    const bad = !meta || !isTagQualityGood(meta.quality);
-    if (bad) for (const k of keys) result.add(k);
-  }
-  return result;
-};
 
 export interface RuntimeEngineState {
   status: RuntimeStatus;
@@ -187,28 +168,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   const sceneId = useOpenScene(s => (s.scene?.id == null ? null : Number(s.scene.id)));
   const extraTags = useRuntimeTagInterest();
 
-  // Коалесинг-буфер тика (tag_id → последнее значение) и последние известные
-  // значения всех тегов скоупа (аргументы для исполнения биндингов). value может
-  // быть null — тег с quality != GOOD без последнего достоверного значения.
-  const pendingRef = useRef(new Map<string, string | null>());
-  const valuesRef = useRef(new Map<string, string | null>());
-  // Последнее известное качество/момент снятия по тегу (docs/contract/TAG_CONTRACT_CHANGES.md B1/B3).
-  const tagMetaRef = useRef(new Map<string, {quality: string; ts?: number}>());
-  // Взводится в onUpdate, когда quality хотя бы одного тега реально изменилось —
-  // чтобы не пересчитывать набор «нет данных» (noDataKeys рантайм-слоя) на каждый тик без надобности.
-  const qualityDirtyRef = useRef(false);
-  // Последний набор "нет данных", отправленный в стор — для diff перед новым applyRuntimeBatch.
-  const noDataKeysRef = useRef(new Set<string>());
-  // Зеркальные буферы для свойств других компонентов (properties[] UPDATE),
-  // ключ — propertyId.
-  const pendingPropsRef = useRef(new Map<number, string>());
-  const valuesByPropRef = useRef(new Map<number, string>());
-  // Отдельный буфер по имени свойства — только для маршрутизации в ячейки строк
-  // таблиц (propertyId нестабилен между пересохранениями таблицы, доку это и требует).
-  const pendingPropNameRef = useRef(new Map<string, string>());
-  const valuesByPropNameRef = useRef(new Map<string, string>());
-  const errorCountRef = useRef(new Map<string, number>());
-  const disabledRef = useRef(new Set<string>());
+  // Буферы сессии значений — см. EngineBuffers. Объект один на всё время жизни движка.
+  const [buffers] = useState(newEngineBuffers);
   // Активное WS-соединение — чтобы обработчик клика (runScript) мог послать ACTION.
   const connRef = useRef<RuntimeConnection | null>(null);
   /** Где оператор нажал скрипт (по серверному id) — туда же ляжет отказ ACTION_DENIED. */
@@ -216,15 +177,15 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   const flush = useCallback(() => {
     const idx = indexRef.current;
-    const pending = pendingRef.current;
-    const pendingProps = pendingPropsRef.current;
-    const pendingNames = pendingPropNameRef.current;
+    const pending = buffers.pending;
+    const pendingProps = buffers.pendingProps;
+    const pendingNames = buffers.pendingPropName;
     // Пересчёт «нет данных» без значений — после сброса архива, когда у тегов ещё нет ни
     // одной точки: оверлей обязан лечь, даже если применять нечего.
-    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size && !qualityDirtyRef.current)) return;
-    pendingRef.current = new Map();
-    pendingPropsRef.current = new Map();
-    pendingPropNameRef.current = new Map();
+    if (!idx || (!pending.size && !pendingProps.size && !pendingNames.size && !buffers.qualityDirty)) return;
+    buffers.pending = new Map();
+    buffers.pendingProps = new Map();
+    buffers.pendingPropName = new Map();
 
     // Слой no-op №1: то же сырое значение — тег/свойство не считается изменившимся.
     //
@@ -234,8 +195,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const affected = new Set<CompiledBinding>();
     const changedTags: {tagId: string; value: string | null}[] = [];
     for (const [tagId, value] of pending) {
-      if (valuesRef.current.get(tagId) === value) continue;
-      valuesRef.current.set(tagId, value);
+      if (buffers.values.get(tagId) === value) continue;
+      buffers.values.set(tagId, value);
       changedTags.push({tagId, value});
       for (const cb of idx.byTagId.get(tagId) ?? []) affected.add(cb);
     }
@@ -244,25 +205,25 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // сменилось quality (взводится в onUpdate) — независимо от того, изменилось
     // ли при этом само значение (quality могла смениться при том же value).
     let noDataKeys: Set<string> | undefined;
-    if (qualityDirtyRef.current) {
-      qualityDirtyRef.current = false;
-      const next = computeNoDataElementKeys(idx, tagMetaRef.current);
-      if (!setsEqual(next, noDataKeysRef.current)) {
-        noDataKeysRef.current = next;
+    if (buffers.qualityDirty) {
+      buffers.qualityDirty = false;
+      const next = computeNoDataElementKeys(idx, buffers.tagMeta);
+      if (!setsEqual(next, buffers.noDataKeys)) {
+        buffers.noDataKeys = next;
         noDataKeys = next;
       }
     }
     const changedProps: {propertyId: number; value: string}[] = [];
     for (const [propertyId, value] of pendingProps) {
-      if (valuesByPropRef.current.get(propertyId) === value) continue;
-      valuesByPropRef.current.set(propertyId, value);
+      if (buffers.valuesByProp.get(propertyId) === value) continue;
+      buffers.valuesByProp.set(propertyId, value);
       changedProps.push({propertyId, value});
       for (const cb of idx.byPropertyId.get(propertyId) ?? []) affected.add(cb);
     }
     const changedNames: {name: string; value: string}[] = [];
     for (const [name, value] of pendingNames) {
-      if (valuesByPropNameRef.current.get(name) === value) continue;
-      valuesByPropNameRef.current.set(name, value);
+      if (buffers.valuesByPropName.get(name) === value) continue;
+      buffers.valuesByPropName.set(name, value);
       changedNames.push({name, value});
     }
 
@@ -297,14 +258,14 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // Тот же прогон, что и при смене схемы (см. эффект ниже) — одна трактовка ошибок
     // и автоотключения на оба пути.
     const {stateNameByKey, propsByKey, errors, fired} = runBindings(affected, {
-      valuesByTagId: valuesRef.current,
-      valuesByPropertyId: valuesByPropRef.current,
+      valuesByTagId: buffers.values,
+      valuesByPropertyId: buffers.valuesByProp,
       selfOf: key => {
         const el = byKey.get(key);
         return el ? getRenderedElement(el) : null;
       },
-      errorCounts: errorCountRef.current,
-      disabled: disabledRef.current,
+      errorCounts: buffers.errorCount,
+      disabled: buffers.disabled,
       knownErrors: runtimeErrorsRef.current,
     }, tableRowProps);
 
@@ -325,7 +286,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
       store.applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
     }
-  }, [publishRuntimeErrors]);
+  }, [publishRuntimeErrors, buffers]);
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
@@ -364,15 +325,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // Новые теги ждут немедленного UPDATE от runtime (до него — оверлей «нет данных»), и flush
     // прогонит их биндинги: значения в valuesRef нет, no-op-страж изменение не отсечёт.
     const keep = (tag: string) => next.has(tag) && (!prev || prev.tags.has(tag));
-    let dropped = 0;
-    for (const map of [valuesRef.current, pendingRef.current, tagMetaRef.current]) {
-      for (const tag of [...map.keys()]) {
-        if (keep(tag)) continue;
-        map.delete(tag);
-        dropped++;
-      }
-    }
-    if (dropped) qualityDirtyRef.current = true;
+    const dropped = dropTags(buffers, keep);
 
     const onScene = new Set(sceneTags);
     const wire = extraTags.filter(t => !onScene.has(t));
@@ -380,7 +333,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // До открытия соединения connRef пуст — подписку отправит эффект соединения.
     connRef.current?.subscribeScene(sceneId, wire);
     log(`подписка на сцену ${sceneId}: тегов схемы ${sceneTags.length}, вне схемы ${wire.length}, сброшено значений ${dropped}`);
-  }, [active, mode, sceneId, sceneTags, extraTags]);
+  }, [active, mode, sceneId, sceneTags, extraTags, buffers]);
 
   /**
    * Открытие схемы: сид значений + ПОВТОРНЫЙ ПРОГОН биндингов по уже известным значениям.
@@ -400,8 +353,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!idx) return;
     for (const el of getSceneView().elements) {
       for (const p of el.properties ?? []) {
-        if (typeof p.id === "number" && idx.propertyIds.has(p.id) && !valuesByPropRef.current.has(p.id)) {
-          valuesByPropRef.current.set(p.id, String(p.default_value ?? ""));
+        if (typeof p.id === "number" && idx.propertyIds.has(p.id) && !buffers.valuesByProp.has(p.id)) {
+          buffers.valuesByProp.set(p.id, String(p.default_value ?? ""));
         }
       }
     }
@@ -424,14 +377,14 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
         if (!p) continue;
 
         if (p.tag_id) {
-          const live = valuesRef.current.get(p.tag_id);
+          const live = buffers.values.get(p.tag_id);
           if (live == null) continue;
           (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = live;
           continue;
         }
 
-        const value = valuesByPropNameRef.current.get(p.name) ?? String(p.default_value ?? "");
-        valuesByPropNameRef.current.set(p.name, value);
+        const value = buffers.valuesByPropName.get(p.name) ?? String(p.default_value ?? "");
+        buffers.valuesByPropName.set(p.name, value);
         (propsByKey[el.key] ??= {})[cellRuntimeKey(cell.row, cell.col)] = value;
       }
 
@@ -439,7 +392,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       // осталась бы со значением по умолчанию — flush исполняет только ИЗМЕНИВШИЕСЯ теги.
       for (const b of el.bindings ?? []) {
         if (b.enabled === false || !b.direct || !b.tag) continue;
-        const live = valuesRef.current.get(b.tag);
+        const live = buffers.values.get(b.tag);
         if (live == null) continue;
         (propsByKey[el.key] ??= {})[b.directTarget || "value"] = live;
       }
@@ -449,8 +402,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // отключённый после серии ошибок на прошлой схеме, обязан снова заработать на новой
     // (и на этой же после перезагрузки). Ошибки исполнения прошлой схемы убираем из
     // плашки «Проблемы с привязками» — тех биндингов на холсте больше нет.
-    errorCountRef.current = new Map();
-    disabledRef.current = new Set();
+    resetBindingErrors(buffers);
     const baseErrors: ReadonlyMap<string, string> = new Map();
 
     // Повторный прогон биндингов по УЖЕ ИЗВЕСТНЫМ значениям.
@@ -461,16 +413,16 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // значение, страж no-op его отсекает, и биндинг не выполняется. Ровно этот путь
     // проходит оператор, применивший рецепт на одной схеме и перешедший на другую.
     const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
-    const toRun = idx.all.filter(cb => hasKnownTrigger(cb, valuesRef.current, valuesByPropRef.current));
+    const toRun = idx.all.filter(cb => hasKnownTrigger(cb, buffers.values, buffers.valuesByProp));
     const {stateNameByKey, propsByKey: nextProps, errors, fired} = runBindings(toRun, {
-      valuesByTagId: valuesRef.current,
-      valuesByPropertyId: valuesByPropRef.current,
+      valuesByTagId: buffers.values,
+      valuesByPropertyId: buffers.valuesByProp,
       selfOf: key => {
         const el = byKey.get(key);
         return el ? getRenderedElement(el) : null;
       },
-      errorCounts: errorCountRef.current,
-      disabled: disabledRef.current,
+      errorCounts: buffers.errorCount,
+      disabled: buffers.disabled,
       knownErrors: baseErrors,
     }, propsByKey);
 
@@ -484,8 +436,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     //
     // Пишем БЕЗУСЛОВНО, без сравнения с прошлым набором: документ заменён целиком, и
     // ключи прошлой схемы обязаны уйти из стора, даже если сам набор «равен» по составу.
-    const initialNoData = computeNoDataElementKeys(idx, tagMetaRef.current);
-    noDataKeysRef.current = initialNoData;
+    const initialNoData = computeNoDataElementKeys(idx, buffers.tagMeta);
+    buffers.noDataKeys = initialNoData;
 
     // Один батч на всё открытие схемы — один ре-рендер холста.
     getSceneView().applyRuntimeBatch({
@@ -495,7 +447,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     });
     // publishRuntimeErrors стабилен (useCallback без зависимостей) — в списке он ради
     // правила exhaustive-deps, пересчёт схемы им не запускается.
-  }, [active, index, publishRuntimeErrors]);
+  }, [active, index, publishRuntimeErrors, buffers]);
 
   // Мост к серверному Java-скрипту: находим скрипт компонента по имени и шлём ACTION
   // по WS. sendAction ждёт ЧИСЛОВОЙ серверный id — ElementScript.id это String(серверный
@@ -558,7 +510,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // onClick вызывает runScript("Имя", args?) — тот же мост, что и у пунктов меню монитора.
     const runScript = (name: string, args?: ActionArgs) => runScriptOn(el, name, args, point);
 
-    const res = executeEventScript(compiled, valuesRef.current, valuesByPropRef.current, getRenderedElement(el), runScript);
+    const res = executeEventScript(compiled, buffers.values, buffers.valuesByProp, getRenderedElement(el), runScript);
     if ("error" in res) {
       console.warn(`[monitor:event] ${event} ошибка исполнения: ${res.error}`);
       return;
@@ -570,7 +522,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // предварительная запись сделала бы изменение «no-op», и биндинги бы не сработали.
     // flush (вызывается синхронно ниже) сам обновит valuesByPropRef для следующего клика.
     for (const w of res.writes) {
-      pendingPropsRef.current.set(w.propertyId, w.value);
+      buffers.pendingProps.set(w.propertyId, w.value);
     }
 
     // Интенты setProp/setState — на сам элемент, применяем немедленно.
@@ -598,7 +550,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     // Меню выбора рисует холст: пункт подтверждается и уходит через emitRuntimeScript.
     // Без точки клика (не из слоя интеракции) показывать его негде.
     if (res.menu && point) showRuntimeMenu({elementKey: el.key, point, items: res.menu});
-  }, [runScriptOn]);
+  }, [runScriptOn, buffers]);
 
   /**
    * Значения, записанные оператором в ПЛК («Опции»), вливаются в общий поток ОДИН раз.
@@ -613,19 +565,9 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
    * Тег после записи волен меняться скриптом, другим оператором или самим контроллером.
    */
   const onTagsWritten = useCallback((writes: {tagId: string; value: string}[]) => {
-    for (const {tagId, value} of writes) {
-      pendingRef.current.set(tagId, value);
-      // Тег, по которому кадров ещё не было, после подтверждённой записи перестаёт
-      // считаться «нет данных» — иначе оверлей лёг бы поверх того, что оператор сам и
-      // записал. Уже известное качество не трогаем: замазывать чужой BAD своей записью
-      // нельзя, недостоверность тега от неё не исчезает.
-      if (!tagMetaRef.current.has(tagId)) {
-        tagMetaRef.current.set(tagId, {quality: "GOOD", ts: Date.now()});
-        qualityDirtyRef.current = true;
-      }
-    }
+    ingestOperatorWrites(buffers, writes);
     flushRef.current();
-  }, []);
+  }, [buffers]);
 
   // Регистрируем обработчики в шине, пока движок активен: события (клик по фигуре),
   // прямой запуск скрипта (пункт меню монитора), чтение текущих значений тегов и
@@ -638,12 +580,12 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     setRuntimeEventHandler(runEvent);
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
-    setRuntimeValueGetter(tagId => valuesRef.current.get(tagId));
+    setRuntimeValueGetter(tagId => buffers.values.get(tagId));
     // Инспектор объектов: значения локальных свойств и качество тегов — не только открытой
     // схемы. Свойства приходят по всему проекту; теги вне схемы — только те, что инспектор
     // зарегистрировал в runtimeTagInterest (иначе подписка на сцену их не присылает).
-    setRuntimePropertyValueGetter(id => valuesByPropRef.current.get(id));
-    setRuntimeTagQualityGetter(tagId => tagMetaRef.current.get(tagId)?.quality);
+    setRuntimePropertyValueGetter(id => buffers.valuesByProp.get(id));
+    setRuntimeTagQualityGetter(tagId => buffers.tagMeta.get(tagId)?.quality);
     setRuntimeTagWriteHandler(onTagsWritten);
     setRuntimeSessionGetter(() => connRef.current?.getSessionId() ?? null);
     return () => {
@@ -655,7 +597,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       setRuntimeTagWriteHandler(null);
       setRuntimeSessionGetter(null);
     };
-  }, [active, mode, runEvent, runScriptByKey, onTagsWritten]);
+  }, [active, mode, runEvent, runScriptByKey, onTagsWritten, buffers]);
 
   // Признак «связь есть» для интерфейса вне движка (пункты меню монитора).
   useEffect(() => {
@@ -694,22 +636,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
    * режимов — чтобы в архив не протекли живые значения, а из архива в живой режим прошлое.
    */
   const resetSessionState = useCallback(() => {
-    pendingRef.current = new Map();
-    valuesRef.current = new Map();
-    // Теневой буфер живых значений тоже принадлежит сессии: без сброса «снять подмену»
-    // после переподключения вернуло бы значение из прошлой сессии.
-    pendingPropsRef.current = new Map();
-    valuesByPropRef.current = new Map();
-    pendingPropNameRef.current = new Map();
-    valuesByPropNameRef.current = new Map();
-    errorCountRef.current = new Map();
-    disabledRef.current = new Set();
-    tagMetaRef.current = new Map();
-    qualityDirtyRef.current = false;
-    noDataKeysRef.current = new Set();
+    resetSessionBuffers(buffers);
     getSceneView().clearRuntime();
     resetTrendStore();
-  }, []);
+  }, [buffers]);
 
   // Соединение живёт на пару (active, projectId) — смена сцены внутри проекта
   // его не пересоздаёт (индекс подменяется через ref).
@@ -747,17 +677,8 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
        */
       onSnapshot: (tags, properties, procedures) => {
         lastMessageAtRef.current = Date.now();
-        for (const t of tags) {
-          pendingRef.current.set(t.tagId, t.value);
-          const quality = t.quality ?? "GOOD";
-          const prevMeta = tagMetaRef.current.get(t.tagId);
-          if (!prevMeta || prevMeta.quality !== quality) qualityDirtyRef.current = true;
-          tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
-        }
-        for (const p of properties) {
-          pendingPropsRef.current.set(p.propertyId, String(p.value));
-          if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
-        }
+        ingestTags(buffers, tags);
+        ingestProperties(buffers, properties);
         // Список активных процедур проекта ПОЛНЫЙ: отсутствие наблюдаемой в нём означает
         // «не запущена», а не «нет данных».
         adoptProcedureStatuses(procedures);
@@ -776,23 +697,9 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
         pushProcedureEvents(procedures);
         rememberWireBools(tags);
         pushTrendPoints(tags);
-        // Несколько апдейтов одного тега в батче: Map даёт last-write-wins.
-        for (const t of tags) {
-          pendingRef.current.set(t.tagId, t.value);
-          // quality отсутствует у сегодняшнего бэкенда — трактуем как GOOD (совместимость).
-          const quality = t.quality ?? "GOOD";
-          const prevMeta = tagMetaRef.current.get(t.tagId);
-          if (!prevMeta || prevMeta.quality !== quality) qualityDirtyRef.current = true;
-          tagMetaRef.current.set(t.tagId, {quality, ts: t.ts});
-        }
-        // properties[] — записи серверных Java-скриптов в свойства компонентов;
-        // маршрутизируются по propertyId (значение → строка, toScopeValue распарсит).
-        // Плюс по propertyName — отдельный путь для live-ячеек строк таблиц:
-        // propertyId нестабилен между пересохранениями таблицы, а имя — нет.
-        for (const p of properties) {
-          pendingPropsRef.current.set(p.propertyId, String(p.value));
-          if (p.propertyName) pendingPropNameRef.current.set(p.propertyName, String(p.value));
-        }
+        // Несколько апдейтов одного тега в батче: Map даёт last-write-wins (см. ingestTags).
+        ingestTags(buffers, tags);
+        ingestProperties(buffers, properties);
       },
       // Сервер отклонил нажатие (права или уровень): сообщение там, где нажимали;
       // состояние элементов не трогаем — ACTION просто не выполнился.
@@ -845,7 +752,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
       setStatusDetail(null);
       setIsStale(false);
     };
-  }, [active, projectId, mode, resetSessionState]);
+  }, [active, projectId, mode, resetSessionState, buffers]);
 
   /**
    * Режим «Архив»: WS не подключается, значения подаёт плеер через `archive.apply`. Здесь —
@@ -910,20 +817,13 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   );
 
   const archiveReset = useCallback((at: number) => {
-    pendingRef.current = new Map();
-    valuesRef.current = new Map();
-    tagMetaRef.current = new Map();
-    // Ни у одного тега ещё нет точки — «нет данных» пересчитается на первом apply.
-    qualityDirtyRef.current = true;
-    noDataKeysRef.current = new Set();
-    errorCountRef.current = new Map();
-    disabledRef.current = new Set();
+    resetArchiveBuffers(buffers);
     getSceneView().clearRuntime();
 
     clearTrendSeries();
     setTrendClock(at);
     if (useTrendStore.getState().watched.size) loadTrendHistory(at);
-  }, [loadTrendHistory]);
+  }, [loadTrendHistory, buffers]);
 
   /**
    * Изменения из архива — тем же путём, что кадр WS: значения в pendingRef, качество в
@@ -934,15 +834,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const frames = changes.map(c => ({
       tagId: c.tag, value: c.value, ts: c.ts, quality: c.good ? "GOOD" : "BAD",
     }));
-    for (const f of frames) {
-      pendingRef.current.set(f.tagId, f.value);
-      const prevMeta = tagMetaRef.current.get(f.tagId);
-      if (!prevMeta || prevMeta.quality !== f.quality) qualityDirtyRef.current = true;
-      tagMetaRef.current.set(f.tagId, {quality: f.quality, ts: f.ts});
-    }
+    ingestTags(buffers, frames);
     pushTrendPoints(frames);
     flushRef.current();
-  }, []);
+  }, [buffers]);
 
   const archive = useMemo<RuntimeArchiveInput>(
     () => ({reset: archiveReset, apply: archiveApply, sceneTags, isBoolTag, projectId}),
