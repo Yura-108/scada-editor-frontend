@@ -1,9 +1,8 @@
 "use client";
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import React, {useMemo, useState} from "react";
 import Link from "next/link";
 import {CircleAlert, Plus, RefreshCw, Save, Send, X} from "lucide-react";
-import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
 import {Badge} from "@/shared/ui/Badge";
 import {Banner} from "@/shared/ui/Banner";
@@ -13,48 +12,17 @@ import {Spinner} from "@/shared/ui/Spinner";
 import {Tabs} from "@/shared/ui/Tabs";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
-import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {useEditorStore, useEditableProject} from "@/modules/editor";
-import {useCurrentProjectGrant} from "@/core/access";
-import {ProjectPlaceholder} from "@/core/project";
-import {ReadOnlyBanner} from "@/core/access";
-import {
-  AutomationSaveError,
-  fetchAutomation,
-  fetchAutomationVersions,
-  fetchTaskStatuses,
-  republishAutomation,
-  restoreAutomationVersion,
-  saveAutomation,
-  TASK_STATE_VIEW,
-} from "@/core/automation";
-import {
-  AUTOMATION_HELP, AUTOMATION_TABS, type AutomationTab, AutomationVersionChanges, compactButton,
-  confirmRestoreAutomationVersion, findSavedTask, freeTaskName, isSetDirty, missingVariables, newTask,
-  openTemplateModal, sameWatchdog, stripIoHints, taskDraftState, TaskEditor, tasksWith, taskToTemplate,
-  TemplatePalette, templateToDraftTask, WatchdogEditor,
-} from "@/modules/automation";
-import {VersionHistoryList} from "@/core/project";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
-import {confirmLeave, useUnsavedGuard} from "@/shared/lib/unsavedGuard";
-import type {
-  AutomationSet,
-  AutomationTask,
-  AutomationVariable,
-  AutomationWatchdog,
-  AutomationTaskStatusRow,
-  AutomationValidationError,
-} from "@/core/automation";
-import type {AutomationTaskTemplate} from "@/modules/automation";
-import type {VersionSummary} from "@/core/project";
-import {ProjectSelect} from "@/core/project";
-
-/** Как часто перечитывать статусы задач: после сохранения automation подхватывает набор не сразу. */
-const STATUS_POLL_MS = 5000;
-
-/** Сколько висит уведомление об удалении с кнопкой «Вернуть». */
-const UNDO_TOAST_MS = 10_000;
+import {confirmLeave, useBeforeUnloadWarning, useUnsavedGuard} from "@/shared/lib/unsavedGuard";
+import {useEditorStore, useEditableProject} from "@/modules/editor";
+import {ReadOnlyBanner, useCurrentProjectGrant} from "@/core/access";
+import {ProjectPlaceholder, ProjectSelect, VersionHistoryList} from "@/core/project";
+import {TASK_STATE_VIEW, type AutomationTask} from "@/core/automation";
+import {
+  AUTOMATION_HELP, AUTOMATION_TABS, type AutomationTab, AutomationVersionChanges, compactButton, sameWatchdog,
+  taskDraftState, TaskEditor, TemplatePalette, useAutomationDocument, useTaskActions, WatchdogEditor,
+} from "@/modules/automation";
 
 /**
  * Редактор фоновых задач проекта. Бэкенд принимает набор только целиком (задачи, переменные,
@@ -72,281 +40,20 @@ export default function AutomationClient() {
   const canWrite = useCurrentProjectGrant().edit;
   const setCurrentProject = useEditorStore(s => s.setCurrentProject);
 
-  /** Набор, как он лежит на сервере, — основа для сохранения одной задачи и для «изменена». */
-  const [saved, setSaved] = useState<AutomationSet | null>(null);
-  const [draft, setDraft] = useState<AutomationSet | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<AutomationValidationError[]>([]);
   const [tab, setTab] = useState<AutomationTab>("tasks");
-  const [selected, setSelected] = useState(0);
-  const [statuses, setStatuses] = useState<AutomationTaskStatusRow[]>([]);
-  const [versions, setVersions] = useState<VersionSummary[]>([]);
-
-  const dirty = useMemo(() => isSetDirty(draft, saved), [draft, saved]);
-  // «Вернуть» в уведомлении срабатывает позже — ему нужно текущее состояние, а не то, что
-  // было при удалении.
-  const latest = useRef({saved, draft});
-  useEffect(() => { latest.current = {saved, draft}; });
-
   const projectId = project?.id ?? null;
-
-  const refreshStatuses = useCallback(async () => {
-    if (projectId == null) return;
-    setStatuses(await fetchTaskStatuses(projectId));
-  }, [projectId]);
-
-  const load = useCallback(async () => {
-    // Набор прошлого проекта не должен висеть на экране, пока грузится новый.
-    setDraft(null);
-    setSaved(null);
-    if (projectId == null) return;
-    try {
-      const [set, rows] = await Promise.all([fetchAutomation(projectId), fetchTaskStatuses(projectId)]);
-      setSaved(set);
-      setDraft(set);
-      setStatuses(rows);
-      setErrors([]);
-      setSelected(0);
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  }, [projectId]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const handleReload = async () => {
-    if (dirty) {
-      const ok = await confirmModal({
-        title: "Перечитать набор с сервера?",
-        description: "Несохранённые правки задач и watchdog пропадут.",
-        confirmLabel: "Перечитать",
-        danger: true,
-      });
-      if (!ok) return;
-    }
-    await load();
-  };
-
-  // Статус показывает сервис automation, а он подхватывает сохранённый набор с задержкой.
-  useEffect(() => {
-    if (tab !== "tasks" || projectId == null) return;
-    const timer = setInterval(() => void refreshStatuses(), STATUS_POLL_MS);
-    return () => clearInterval(timer);
-  }, [tab, projectId, refreshStatuses]);
-
-  // Перезагрузка страницы молча выбросила бы черновик.
-  useEffect(() => {
-    if (!dirty || !canWrite) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, canWrite]);
-
-  useEffect(() => {
-    if (tab !== "history" || projectId == null) return;
-    fetchAutomationVersions(projectId).then(setVersions).catch(err => toast.error((err as Error).message));
-  }, [tab, projectId, saved?.version]);
-
-  const update = (patch: Partial<AutomationSet>) => setDraft(d => (d ? {...d, ...patch} : d));
-
-  const updateTask = (index: number, task: AutomationTask) =>
-    update({tasks: draft!.tasks.map((t, i) => (i === index ? task : t))});
-
-  /** Выбор после удаления строки `index` из списка длиной `length`. */
-  const selectAfterRemoval = (index: number, length: number) =>
-    setSelected(sel => (sel > index ? sel - 1 : sel === index ? Math.max(0, Math.min(index, length - 2)) : sel));
-
-  const put = (base: AutomationSet, tasks: AutomationTask[], variables: AutomationVariable[], watchdog: AutomationWatchdog | null) =>
-    saveAutomation(projectId!, {
-      based_on_version: base.version,
-      // example_tag — наша подсказка от шаблона, у задачи на бэкенде такого поля нет.
-      tasks: stripIoHints(tasks),
-      variables,
-      watchdog,
-    });
-
-  const reportSaveError = (err: unknown) => {
-    if (err instanceof AutomationSaveError && err.errors.length) {
-      setErrors(err.errors);
-      toast.error(`Набор не прошёл проверку: ${err.errors.length}`);
-    } else {
-      toast.error((err as Error).message);
-    }
-  };
-
-  /** `true` — сохранилось: охране ухода надо знать, можно ли уходить. */
-  const handleSaveAll = async (): Promise<boolean> => {
-    if (!draft || !saved || projectId == null) return false;
-    setSaving(true);
-    try {
-      const result = await put(saved, draft.tasks, draft.variables, draft.watchdog);
-      setSaved(result);
-      setDraft(result);
-      setErrors([]);
-      toast.success(`Сохранено, версия ${result.version}`);
-      void refreshStatuses();
-      return true;
-    } catch (err) {
-      reportSaveError(err);
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
+  const doc = useAutomationDocument(projectId, tab);
+  const actions = useTaskActions(doc, setTab);
+  const {saved, draft, saving, errors, selected, setSelected, statuses, versions, dirty} = doc;
 
   useUnsavedGuard("automation", {
     label: () => "задачи автоматизации",
     isDirty: () => canWrite && dirty,
-    save: handleSaveAll,
+    save: doc.saveAll,
   });
 
-  /** Сохранить одну задачу: остальные задачи и watchdog уходят такими, какие они на сервере. */
-  const handleSaveTask = async (index: number) => {
-    if (!draft || !saved || projectId == null) return;
-    const task = draft.tasks[index];
-    setSaving(true);
-    try {
-      const result = await put(saved, tasksWith(saved, task), saved.variables, saved.watchdog);
-      const stored = findSavedTask(task, saved, result);
-      setSaved(result);
-      setDraft(d => d && {
-        ...d,
-        version: result.version,
-        // Если задачу успели поправить, пока шёл запрос, правки оставляем — но с id из ответа,
-        // иначе следующее сохранение создало бы её второй раз.
-        tasks: d.tasks.map((t, i) => (i !== index || !stored ? t : t === task ? stored : {...t, id: stored.id})),
-      });
-      setErrors(errs => errs.filter(e => e.task !== task.name.trim() && e.task !== null));
-      toast.success(`Задача «${task.name.trim()}» сохранена, версия ${result.version}`);
-      void refreshStatuses();
-    } catch (err) {
-      reportSaveError(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRevertTask = (index: number) => {
-    const task = draft?.tasks[index];
-    const original = task?.id != null ? saved?.tasks.find(t => t.id === task.id) : undefined;
-    if (original) updateTask(index, original);
-  };
-
-  /** Вернуть удалённую задачу на сервер сразу — удаление тоже было сохранено сразу. */
-  const reviveTask = async (task: AutomationTask, atIndex: number) => {
-    const {saved: base, draft: current} = latest.current;
-    if (!base || !current || projectId == null) return;
-    // Id удалённой задачи бэкенд всё равно не узнает и создаст её заново; имя могло уже занять другая.
-    const revived = {...task, id: null, name: freeTaskName(task.name, current.tasks.map(t => t.name))};
-    setSaving(true);
-    try {
-      const result = await put(base, [...base.tasks, revived], base.variables, base.watchdog);
-      const stored = findSavedTask(revived, base, result) ?? revived;
-      setSaved(result);
-      setDraft(d => {
-        if (!d) return d;
-        const tasks = [...d.tasks];
-        tasks.splice(Math.min(atIndex, tasks.length), 0, stored);
-        return {...d, version: result.version, tasks};
-      });
-      setSelected(Math.min(atIndex, current.tasks.length));
-      toast.success(`Задача «${stored.name}» возвращена, версия ${result.version}`);
-      void refreshStatuses();
-    } catch (err) {
-      reportSaveError(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteTask = async (index: number) => {
-    if (!draft || !saved || projectId == null) return;
-    const task = draft.tasks[index];
-    const state = taskDraftState(task, saved);
-    const onServer = state !== "new";
-    const ok = await confirmModal({
-      title: `Удалить задачу «${task.name.trim() || "без имени"}»?`,
-      description: onServer
-        ? "Задача сразу удалится с сервера и перестанет исполняться. Вернуть её можно кнопкой "
-          + "«Вернуть» в уведомлении или на вкладке «История»."
-          + (state === "changed" ? " Несохранённые правки этой задачи пропадут." : "")
-          + " Правки других задач останутся черновиком."
-        : "Задача ещё не сохранена — она просто исчезнет из списка.",
-      confirmLabel: "Удалить",
-      danger: true,
-    });
-    if (!ok) return;
-
-    if (!onServer) {
-      setDraft(d => d && {...d, tasks: d.tasks.filter((_, i) => i !== index)});
-      selectAfterRemoval(index, draft.tasks.length);
-      return;
-    }
-
-    const original = saved.tasks.find(t => t.id === task.id) ?? task;
-    setSaving(true);
-    try {
-      const result = await put(saved, saved.tasks.filter(t => t.id !== task.id), saved.variables, saved.watchdog);
-      setSaved(result);
-      setDraft(d => d && {...d, version: result.version, tasks: d.tasks.filter(t => t.id !== task.id)});
-      selectAfterRemoval(index, draft.tasks.length);
-      setErrors(errs => errs.filter(e => e.task !== task.name.trim()));
-      toast.success(`Задача «${original.name}» удалена, версия ${result.version}`, {
-        duration: UNDO_TOAST_MS,
-        action: {label: "Вернуть", onClick: () => void reviveTask(original, index)},
-      });
-      void refreshStatuses();
-    } catch (err) {
-      reportSaveError(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /** «Вернуть» из истории: задача ложится в черновик, сохраняет пользователь сам. */
-  const handleReturnTask = (task: AutomationTask) => {
-    if (!draft) return;
-    const existing = task.id != null ? draft.tasks.findIndex(t => t.id === task.id) : -1;
-    let index: number;
-    if (existing >= 0) {
-      index = existing;
-      updateTask(existing, task);
-    } else {
-      index = draft.tasks.length;
-      update({tasks: [...draft.tasks, {...task, id: null, name: freeTaskName(task.name, draft.tasks.map(t => t.name))}]});
-    }
-    setSelected(index);
-    setTab("tasks");
-    toast.info(`Задача «${task.name}» возвращена в черновик`, {
-      description: "Проверьте её и нажмите «Сохранить задачу».",
-    });
-  };
-
-  const handleRepublish = async () => {
-    if (projectId == null) return;
-    try {
-      await republishAutomation(projectId);
-      toast.success("Набор отправлен в automation заново");
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
-
-  const handleRestore = async (versionNo: number) => {
-    if (projectId == null || !saved) return;
-    const ok = await confirmRestoreAutomationVersion(projectId, versionNo, saved);
-    if (!ok) return;
-    try {
-      await restoreAutomationVersion(projectId, versionNo);
-      await load();
-      toast.success(`Версия ${versionNo} восстановлена`);
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
+  // Перезагрузка страницы молча выбросила бы черновик.
+  useBeforeUnloadWarning(dirty && canWrite);
 
   // Бэкенд обрезает пробелы в имени задачи и в errors[].task присылает уже обрезанное.
   const taskErrors = (name: string) => errors.filter(e => e.task === name.trim());
@@ -363,38 +70,16 @@ export default function AutomationClient() {
       + (sameWatchdog(draft.watchdog, saved.watchdog) ? 0 : 1)
     : 0;
 
-  /** Вставка из палитры: в набор кладётся черновик, он уедет сохранением задачи или всего набора. */
-  const handleInsertTemplate = (template: AutomationTaskTemplate) => {
-    if (!draft) return;
-    update({tasks: [...draft.tasks, templateToDraftTask(template, draft.tasks.map(t => t.name))]});
-    setSelected(draft.tasks.length);
-
-    // Набор ответит «Переменная 'X' не объявлена» уже при сохранении — говорим сразу.
-    const missing = missingVariables(template, draft.variables);
-    if (missing.length) {
-      toast.warning(`Переменные не объявлены в проекте: ${missing.join(", ")}`, {
-        description: "Заведите их в разделе «Данные проекта» → «Переменные» "
-          + "или снимите отметки у задачи, иначе набор не сохранится.",
-        duration: 12_000,
-      });
-    }
-  };
-
-  const handleSaveAsTemplate = () => {
-    if (!task) return;
-    openTemplateModal({mode: "create", initial: taskToTemplate(task)});
-  };
-
   return (
     <PageFrame>
       <PageHeader
         title="Автоматизация"
         actions={<>
           {saved?.version != null && <span className="text-xs text-muted-foreground" title="Версия сохранённого набора">v{saved.version}</span>}
-          <IconButton icon={RefreshCw} label="Перечитать с сервера" variant="secondary" onClick={() => void handleReload()} disabled={!draft || saving} />
+          <IconButton icon={RefreshCw} label="Перечитать с сервера" variant="secondary" onClick={() => void doc.reload()} disabled={!draft || saving} />
           {canWrite ? <>
-            <IconButton icon={Send} label="Отправить сохранённый набор в automation заново" variant="secondary" onClick={handleRepublish} disabled={!draft || dirty} />
-            <Button variant="primary" size="sm" onClick={handleSaveAll} disabled={!draft || !dirty || saving} title="Сохранить все задачи и watchdog одним набором">
+            <IconButton icon={Send} label="Отправить сохранённый набор в automation заново" variant="secondary" onClick={() => void doc.republish()} disabled={!draft || dirty} />
+            <Button variant="primary" size="sm" onClick={() => void doc.saveAll()} disabled={!draft || !dirty || saving} title="Сохранить все задачи и watchdog одним набором">
               <Save size={14} />{saving ? "Сохранение…" : unsavedCount > 1 ? `Сохранить всё (${unsavedCount})` : "Сохранить всё"}
             </Button>
           </> : null}
@@ -457,13 +142,13 @@ export default function AutomationClient() {
                   </button>
                   {canWrite && (
                     <IconButton icon={X} label={`Удалить задачу ${t.name}`} title="Удалить задачу" variant="danger" size="xs"
-                      className="m-1.5" onClick={() => void handleDeleteTask(i)} disabled={saving} />
+                      className="m-1.5" onClick={() => void actions.deleteTask(i)} disabled={saving} />
                   )}
                 </div>
               );
             })}
             {canWrite && (
-              <Button className={cn(compactButton, "w-full")} onClick={() => { update({tasks: [...draft.tasks, newTask(draft.tasks.length + 1)]}); setSelected(draft.tasks.length); }}>
+              <Button className={cn(compactButton, "w-full")} onClick={actions.addTask}>
                 <Plus size={14} />Задача
               </Button>
             )}
@@ -474,24 +159,24 @@ export default function AutomationClient() {
                 task={task}
                 variables={draft.variables}
                 errors={taskErrors(task.name)}
-                onChange={t => updateTask(selected, t)}
+                onChange={t => doc.updateTask(selected, t)}
                 draftState={taskDraftState(task, saved)}
-                onSave={canWrite ? () => void handleSaveTask(selected) : undefined}
-                onRevert={canWrite ? () => handleRevertTask(selected) : undefined}
+                onSave={canWrite ? () => void actions.saveTask(selected) : undefined}
+                onRevert={canWrite ? () => actions.revertTask(selected) : undefined}
                 saving={saving}
-                onSaveAsTemplate={handleSaveAsTemplate}
+                onSaveAsTemplate={() => actions.saveAsTemplate(task)}
                 readOnly={!canWrite}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-neutral-500">Задач нет</div>
             )}
           </div>
-          <TemplatePalette onInsert={canWrite ? handleInsertTemplate : undefined} />
+          <TemplatePalette onInsert={canWrite ? actions.insertTemplate : undefined} />
         </div>
         </div>
       ) : tab === "watchdog" ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-24">
-          <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => update({watchdog})} readOnly={!canWrite} />
+          <WatchdogEditor watchdog={draft.watchdog} errors={projectErrors} onChange={watchdog => doc.update({watchdog})} readOnly={!canWrite} />
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pb-24">
@@ -499,13 +184,13 @@ export default function AutomationClient() {
             versions={versions}
             currentVersion={saved.version}
             dirty={dirty}
-            onRestore={canWrite ? v => void handleRestore(v) : undefined}
+            onRestore={canWrite ? v => void doc.restore(v) : undefined}
             renderDetails={(v, previous) => projectId != null && (
               <AutomationVersionChanges
                 projectId={projectId}
                 versionNo={v.version_no}
                 previousNo={previous?.version_no ?? (v.version_no > 1 ? v.version_no - 1 : null)}
-                onReturnTask={canWrite ? handleReturnTask : undefined}
+                onReturnTask={canWrite ? actions.returnTask : undefined}
               />
             )}
           />
@@ -515,8 +200,8 @@ export default function AutomationClient() {
       {canWrite && dirty && (
         <UnsavedNotice
           details={unsavedCount > 0 ? `Не сохранено изменений: ${unsavedCount}. Задачу можно сохранить отдельно — кнопкой в её редакторе.` : undefined}
-          onSave={() => void handleSaveAll()}
-          onDiscard={() => void handleReload()}
+          onSave={() => void doc.saveAll()}
+          onDiscard={() => void doc.reload()}
           saving={saving}
         />
       )}

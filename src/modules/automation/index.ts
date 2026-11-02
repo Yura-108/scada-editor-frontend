@@ -15,6 +15,10 @@ export {
 } from "./lib/automationDraft";
 export {missingVariables, stripIoHints, taskToTemplate, templateToDraftTask} from "./lib/automationTemplates";
 
+// Документ набора и действия над задачами
+export {useAutomationDocument} from "./model/useAutomationDocument";
+export {useTaskActions} from "./model/useTaskActions";
+
 // UI
 export {AUTOMATION_HELP, AUTOMATION_TABS, type AutomationTab} from "./ui/automationHelp";
 export {confirmRestoreAutomationVersion} from "./ui/confirmRestoreAutomationVersion";
