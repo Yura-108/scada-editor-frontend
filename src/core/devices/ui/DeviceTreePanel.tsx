@@ -12,7 +12,7 @@ import {Button} from "@/shared/ui/Button";
 import ContextMenu from "./DeviceContextMenu";
 import {nodeMenuItems} from "./contextMenuItems";
 import {ContextMenuTrigger, ContextMenuType} from "../types/contextMenu.type";
-import {ancestorKeysOf, buildDeviceTreeData, findTreeMatches} from "../lib/deviceTreeData";
+import {ancestorKeysOf, buildDeviceTreeData, countDevicesAndChannels, findTreeMatches} from "../lib/deviceTreeData";
 import ChannelsProjectPicker from "./ChannelsProjectPicker";
 import {handleContextAction} from "../model/deviceActions";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
@@ -154,30 +154,7 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
     return () => cancelAnimationFrame(frame);
   }, [scrollTarget]);
 
-  // Ключи — это пути через точку (площадка.проект.устройство.канал), а тип узла
-  // определяется его глубиной: L1 — площадка, L2 — проект, L3 — устройство,
-  // L4+ — подустройства (узлы с детьми) и каналы/сигналы (листья).
-  const {deviceCount, channelCount} = useMemo(() => {
-    // Узел — лист, если ни один другой узел не ссылается на него как на родителя.
-    const parentKeys = new Set(nodes.map((n) => n.parentKey).filter(Boolean));
-    const depthOf = (key: string) => key.split('.').length;
-
-    let devices = 0;
-    let channels = 0;
-    nodes.forEach((n) => {
-      const depth = depthOf(n.key);
-      const isLeaf = !parentKeys.has(n.key);
-
-      if (depth >= 4 && isLeaf) {
-        channels += 1; // конечный сигнал/канал
-      } else if (depth >= 3) {
-        devices += 1; // главное устройство или подустройство
-      }
-      // depth 1..2 — площадка/проект, в счётчики не входят
-    });
-
-    return {deviceCount: devices, channelCount: channels};
-  }, [nodes]);
+  const {deviceCount, channelCount} = useMemo(() => countDevicesAndChannels(nodes), [nodes]);
 
   const searchPending = query.trim() !== '' && query !== appliedQuery;
   const searchActive = appliedQuery.trim() !== '';
