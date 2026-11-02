@@ -1,20 +1,16 @@
 "use client";
 
 import React from "react";
-import {AlertTriangle, SlidersHorizontal, Waypoints} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
+import {AlertTriangle} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Banner} from "@/shared/ui/Banner";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {closeFloatingWindow, openFloatingWindow} from "../model/useFloatingWindowsStore";
-import {isBooleanValueType, isNumericValueType, shortTagPath} from "@/core/scene";
-import {getRuntimePropertyValue, getRuntimeTagQuality, getRuntimeTagValue, InspectorPropertyDto} from "@/core/runtime";
 import {Button, ModalFooter} from "@/shared/ui/Button";
 import {useLiveValueTick} from "../model/useLiveValueTick";
 import {useInspectorObjects} from "../model/inspector/useInspectorObjects";
 import {useInspectorWrite} from "../model/inspector/useInspectorWrite";
-import {inspectorTitle as title} from "../lib/inspectorProps";
-import {ValueWriteRow} from "./ValueWriteRow";
+import {InspectorPropertyRow} from "./inspector/InspectorPropertyRow";
 import {ObjectPicker} from "./ObjectPicker";
 
 /**
@@ -38,14 +34,6 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
     setSelectedId(id);
     // Черновики принадлежали прошлому объекту.
     clearDrafts();
-  };
-
-  const valueOf = (p: InspectorPropertyDto) =>
-    p.tag_id ? getRuntimeTagValue(p.tag_id) : getRuntimePropertyValue(p.id);
-  const isBad = (p: InspectorPropertyDto) => {
-    if (!p.tag_id) return false;
-    const quality = getRuntimeTagQuality(p.tag_id);
-    return quality !== undefined && quality !== "GOOD";
   };
 
   return (
@@ -78,61 +66,17 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
           />
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
-            {selected.properties.map(p => {
-              const value = valueOf(p);
-              const isBool = isBooleanValueType(p.value_type ?? "");
-              const draft = drafts[p.id] ?? "";
-              const bad = isBad(p);
-              return (
-                <div key={p.id} className="px-4 py-3 space-y-2">
-                  <div className="flex items-center gap-3">
-                    {p.tag_id
-                      ? <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" aria-label="тег" />
-                      : <SlidersHorizontal className="h-4 w-4 shrink-0 text-gray-400" aria-label="локальное свойство" />}
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {title(p)}
-                      </span>
-                      {/* Как в «Опциях»: короткий путь тега, полный — в title; технический name
-                          рядом, если подпись его скрыла. */}
-                      <span
-                        className="block truncate text-xs text-gray-500 dark:text-gray-400"
-                        title={p.tag_id || undefined}
-                      >
-                        {p.label?.trim() ? `${p.name} · ` : ""}
-                        {p.tag_id ? shortTagPath(p.tag_id) : "локальное свойство"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span
-                        className={cn(
-                          "block text-sm font-medium",
-                          bad ? "text-gray-400 line-through" : "text-gray-900 dark:text-gray-100",
-                        )}
-                        title={bad ? "Значение недостоверно (качество тега не GOOD)" : undefined}
-                      >
-                        {value == null ? (p.tag_id ? "нет данных" : "не задано") : String(value)}
-                      </span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-400">
-                        текущее значение
-                      </span>
-                    </span>
-                  </div>
-
-                  <ValueWriteRow
-                    isBool={isBool}
-                    numeric={isNumericValueType(p.value_type)}
-                    draft={draft}
-                    onDraft={(value) => setDraft(p.id, value)}
-                    onWrite={() => void write(p)}
-                    disabled={writing !== null || (!isBool && !draft.trim())}
-                    label={writing === p.id ? "Запись..." : p.tag_id ? "Записать в ПЛК" : "Задать"}
-                    danger={Boolean(p.tag_id)}
-                    submitOnEnter
-                  />
-                </div>
-              );
-            })}
+            {selected.properties.map(p => (
+              <InspectorPropertyRow
+                key={p.id}
+                property={p}
+                draft={drafts[p.id] ?? ""}
+                isWriting={writing === p.id}
+                busy={writing !== null}
+                onDraft={(value) => setDraft(p.id, value)}
+                onWrite={() => void write(p)}
+              />
+            ))}
           </div>
         )}
       </div>
