@@ -2,8 +2,7 @@ import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
 import type {AutomationTaskStatus} from "@/core/automation";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/shared/lib/gatewayOrigin";
-import {describeDenial, isAccessDenial, isAccessNotReady} from "@/core/access";
-import type {AccessDenial} from "@/core/access";
+import {ACCESS_NOT_READY_DELAY_MS, createRuntimeSession, deleteRuntimeSession} from "../../api/runtimeSession";
 
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -58,7 +57,6 @@ const CLOSE_ACCESS_REVOKED = 4403;
 const CLOSE_POLICY_VIOLATION = 1008;
 /** Try Again Later: сервер после рестарта ещё не загрузил права — это не отказ. */
 const CLOSE_TRY_AGAIN_LATER = 1013;
-const ACCESS_NOT_READY_DELAY_MS = 4_000;
 
 export interface RuntimeConnectionHandlers {
   onUpdate: (
@@ -118,13 +116,6 @@ export interface RuntimeConnection {
    *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
   getSessionId: () => string | null;
 }
-
-/** Причина отказа из тела ответа рантайма: у него это всегда поле `message`. */
-const messageOf = async (res: Response, fallback: string): Promise<string> => {
-  const body = await res.json().catch(() => null);
-  const message = (body as {message?: unknown} | null)?.message;
-  return typeof message === "string" && message ? message : fallback;
-};
 
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -189,62 +180,30 @@ export function openRuntimeConnection(
     let wsTicket: string;
 
     try {
-      const res = await fetch("/api/runtime/sessions", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({projectId}),
-      });
+      const outcome = await createRuntimeSession(projectId);
 
-      // 409 — состояние, а не сбой связи: проект не введён в эксплуатацию либо не назначен
-      // ни одному экземпляру runtime. Повторные попытки ничего не изменят, пока человек не
-      // выставит флаг или не раздаст назначение, поэтому реконнект не запускаем. Разные 409
-      // различаются только текстом — показываем его как есть, не подменяя своим.
-      if (res.status === 409) {
-        const message = await messageOf(res, "Проект недоступен для мониторинга");
-        log(`сессия отклонена: ${message} — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", message);
+      if (outcome.kind === "rejected") {
+        log(outcome.reason === "state"
+          ? `сессия отклонена: ${outcome.message} — реконнект не запускаю`
+          : `сессия отклонена по правам: ${outcome.message} — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", outcome.message);
         return;
       }
 
-      // 503 — экземпляр, на котором работает проект, недоступен или неизвестен. В отличие
-      // от 409 это временно: экземпляр могут поднять, и проект подхватится сам. Повторяем
-      // с обычной паузой, но с причиной на экране — без неё оператор видит голое
-      // «Переподключение…» и не понимает, что чинить не у него.
-      if (res.status === 503) {
-        const message = await messageOf(res, "Сервер исполнения недоступен");
-        log(`экземпляр недоступен: ${message} — повторю с паузой`);
-        scheduleReconnect(message);
+      if (outcome.kind === "retry") {
+        log(outcome.reason === "unavailable"
+          ? `экземпляр недоступен: ${outcome.detail} — повторю с паузой`
+          : "права на сервере ещё не загружены — повторю с паузой");
+        scheduleReconnect(outcome.detail, outcome.minDelay);
         return;
       }
 
-      // 403 — права. ACCESS_NOT_READY — сервер ещё грузит их после рестарта: повторяем с
-      // паузой. Любая другая причина окончательна, как и 409: повтор её не изменит.
-      if (res.status === 403) {
-        const body = await res.json().catch(() => null);
-        if (isAccessNotReady(body)) {
-          log("права на сервере ещё не загружены — повторю с паузой");
-          scheduleReconnect(describeDenial(body as AccessDenial), ACCESS_NOT_READY_DELAY_MS);
-          return;
-        }
-        const message = isAccessDenial(body) ? describeDenial(body) : "Нет доступа к проекту";
-        log(`сессия отклонена по правам: ${message} — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", message);
-        return;
-      }
+      wsPath = outcome.wsPath;
+      wsTicket = outcome.ticket;
+      currentSessionId = outcome.sessionId;
+      if (outcome.versionNo !== undefined && !closed) onRelease?.(outcome.versionNo, false);
 
-      if (!res.ok) throw new Error(`POST /api/runtime/sessions → ${res.status}`);
-
-      const data = await res.json();
-
-      if (typeof data?.wsPath !== "string") throw new Error("В ответе сессии нет wsPath");
-      if (typeof data?.ticket !== "string") throw new Error("В ответе сессии нет ticket");
-
-      wsPath = data.wsPath;
-      wsTicket = data.ticket;
-      currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
-      if (typeof data?.versionNo === "number" && !closed) onRelease?.(data.versionNo, false);
-
-      log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
+      log(`сессия ${outcome.rawSessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
       scheduleReconnect();
@@ -406,10 +365,7 @@ export function openRuntimeConnection(
       // мойка идёт дальше, гасит проект только снятие флага «в эксплуатации».
       // Не await'им (не блокируем закрытие сокета/уход со страницы), keepalive
       // переживает unload; ошибка ничего не ломает на клиенте.
-      if (currentSessionId) {
-        const sessionId = currentSessionId;
-        fetch(`/api/runtime/sessions/${sessionId}`, {method: "DELETE", keepalive: true}).catch(() => {});
-      }
+      if (currentSessionId) deleteRuntimeSession(currentSessionId);
       ws?.close();
       ws = null;
       currentSessionId = null;
