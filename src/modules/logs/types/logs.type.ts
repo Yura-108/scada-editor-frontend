@@ -4,8 +4,8 @@ export interface LogEntry {
   entityType: string;
   entityId: number;
   commandType: 'CREATE' | 'UPDATE' | 'DELETE';
-  payload: any;
-  undoPayload: any;
+  payload: unknown;
+  undoPayload: unknown;
   createdAt: string;
   // Идентификатор пакета (UUID): все записи, созданные одной операцией
   // (например, устройство + его параметры), имеют один batchId.

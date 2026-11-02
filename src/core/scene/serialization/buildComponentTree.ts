@@ -292,7 +292,7 @@ export const buildComponentTree = (
 export const buildPaletteComponentTree = (
   elements: DiagramElement[],
   rootKey: string | null = null
-): Record<string, any> | null => {
+): Record<string, unknown> | null => {
   const rootElement = rootKey
     ? elements.find(el => String(el.key) === String(rootKey))
     : elements.find(el => el.parentKey === null);
@@ -301,7 +301,7 @@ export const buildPaletteComponentTree = (
 
   const byKey = new Map(elements.map(e => [e.key, e] as const));
 
-  const buildNestedNode = (element: DiagramElement): Record<string, any> => {
+  const buildNestedNode = (element: DiagramElement): Record<string, unknown> => {
     const baseImage = buildBaseImage(element);
 
     // Композиция запекается в image, как и в сцене (buildComponentNode). Без этого
@@ -341,7 +341,7 @@ export const buildPaletteComponentTree = (
     // Серверные id снимаются: экземпляр заводит свои свойства сам (addTags при
     // назначении тега).
     const templateProperties = Array.isArray(element.properties)
-      ? element.properties.map(({id: _id, component_id: _cid, ...rest}: any) => ({
+      ? element.properties.map(({id: _id, component_id: _cid, ...rest}) => ({
           ...rest,
           tag_id: null,
         }))
@@ -358,7 +358,7 @@ export const buildPaletteComponentTree = (
       parent_key: element.parentKey,
       parent_id: element.parentId,
       scripts: Array.isArray(element.scripts)
-        ? element.scripts.map((s: any) => ({
+        ? element.scripts.map(s => ({
             name: s.name,
             script: s.content,
             displayed: Boolean(s.displayed),

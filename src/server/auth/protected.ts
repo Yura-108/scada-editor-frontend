@@ -6,9 +6,12 @@ import {decodeJwtClaims} from "@/server/auth/jwtClaims";
 
 export {decodeJwtClaims};
 
-type Handler<T = any> = (
+/** Сегменты пути маршрута (`[id]` → `params.id`); у catch-all сегмента — массив. */
+type RouteParams = Record<string, string | string[]>;
+
+type Handler<T = unknown> = (
   request: NextRequest,
-  ctx: {token: string, params: any}
+  ctx: {token: string, params: RouteParams}
 ) => Promise<NextResponse<T>>;
 
 /**
@@ -30,7 +33,7 @@ export function decodeJwtUsername(token: string): string {
  * на ответ: cookie, выставленные через `cookies()`, Next дописывает к ответу обработчика сам.
  */
 export function protectedRoute(handler: Handler) {
-  return async (request: NextRequest, {params}: {params: Promise<any>}) => {
+  return async (request: NextRequest, {params}: {params: Promise<RouteParams>}) => {
     const cookieStore = await cookies();
     const access = cookieStore.get(ACCESS_COOKIE)?.value;
     const refresh = cookieStore.get(REFRESH_COOKIE)?.value;

@@ -6,7 +6,7 @@ export interface PaletteItemType {
   type: string;
   name: string;
   category: string;
-  defaultProps: Record<string, any>;
+  defaultProps: Record<string, unknown>;
   template?: DiagramElement[];
   /**
    * Версия шаблона, на которой основаны текущие правки → уезжает в `based_on_version`
