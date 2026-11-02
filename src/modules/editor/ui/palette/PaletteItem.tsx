@@ -1,6 +1,6 @@
 "use client";
 
-import {PaletteItemType} from "@/types/palette.types";
+import {PaletteItemType} from "../../types/palette.types";
 import {usePaletteStore} from "../../model/paletteStore";
 import {useEditorStore} from "../../model/editorStore";
 import {ElementType} from "@/types/editorElement.type";

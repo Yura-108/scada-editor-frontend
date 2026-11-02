@@ -1,6 +1,6 @@
 import {clsx} from "clsx";
 import React, {ReactNode} from "react";
-import {DeviceParamsType} from "@/types/nodeTypes";
+import {DeviceParamsType} from "@/core/devices";
 import {X} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {resolveParamWidget} from "@/core/devices";

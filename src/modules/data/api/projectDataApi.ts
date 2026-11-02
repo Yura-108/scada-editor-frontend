@@ -2,7 +2,7 @@ import type {
   ProjectDataSaveRequest,
   ProjectDataSet,
   ProjectDataValidationError,
-} from "@/types/projectData.types";
+} from "../types/projectData.types";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {fetchVersions} from "@/core/project";
 import {errorTextFromJson} from "@/core/access";

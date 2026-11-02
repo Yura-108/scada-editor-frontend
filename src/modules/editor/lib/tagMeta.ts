@@ -1,4 +1,4 @@
-import type {NodeParamType} from "@/types/channelsTypes";
+import type {NodeParamType} from "@/core/devices";
 import type {RecipeTag, RecipeValueType} from "@/types/recipe.types";
 import {isParamChecked} from "@/core/devices";
 

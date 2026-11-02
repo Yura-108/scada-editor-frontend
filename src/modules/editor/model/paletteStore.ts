@@ -1,4 +1,4 @@
-import {PaletteItemResponseDTO, PaletteItemType} from "@/types/palette.types";
+import {PaletteItemResponseDTO, PaletteItemType} from "../types/palette.types";
 import {create} from "zustand";
 import {paletteItems as paletteItemsStatic} from "../lib/palette";
 import {toast} from "sonner";

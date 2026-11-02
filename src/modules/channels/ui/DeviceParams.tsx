@@ -14,7 +14,7 @@ import {
   ContextMenuType,
   contextMenuTriggerFromKey,
   isContextMenuKey,
-} from "@/types/contextMenu.type";
+} from "@/core/devices";
 import {paramMenuItems} from "@/core/devices";
 import debounce from 'lodash/debounce';
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";

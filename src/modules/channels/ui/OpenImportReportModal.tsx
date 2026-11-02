@@ -8,7 +8,7 @@ import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {Collapsible} from "@/shared/ui/codeModalParts";
-import type {CdbxImportReport} from "@/types/cdbxImport.types";
+import type {CdbxImportReport} from "@/core/devices";
 
 /**
  * Итог импорта. Списки объединённых и угаданных каналов бывают в сотни имён, поэтому лежат

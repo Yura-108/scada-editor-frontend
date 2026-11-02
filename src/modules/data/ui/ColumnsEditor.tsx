@@ -14,7 +14,7 @@ import {
   type ProjectDataRow,
   type ProjectDataValidationError,
   type ProjectDataValueType,
-} from "@/types/projectData.types";
+} from "../types/projectData.types";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";

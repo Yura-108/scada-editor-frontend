@@ -6,7 +6,7 @@ import {
   fetchTemplates,
   updateTemplate,
 } from "./templatesApi"; // переедет в модуль вместе с разделом (шаг 8)
-import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
 
 /**
  * Палитра шаблонов задач — общая для всех проектов, поэтому ключ без projectId.

@@ -1,4 +1,4 @@
-import type {ProjectDataRow, ProjectDataValueType} from "@/types/projectData.types";
+import type {ProjectDataRow, ProjectDataValueType} from "../types/projectData.types";
 
 /**
  * Значения ячеек таблиц данных проекта. Чистые функции без React: сетка и редактор колонок

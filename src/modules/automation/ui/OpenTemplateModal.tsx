@@ -1,6 +1,6 @@
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {TemplateEditor} from "./TemplateEditor";
-import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
 
 interface Options {
   mode: "create" | "edit";

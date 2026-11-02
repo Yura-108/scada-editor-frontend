@@ -3,7 +3,7 @@ import { usePaletteStore } from "../../model/paletteStore";
 import { useState } from "react";
 import { cn } from "@/shared/lib/cn";
 import { DiagramElement } from "@/types/editorElement.type";
-import { PaletteItemType } from "@/types/palette.types";
+import { PaletteItemType } from "../../types/palette.types";
 import {Button} from "@/shared/ui/Button";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";

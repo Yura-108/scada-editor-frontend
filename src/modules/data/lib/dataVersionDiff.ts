@@ -1,4 +1,4 @@
-import type {ProjectDataColumn, ProjectDataRow, ProjectDataTable} from "@/types/projectData.types";
+import type {ProjectDataColumn, ProjectDataRow, ProjectDataTable} from "../types/projectData.types";
 
 /**
  * Разница двух версий «Данных проекта» — для вкладки «История таблиц» и предпросмотра

@@ -12,7 +12,7 @@ import {fieldBase, fieldLabelClass, fieldSizes} from "@/shared/ui/field/fieldSty
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {pickFile} from "@/shared/lib/pickFile";
-import type {CdbxImportReport} from "@/types/cdbxImport.types";
+import type {CdbxImportReport} from "@/core/devices";
 import {openImportReportModal} from "./OpenImportReportModal";
 import {errorTextFromJson} from "@/core/access";
 import {useDeviceTreeStore} from "@/core/devices";

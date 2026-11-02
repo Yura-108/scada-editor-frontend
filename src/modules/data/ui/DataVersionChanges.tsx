@@ -10,7 +10,7 @@ import {
   tablesOfVersionContent,
 } from "../lib/dataVersionDiff";
 import {formatCell} from "../lib/values";
-import type {ProjectDataTable} from "@/types/projectData.types";
+import type {ProjectDataTable} from "../types/projectData.types";
 
 export const loadDataVersion = async (projectId: number, versionNo: number): Promise<ProjectDataTable[] | null> =>
   tablesOfVersionContent(await loadVersionContent("data", projectId, versionNo));

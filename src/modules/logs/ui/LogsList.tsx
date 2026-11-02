@@ -1,7 +1,7 @@
 'use client';
 
 import { useLogsSearch } from '../model/useLogsSearch';
-import { LogEntry } from '@/types/logs.type';
+import { LogEntry } from '../types/logs.type';
 import LogDetailsModal from './LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
 import { toast } from "sonner";

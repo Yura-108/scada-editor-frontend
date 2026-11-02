@@ -1,6 +1,6 @@
 import {keepPreviousData, useQuery} from "@tanstack/react-query";
 import {formatLocalDateTime} from "@/shared/lib/formatLocalDateTime";
-import type {LogEntry} from "@/types/logs.type";
+import type {LogEntry} from "../types/logs.type";
 import type {LogsRange} from "../model/logsFilterStore";
 
 export const logsKeys = {

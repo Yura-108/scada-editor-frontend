@@ -46,7 +46,7 @@ import type {
   AutomationTaskStatusRow,
   AutomationValidationError,
 } from "@/types/automation.types";
-import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import type {AutomationTaskTemplate} from "@/modules/automation";
 import type {VersionSummary} from "@/types/editorVersion.types";
 import {ProjectSelect} from "@/core/project";
 

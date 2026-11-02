@@ -1,5 +1,5 @@
 import {Edit3, FileDown, Plus, Trash2} from "lucide-react";
-import {ContextMenuItem} from "@/types/contextMenu.type";
+import {ContextMenuItem} from "../types/contextMenu.type";
 
 export type DeviceAction =
   | 'add' | 'add_site' | 'add_project' | 'delete' | 'edit'
