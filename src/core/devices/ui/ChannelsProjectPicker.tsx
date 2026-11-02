@@ -5,7 +5,7 @@ import {cn} from "@/shared/lib/cn";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Button} from "@/shared/ui/Button";
 import {MultiSelect} from "@/shared/ui/MultiSelect";
-import {useDeviceDictionaries} from "../model/deviceDictionaries";
+import {loadParamTypes} from "../model/deviceDictionaries";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
 
 const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
@@ -25,7 +25,6 @@ interface Props {
  */
 export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
   const { loadNodes, loadedRootPath } = useDeviceTreeStore();
-  const { getParamsTypes } = useDeviceDictionaries();
 
   // Возвращаясь в раздел, видим то, что уже загружено, а не пустые поля.
   const [selectedProjects, setSelectedProjects] = useState<string[]>(() => loadedRootPath ?? []);
@@ -115,7 +114,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
     setIsSubmitting(true);
     try {
       await loadNodes(selectedProjects);
-      await getParamsTypes();
+      await loadParamTypes();
       const { nodesError } = useDeviceTreeStore.getState();
       if (!nodesError) toast.success(selectedProjects.length > 1 ? `Загружено проектов: ${selectedProjects.length}` : 'Проект загружен');
     } catch (err) {

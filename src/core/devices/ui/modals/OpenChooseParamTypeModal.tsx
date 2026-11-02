@@ -8,7 +8,7 @@ import {Select} from "@/shared/ui/field/Select";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addParam} from "../../model/deviceActions";
-import {useDeviceDictionaries} from "../../model/deviceDictionaries";
+import {getParamTypes} from "../../model/deviceDictionaries";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 
 interface Props {
@@ -72,7 +72,7 @@ export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) 
 
 export function openChooseParamTypeModal() {
   const {openModal} = useModalStore.getState();
-  const { paramsTypes } = useDeviceDictionaries.getState();
+  const paramsTypes = getParamTypes();
 
   if (paramsTypes.length > 0) {
     openModal(<ChooseParamTypeContent onLoadAction={addParam} paramTypesList={paramsTypes} />, {size: "md", closeOnOverlay: false});

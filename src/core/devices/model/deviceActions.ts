@@ -11,7 +11,7 @@ import {
 } from "../api/devicesApi";
 import {useDeviceTreeStore} from "./deviceTreeStore";
 import {useDeviceLocksStore} from "./deviceLocksStore";
-import {useDeviceDictionaries} from "./deviceDictionaries";
+import {getParamTypes, loadDeviceTemplates} from "./deviceDictionaries";
 
 /**
  * Правка базы каналов: узлы, параметры, пункты контекстного меню дерева и параметров.
@@ -181,7 +181,7 @@ export const handleContextAction = async (action: DeviceAction, nodeKey: string 
     OpenCreateProjectModal(nodeKey);
   }
   if (action === 'add') {
-    await useDeviceDictionaries.getState().loadDeviceTemplateList();
+    await loadDeviceTemplates();
     if (!nodeKey) return;
     OpenCreateDeviveModal(nodeKey);
   }
@@ -213,7 +213,7 @@ export const handleContextParamAction = async (action: ParamAction, paramKey: st
   }
   if (action === 'add') {
     if (!tree.getState().selectedDevice) return;
-    const id = useDeviceDictionaries.getState().paramsTypes
+    const id = getParamTypes()
       .find(paramsType => paramsType.name === 'Общие параметры')?.id;
     const title = await promptModal({
       title: 'Новый параметр',
