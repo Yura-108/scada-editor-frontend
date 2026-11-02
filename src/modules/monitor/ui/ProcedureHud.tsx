@@ -1,9 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  AlertTriangle, Check, ChevronDown, ChevronUp, CircleStop, GripVertical, Pause, Play,
-} from "lucide-react";
+import {AlertTriangle, ChevronDown, ChevronUp, GripVertical} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {useMonitorRecipes} from "../api/procedures";
 import {useProcedureStore} from "../model/useProcedureStore";
@@ -13,6 +11,8 @@ import {useHudPosition} from "../model/procedures/useHudPosition";
 import {useStepElapsed} from "../model/procedures/useStepElapsed";
 import {useOpenScene} from "@/core/project";
 import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
+import {HudControls, hudIconButton} from "./procedure-hud/HudControls";
+import {HudSteps} from "./procedure-hud/HudSteps";
 
 /**
  * Ведение процедуры ПОВЕРХ мнемосхемы.
@@ -27,7 +27,7 @@ import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
 export function ProcedureHud() {
   const {recipes} = useMonitorRecipes(useOpenScene(s => s.currentProject?.id ?? null), useOpenScene(s => s.releaseVersionNo));
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
+  const controls = useProcedureControls();
 
   const {hudRef, prefs, hydrated, handleDragStart, toggleCollapsed} = useHudPosition();
   const elapsed = useStepElapsed(stepStartedAt);
@@ -44,11 +44,6 @@ export function ProcedureHud() {
     : status.paused ? "bg-amber-500"
     : status.stalled ? "bg-amber-500"
     : "bg-blue-500 animate-pulse";
-
-  const iconButton = cn(
-    "inline-flex items-center justify-center rounded-md p-1.5 transition-colors",
-    "disabled:opacity-40 disabled:cursor-not-allowed",
-  );
 
   return (
     <div
@@ -104,67 +99,12 @@ export function ProcedureHud() {
           </span>
         )}
 
-        {recipeId && !isRunning && (
-          <button
-            className={cn(iconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
-            disabled={busy || !!denied.start}
-            onClick={() => start(recipeId)}
-            title={denied.start ?? "Запустить процедуру"}
-          >
-            <Play size={13} />
-            <span className="text-xs font-medium">Запустить</span>
-          </button>
-        )}
-
-        {recipeId && isRunning && (
-          <>
-            <button
-              className={cn(iconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
-              disabled={busy || !!denied.confirm}
-              onClick={() => confirm(recipeId)}
-              title={denied.confirm ?? "Подтвердить текущий шаг"}
-            >
-              <Check size={13} />
-              <span className="text-xs font-medium">Подтвердить</span>
-            </button>
-            {/* Пауза настоящая, серверная: рантайм переводит оборудование в `pause_action`
-                рецепта и останавливает продвижение по шагам. На паузу процедура встаёт и
-                сама, пока активна авария, — тогда «Продолжить» ответит отказом с её текстом,
-                и это не сбой, а причина, по которой продолжать нельзя. */}
-            {status?.paused ? (
-              <button
-                className={cn(iconButton, "gap-1 px-2 bg-emerald-600 text-white hover:bg-emerald-500")}
-                disabled={busy || !!denied.resume}
-                onClick={() => resume(recipeId)}
-                title={denied.resume ?? "Продолжить процедуру: теги безопасного состояния вернутся к значениям текущего шага"}
-              >
-                <Play size={13} />
-                <span className="text-xs font-medium">Продолжить</span>
-              </button>
-            ) : (
-              <button
-                className={cn(iconButton, "gap-1 px-2 bg-amber-600 text-white hover:bg-amber-500")}
-                disabled={busy || !!denied.pause}
-                onClick={() => pause(recipeId)}
-                title={denied.pause ?? "Пауза: оборудование перейдёт в безопасное состояние рецепта"}
-              >
-                <Pause size={13} />
-                <span className="text-xs font-medium">Пауза</span>
-              </button>
-            )}
-            <button
-              className={cn(iconButton, "bg-red-600 text-white hover:bg-red-500")}
-              disabled={busy || !!denied.abort}
-              onClick={() => abort(recipeId)}
-              title={denied.abort ?? "Прервать процедуру"}
-            >
-              <CircleStop size={14} />
-            </button>
-          </>
+        {recipeId && (
+          <HudControls recipeId={recipeId} status={status} isRunning={isRunning} controls={controls} />
         )}
 
         <button
-          className={cn(iconButton, "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800")}
+          className={cn(hudIconButton, "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800")}
           onClick={toggleCollapsed}
           title={prefs.collapsed ? "Показать шаги" : "Свернуть"}
         >
@@ -174,39 +114,7 @@ export function ProcedureHud() {
 
       {/* ─── Развёрнутая часть: шаги ─── */}
       {!prefs.collapsed && recipeId && (
-        <div className="max-h-72 overflow-y-auto custom-scrollbar border-t border-neutral-200 dark:border-neutral-800 px-3 py-2 space-y-2">
-          {steps.length === 0 ? (
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">У процедуры нет шагов.</p>
-          ) : (
-            <ul className="space-y-0.5">
-              {steps.map((step, index) => {
-                const current = !status?.completed && status?.stepIndex === index;
-                return (
-                  <li
-                    key={index}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1 text-xs",
-                      current ? "bg-blue-500/10 text-blue-700 dark:text-blue-300" : "text-neutral-600 dark:text-neutral-400",
-                    )}
-                  >
-                    <span className="w-5 shrink-0 tabular-nums text-neutral-400">{index + 1}</span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {step.name || <span className="italic text-neutral-400">без названия</span>}
-                    </span>
-                    <button
-                      className="shrink-0 text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
-                      disabled={busy || !!denied.jump}
-                      onClick={() => jump(recipeId, index)}
-                      title={denied.jump ?? undefined}
-                    >
-                      перейти
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <HudSteps recipeId={recipeId} steps={steps} status={status} controls={controls} />
       )}
     </div>
   );
