@@ -81,6 +81,7 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
 | `docs/domain/projects-and-releases.md` | выпуски, prod/draft, закреплённые сцены |
 | `docs/domain/scene-cache-and-versions.md` | кэш сцен, сохранение, версии, конфликты |
 | `docs/domain/access-roles.md` | права `view`/`operate`/`edit`, уровни, отказы |
+| `docs/domain/assistant.md` | помощник редактора: черновик скрипта, массовая правка, подбор тега, план сцены |
 
 Контракты с бэкендом — `docs/contract/*.md`. Для редактора есть skill `scada-editor`.
 
