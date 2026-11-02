@@ -1,7 +1,7 @@
 "use client";
 
 import {PaletteItemType} from "../../types/palette.types";
-import {usePaletteStore} from "../../model/paletteStore";
+import {deletePaletteItem} from "../../model/palette";
 import {useEditorStore} from "../../model/editorStore";
 import {ElementType} from "@/core/scene";
 import {Trash2} from "lucide-react";
@@ -15,7 +15,6 @@ interface PaletteItemProps {
 }
 
 export default function PaletteItem({item}: PaletteItemProps) {
-  const deletePaletteItem = usePaletteStore(s => s.deletePaletteItem);
   const isStatic = item.id >= STATIC_ID_THRESHOLD;
 
   // «Вооружение» инструмента: клик по элементу палитры сохраняет его в pendingPlacement,

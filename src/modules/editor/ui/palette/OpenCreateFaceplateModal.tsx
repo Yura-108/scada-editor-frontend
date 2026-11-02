@@ -1,5 +1,5 @@
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
-import { usePaletteStore } from "../../model/paletteStore";
+import { createPaletteItem, getPaletteItems, updatePaletteItem } from "../../model/palette";
 import { useState } from "react";
 import { cn } from "@/shared/lib/cn";
 import { DiagramElement } from "@/core/scene";
@@ -20,7 +20,7 @@ interface Props {
 
 export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate }: Props) {
   const closeModal = useCloseModal();
-  const { paletteItems } = usePaletteStore.getState();
+  const paletteItems = getPaletteItems();
 
   const customTemplates = paletteItems.filter(item => item.type === 'custom');
 
@@ -159,7 +159,6 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
 
 export function OpenCreateFaceplateModal(faceplate: DiagramElement[]) {
   const { openModal } = useModalStore.getState();
-  const { createPaletteItem, updatePaletteItem } = usePaletteStore.getState();
 
   openModal(
     <CreateFaceplateContent

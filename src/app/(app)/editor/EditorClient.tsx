@@ -2,7 +2,7 @@
 
 import {useEffect} from "react";
 import {
-  restoreLastProject, useAutoSaveScene, useEditorStore, usePaletteStore, useSceneChangedNotifications,
+  loadPaletteItems, restoreLastProject, useAutoSaveScene, useEditorStore, useSceneChangedNotifications,
   useWarnOnUnsavedChanges, WorkSpace,
 } from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
@@ -13,10 +13,6 @@ import {toast} from "sonner";
 registerMonitorDialogs();
 
 export default function EditorPage() {
-  // Точечный селектор: подписка на весь стор палитры перерисовывала страницу
-  // редактора при любой её загрузке/правке.
-  const loadPaletteItems = usePaletteStore(s => s.loadPaletteItems);
-
   // Автосохранение раз в 10 минут (только при изменениях, тихо, без сброса выделения)
   // + предупреждение при закрытии вкладки с несохранённой схемой.
   useAutoSaveScene();
@@ -56,8 +52,8 @@ export default function EditorPage() {
 
   useEffect(() => {
     // Палитра подгружается автоматически при монтировании, если ещё не загружена.
-    loadPaletteItems();
-  }, [loadPaletteItems]);
+    void loadPaletteItems();
+  }, []);
 
   return (
     <div className="h-screen w-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 overflow-hidden">
