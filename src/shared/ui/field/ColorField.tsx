@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useRef, useState, useEffectEvent} from "react";
 import {Ban} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
@@ -46,7 +46,8 @@ export function ColorField({id, label, value, onChange, inputClassName, onEditSt
   };
   // Страховка: элемент могли снять с выделения прямо во время ведения —
   // без этого история осталась бы на паузе навсегда.
-  useEffect(() => endGrouping, []);
+  const endGroupingOnUnmount = useEffectEvent(endGrouping);
+  useEffect(() => () => endGroupingOnUnmount(), []);
 
   const isTransparent = value === "transparent";
   const pickerValue = value && HEX_RE.test(value) && value.length === 7 ? value : "#ffffff";

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import debounce from "lodash/debounce";
 import {updateParam, useDeviceTreeStore} from "@/core/devices";
 
@@ -17,8 +17,9 @@ export function useParamDraft(selectedDevice: string | null) {
 
   const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
 
-  const debouncedSaveDraft = useCallback(
-    debounce((key: string, data: { key: number; value: string; }[]) => {
+  // Одна отложенная запись на всё время жизни хука (отменяется при размонтировании).
+  const debouncedSaveDraft = useMemo(
+    () => debounce((key: string, data: { key: number; value: string; }[]) => {
       localStorage.setItem(key, JSON.stringify(data));
     }, 400),
     []
@@ -46,7 +47,7 @@ export function useParamDraft(selectedDevice: string | null) {
       console.warn("Ошибка чтения draft", error);
       setEditedParams(new Map());
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, draftKey]);
 
   useEffect(() => {
     if (!draftKey || !selectedDevice) return;
@@ -62,7 +63,7 @@ export function useParamDraft(selectedDevice: string | null) {
     } else {
       debouncedSaveDraft(draftKey, arr);
     }
-  }, [editedParams, draftKey]);
+  }, [editedParams, draftKey, selectedDevice, debouncedSaveDraft]);
 
   useEffect(() => {
     return () => {

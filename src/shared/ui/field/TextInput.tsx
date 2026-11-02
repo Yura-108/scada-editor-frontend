@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, {useEffect, useRef, useState, useEffectEvent} from "react";
 import type { EditSession } from "./editSession";
 import { cn } from "@/shared/lib/cn";
 import { fieldBase, fieldSizes, type FieldSize } from "./fieldStyles";
@@ -58,7 +58,8 @@ export function TextInput({ id, value, onCommit, className, size = "sm", placeho
   };
   // Страховка: элемент могли снять с выделения прямо во время правки —
   // без этого история осталась бы на паузе навсегда.
-  useEffect(() => endGrouping, []);
+  const endGroupingOnUnmount = useEffectEvent(endGrouping);
+  useEffect(() => () => endGroupingOnUnmount(), []);
 
   const displayed = draft ?? value ?? "";
 
