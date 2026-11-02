@@ -2,7 +2,7 @@
 
 import {useEffect} from "react";
 import {usePathname} from "next/navigation";
-import {useEditorStore} from "@/modules/editor";
+import {useOpenScene} from "@/core/project";
 import {sectionOf} from "@/modules/shell";
 
 const APP_NAME = "SCADA";
@@ -12,15 +12,12 @@ const APP_NAME = "SCADA";
  * открытые по Ctrl+клику, на панели задач и в истории были неотличимы — виден был только адрес.
  *
  * Один компонент на всю рабочую область, а не по хуку в каждой странице: раздел берётся из
- * адреса, проект — из общего стора (его же выбирают редактор, монитор, «Автоматизация» и «Данные»).
- *
- * Лежит в `app`, а не в `modules/shell`: импорт `@/modules/editor` здесь не только за именем
- * проекта — он создаёт стор редактора в каждом разделе, и тот регистрирует срез открытой сцены
- * (`bindOpenSceneStore`). Без этого админка (список проектов через `useOpenScene`) упала бы.
+ * адреса, проект — из среза открытой сцены (`useOpenScene`; проект выбирают редактор, монитор,
+ * «Автоматизация» и «Данные»). Срез регистрирует `EditorStoreBinding` в layout.
  */
 export default function DocumentTitle() {
   const pathname = usePathname();
-  const projectName = useEditorStore(s => s.currentProject?.name ?? null);
+  const projectName = useOpenScene(s => s.currentProject?.name ?? null);
 
   useEffect(() => {
     const section = sectionOf(pathname);
