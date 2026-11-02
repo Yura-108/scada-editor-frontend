@@ -2,6 +2,7 @@
 // Общая для «Каналов», редактора (выбор тегов) и «Автоматизации». Внутри core/devices файлы
 // импортируют друг друга относительно, а не через этот index.
 export {useDeviceTreeStore} from "./model/deviceTreeStore";
+export {useDeviceSelection} from "./model/deviceSelectionStore";
 export {useDeviceLocksStore} from "./model/deviceLocksStore";
 export {loadParamTypes} from "./model/deviceDictionaries";
 export * from "./model/deviceActions";

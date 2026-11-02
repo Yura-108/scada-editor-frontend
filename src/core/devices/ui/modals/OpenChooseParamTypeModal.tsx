@@ -9,7 +9,7 @@ import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {addParam} from "../../model/deviceActions";
 import {getParamTypes} from "../../model/deviceDictionaries";
-import {useDeviceTreeStore} from "../../model/deviceTreeStore";
+import {useDeviceSelection} from "../../model/deviceSelectionStore";
 
 interface Props {
   onLoadAction: (param: { id: number; value: string; parentKey: string }) => void;
@@ -18,7 +18,7 @@ interface Props {
 
 export function ChooseParamTypeContent({ onLoadAction, paramTypesList }: Props) {
   const closeModal = useCloseModal();
-  const { selectedDevice } = useDeviceTreeStore.getState();
+  const { selectedDevice } = useDeviceSelection.getState();
 
   // Состояния для селекта и инпута
   const [selectedValue, setSelectedValue] = useState<string>(paramTypesList[0].id);

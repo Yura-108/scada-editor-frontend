@@ -3,7 +3,7 @@
 import React, {useMemo} from 'react';
 import {MousePointerClick, Inbox} from 'lucide-react';
 import {clsx} from 'clsx';
-import {resolveParamWidget, useDeviceTreeStore, useEditingDevices} from "@/core/devices";
+import {resolveParamWidget, useDeviceSelection, useDeviceTreeStore, useEditingDevices} from "@/core/devices";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {useParamDraft} from "../model/useParamDraft";
 import {useReleaseEditingOnLeave} from "../model/useReleaseEditingOnLeave";
@@ -18,10 +18,10 @@ import {ParamGrid} from "./ParamGrid";
 const DeviceParams = () => {
   const {
     nodes,
-    selectedDevice,
     getParams,
     params,
   } = useDeviceTreeStore();
+  const selectedDevice = useDeviceSelection(s => s.selectedDevice);
 
   // Реактивный признак блокировки: раньше читался через getState() прямо в
   // рендере, поэтому подпись кнопки и блокировка формы не обновлялись, пока

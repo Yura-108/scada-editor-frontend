@@ -16,6 +16,7 @@ import {ancestorKeysOf, buildDeviceTreeData, countDevicesAndChannels, findTreeMa
 import ChannelsProjectPicker from "./ChannelsProjectPicker";
 import {handleContextAction} from "../model/deviceActions";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
+import {useDeviceSelection} from "../model/deviceSelectionStore";
 import {TreeSearchBox} from "./TreeSearchBox";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
@@ -30,12 +31,12 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const {
     nodes,
-    selectedDevice,
     isLoadingNodes,
     nodesError,
     loadedRootPath,
     loadNodes,
   } = useDeviceTreeStore();
+  const selectedDevice = useDeviceSelection(s => s.selectedDevice);
 
   // Раскрытие управляемое: поиск должен раскрывать предков найденного узла, не сворачивая
   // того, что пользователь уже раскрыл руками.
@@ -52,11 +53,11 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
 
   const handleSelect = useCallback((keys: Key[]) => {
     const key = keys[0] as string | undefined;
-    if (key) useDeviceTreeStore.setState({selectedDevice: key});
+    if (key) useDeviceSelection.getState().selectDevice(key);
   }, []);
 
   const handleNodeClick = (nodeKey: string) => {
-    useDeviceTreeStore.setState({selectedDevice: nodeKey});
+    useDeviceSelection.getState().selectDevice(nodeKey);
   };
 
   const handleContextMenu = useCallback(

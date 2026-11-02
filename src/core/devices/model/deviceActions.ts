@@ -10,6 +10,7 @@ import {
   deleteParamRequest, deleteParamUnchecked, errorMessage, patchParamsRequest,
 } from "../api/devicesApi";
 import {useDeviceTreeStore} from "./deviceTreeStore";
+import {useDeviceSelection} from "./deviceSelectionStore";
 import {useDeviceLocksStore} from "./deviceLocksStore";
 import {getParamTypes, loadDeviceTemplates} from "./deviceDictionaries";
 
@@ -83,7 +84,8 @@ export const removeImportedProject = async (projectKey: string) => {
   // осталось, и убираем проект из загруженных — иначе следующая загрузка запросила бы
   // уже несуществующий.
   const rest = (tree.getState().loadedRootPath ?? []).filter(p => p !== projectKey);
-  tree.setState({loadedRootPath: rest, selectedDevice: null});
+  tree.setState({loadedRootPath: rest});
+  useDeviceSelection.getState().selectDevice(null);
   if (rest.length) {
     await tree.getState().loadNodes(rest).catch(() => {});
   } else {
@@ -186,7 +188,7 @@ export const handleContextAction = async (action: DeviceAction, nodeKey: string 
     OpenCreateDeviveModal(nodeKey);
   }
   if (action === 'edit') {
-    await useDeviceLocksStore.getState().toggleEditing(tree.getState().selectedDevice ?? '');
+    await useDeviceLocksStore.getState().toggleEditing(useDeviceSelection.getState().selectedDevice ?? '');
   }
   if (action === 'export_gateway') {
     if (!nodeKey) return;
@@ -212,7 +214,7 @@ export const handleContextParamAction = async (action: ParamAction, paramKey: st
     if (paramKey) await deleteOptionParam(paramKey);
   }
   if (action === 'add') {
-    if (!tree.getState().selectedDevice) return;
+    if (!useDeviceSelection.getState().selectedDevice) return;
     const id = getParamTypes()
       .find(paramsType => paramsType.name === 'Общие параметры')?.id;
     const title = await promptModal({
@@ -225,7 +227,7 @@ export const handleContextParamAction = async (action: ParamAction, paramKey: st
       const newParam = {
         id: Number(id),
         value: title,
-        parentKey: tree.getState().selectedDevice ?? ''
+        parentKey: useDeviceSelection.getState().selectedDevice ?? ''
       };
 
       await addParam(newParam);
