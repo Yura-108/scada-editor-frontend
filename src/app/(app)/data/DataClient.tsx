@@ -24,7 +24,7 @@ import {
 } from "@/modules/data";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
-import {useUnsavedGuard} from "@/lib/unsavedGuard";
+import {useUnsavedGuard} from "@/shared/lib/unsavedGuard";
 import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
 import type {AutomationSet, AutomationValidationError} from "@/types/automation.types";
 import type {ProjectDataSet, ProjectDataValidationError} from "@/types/projectData.types";

@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {KeyRound, User} from "lucide-react";
 import LogoutButton from "./LogoutButton";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
-import {ChangePasswordModal} from "@/components/auth/ChangePasswordModal";
+import {ChangePasswordModal} from "./ChangePasswordModal";
 
 /** Меню пользователя в шапке: логин, смена пароля, выход. */
 export default function UserMenu({login}: {login: string}) {

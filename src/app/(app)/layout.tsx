@@ -1,11 +1,8 @@
 import React from 'react';
 import { Cpu } from 'lucide-react';
-import UserMenu from '@/components/auth/UserMenu';
-import SessionUserBootstrap from '@/components/auth/SessionUserBootstrap';
-import { getUser } from '@/lib/getUser';
-import HeaderNav from '@/components/editor/HeaderNav';
-import LogoLink from '@/components/editor/LogoLink';
-import DocumentTitle from '@/components/DocumentTitle';
+import { getUser } from '@/server/auth/getUser';
+import { HeaderNav, LogoLink, SessionUserBootstrap, UserMenu } from '@/modules/shell';
+import DocumentTitle from './DocumentTitle';
 import { ThemeToggle } from '@/shared/ui/ThemeToggle';
 
 /**

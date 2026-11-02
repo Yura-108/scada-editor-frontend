@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import {Spinner} from "@/shared/ui/Spinner";
 import { useState } from 'react';
-import { confirmLeave } from "@/lib/unsavedGuard";
+import { confirmLeave } from "@/shared/lib/unsavedGuard";
 import {useDeviceLocksStore} from "@/core/devices";
 
 export default function LogoutButton() {

@@ -3,7 +3,7 @@
 import {useEffect} from "react";
 import {usePathname} from "next/navigation";
 import {useEditorStore} from "@/modules/editor";
-import {sectionOf} from "@/components/editor/navItems";
+import {sectionOf} from "@/modules/shell";
 
 const APP_NAME = "SCADA";
 
@@ -13,6 +13,10 @@ const APP_NAME = "SCADA";
  *
  * Один компонент на всю рабочую область, а не по хуку в каждой странице: раздел берётся из
  * адреса, проект — из общего стора (его же выбирают редактор, монитор, «Автоматизация» и «Данные»).
+ *
+ * Лежит в `app`, а не в `modules/shell`: импорт `@/modules/editor` здесь не только за именем
+ * проекта — он создаёт стор редактора в каждом разделе, и тот регистрирует срез открытой сцены
+ * (`bindOpenSceneStore`). Без этого админка (список проектов через `useOpenScene`) упала бы.
  */
 export default function DocumentTitle() {
   const pathname = usePathname();

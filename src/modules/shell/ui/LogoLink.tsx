@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import {guardedClick} from "@/lib/unsavedGuard";
+import {guardedClick} from "@/shared/lib/unsavedGuard";
 
 /** Логотип в шапке — тоже переход между разделами, поэтому спрашивает о несохранённом. */
 export default function LogoLink({href, className, label, children}: {

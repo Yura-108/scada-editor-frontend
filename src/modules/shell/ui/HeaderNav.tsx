@@ -6,8 +6,8 @@ import {useRouter, usePathname} from "next/navigation";
 import {cn} from "@/shared/lib/cn";
 import {Menu, X} from "lucide-react";
 import {Tooltip} from "radix-ui";
-import {adminItem, baseNavItems, isSectionActive, type NavItem} from "@/components/editor/navItems";
-import {guardedClick} from "@/lib/unsavedGuard";
+import {adminItem, baseNavItems, isSectionActive, type NavItem} from "../lib/navItems";
+import {guardedClick} from "@/shared/lib/unsavedGuard";
 
 const linkBase = cn(
   "flex shrink-0 items-center justify-center gap-2 rounded-xl transition-all duration-200 whitespace-nowrap",
