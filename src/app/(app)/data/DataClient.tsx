@@ -18,9 +18,9 @@ import {ProjectPlaceholder} from "@/core/project";
 import {ReadOnlyBanner} from "@/core/access";
 import {AutomationSaveError, fetchAutomation, saveAutomation} from "@/core/automation";
 import {
-  confirmRemoveTable, DataDiffView, DataVersionChanges, diffDataVersions, fetchProjectData,
-  fetchProjectDataVersions, loadDataVersion, ProjectDataSaveError, reloadProjectData,
-  restoreProjectDataVersion, saveProjectData, TablesEditor, VariablesEditor,
+  confirmRemoveTable, confirmRestoreDataVersion, DATA_HELP, type DataTab, DataVersionChanges, fetchProjectData,
+  fetchProjectDataVersions, ProjectDataSaveError, reloadProjectData, restoreProjectDataVersion, saveProjectData,
+  TablesEditor, VariablesEditor,
 } from "@/modules/data";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
@@ -31,59 +31,7 @@ import type {ProjectDataSet, ProjectDataValidationError} from "@/modules/data";
 import type {VersionSummary} from "@/core/project";
 import {ProjectSelect} from "@/core/project";
 
-type Tab = "tables" | "variables" | "history";
-
-
-/** Справка раздела: по вкладке — своя инструкция. */
-const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
-  tables: {
-    title: "Таблицы данных проекта",
-    body: <>
-      <p>
-        Таблица — справочник для серверных скриптов (задач автоматизации и скриптов монитора):
-        уставки, рецептуры, коэффициенты. Скрипт читает её так: <code>data(&apos;имя&apos;)</code> —
-        вся таблица, <code>data(&apos;имя&apos;, &apos;ключ&apos;)</code> — одна строка.
-      </p>
-      <ul>
-        <li><b>Имя таблицы</b> — по нему таблицу находят скрипты. Только латиница, цифры и _.</li>
-        <li><b>Заголовок</b> и <b>Описание</b> — для людей: название в списке слева и заметка. На скрипты не влияют.</li>
-        <li>
-          <b>Колонки</b> задают, из чего состоит строка: имя для скриптов, заголовок для людей, тип значения.
-          «Обязательна» — в каждой строке должно быть значение (или значение по умолчанию).
-        </li>
-        <li><b>Строки</b> — сами данные. key — уникальный ключ строки.</li>
-        <li>
-          «Сохранить» записывает таблицы на сервер новой версией. Чтобы работающие задачи увидели
-          изменения, нажмите «Применить данные».
-        </li>
-        <li>Удаление таблицы тоже применяется только при сохранении.</li>
-      </ul>
-    </>,
-  },
-  variables: {
-    title: "Переменные проекта",
-    body: <>
-      <p>
-        Переменная — именованное значение, общее для всего проекта. Задачи пишут её через{" "}
-        <code>setVar(имя, значение)</code> и читают через <code>vars.имя</code>, а в мнемосхеме её
-        можно привязать к элементу как <code>@var.имя</code>.
-      </p>
-      <ul>
-        <li>Тип и значение по умолчанию задаются здесь.</li>
-        <li>Отметки «пишет» показывают, какие задачи меняют переменную.</li>
-        <li>Переменные хранятся вместе с задачами автоматизации и сохраняются в их версии.</li>
-      </ul>
-    </>,
-  },
-  history: {
-    title: "История таблиц",
-    body: <ul>
-      <li>Каждое сохранение таблиц — отдельная версия: кто и когда её сделал.</li>
-      <li>«Подробнее» показывает, что изменилось относительно предыдущей версии, и таблицы версии целиком.</li>
-      <li>«Восстановить…» сначала показывает, что изменится, и только потом возвращает таблицы к выбранной версии.</li>
-    </ul>,
-  },
-};
+type Tab = DataTab;
 
 /**
  * Данные проекта: таблицы, которые серверные скрипты читают через data(), и переменные проекта.
@@ -306,32 +254,7 @@ export default function DataClient() {
 
   const handleRestore = async (versionNo: number) => {
     if (projectId == null || !data) return;
-    // Что именно поменяется — до подтверждения: номер версии сам по себе ничего не говорит.
-    let preview: React.ReactNode;
-    try {
-      const target = await loadDataVersion(projectId, versionNo);
-      preview = target
-        ? <DataDiffView diff={diffDataVersions(data.tables, target)} wording="restore" />
-        : <p className="text-xs text-neutral-500">Содержимое версии не удалось разобрать.</p>;
-    } catch (err) {
-      preview = <p className="text-xs text-red-600">{(err as Error).message}</p>;
-    }
-    const ok = await confirmModal({
-      title: `Восстановить версию таблиц ${versionNo}?`,
-      description: <div className="space-y-3">
-        <p>
-          Таблицы заменятся содержимым v{versionNo}; восстановление запишется новой версией.
-          Чтобы задачи automation увидели откат, нажмите «Применить данные».
-        </p>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">Что изменится по сравнению с текущей v{data.version}</p>
-          <div className="max-h-[40vh] overflow-y-auto">{preview}</div>
-        </div>
-      </div>,
-      confirmLabel: "Восстановить",
-      danger: true,
-      wide: true,
-    });
+    const ok = await confirmRestoreDataVersion(projectId, versionNo, data.tables, data.version);
     if (!ok) return;
     try {
       await restoreProjectDataVersion(projectId, versionNo);
@@ -460,7 +383,7 @@ export default function DataClient() {
           saveBlockedReason={dataDirty && invalidCells > 0 ? `Есть ячейки с неверным значением: ${invalidCells}` : null}
         />
       )}
-      {loaded && <FloatingHelp storageKey="help.data" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
+      {loaded && <FloatingHelp storageKey="help.data" title={DATA_HELP[tab].title}>{DATA_HELP[tab].body}</FloatingHelp>}
     </PageFrame>
   );
 }

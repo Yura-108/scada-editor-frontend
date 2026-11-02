@@ -8,6 +8,8 @@ export {diffDataVersions} from "./lib/dataVersionDiff";
 
 // UI
 export {compactButton} from "./ui/ColumnsEditor";
+export {confirmRestoreDataVersion} from "./ui/confirmRestoreDataVersion";
+export {DATA_HELP, type DataTab} from "./ui/dataHelp";
 export {DataDiffView, DataVersionChanges, loadDataVersion} from "./ui/DataVersionChanges";
 export {confirmRemoveTable, TablesEditor} from "./ui/TablesEditor";
 export {VariablesEditor} from "./ui/VariablesEditor";
