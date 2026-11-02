@@ -10,7 +10,7 @@ import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
 import {Spinner} from "@/shared/ui/Spinner";
-import {Tabs, type TabItem} from "@/shared/ui/Tabs";
+import {Tabs} from "@/shared/ui/Tabs";
 import {PageFrame} from "@/shared/ui/page/PageFrame";
 import {PageHeader} from "@/shared/ui/page/PageHeader";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
@@ -29,10 +29,10 @@ import {
   TASK_STATE_VIEW,
 } from "@/core/automation";
 import {
-  AutomationDiffView, AutomationVersionChanges, compactButton, diffVersions, findSavedTask, freeTaskName,
-  isSetDirty, loadAutomationVersion, missingVariables, openTemplateModal, sameWatchdog, stripIoHints,
-  taskDraftState, TaskEditor, tasksWith, taskToTemplate, TemplatePalette, templateToDraftTask,
-  WatchdogEditor,
+  AUTOMATION_HELP, AUTOMATION_TABS, type AutomationTab, AutomationVersionChanges, compactButton,
+  confirmRestoreAutomationVersion, findSavedTask, freeTaskName, isSetDirty, missingVariables, newTask,
+  openTemplateModal, sameWatchdog, stripIoHints, taskDraftState, TaskEditor, tasksWith, taskToTemplate,
+  TemplatePalette, templateToDraftTask, WatchdogEditor,
 } from "@/modules/automation";
 import {VersionHistoryList} from "@/core/project";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
@@ -49,69 +49,6 @@ import type {
 import type {AutomationTaskTemplate} from "@/modules/automation";
 import type {VersionSummary} from "@/core/project";
 import {ProjectSelect} from "@/core/project";
-
-type Tab = "tasks" | "watchdog" | "history";
-
-const TABS: TabItem<Tab>[] = [{value: "tasks", label: "Задачи"}, {value: "watchdog", label: "Watchdog"}, {value: "history", label: "История"}];
-
-const newTask = (index: number): AutomationTask => ({
-  id: null,
-  name: `Задача ${index}`,
-  // Новая задача выключена: включают осознанно, когда входы и выходы проверены.
-  enabled: false,
-  period_ms: 1000,
-  timeout_ms: 100,
-  stale_after_ms: 5000,
-  run_on_stale: false,
-  inputs: [],
-  outputs: [],
-  writes_variables: [],
-  script: "// inputs.<alias> — значения входов, write('<alias>', value) — запись выхода\n"
-    + "// state — память между тактами, dt — мс с прошлого успешного такта, firstRun\n",
-});
-
-const HELP: Record<Tab, {title: string; body: React.ReactNode}> = {
-  tasks: {
-    title: "Задачи — автоматика, которая работает без оператора",
-    body: <>
-      <p>
-        Задача — небольшой скрипт на JavaScript, который сервер выполняет по кругу с заданным периодом:
-        читает входы (теги ПЛК), считает и пишет выходы. Так делают регуляторы, нормализацию сигналов,
-        счётчики и блокировки.
-      </p>
-      <ul>
-        <li>Слева — список задач. «+ Задача» создаёт пустую, справа — готовые шаблоны.</li>
-        <li>
-          Входы и выходы: <b>alias</b> — имя, под которым тег виден в скрипте; <b>тег</b> — путь канала.
-          Выберите канал в «Дереве тегов» и нажмите стрелку ← в строке, чтобы подставить его.
-        </li>
-        <li>Новая задача выключена: отметьте «Включена», когда проверите входы и выходы.</li>
-        <li>
-          «Сохранить задачу» отправляет только открытую задачу, «Сохранить всё» — все правки сразу.
-          Крестик в списке удаляет задачу после подтверждения; удаление можно вернуть.
-        </li>
-        <li>Плашка под именем — что задача делает на сервере сейчас: «Работает», «Выключена», «Ошибка»…</li>
-      </ul>
-    </>,
-  },
-  watchdog: {
-    title: "Watchdog — сигнал ПЛК, что автоматика жива",
-    body: <p>
-      Необязательная настройка. Если включить, сервер будет постоянно менять счётчик в одном теге ПЛК,
-      а программа ПЛК по замершему счётчику поймёт, что автоматика остановилась, и переведёт
-      оборудование в безопасный режим. Нужен, только если такая проверка заложена в программу ПЛК.
-    </p>,
-  },
-  history: {
-    title: "История — все сохранения набора задач",
-    body: <ul>
-      <li>Каждое сохранение (и удаление задачи) — отдельная версия: кто и когда её сделал.</li>
-      <li>Раскройте версию стрелкой — видно, какие задачи в ней добавлены, изменены или удалены.</li>
-      <li>«Вернуть» у задачи кладёт её прежний вариант в черновик, остальное не трогает — проверьте и сохраните.</li>
-      <li>«Восстановить» откатывает весь набор к этой версии и сразу отправляет его на исполнение.</li>
-    </ul>,
-  },
-};
 
 /** Как часто перечитывать статусы задач: после сохранения automation подхватывает набор не сразу. */
 const STATUS_POLL_MS = 5000;
@@ -140,7 +77,7 @@ export default function AutomationClient() {
   const [draft, setDraft] = useState<AutomationSet | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<AutomationValidationError[]>([]);
-  const [tab, setTab] = useState<Tab>("tasks");
+  const [tab, setTab] = useState<AutomationTab>("tasks");
   const [selected, setSelected] = useState(0);
   const [statuses, setStatuses] = useState<AutomationTaskStatusRow[]>([]);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
@@ -400,32 +337,7 @@ export default function AutomationClient() {
 
   const handleRestore = async (versionNo: number) => {
     if (projectId == null || !saved) return;
-    // Что именно поменяется — до подтверждения, а не после: «v3» само по себе ничего не говорит.
-    let preview: React.ReactNode;
-    try {
-      const target = await loadAutomationVersion(projectId, versionNo);
-      preview = target
-        ? <AutomationDiffView diff={diffVersions(saved, target)} wording="restore" />
-        : <p className="text-xs text-neutral-500">Содержимое версии не удалось разобрать.</p>;
-    } catch (err) {
-      preview = <p className="text-xs text-red-600">{(err as Error).message}</p>;
-    }
-    const ok = await confirmModal({
-      title: `Восстановить версию ${versionNo}?`,
-      description: <div className="space-y-3">
-        <p>
-          Набор задач заменится содержимым v{versionNo} и сразу уйдёт на исполнение. История не теряется:
-          восстановление запишется новой версией. Чтобы вернуть одну задачу, раскройте версию и нажмите «Вернуть» у неё.
-        </p>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">Что изменится по сравнению с текущей v{saved.version}</p>
-          <div className="max-h-[40vh] overflow-y-auto">{preview}</div>
-        </div>
-      </div>,
-      confirmLabel: "Восстановить",
-      danger: true,
-      wide: true,
-    });
+    const ok = await confirmRestoreAutomationVersion(projectId, versionNo, saved);
     if (!ok) return;
     try {
       await restoreAutomationVersion(projectId, versionNo);
@@ -497,7 +409,7 @@ export default function AutomationClient() {
             if (await confirmLeave()) setCurrentProject(next);
           }}
         />
-        <Tabs aria-label="Разделы автоматизации" value={tab} onValueChange={setTab} items={TABS} />
+        <Tabs aria-label="Разделы автоматизации" value={tab} onValueChange={setTab} items={AUTOMATION_TABS} />
       </PageHeader>
 
       {project && draft && !canWrite && <ReadOnlyBanner projectName={project.name} />}
@@ -608,7 +520,7 @@ export default function AutomationClient() {
           saving={saving}
         />
       )}
-      {draft && <FloatingHelp storageKey="help.automation" title={HELP[tab].title}>{HELP[tab].body}</FloatingHelp>}
+      {draft && <FloatingHelp storageKey="help.automation" title={AUTOMATION_HELP[tab].title}>{AUTOMATION_HELP[tab].body}</FloatingHelp>}
     </PageFrame>
   );
 }
