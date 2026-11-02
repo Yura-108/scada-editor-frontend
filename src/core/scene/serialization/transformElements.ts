@@ -355,8 +355,8 @@ const flattenNode = (el: ComponentDto, fallbackParentId: number | null = null, f
       states: normalizedStates,
       parentId: resolvedParentId,
       parentKey: resolvedParentKey,
-      children: [], // Will be populated by children's processing
-      scripts: normalizeArray(el.scripts).map((s: Record<string, unknown>) => ({
+      children: [] as string[], // Will be populated by children's processing
+      scripts: normalizeArray(el.scripts as unknown as Record<string, unknown>[] | undefined).map(s => ({
         id: s.id != null ? String(s.id) : createUuid(),
         // serverId — только когда id действительно пришёл с сервера: локальный uuid
         // отправлять обратно нельзя (то же правило, что у ComponentState.serverId).
