@@ -37,6 +37,10 @@ export function useParamDraft(selectedDevice: string | null) {
 
         const map = new Map<string, string>(arr.map(item => [String(item.key), item.value]));
         setEditedParams(map);
+      } else {
+        // Без этого правки прежнего устройства оставались в состоянии: эффект ниже записывал
+        // их в черновик нового, а «Сохранить» отправлял их с экрана другого устройства.
+        setEditedParams(new Map());
       }
     } catch (error) {
       console.warn("Ошибка чтения draft", error);
