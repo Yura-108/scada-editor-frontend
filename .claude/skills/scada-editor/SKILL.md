@@ -248,9 +248,11 @@ Example to copy: the "Управление" controls (`button/toggle/slider/drop
 2. **`src/core/scene/types/editorElement.type.ts`** — add the string to the **`ElementType` union** and any
    new fields to `LeafElement`. The union now lists ALL real leaf types; keeping it complete is
    what removed a pile of "no overlap" baseline errors — don't regress it.
-3. **`src/modules/editor/lib/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
-   (`complex:false` for a widget) and `elementPropertyMap` (a `PropertySchema[]`). These are
-   `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
+3. **`src/modules/editor/lib/elementSchema/`** (entry: `lib/propertiesPanel.ts`) — add the key to **BOTH**
+   `elementRegistry` in `elementTypes.ts` (`complex:false` for a widget; plus its label in
+   `elementTypeLabels`) and the fields list in `shapeFields.ts` or `widgetFields.ts` (a
+   `PropertySchema[]`). `elementPropertyMap` (assembled in `propertiesPanel.ts`) and `elementRegistry`
+   are `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
 4. **`src/modules/editor/model/newElement.ts` → `TYPE_PROPS`** — an entry with the type's own fields (size, colours,
    value), mirroring `checkbox`/`progress_bar`. The shared scaffolding (`id:null, key, composition:[],
    parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`)
@@ -380,7 +382,7 @@ unbounded.
 | Group/component recursion | `GroupNode` in `src/core/canvas/shapes/CanvasNode.tsx` |
 | Render context / ShapeElementProps / MIN_SIZE | `src/core/canvas/types.ts` |
 | Palette items | `src/modules/editor/lib/palette.ts` |
-| Registry + property schemas | `src/modules/editor/lib/propertiesPanel.ts` |
+| Registry + property schemas | `src/modules/editor/lib/elementSchema/*` (entry `lib/propertiesPanel.ts`) |
 | Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |
 | Drop handling | `src/app/editor/EditorClient.tsx` |
 | Save / load serialization | `src/core/scene/serialization/buildComponentTree.ts`, `src/core/scene/serialization/transformElements.ts` |
