@@ -19,11 +19,6 @@ const DEEP_MODULE = {
   message: 'В модуль заходят только через его index.ts: @/modules/<имя>.',
 };
 const DEEP_CORE = { group: ['@/core/*/*'], message: 'В раздел core заходят через его index.ts: @/core/<раздел>.' };
-// Старые папки — нижний слой их не знает
-const LEGACY = {
-  group: ['@/store/*', '@/lib/*'],
-  message: 'Новая структура не зависит от старых папок: сначала перенесите нужный код.',
-};
 
 const restrict = (files, patterns) => ({
   files,
@@ -87,9 +82,9 @@ const eslintConfig = defineConfig([
   },
 
   // Границы новых слоёв
-  restrict(['src/shared/**'], [UP_TO_APP, INTO_MODULES, INTO_CORE, INTO_SERVER, LEGACY]),
-  restrict(['src/core/**'], [UP_TO_APP, INTO_MODULES, INTO_SERVER, LEGACY]),
-  restrict(['src/server/**'], [UP_TO_APP, INTO_MODULES, INTO_CORE, LEGACY]),
+  restrict(['src/shared/**'], [UP_TO_APP, INTO_MODULES, INTO_CORE, INTO_SERVER]),
+  restrict(['src/core/**'], [UP_TO_APP, INTO_MODULES, INTO_SERVER]),
+  restrict(['src/server/**'], [UP_TO_APP, INTO_MODULES, INTO_CORE]),
   // Модуль не импортирует другие модули и серверный код
   ...MODULES.map((name) =>
     restrict(
@@ -98,7 +93,6 @@ const eslintConfig = defineConfig([
         UP_TO_APP,
         INTO_SERVER,
         DEEP_CORE,
-        LEGACY,
         {
           group: MODULES.filter((m) => m !== name).map((m) => `@/modules/${m}`),
           message: 'Модули не импортируют друг друга: общее выносится в core.',
