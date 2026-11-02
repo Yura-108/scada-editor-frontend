@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { Group, Rect, Arrow } from "react-konva";
 import { DiagramElement, LeafElement } from "@/core/scene";
-import {getRenderedElementWith, parseDashArray} from "@/core/scene";
+import {getRenderedElementWith} from "@/core/scene";
 import { EditorRenderContext } from "../types";
-import { Anchor } from "./Anchor";
 import { PolygonShapeElement } from "./PolygonShapeElement";
 import { CircleShapeElement } from "./CircleShapeElement";
+import { LineShapeElement } from "./LineShapeElement";
+import { RectShapeElement } from "./RectShapeElement";
 import { TextShapeElement } from "./TextShapeElement";
 import { CheckboxShapeElement } from "./CheckboxShapeElement";
 import { ProgressBarShapeElement } from "./ProgressBarShapeElement";
@@ -22,7 +22,6 @@ import { TableShapeElement } from "./TableShapeElement";
 import { TrendShapeElement } from "./TrendShapeElement";
 import { ChartShapeElement } from "./ChartShapeElement";
 import { ArcShapeElement } from "./ArcShapeElement";
-import { ShapeInscription } from "./ShapeInscription";
 import { CurveShapeElement } from "./CurveShapeElement";
 
 interface ShapeElementProps {
@@ -41,7 +40,8 @@ interface ShapeElementProps {
 }
 
 /**
- * Рендерит листовой элемент холста (polygon/circle/line/text/checkbox/progress_bar/rect).
+ * Рендерит листовой элемент холста: считает его вид и выбирает компонент по типу
+ * (тип без своего компонента рисуется прямоугольником).
  *
  * Всё изменчивое приходит пропами от CanvasNode, который подписан на свой срез
  * стора: раньше эти же данные читались из общего контекста, и любое изменение
@@ -75,81 +75,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
   }
 
   if (rendered.type === "line") {
-    const x1 = rendered.x1 ?? rendered.x;
-    const y1 = rendered.y1 ?? rendered.y;
-    const x2 = rendered.x2 ?? rendered.x + 80;
-    const y2 = rendered.y2 ?? rendered.y;
-
-    const lineStroke = isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault);
-    const lineWidth = rendered.strokeWidth || 2;
-    const dashArr = parseDashArray(rendered.strokeDasharray);
-    const arrowStart = !!rendered.arrowStart;
-    const arrowEnd = !!rendered.arrowEnd;
-    // Размер наконечника зависит от толщины линии.
-    const pointerLength = Math.max(8, lineWidth * 2.5);
-    const pointerWidth = Math.max(7, lineWidth * 2.2);
-
-    return (
-      <Group key={el.key} id={el.key}>
-        <Arrow
-          points={[x1, y1, x2, y2]}
-          stroke={lineStroke}
-          fill={lineStroke}
-          strokeWidth={lineWidth}
-          dash={dashArr}
-          pointerAtBeginning={arrowStart}
-          pointerAtEnding={arrowEnd}
-          pointerLength={pointerLength}
-          pointerWidth={pointerWidth}
-          hitStrokeWidth={Math.max(12, lineWidth)}
-          draggable
-          onDragEnd={(e) => {
-            const dx = e.target.x();
-            const dy = e.target.y();
-            e.target.position({ x: 0, y: 0 });
-            updateElementVisual(el.key, {
-              x1: x1 + dx, y1: y1 + dy,
-              x2: x2 + dx, y2: y2 + dy,
-              x: (x1 + x2) / 2 + dx, y: (y1 + y2) / 2 + dy,
-            });
-          }}
-          onClick={(e) => {
-            e.cancelBubble = true;
-            onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
-          }}
-        />
-        {isSelected && (
-          <Anchor
-            key={`${el.key}-anc-1`}
-            x={x1}
-            y={y1}
-            themeColors={themeColors}
-            onDragMove={(e) => {
-              const sx = snap(e.target.x());
-              const sy = snap(e.target.y());
-              e.target.position({ x: sx, y: sy });
-              // Пишем в стор только при пересечении шага сетки.
-              if (sx !== x1 || sy !== y1) updateElementVisual(el.key, { x1: sx, y1: sy });
-            }}
-          />
-        )}
-        {isSelected && (
-          <Anchor
-            key={`${el.key}-anc-2`}
-            x={x2}
-            y={y2}
-            themeColors={themeColors}
-            onDragMove={(e) => {
-              const sx = snap(e.target.x());
-              const sy = snap(e.target.y());
-              e.target.position({ x: sx, y: sy });
-              // Пишем в стор только при пересечении шага сетки.
-              if (sx !== x2 || sy !== y2) updateElementVisual(el.key, { x2: sx, y2: sy });
-            }}
-          />
-        )}
-      </Group>
-    );
+    return <LineShapeElement {...leafProps} rendered={rendered} themeColors={themeColors} />;
   }
 
   if (rendered.type === "arc") {
@@ -225,50 +151,7 @@ function ShapeElementBase({ el, ctx, isSelected, isEditing, focusedCell, stateId
     return <ImageShapeElement {...leafProps} />;
   }
 
-  return (
-    <Group
-      key={el.key}
-      id={el.key}
-      x={rendered.x}
-      y={rendered.y}
-      rotation={rendered.rotate || 0}
-      draggable
-      onDragEnd={(e) => {
-        updateElementVisual(el.key, {
-          x: e.target.x(),
-          y: e.target.y(),
-        });
-      }}
-      onClick={(e) => {
-        e.cancelBubble = true;
-        onElementClick(el.key, e.evt.shiftKey || e.evt.ctrlKey);
-      }}
-    >
-      <Rect
-        width={rendered.w}
-        height={rendered.h}
-        fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-        stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
-        strokeWidth={isSelected ? 2 : (rendered.strokeWidth || 1)}
-        dash={parseDashArray(rendered.strokeDasharray)}
-        cornerRadius={rendered.rx || 0}
-      />
-      {/* Надпись читаем из `text`, а `label` оставляем запасным: в старых схемах
-          подпись прямоугольника лежит именно в нём (а `label` — ещё и имя в «Слоях»). */}
-      <ShapeInscription
-        text={rendered.text || rendered.label || ""}
-        w={rendered.w}
-        h={rendered.h}
-        inset={4}
-        fontSize={rendered.fontSize ?? 14}
-        fontFamily={rendered.fontFamily}
-        bold={rendered.bold}
-        color={rendered.textColor || themeColors.labelDefault}
-      />
-
-      {/* Ресайз/поворот одиночного выделения делает SelectionTransformer (Canvas). */}
-    </Group>
-  );
+  return <RectShapeElement {...leafProps} rendered={rendered} themeColors={themeColors} />;
 }
 
 /** Мемоизировано: пропы — сам элемент, стабильный ctx и несколько примитивов. */
