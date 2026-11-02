@@ -2,3 +2,4 @@
 // Общий для «Автоматизации», «Данных» (те же переменные) и выбора тега в редакторе.
 export * from "./automationApi";
 export * from "./types/automation.types";
+export * from "./taskStateView";

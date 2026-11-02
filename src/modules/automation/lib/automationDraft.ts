@@ -192,3 +192,20 @@ export const taskSummary = (task: AutomationTask): string =>
     `выходов ${task.outputs.length}`,
     task.writes_variables.length ? `пишет ${task.writes_variables.join(", ")}` : null,
   ].filter(Boolean).join(" · ");
+
+/** Заготовка новой задачи для «+ Задача»: `index` — её номер в имени. */
+export const newTask = (index: number): AutomationTask => ({
+  id: null,
+  name: `Задача ${index}`,
+  // Новая задача выключена: включают осознанно, когда входы и выходы проверены.
+  enabled: false,
+  period_ms: 1000,
+  timeout_ms: 100,
+  stale_after_ms: 5000,
+  run_on_stale: false,
+  inputs: [],
+  outputs: [],
+  writes_variables: [],
+  script: "// inputs.<alias> — значения входов, write('<alias>', value) — запись выхода\n"
+    + "// state — память между тактами, dt — мс с прошлого успешного такта, firstRun\n",
+});

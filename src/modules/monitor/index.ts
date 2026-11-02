@@ -14,7 +14,7 @@ export {closeFloatingWindows} from "./model/useFloatingWindowsStore";
 
 // UI
 export {ArchivePlayerBar} from "./ui/ArchivePlayerBar";
-export {AutomationTaskPanel, countTaskProblems, TASK_STATE_VIEW} from "./ui/AutomationTaskPanel";
+export {AutomationTaskPanel, countTaskProblems} from "./ui/AutomationTaskPanel";
 export {FloatingWindowsLayer} from "./ui/FloatingWindowsLayer";
 export {openObjectInspectorModal} from "./ui/ObjectInspectorModal";
 export {ProcedureHud} from "./ui/ProcedureHud";
