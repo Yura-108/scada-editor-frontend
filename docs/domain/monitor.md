@@ -10,9 +10,10 @@
   (`core/project/openScene.ts`, registered by `bindOpenSceneStore(useEditorStore)`), and elements
   plus the runtime writes (`applyRuntimeBatch`, `clearRuntime`) through `useSceneView` /
   `getSceneView` (`core/scene/sceneView.ts`). Same store, same selectors — re-renders do not change.
-- The binding happens when `@/modules/editor` is first imported. `MonitorClient` imports it (it
-  renders the editor `Canvas`), so the store exists before any monitor hook runs; a page that renders
-  monitor hooks without loading the editor module throws "bindOpenSceneStore не вызывался".
+- The binding happens when the editor store is created. The app layout does it explicitly for every
+  section — `app/(app)/EditorStoreBinding` calls `ensureEditorStore()` at module level — so the core
+  slices exist before any page renders. A page outside that layout that renders monitor hooks
+  without the binding throws "bindOpenSceneStore не вызывался".
 
 ## Monitor view lock (the lock in the zoom panel)
 
