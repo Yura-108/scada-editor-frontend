@@ -69,6 +69,15 @@ bindCurrentProjectStore(useEditorStore);
 bindOpenSceneStore(useEditorStore);
 
 /**
+ * Создаёт стор редактора и тем регистрирует срезы ядра (`bindOpenSceneStore`,
+ * `bindCurrentProjectStore`, `bindSceneViewStore`, `bindActiveStateReader`). Регистрация идёт при
+ * первом импорте этого модуля; функция — чтобы раздел, которому нужны только срезы ядра (админка
+ * через `useOpenScene`), вызвал её явно, а не полагался на чужой импорт. Повторный вызов ничего
+ * не делает.
+ */
+export const ensureEditorStore = () => useEditorStore;
+
+/**
  * Подчищает выделение, когда выделенных элементов больше нет в `elements`.
  *
  * История undo хранит только `elements` (см. partialize), поэтому отмена вставки
