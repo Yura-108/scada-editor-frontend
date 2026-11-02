@@ -16,7 +16,7 @@ export function resolveClickTarget(
     let key: string | null = clickedKey;
     let prev = key;
     while (key) {
-      const el = elementsMap[key];
+      const el: DiagramElement | undefined = elementsMap[key];
       if (!el) break;
       if (el.parentKey === sceneId) return key;
       prev = key;
@@ -27,7 +27,7 @@ export function resolveClickTarget(
 
   let key: string | null = clickedKey;
   while (key) {
-    const el = elementsMap[key];
+    const el: DiagramElement | undefined = elementsMap[key];
     if (!el) return null;
     if (el.parentKey === activeGroupKey) return key;
     key = el.parentKey;

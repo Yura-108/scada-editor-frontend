@@ -425,8 +425,8 @@ export const useEditorStore = create<EditorState>()((...a) => ({
    импортов, поведение не меняется. Изменения логики — отдельным коммитом.
 4. **Одна задача рефакторинга — одна ветка.** Не «переделать всё», а «вынести runtime из
    `useEditorStore`».
-5. **Проверка после каждого шага:** `npm run lint` и `npx tsc --noEmit` — число ошибок не
-   больше базового (см. CLAUDE.md).
+5. **Проверка после каждого шага:** `npm run lint` — число ошибок не больше базового, `npx tsc
+   --noEmit` — без ошибок (см. CLAUDE.md).
 
 ### План
 
@@ -445,8 +445,7 @@ export const useEditorStore = create<EditorState>()((...a) => ({
 
 Структурные шаги и шаг 5 закрыты. Открыт технический долг:
 
-- union `ElementType` без `button`/`rectangle`/`checkbox`/`progress_bar`/`path`
-  (весь базовый набор ошибок `tsc`); `any` (основная часть базовых ошибок lint); сырые цвета вместо
+- `any` (основная часть базовых ошибок lint); сырые цвета вместо
   токенов темы (`npm run check:ui-colors`) — по разделам; неявная связь `DocumentTitle` со стором
   редактора (`app/(app)`).
 
