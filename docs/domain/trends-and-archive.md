@@ -28,7 +28,7 @@ returns a bare array with no total, so "more" means "the last page was full").
 - **Monitor data**: `useTrendStore` holds series only for tags in `watched` (pens of the open
   scene). `useRuntimeEngine` sets `watched` and loads `[now − window, now]` from
   `GET /api/runtime/archive/values` on every `index` change, and appends WS points in
-  `onSnapshot`/`onUpdate` **directly, not through `pendingRef`/`flush`** — coalescing would merge
+  `onSnapshot`/`onUpdate` **directly, not through `buffers.pending`/`flush`** — coalescing would merge
   two changes inside one flush tick. `TrendShapeElement` treats "my pens are watched" as "I am in
   the monitor"; there is no readOnly flag in the render context.
 - **The operator's changes are local**: `TrendModal` (opened by «Открыть тренд» in the monitor
@@ -53,7 +53,7 @@ opened, no bus handlers are registered (clicks run nothing), and `Canvas archive
 `MonitorInteractionLayer` and reduces the menu to «Открыть тренд». The player
 (`useArchiveReplay`, mounted **once** in `MonitorClient`; state in `useArchiveReplayStore`,
 pure buffer logic in `modules/monitor/model/archive/replayBuffer.ts`) feeds `engine.archive.reset/apply`, which
-go through `pendingRef` + synchronous `flush` exactly like `onSnapshot` — so bindings draw the
+go through `buffers.pending` + synchronous `flush` exactly like `onSnapshot` — so bindings draw the
 scheme as usual.
 
 - **Archive values are converted back to the WS form** (`archiveValueToWire`). WS carries the

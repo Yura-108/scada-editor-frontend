@@ -37,7 +37,7 @@ here is convenience, never protection.
   `displayed` (`transformElements` ×2, `buildComponentTree` scene + palette); composition
   descriptors and `instantiateTemplate` copy scripts whole. Losing it silently makes the script
   level 1 — the backend cannot notice.
-- **Monitor actions**: `runScriptOn` in `useRuntimeEngine` is the single refusal point — an `onClick`
+- **Monitor actions**: `runScriptOn` in `useRuntimeActions` (monitor engine) is the single refusal point — an `onClick`
   calls `runScript(name)` from JS, so the button cannot be disabled ahead of time. Without
   `operate` or below the level, no `ACTION` leaves and `showRuntimeNotice` draws the reason at the
   click point (`RuntimeNoticeLayer`); a server `ACTION_DENIED` lands at the same point

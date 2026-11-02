@@ -118,7 +118,7 @@ export const isRuntimeLive = (): boolean => live;
 
 /**
  * Текущее значение тега, каким его видит схема. Значения живут в рефах движка
- * (`valuesRef`), а не в сторе, поэтому окну «Опции» нужен геттер, а не селектор:
+ * (`buffers.values`), а не в сторе, поэтому окну «Опции» нужен геттер, а не селектор:
  * там показывается ровно то же, что нарисовано на холсте, без лишних запросов.
  */
 type ValueGetter = (tagId: string) => string | null | undefined;
@@ -144,7 +144,7 @@ export const setRuntimePropertyValueGetter = (g: PropertyValueGetter | null): vo
 export const getRuntimePropertyValue = (propertyId: number): string | undefined =>
   propertyValueGetter?.(propertyId);
 
-/** Качество тега (`tagMetaRef`): достоверно только "GOOD" — с "BAD" не сравнивать, бывает "UNCERTAIN". */
+/** Качество тега (`buffers.tagMeta`): достоверно только "GOOD" — с "BAD" не сравнивать, бывает "UNCERTAIN". */
 type TagQualityGetter = (tagId: string) => string | undefined;
 let tagQualityGetter: TagQualityGetter | null = null;
 export const setRuntimeTagQualityGetter = (g: TagQualityGetter | null): void => {
