@@ -1,4 +1,4 @@
-import type { TableCellData } from "@/types/editorElement.type";
+import type { TableCellData } from "../types/editorElement.type";
 
 /** Ключ ячейки в LeafElement.cells: "${row}_${col}" (0-based). */
 export const cellId = (row: number, col: number): string => `${row}_${col}`;

@@ -1,4 +1,4 @@
-import {DiagramElement, LeafElement} from "@/types/editorElement.type";
+import {DiagramElement, LeafElement} from "@/core/scene";
 import {getRenderedElement, getElementIndex, getElementBoundsRendered, getAbsoluteRenderedPos, measureText, parseCurvePoints} from "@/core/scene";
 
 /**

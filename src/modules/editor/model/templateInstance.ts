@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {snap, getElementBoundsRendered, shiftElementPositions, findTemplateRoot} from "@/core/scene";
 import {

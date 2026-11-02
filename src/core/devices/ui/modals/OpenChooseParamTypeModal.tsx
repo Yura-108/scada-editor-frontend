@@ -1,4 +1,4 @@
-import { DeviceParamsLayoutType } from "@/types/nodeTypes";
+import { DeviceParamsLayoutType } from "../../types/nodeTypes";
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { useState } from "react";
 import {Button} from "@/shared/ui/Button";

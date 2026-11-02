@@ -1,5 +1,5 @@
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {ElementEventName} from "@/types/binding.types";
+import type {DiagramElement} from "@/core/scene";
+import type {ElementEventName} from "@/core/scene";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 
 /**

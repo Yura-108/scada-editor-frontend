@@ -11,3 +11,4 @@ export {compactButton} from "./ui/ColumnsEditor";
 export {DataDiffView, DataVersionChanges, loadDataVersion} from "./ui/DataVersionChanges";
 export {confirmRemoveTable, TablesEditor} from "./ui/TablesEditor";
 export {VariablesEditor} from "./ui/VariablesEditor";
+export * from "./types/projectData.types";

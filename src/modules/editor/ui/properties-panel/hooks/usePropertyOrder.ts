@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import {PointerSensor, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
 import {arrayMove} from "@dnd-kit/sortable";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import {propertyKey, sortProperties} from "../lib/propertyOrder";
 

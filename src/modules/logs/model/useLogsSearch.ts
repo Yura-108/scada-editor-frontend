@@ -1,6 +1,6 @@
 import {useCallback, useMemo} from "react";
 import {useQueryClient} from "@tanstack/react-query";
-import type {LogEntry} from "@/types/logs.type";
+import type {LogEntry} from "../types/logs.type";
 import {logsKeys, useLogs} from "../api/logs";
 import {useLogsFilterStore} from "./logsFilterStore";
 

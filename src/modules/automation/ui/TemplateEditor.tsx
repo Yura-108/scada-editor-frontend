@@ -16,8 +16,8 @@ import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
 import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
 import {IoTable} from "./IoTable";
-import type {AutomationIo, AutomationValidationError} from "@/types/automation.types";
-import type {AutomationTaskTemplate, AutomationTemplateIo} from "@/types/automationTemplate.types";
+import type {AutomationIo, AutomationValidationError} from "@/core/automation";
+import type {AutomationTaskTemplate, AutomationTemplateIo} from "../types/automationTemplate.types";
 
 interface Props {
   mode: "create" | "edit";

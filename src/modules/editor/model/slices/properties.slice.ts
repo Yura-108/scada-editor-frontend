@@ -1,8 +1,8 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {purgePropertyRefs} from "../propertyDependents";
 import {toast} from "sonner";
-import {PropertyCreateDto, PropertyCreateRequestDto} from "@/types/tags.types";
-import {TagBinding} from "@/types/binding.types";
+import {PropertyCreateDto, PropertyCreateRequestDto} from "@/core/scene";
+import {TagBinding} from "@/core/scene";
 import type {EditorState} from "../editorStore";
 import {editorSession} from "../editorSession";
 import {

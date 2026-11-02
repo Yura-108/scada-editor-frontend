@@ -4,7 +4,7 @@ import {cn} from "@/shared/lib/cn";
 import {shortTagPath} from "@/core/scene";
 import {TagTree} from "@/core/devices";
 import {Tabs, type TabItem} from "@/shared/ui/Tabs";
-import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/types/automation.types";
+import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/core/automation";
 import type {TagSource} from "./propertyOptions";
 
 const SOURCES: TabItem<TagSource>[] = [

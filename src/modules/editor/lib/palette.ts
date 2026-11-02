@@ -1,4 +1,4 @@
-import { PaletteItemType } from "@/types/palette.types";
+import { PaletteItemType } from "../types/palette.types";
 
 export const paletteItems: PaletteItemType[] = [
   // BASIC

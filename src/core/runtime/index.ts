@@ -10,3 +10,4 @@ export * from "./script/executeBinding";
 export * from "./script/eventScript";
 export * from "./script/scriptSyntax";
 export * from "./script/sceneTarget";
+export * from "./types/runtimeWrite.types";

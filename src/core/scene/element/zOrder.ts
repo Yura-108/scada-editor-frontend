@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "../types/editorElement.type";
 
 /**
  * Порядок отрисовки по `zIndex` — единственное место, где живёт это правило.

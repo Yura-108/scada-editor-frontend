@@ -1,5 +1,5 @@
 import Konva from "konva";
-import {LeafElement} from "@/types/editorElement.type";
+import {LeafElement} from "../types/editorElement.type";
 
 /**
  * Настоящий габарит текстового элемента.

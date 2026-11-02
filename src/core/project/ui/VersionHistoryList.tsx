@@ -2,12 +2,12 @@
 
 import React, {useState} from "react";
 import {ChevronDown, ChevronRight, History} from "lucide-react";
-import {Badge} from "./Badge";
-import {Button} from "./Button";
-import {EmptyState} from "./EmptyState";
-import {IconButton} from "./IconButton";
-import type {Tone} from "./tone";
-import type {VersionSummary} from "@/types/editorVersion.types";
+import {Badge} from "@/shared/ui/Badge";
+import {Button} from "@/shared/ui/Button";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {IconButton} from "@/shared/ui/IconButton";
+import type {Tone} from "@/shared/ui/tone";
+import type {VersionSummary} from "../types/editorVersion.types";
 
 interface Props {
   versions: VersionSummary[];

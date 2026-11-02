@@ -2,7 +2,7 @@ import { RefObject, useCallback, useRef, useState } from "react";
 import Konva from "konva";
 import {snap, getElementBoundsRendered} from "@/core/scene";
 import { collectGuideCandidates, findGuideMatch, type GuideCandidates } from "../../../lib/smartGuides";
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import { beginHistoryGroup, endHistoryGroup } from "../../../model/historyGroup";
 
 interface MultiDragAndGuidesDeps {

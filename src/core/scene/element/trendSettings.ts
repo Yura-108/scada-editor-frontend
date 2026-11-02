@@ -1,5 +1,5 @@
-import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
-import type {PropertyCreateDto} from "@/types/tags.types";
+import type {DiagramElement, TrendPenStyle, TrendSettings} from "../types/editorElement.type";
+import type {PropertyCreateDto} from "../types/tags.types";
 
 /**
  * Тренд: перья, окно, шаг (контракт docs/contract/2026-09-28-tag-archive-contract.md, раздел 1).

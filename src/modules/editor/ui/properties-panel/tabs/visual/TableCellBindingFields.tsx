@@ -1,8 +1,8 @@
 "use client";
 
 import {Boxes, Trash2} from "lucide-react";
-import {DiagramElement} from "@/types/editorElement.type";
-import type {CellSourceField} from "@/types/binding.types";
+import {DiagramElement} from "@/core/scene";
+import type {CellSourceField} from "@/core/scene";
 import {TextInput} from "@/shared/ui/field/TextInput";
 import {cellSourceFieldsFor} from "@/core/scene";
 import {useEditorStore} from "../../../../model/editorStore";

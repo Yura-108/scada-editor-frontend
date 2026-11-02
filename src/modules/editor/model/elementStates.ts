@@ -3,7 +3,7 @@
  * overrides состояния, каскад состояния по имени на поддерево. Чистые функции — стора не
  * знают. Перенесены из useEditorStore без изменений (docs/architecture.md, шаг 6).
  */
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {getElementIndex} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {getDescendantKeys} from "./elementTree";

@@ -1,5 +1,5 @@
-import type {DeviceParamsLayoutType} from "@/types/nodeTypes";
-import type {NodeParamType, NodeType} from "@/types/channelsTypes";
+import type {DeviceParamsLayoutType} from "../types/nodeTypes";
+import type {NodeParamType, NodeType} from "../types/channelsTypes";
 import {describeDenial, errorTextFromJson, isAccessDenial} from "@/core/access";
 
 /**

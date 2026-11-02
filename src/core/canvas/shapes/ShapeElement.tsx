@@ -3,7 +3,7 @@
 import React from "react";
 import { Group, Rect, Circle, Line, Arrow } from "react-konva";
 import Konva from "konva";
-import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { DiagramElement, LeafElement } from "@/core/scene";
 import {getRenderedElementWith, parseDashArray} from "@/core/scene";
 import { EditorRenderContext } from "../types";
 import { Anchor } from "./Anchor";

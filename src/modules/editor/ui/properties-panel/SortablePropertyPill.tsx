@@ -5,7 +5,7 @@ import {useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {GripVertical, Trash2} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
-import {PropertyCreateDto} from "@/types/tags.types";
+import {PropertyCreateDto} from "@/core/scene";
 import {shortTagPath} from "@/core/scene";
 import {needsTag, propertyKey} from "./lib/propertyOrder";
 

@@ -1,4 +1,4 @@
-import type {ProjectGrant} from "@/types/access.types";
+import type {ProjectGrant} from "@/core/access";
 
 /**
  * `access` — права пользователя в проекте из списка проектов. Нет поля — ответ старого

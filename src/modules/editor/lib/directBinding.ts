@@ -1,6 +1,6 @@
 import {createUuid} from "@/shared/lib/createUuid";
 import {uniqueVarName} from "@/core/runtime";
-import type {TagBinding} from "@/types/binding.types";
+import type {TagBinding} from "@/core/scene";
 import type {PickedProperty} from "../ui/properties-panel/bindings/OpenChooseObjectPropertyModal";
 
 /**

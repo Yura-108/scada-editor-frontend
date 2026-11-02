@@ -3,7 +3,7 @@ import Konva from "konva";
 import { resetCanvasCursor } from "@/core/canvas";
 import {useEditorStore} from "../../../model/editorStore";
 import { setCanvasPointerWorld } from "../../../lib/canvasPointer";
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import isIntersecting from "@/shared/lib/isIntersecting";
 import {getSelectionBounds, ZOOM_MIN, ZOOM_MAX, getElementIndex, cameraForMonitorView, resolveMonitorView, resolveSheet} from "@/core/scene";
 import { pickMonitorTarget } from "../../../lib/pickMonitorTarget";

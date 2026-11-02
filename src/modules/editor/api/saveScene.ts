@@ -3,7 +3,7 @@ import {
   type MergeReport,
   type SaveConflict,
   type SaveKind,
-} from "@/types/editorVersion.types";
+} from "@/core/project";
 
 export interface SaveSceneRequest {
   /** Весь состав сцены (`buildComponentTree`): удалённое исчезает по отсутствию. */

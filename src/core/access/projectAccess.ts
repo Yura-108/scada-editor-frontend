@@ -1,4 +1,4 @@
-import type {ProjectGrant} from "@/types/access.types";
+import type {ProjectGrant} from "./types/access.types";
 import {grantOf} from "./grants";
 import {currentProjectStore} from "./currentProject";
 import {useSessionUserStore} from "./sessionUser";

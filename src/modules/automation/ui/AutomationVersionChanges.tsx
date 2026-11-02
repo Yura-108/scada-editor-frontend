@@ -13,7 +13,7 @@ import {
   taskFieldChanges,
   taskSummary,
 } from "../lib/automationDraft";
-import type {AutomationSet, AutomationTask} from "@/types/automation.types";
+import type {AutomationSet, AutomationTask} from "@/core/automation";
 
 export type VersionSet = Pick<AutomationSet, "tasks" | "variables" | "watchdog">;
 

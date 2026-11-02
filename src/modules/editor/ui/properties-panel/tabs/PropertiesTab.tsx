@@ -3,7 +3,7 @@
 import {DndContext, closestCenter} from "@dnd-kit/core";
 import {SortableContext, rectSortingStrategy} from "@dnd-kit/sortable";
 import {AlertTriangle, Plus} from "lucide-react";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {handleAddProperty} from "../property/handleAddProperty";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {MonitorMenuSettingsBlock} from "../blocks/MonitorMenuSettingsBlock";

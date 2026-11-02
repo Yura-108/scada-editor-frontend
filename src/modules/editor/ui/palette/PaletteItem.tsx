@@ -1,9 +1,9 @@
 "use client";
 
-import {PaletteItemType} from "@/types/palette.types";
+import {PaletteItemType} from "../../types/palette.types";
 import {usePaletteStore} from "../../model/paletteStore";
 import {useEditorStore} from "../../model/editorStore";
-import {ElementType} from "@/types/editorElement.type";
+import {ElementType} from "@/core/scene";
 import {Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";

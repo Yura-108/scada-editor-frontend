@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {getElementIndex} from "@/core/scene";
 import {getDescendantKeys, recomputeAncestorBounds} from "./elementTree";
 

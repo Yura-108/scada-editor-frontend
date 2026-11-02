@@ -1,7 +1,7 @@
 import React from "react";
 import {Tags, Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
-import {RECIPE_VALUE_TYPES, type RecipeTag, type RecipeValueType} from "@/types/recipe.types";
+import {RECIPE_VALUE_TYPES, type RecipeTag, type RecipeValueType} from "@/core/project";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
 import {sectionTitle} from "./styles";

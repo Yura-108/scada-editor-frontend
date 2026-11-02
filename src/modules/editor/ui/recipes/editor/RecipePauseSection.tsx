@@ -1,6 +1,6 @@
 import React, {type Dispatch, type SetStateAction} from "react";
 import {coerceActionValue} from "../../../lib/recipeValidation";
-import type {RecipeStepAction, RecipeTag} from "@/types/recipe.types";
+import type {RecipeStepAction, RecipeTag} from "@/core/project";
 import {sectionTitle} from "./styles";
 import {TagWriteRow} from "./TagWriteRow";
 

@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
-import {EMPTY_PROCEDURE_LEVELS, type ProcedureLevels} from "@/types/access.types";
-import type {Recipe} from "@/types/recipe.types";
+import {EMPTY_PROCEDURE_LEVELS, type ProcedureLevels} from "@/core/access";
+import type {Recipe} from "@/core/project";
 // переедут в core/access вместе с правами (шаг 8)
 import {parseProcedureLevels, readBackendError} from "@/core/access";
 

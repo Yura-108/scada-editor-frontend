@@ -8,13 +8,13 @@ import {useInvalidateRecipes} from "../../api/recipes";
 import {Button} from "@/shared/ui/Button";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
-import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
+import {VersionHistoryList} from "@/core/project";
 import {Banner} from "@/shared/ui/Banner";
 import {Spinner} from "@/shared/ui/Spinner";
 import {fetchVersions} from "@/core/project";
 import {readBackendError} from "@/core/access";
-import type {VersionSummary} from "@/types/editorVersion.types";
-import type {Recipe} from "@/types/recipe.types";
+import type {VersionSummary} from "@/core/project";
+import type {Recipe} from "@/core/project";
 
 /**
  * История версий рецепта — по `document_id`, тем же общим контроллером версий, что у сцен

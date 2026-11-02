@@ -13,3 +13,6 @@ export * from "./releases/releasesApi";
 export * from "./settings/projectSettingsApi";
 export {ProjectSelect} from "./ui/ProjectSelect";
 export {ProjectPlaceholder} from "./ui/ProjectPlaceholder";
+export * from "./types/editorVersion.types";
+export * from "./types/recipe.types";
+export * from "./ui/VersionHistoryList";

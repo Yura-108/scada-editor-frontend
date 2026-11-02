@@ -12,7 +12,7 @@ import {
   ContextMenuTrigger,
   contextMenuTriggerFromKey,
   isContextMenuKey,
-} from '@/types/contextMenu.type';
+} from '../types/contextMenu.type';
 import {useDeviceLocksStore} from "../model/deviceLocksStore";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
 

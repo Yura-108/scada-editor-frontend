@@ -1,4 +1,4 @@
-import type {DiagramElement, ElementType} from "@/types/editorElement.type";
+import type {DiagramElement, ElementType} from "./types/editorElement.type";
 
 /**
  * То, что холст читает о сцене: документ, выделение, камера, правка текста, — и запись

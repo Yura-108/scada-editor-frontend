@@ -5,7 +5,7 @@ import {
   type VersionListQuery,
   type VersionPreview,
   type VersionSummary,
-} from "@/types/editorVersion.types";
+} from "@/core/project";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {dropScene, fetchCurrentVersion, fetchVersionAt, fetchVersionContent, fetchVersions, restoreVersionRequest} from "@/core/project";
 import {editorSession} from "../editorSession";

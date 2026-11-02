@@ -1,4 +1,4 @@
-import type {ElementEventHandler} from "@/types/binding.types";
+import type {ElementEventHandler} from "@/core/scene";
 import {modernizeScopeCode, type TagScope} from "./bindingScope";
 import {buildRawScope, toScopeValue, type BindingIntent} from "./executeBinding";
 

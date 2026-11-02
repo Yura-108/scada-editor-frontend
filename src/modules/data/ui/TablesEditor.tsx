@@ -7,7 +7,7 @@ import {Button} from "@/shared/ui/Button";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {ColumnsEditor, compactButton, nameHint} from "./ColumnsEditor";
 import {RowsGrid} from "./RowsGrid";
-import type {ProjectDataTable, ProjectDataValidationError} from "@/types/projectData.types";
+import type {ProjectDataTable, ProjectDataValidationError} from "../types/projectData.types";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
 import {Textarea} from "@/shared/ui/field/Textarea";

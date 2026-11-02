@@ -1,4 +1,4 @@
-import type {AutomationSet, AutomationTask, AutomationWatchdog} from "@/types/automation.types";
+import type {AutomationSet, AutomationTask, AutomationWatchdog} from "@/core/automation";
 import {stripIoHints} from "./automationTemplates";
 
 /**

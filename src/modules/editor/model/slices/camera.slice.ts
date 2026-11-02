@@ -1,4 +1,4 @@
-import type {DiagramElement, ElementType} from "@/types/editorElement.type";
+import type {DiagramElement, ElementType} from "@/core/scene";
 // переедут в core/scene вместе с геометрией (шаг 8)
 import {getElementIndex, getElementBoundsRendered, cameraToReveal} from "@/core/scene";
 

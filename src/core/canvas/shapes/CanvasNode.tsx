@@ -4,7 +4,7 @@ import React from "react";
 import { Group, Rect } from "react-konva";
 import Konva from "konva";
 import { resetCanvasCursor } from "../canvasCursor";
-import { GroupElement } from "@/types/editorElement.type";
+import { GroupElement } from "@/core/scene";
 import {getRenderedElementWith, useSceneView} from "@/core/scene";
 import { EditorRenderContext, MIN_SIZE } from "../types";
 import { useElementRenderState, useMembersInteractive, useOrderedMemberKeys } from "../useElementRenderState";

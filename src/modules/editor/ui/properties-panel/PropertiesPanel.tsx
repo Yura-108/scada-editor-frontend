@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useState, useMemo} from "react";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {getRenderedElement} from "@/core/scene";
 import {BindingsTab} from "./bindings/BindingsTab";
 import {EventsTab} from "./events/EventsTab";

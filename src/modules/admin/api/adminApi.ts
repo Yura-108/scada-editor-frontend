@@ -1,4 +1,4 @@
-import type {ProjectGrant} from "@/types/access.types";
+import type {ProjectGrant} from "@/core/access";
 import {readBackendError} from "@/core/access";
 
 /**

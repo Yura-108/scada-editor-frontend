@@ -10,7 +10,7 @@ import {AccessLevelSelect} from "@/core/access";
 import {Banner} from "@/shared/ui/Banner";
 import {Spinner} from "@/shared/ui/Spinner";
 import {readBackendError, parseProcedureLevels} from "@/core/access";
-import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/types/access.types";
+import {PROCEDURE_OPERATIONS, type ProcedureLevels, type ProcedureOperation} from "@/core/access";
 
 export const PROCEDURE_OPERATION_LABELS: Record<ProcedureOperation, string> = {
   start: "Запуск",

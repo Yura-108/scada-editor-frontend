@@ -1,5 +1,5 @@
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {PropertyRef} from "@/types/binding.types";
+import type {DiagramElement} from "@/core/scene";
+import type {PropertyRef} from "@/core/scene";
 // переедет в core/scene вместе с остальным lib (шаг 8)
 import {getElementIndex} from "@/core/scene";
 

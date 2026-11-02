@@ -1,4 +1,4 @@
-import type {VersionDocType} from "@/types/editorVersion.types";
+import type {VersionDocType} from "../types/editorVersion.types";
 import {fetchVersionContent} from "./versionsApi";
 
 /**

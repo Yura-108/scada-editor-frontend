@@ -3,7 +3,7 @@
 import React from "react";
 import { Group, Rect, Line, Text } from "react-konva";
 import Konva from "konva";
-import { LeafElement, TableCellData } from "@/types/editorElement.type";
+import { LeafElement, TableCellData } from "@/core/scene";
 import {getRenderedElementWith, getCellData, cellBindingAt, resolveCellText, headerHeight, resolveTracks, trackOffsets} from "@/core/scene";
 import type { ShapeElementProps, ThemeColors } from "../types";
 import { SelectionOutline } from "./SelectionOutline";

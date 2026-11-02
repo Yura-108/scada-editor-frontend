@@ -19,7 +19,7 @@ import {Button, ModalFooter} from "@/shared/ui/Button";
 import {
   InspectorObjectDto, InspectorPropertyDto, PropertyWriteResultDto, TagWriteRequestDto,
   normalizeTagWriteResults, tagWriteOutcome, tagWriteStatusLabel,
-} from "@/types/runtimeWrite.types";
+} from "@/core/runtime";
 import {errorTextFromJson} from "@/core/access";
 import {useOpenScene} from "@/core/project";
 import {ValueWriteRow} from "./ValueWriteRow";

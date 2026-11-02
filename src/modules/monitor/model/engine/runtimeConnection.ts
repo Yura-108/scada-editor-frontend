@@ -1,9 +1,9 @@
-import type {ProcedureEvent, ProcedureStatus} from "@/types/recipe.types";
-import type {AutomationTaskStatus} from "@/types/automation.types";
+import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
+import type {AutomationTaskStatus} from "@/core/automation";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/shared/lib/gatewayOrigin";
 import {describeDenial, isAccessDenial, isAccessNotReady} from "@/core/access";
-import type {AccessDenial} from "@/types/access.types";
+import type {AccessDenial} from "@/core/access";
 
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —

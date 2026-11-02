@@ -1,4 +1,4 @@
-import type {DiagramElement} from "@/types/editorElement.type";
+import type {DiagramElement} from "../types/editorElement.type";
 import type {ElementIndex} from "../element/elementIndex";
 import {getChildElements} from "../element/elementIndex";
 import {getRenderedElement} from "../render/getRenderedElement";

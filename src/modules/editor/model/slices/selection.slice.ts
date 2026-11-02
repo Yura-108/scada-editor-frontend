@@ -1,4 +1,4 @@
-import type {DiagramElement, SceneType} from "@/types/editorElement.type";
+import type {DiagramElement, SceneType} from "@/core/scene";
 
 /**
  * Зона «Выделение» стора редактора: что выбрано и на каком уровне вложенности стоит

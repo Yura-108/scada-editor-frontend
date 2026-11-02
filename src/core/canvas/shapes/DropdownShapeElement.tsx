@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Group, Rect, Text, Line } from "react-konva";
-import { LeafElement } from "@/types/editorElement.type";
+import { LeafElement } from "@/core/scene";
 import { getRenderedElementWith } from "@/core/scene";
 import type { ShapeElementProps } from "../types";
 import { SelectionOutline } from "./SelectionOutline";

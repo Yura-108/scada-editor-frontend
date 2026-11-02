@@ -2,7 +2,7 @@ import React, {type Dispatch, type SetStateAction} from "react";
 import {ChevronDown, ChevronUp, Plus, Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {coerceActionValue} from "../../../lib/recipeValidation";
-import type {RecipeStep, RecipeTag} from "@/types/recipe.types";
+import type {RecipeStep, RecipeTag} from "@/core/project";
 import {Input} from "@/shared/ui/field/Input";
 import {Textarea} from "@/shared/ui/field/Textarea";
 import {sectionTitle} from "./styles";

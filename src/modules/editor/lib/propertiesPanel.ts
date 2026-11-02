@@ -1,4 +1,4 @@
-import {ElementType, PropertySchema} from "@/types/editorElement.type";
+import {ElementType, PropertySchema} from "@/core/scene";
 
 export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   button: { complex: false },

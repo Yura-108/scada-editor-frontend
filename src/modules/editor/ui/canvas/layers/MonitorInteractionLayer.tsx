@@ -3,8 +3,8 @@
 import React from "react";
 import {Layer, Rect} from "react-konva";
 import type Konva from "konva";
-import {DiagramElement} from "@/types/editorElement.type";
-import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/types/binding.types";
+import {DiagramElement} from "@/core/scene";
+import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/core/scene";
 import {getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
 import {emitRuntimeEvent, type ScreenPoint, isNonWritingScript} from "@/core/runtime";
 import {confirmMonitorAction} from "../lib/confirmMonitorAction";

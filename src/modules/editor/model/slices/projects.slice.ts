@@ -1,6 +1,6 @@
 import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
-import type {AutobindReport} from "@/types/autobind.types";
+import type {AutobindReport} from "../../types/autobind.types";
 // переедут в core/project вместе с остальным lib (шаг 8)
 import {normalizeProjectList, toEditorProject, type EditorProject, createRelease, NoProdReleaseError, putInOperation, setProdRelease, type CreatedRelease, rememberProject} from "@/core/project";
 import {clearCanvasPointerWorld} from "../../lib/canvasPointer";

@@ -3,8 +3,8 @@
 import {create} from 'zustand/react';
 import {devtools} from 'zustand/middleware';
 import {toast} from "sonner";
-import type {DeviceParamsType} from '@/types/nodeTypes';
-import type {NodeParamType, NodeType} from "@/types/channelsTypes";
+import type {DeviceParamsType} from '../types/nodeTypes';
+import type {NodeParamType, NodeType} from "../types/channelsTypes";
 import {errorMessage, fetchFullHierarchy, fetchSiteHierarchy} from "../api/devicesApi";
 
 /**

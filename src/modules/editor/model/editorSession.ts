@@ -1,4 +1,4 @@
-import type {DiagramElement, SceneType} from "@/types/editorElement.type";
+import type {DiagramElement, SceneType} from "@/core/scene";
 
 /**
  * Буферы и счётчики сессии редактора, которые живут ВНЕ стора: их никто не рендерит, и

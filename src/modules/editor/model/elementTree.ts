@@ -4,7 +4,7 @@
  * не знают. Перенесены из useEditorStore без изменений (docs/architecture.md, шаг 6);
  * правила обхода (`children` / `composition` / `parentKey`) — docs/domain/editor-model.md.
  */
-import {DiagramElement, ElementType, LeafElement, SceneType} from "@/types/editorElement.type";
+import {DiagramElement, ElementType, LeafElement, SceneType} from "@/core/scene";
 import {GROUP_PADDING, resolveParentAbsoluteIndexed, ElementIndex, getElementIndex, shiftElementPositions, isBoundsContributor, elementBoundsRendered} from "@/core/scene";
 import {
   detachServerBindingIds,
@@ -12,7 +12,7 @@ import {
   detachServerScriptIds,
   detachServerStateIds,
 } from "./detachServerIds";
-import {elementRegistry} from "@/constants/propertiesPanel";
+import {elementRegistry} from "../lib/propertiesPanel";
 import {createUuid} from "@/shared/lib/createUuid";
 
 export const isGroup = (el: DiagramElement) => el.type === "group";

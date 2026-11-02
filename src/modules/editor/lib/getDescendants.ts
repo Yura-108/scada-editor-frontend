@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 
 export const getDescendants = (parentKey: string, elements: DiagramElement[]) => {
   // Находим прямых детей текущего родителя

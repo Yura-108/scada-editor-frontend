@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import { emitRuntimeScript, monitorDialogs, type ScreenPoint } from "@/core/runtime";
 import {getCurrentProjectGrant, actionDenialText, canWriteDirectly} from "@/core/access";
 import { confirmMonitorAction } from "./confirmMonitorAction";

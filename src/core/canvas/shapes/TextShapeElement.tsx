@@ -3,7 +3,7 @@
 import React from "react";
 import { Group, Rect, Text } from "react-konva";
 import { resetCanvasCursor } from "../canvasCursor";
-import { LeafElement } from "@/types/editorElement.type";
+import { LeafElement } from "@/core/scene";
 import {getRenderedElementWith, measureText, useSceneView} from "@/core/scene";
 import { MIN_SIZE } from "../types";
 import type { ShapeElementProps } from "../types";

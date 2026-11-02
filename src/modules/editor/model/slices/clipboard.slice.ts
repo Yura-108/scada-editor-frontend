@@ -1,5 +1,5 @@
 import {snap, GRID, getElementBoundsRendered} from "@/core/scene";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {
   detachServerBindingIds,
   detachServerEventIds,

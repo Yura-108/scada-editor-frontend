@@ -1,4 +1,4 @@
-import type {TagBinding} from "@/types/binding.types";
+import type {TagBinding} from "@/core/scene";
 import {modernizeScopeCode, type TagScope} from "./bindingScope";
 
 /**

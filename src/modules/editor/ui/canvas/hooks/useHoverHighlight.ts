@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Konva from "konva";
 import {getAbsoluteRenderedPos, getElementBoundsRendered, getRenderedElement} from "@/core/scene";
-import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { DiagramElement, LeafElement } from "@/core/scene";
 
 interface HoverHighlightDeps {
   elementsMap: Record<string, DiagramElement>;

@@ -1,4 +1,4 @@
-import {TagBinding} from "@/types/binding.types";
+import {TagBinding} from "../types/binding.types";
 
 /** Уже развёрнутый TagBinding (сырые объекты из composition-дескрипторов). */
 const isTagBinding = (raw: unknown): raw is TagBinding =>

@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {readSheetFromRaw, normalizeProperty, isConturExport, normalizeConturElements, type ConturImportStats} from "@/core/scene";

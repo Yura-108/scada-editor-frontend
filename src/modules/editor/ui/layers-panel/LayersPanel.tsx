@@ -3,7 +3,7 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {ChevronDown, ChevronRight, ChevronsDownUp, Boxes, Folder, Square, Circle as CircleIcon, Minus, Type, Radius, PenTool, CheckSquare, SlidersHorizontal, MousePointerClick, ToggleLeft, ChevronsUpDown, TextCursorInput, Spline, BarChart3} from "lucide-react";
 import {useEditorStore} from "../../model/editorStore";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {cn} from "@/shared/lib/cn";
 import {IconButton} from "@/shared/ui/IconButton";
 import {sortByZIndex, sortKeysByZIndex, getElementIndex} from "@/core/scene";

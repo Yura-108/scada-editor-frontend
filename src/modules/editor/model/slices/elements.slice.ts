@@ -1,6 +1,6 @@
 import {snap, GRID, isMetaElement, isSameSheet, resolveSheet, SHEET_MAX, SHEET_MIN} from "@/core/scene";
 import type {MonitorView} from "@/core/scene";
-import {DiagramElement, ElementType} from "@/types/editorElement.type";
+import {DiagramElement, ElementType} from "@/core/scene";
 import {toast} from "sonner";
 import type {EditorState} from "../editorStore";
 import {

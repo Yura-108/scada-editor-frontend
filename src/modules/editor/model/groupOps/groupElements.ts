@@ -1,4 +1,4 @@
-import {DiagramElement, GroupElement, SceneType} from "@/types/editorElement.type";
+import {DiagramElement, GroupElement, SceneType} from "@/core/scene";
 import {
   elementToGroupLocal,
   GROUP_PADDING,

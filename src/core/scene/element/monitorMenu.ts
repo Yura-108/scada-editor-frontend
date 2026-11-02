@@ -1,5 +1,5 @@
 import type {CSSProperties} from "react";
-import type {MonitorMenuSettings} from "@/types/editorElement.type";
+import type {MonitorMenuSettings} from "../types/editorElement.type";
 
 /**
  * Контекстное меню компонента в мониторе (ПКМ: «Опции», действия вроде «Открыть клапан»):

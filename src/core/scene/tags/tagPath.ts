@@ -9,7 +9,7 @@
  * рантайм и находит канал.
  */
 
-import {VARIABLE_TAG_PREFIX} from "@/types/automation.types";
+import {VARIABLE_TAG_PREFIX} from "@/core/automation";
 
 /** Сколько ведущих сегментов пути скрывается: проект и схема. */
 const HIDDEN_PREFIX_SEGMENTS = 2;

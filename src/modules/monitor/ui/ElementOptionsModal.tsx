@@ -9,14 +9,14 @@ import {getRuntimeSessionId, getRuntimeTagValue, notifyRuntimeTagsWritten} from 
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {describeDenial, isAccessDenial} from "@/core/access";
 import {Button, ModalFooter} from "@/shared/ui/Button";
-import {PropertyCreateDto} from "@/types/tags.types";
+import {PropertyCreateDto} from "@/core/scene";
 import {
   TagWriteRequestDto,
   TagWriteResultDto,
   normalizeTagWriteResults,
   tagWriteOutcome,
   tagWriteStatusLabel,
-} from "@/types/runtimeWrite.types";
+} from "@/core/runtime";
 import {useOpenScene} from "@/core/project";
 import {ValueWriteRow} from "./ValueWriteRow";
 

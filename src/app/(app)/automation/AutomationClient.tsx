@@ -34,7 +34,7 @@ import {
   taskDraftState, TaskEditor, tasksWith, taskToTemplate, TemplatePalette, templateToDraftTask,
   WatchdogEditor,
 } from "@/modules/automation";
-import {VersionHistoryList} from "@/shared/ui/VersionHistoryList";
+import {VersionHistoryList} from "@/core/project";
 import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
 import {confirmLeave, useUnsavedGuard} from "@/shared/lib/unsavedGuard";
@@ -45,9 +45,9 @@ import type {
   AutomationWatchdog,
   AutomationTaskStatusRow,
   AutomationValidationError,
-} from "@/types/automation.types";
-import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
-import type {VersionSummary} from "@/types/editorVersion.types";
+} from "@/core/automation";
+import type {AutomationTaskTemplate} from "@/modules/automation";
+import type {VersionSummary} from "@/core/project";
 import {ProjectSelect} from "@/core/project";
 
 type Tab = "tasks" | "watchdog" | "history";

@@ -1,5 +1,5 @@
-import {PropertyCreateDto} from "@/types/tags.types";
-import {BindingDto, ElementEvents, TagBinding} from "@/types/binding.types";
+import {PropertyCreateDto} from "./tags.types";
+import {BindingDto, ElementEvents, TagBinding} from "./binding.types";
 
 export type SceneType = {
   id: number;

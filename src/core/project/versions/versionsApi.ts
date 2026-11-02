@@ -4,7 +4,7 @@ import type {
   VersionDocType,
   VersionListQuery,
   VersionSummary,
-} from "@/types/editorVersion.types";
+} from "../types/editorVersion.types";
 import {rootComponentsOf} from "./documentComponents";
 
 /**

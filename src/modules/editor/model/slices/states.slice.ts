@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {getElementIndex, useRuntimeOverlayStore} from "@/core/scene";
 import {findStateNameRefs, renameStateNameInCode, type StateNameRef} from "../stateNameRefs";
 import {createUuid} from "@/shared/lib/createUuid";

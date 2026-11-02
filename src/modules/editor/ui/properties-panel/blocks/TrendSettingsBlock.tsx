@@ -7,7 +7,7 @@ import {NumberInput} from "@/shared/ui/field/NumberInput";
 import OpenAddPropertyModal from "../property/PropertyModal";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
-import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/types/editorElement.type";
+import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/core/scene";
 import {historyEditing} from "../../../model/historyGroup";
 import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 import {Select} from "@/shared/ui/field/Select";

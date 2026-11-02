@@ -22,3 +22,4 @@ export {openTemplateModal} from "./ui/OpenTemplateModal";
 export {TaskEditor} from "./ui/TaskEditor";
 export {TemplatePalette} from "./ui/TemplatePalette";
 export {WatchdogEditor} from "./ui/WatchdogEditor";
+export * from "./types/automationTemplate.types";

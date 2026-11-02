@@ -1,8 +1,8 @@
 import {useMemo, useRef, useState} from "react";
 import type {EditorView} from "@uiw/react-codemirror";
 import {checkScriptSyntax, collectTagScope, uniqueVarName, withPropertyRefs} from "@/core/runtime";
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {PropertyRef} from "@/types/binding.types";
+import type {DiagramElement} from "@/core/scene";
+import type {PropertyRef} from "@/core/scene";
 import type {PickedProperty} from "../bindings/OpenChooseObjectPropertyModal";
 
 /**

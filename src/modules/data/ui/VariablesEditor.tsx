@@ -12,7 +12,7 @@ import {
   type AutomationValidationError,
   type AutomationValueType,
   type AutomationVariable,
-} from "@/types/automation.types";
+} from "@/core/automation";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";

@@ -2,7 +2,7 @@ import React from "react";
 import {Boxes, Tag, X} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import type {TagScope} from "@/core/runtime";
-import type {PropertyRef} from "@/types/binding.types";
+import type {PropertyRef} from "@/core/scene";
 import {chipClasses} from "./scriptStyles";
 
 /** Чипы тегов элемента: клик вставляет переменную в код. Тегов нет — ничего не рисуется. */

@@ -3,7 +3,7 @@
 import {create} from 'zustand/react';
 import {devtools} from 'zustand/middleware';
 import {toast} from "sonner";
-import type {DeviceParamsLayoutType} from '@/types/nodeTypes';
+import type {DeviceParamsLayoutType} from '../types/nodeTypes';
 import {errorMessage, fetchDeviceTemplates, fetchParamLayout, type DeviceTemplateList} from "../api/devicesApi";
 
 /** Справочники базы каналов: типы параметров и шаблоны устройств (для модалок создания). */

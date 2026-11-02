@@ -16,7 +16,7 @@ import {
 } from "./procedures";
 import {useProcedureLevels} from "../../api/procedures";
 import {useCurrentProjectGrant, actionDenialText} from "@/core/access";
-import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/types/access.types";
+import {PROCEDURE_OPERATIONS, type ProcedureOperation} from "@/core/access";
 import {useOpenScene} from "@/core/project";
 
 /**

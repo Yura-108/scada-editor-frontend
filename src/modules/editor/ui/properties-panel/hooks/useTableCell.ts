@@ -1,5 +1,5 @@
-import {DiagramElement, TableCellData} from "@/types/editorElement.type";
-import type {CellSourceField} from "@/types/binding.types";
+import {DiagramElement, TableCellData} from "@/core/scene";
+import type {CellSourceField} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {cellRuntimeKey, getCellData, mergeCellPatch, cellBindingAt, setTrackSize} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";

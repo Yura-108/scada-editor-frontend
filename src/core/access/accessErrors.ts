@@ -1,4 +1,4 @@
-import type {AccessDenial, DenyReason} from "@/types/access.types";
+import type {AccessDenial, DenyReason} from "./types/access.types";
 
 /**
  * Отказы в доступе. Бэкенд (editor, runtime, channel, auth) отвечает одинаково:

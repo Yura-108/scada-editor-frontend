@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/field/Select";
-import type {AutobindMiss, AutobindReport} from "@/types/autobind.types";
+import type {AutobindMiss, AutobindReport} from "../../types/autobind.types";
 
 /** Строки несовпадений: имя компонента, свойство (у `not_found` его нет) и сцена. */
 function MissList({items}: {items: AutobindMiss[]}) {

@@ -2,8 +2,8 @@
 
 import React, {useMemo} from "react";
 import {cn} from "@/shared/lib/cn";
-import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
-import {elementPropertyMap, Z_INDEX_FIELD} from "@/constants/propertiesPanel";
+import {DiagramElement, ElementType, PropertySchema} from "@/core/scene";
+import {elementPropertyMap, Z_INDEX_FIELD} from "../../lib/propertiesPanel";
 import {useEditorStore} from "../../model/editorStore";
 import {getRenderedElement} from "@/core/scene";
 import {ColorField} from "@/shared/ui/field/ColorField";

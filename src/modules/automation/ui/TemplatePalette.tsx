@@ -12,7 +12,7 @@ import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {useDeleteTemplate, useTemplates} from "../api/templates";
 import {groupTemplates} from "../lib/automationTemplates";
 import {openTemplateModal} from "./OpenTemplateModal";
-import type {AutomationTaskTemplate} from "@/types/automationTemplate.types";
+import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
 
 /** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */

@@ -1,5 +1,5 @@
-import {ComponentCreateDto, DiagramElement} from "@/types/editorElement.type";
-import {BindingDto} from "@/types/binding.types";
+import {ComponentCreateDto, DiagramElement} from "../types/editorElement.type";
+import {BindingDto} from "../types/binding.types";
 
 /**
  * id свойства элемента для DTO-поля `component_property_id` (контракт требует

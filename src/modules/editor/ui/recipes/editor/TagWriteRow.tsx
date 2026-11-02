@@ -3,7 +3,7 @@ import {Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {shortTagPath} from "@/core/scene";
 import {actionValueText, coerceActionValue} from "../../../lib/recipeValidation";
-import type {RecipeStepAction, RecipeTag} from "@/types/recipe.types";
+import type {RecipeStepAction, RecipeTag} from "@/core/project";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
 
