@@ -11,7 +11,7 @@ import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/server/proxy/
 const recipeUrl = (projectId: number, id: string) =>
   `${EDITOR_BACKEND_URL}/api/editor/projects/${projectId}/recipes/${encodeURIComponent(id)}`;
 
-const parsePath = (params: Record<string, string>) => {
+const parsePath = (params: Record<string, string | string[]>) => {
   const projectId = parseId(params.projectId);
   const id = typeof params.id === "string" && params.id ? params.id : null;
   return {projectId, id};

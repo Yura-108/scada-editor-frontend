@@ -2,16 +2,20 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+/** Подписка-заглушка: признак «смонтирован» не меняется после первого клиентского рендера. */
+const subscribeNothing = () => () => {};
 
 export function ThemeToggle() {
   // Именно resolvedTheme: при defaultTheme="system" поле theme равно "system",
   // из-за чего первый клик мог не изменить вид, а иконка показывала Moon даже
   // когда система уже тёмная.
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // Тема известна только в браузере: на сервере и при гидратации — пустая кнопка того же
+  // размера (снимок сервера false), сразу после — настоящая. Иначе иконка разошлась бы с
+  // серверной разметкой.
+  const mounted = useSyncExternalStore(subscribeNothing, () => true, () => false);
 
   if (!mounted) return <button className="p-2 w-9 h-9" aria-hidden />;
 

@@ -5,7 +5,6 @@ import Tree from 'rc-tree';
 import {Key} from 'rc-tree/es/interface';
 import {Router} from 'lucide-react';
 import TitleRenderer from "./TitleRenderer";
-import {DeviceNodeType} from '../types/nodeTypes';
 import SwitcherIcon from '@/shared/ui/SwitcherIcon';
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
@@ -61,7 +60,7 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   };
 
   const handleContextMenu = useCallback(
-    (e: ContextMenuTrigger, node: DeviceNodeType | null) => {
+    (e: ContextMenuTrigger, node: {key: string} | null) => {
       e.preventDefault();
       e.stopPropagation();
 

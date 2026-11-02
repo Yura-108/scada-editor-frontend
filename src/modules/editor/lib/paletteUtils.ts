@@ -15,7 +15,7 @@ export function groupPalette(items: PaletteItemType[]) {
   }, {} as Record<string, typeof items>);
 }
 
-export function sortCategories(grouped: Record<string, any[]>) {
+export function sortCategories(grouped: Record<string, unknown[]>) {
   return Object.keys(grouped).sort((a, b) => {
     if (a === "Основные" || a === "Basic") return -1;
     if (b === "Основные" || b === "Basic") return 1;

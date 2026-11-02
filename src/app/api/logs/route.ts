@@ -36,10 +36,10 @@ export const GET = protectedRoute(async (req: NextRequest, { token }) => {
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Route Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: (error instanceof Error && error.message) || 'Internal Server Error' },
       { status: 500 }
     );
   }
@@ -64,10 +64,10 @@ export const POST = protectedRoute(async (req: NextRequest, { token }) => {
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Route Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: (error instanceof Error && error.message) || 'Internal Server Error' },
       { status: 500 }
     );
   }
