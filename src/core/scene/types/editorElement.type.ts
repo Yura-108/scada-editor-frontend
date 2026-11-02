@@ -299,6 +299,32 @@ export interface LeafElement extends BaseCanvasElement {
   rowHeights?: number[];
   /** Явная высота шапки; без неё выводится из fontSize, как раньше. */
   headerH?: number;
+
+  // Для chart и trend
+  /** Заголовок над областью построения. */
+  title?: string;
+  chartType?: "bar" | "line" | "area";
+  barColor?: string;
+  gridColor?: string;
+  /** Сетка: undefined — как true. */
+  showGrid?: boolean;
+  /** Подписи значений над столбцами: undefined — как true. */
+  showValues?: boolean;
+  /** Тренд: точки на линии. */
+  showDots?: boolean;
+  /** Тренд: легенда перьев, undefined — как true. */
+  showLegend?: boolean;
+
+  // Для gauge: дуга шкалы в градусах от «правой» точки (0°), значение под стрелкой.
+  arcStart?: number;
+  arcEnd?: number;
+  /** Подпись значения: undefined — как true. */
+  showValue?: boolean;
+
+  // Для image
+  /** Картинка: data-URL или адрес. */
+  src?: string;
+  objectFit?: "contain" | "cover" | "fill";
   // ... добавляй по мере необходимости
 }
 
