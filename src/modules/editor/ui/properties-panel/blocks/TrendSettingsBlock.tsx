@@ -1,16 +1,15 @@
 "use client";
 
 import React from "react";
-import {Pencil, Plus, Trash2} from "lucide-react";
-import {IconButton} from "@/shared/ui/IconButton";
+import {Plus} from "lucide-react";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
 import OpenAddPropertyModal from "../property/PropertyModal";
-import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
-import {shortTagPath, TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
+import {TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
 import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/core/scene";
 import {historyEditing} from "../../../model/historyGroup";
 import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
 import {Select} from "@/shared/ui/field/Select";
+import {TrendPenRow} from "./TrendPenRow";
 
 interface Props {
   element: DiagramElement;
@@ -140,93 +139,15 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
           const property = element.properties?.find(p => p.name === pen.name);
           const style = settings?.pens?.[pen.name];
           return (
-            <div
+            <TrendPenRow
               key={pen.name}
-              className="rounded-lg border border-gray-200 dark:border-neutral-700 p-2 space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  aria-label={`Цвет пера ${pen.label}`}
-                  value={pen.color}
-                  onChange={e => commitPen(pen.name, {color: e.target.value})}
-                  className="h-6 w-6 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm text-gray-800 dark:text-gray-200">
-                    {pen.label}
-                    {pen.label !== pen.name && (
-                      <span className="ml-1 font-mono text-xs text-gray-500">{pen.name}</span>
-                    )}
-                  </div>
-                  <div className="truncate text-xs text-gray-500" title={pen.tag}>{shortTagPath(pen.tag)}</div>
-                </div>
-                {property && (
-                  <>
-                    <IconButton icon={Pencil} label="Изменить тег и подпись" size="xs" onClick={() => OpenAddPropertyModal({elementKey: element.key, property})} />
-                    <IconButton icon={Trash2} label="Удалить перо" size="xs" variant="danger" onClick={() => void confirmDeleteProperty(property, element.key)} />
-                  </>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor={`trend-${pen.name}-k`} className={labelClass} title="На графике: значение × коэффициент + сдвиг">Коэфф.</label>
-                    {style?.k !== undefined && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                        onClick={() => commitPen(pen.name, {}, "k")}
-                      >
-                        сбросить
-                      </button>
-                    )}
-                  </div>
-                  <NumberInput {...historyEditing}
-                    id={`trend-${pen.name}-k`}
-                    className={inputClassName}
-                    value={style?.k}
-                    placeholder="1"
-                    step={0.001}
-                    // 0 обнулил бы перо — readTrendSettings такой коэффициент не примет.
-                    onCommit={v => commitPen(pen.name, {k: v})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor={`trend-${pen.name}-b`} className={labelClass} title="Разводит дискретные сигналы по высоте: ступеньки 0/5 не лягут друг на друга">Сдвиг</label>
-                    {style?.b !== undefined && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                        onClick={() => commitPen(pen.name, {}, "b")}
-                      >
-                        сбросить
-                      </button>
-                    )}
-                  </div>
-                  <NumberInput {...historyEditing}
-                    id={`trend-${pen.name}-b`}
-                    className={inputClassName}
-                    value={style?.b}
-                    placeholder="0"
-                    onCommit={v => commitPen(pen.name, {b: v})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor={`trend-${pen.name}-width`} className={labelClass}>Толщина</label>
-                  <NumberInput {...historyEditing}
-                    id={`trend-${pen.name}-width`}
-                    className={inputClassName}
-                    value={style?.width}
-                    placeholder={String(TREND_DEFAULTS.penWidth)}
-                    min={TREND_LIMITS.width.min}
-                    max={TREND_LIMITS.width.max}
-                    onCommit={v => commitPen(pen.name, {width: v})}
-                  />
-                </div>
-              </div>
-            </div>
+              pen={pen}
+              property={property}
+              style={style}
+              elementKey={element.key}
+              inputClassName={inputClassName}
+              commitPen={commitPen}
+            />
           );
         })}
       </div>
