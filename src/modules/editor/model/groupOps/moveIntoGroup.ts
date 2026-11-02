@@ -1,4 +1,4 @@
-import {DiagramElement, GroupElement} from "@/types/editorElement.type";
+import {DiagramElement, GroupElement} from "@/core/scene";
 import {GROUP_PADDING, layoutGroupFromBounds, snapshotBounds} from "@/core/scene";
 import {resplitContainer} from "../elementTree";
 import {syncMemberStates} from "../elementStates";

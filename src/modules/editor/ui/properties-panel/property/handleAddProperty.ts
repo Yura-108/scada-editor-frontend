@@ -1,5 +1,5 @@
 import OpenAddPropertyModal from "./PropertyModal";
-import { PropertyCreateDto } from "@/types/tags.types";
+import { PropertyCreateDto } from "@/core/scene";
 
 /**
  * Открывает модалку свойства для элемента с этим ключом.

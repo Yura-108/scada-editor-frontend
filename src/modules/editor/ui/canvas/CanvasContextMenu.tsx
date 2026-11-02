@@ -2,7 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanvasMenuItem } from "@/core/canvas";
-import type { MonitorMenuSettings } from "@/types/editorElement.type";
+import type { MonitorMenuSettings } from "@/core/scene";
 import { monitorMenuStyles } from "@/core/scene";
 
 interface CanvasContextMenuProps {

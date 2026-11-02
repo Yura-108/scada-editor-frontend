@@ -1,5 +1,5 @@
-import type {PropertyCreateDto} from "@/types/tags.types";
-import type {PropertyRef} from "@/types/binding.types";
+import type {PropertyCreateDto} from "@/core/scene";
+import type {PropertyRef} from "@/core/scene";
 
 /**
  * Зарезервированные слова JS — свойство-тег с таким именем нельзя сделать

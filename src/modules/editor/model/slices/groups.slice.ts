@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import type {EditorState} from "../editorStore";
 import {groupElements} from "../groupOps/groupElements";
 import {ungroupElements} from "../groupOps/ungroupElements";

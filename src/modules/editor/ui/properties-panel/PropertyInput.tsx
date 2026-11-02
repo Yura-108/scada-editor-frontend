@@ -1,7 +1,7 @@
 "use client";
 
 import {cn} from "@/shared/lib/cn";
-import {PropertySchema} from "@/types/editorElement.type";
+import {PropertySchema} from "@/core/scene";
 import {ColorField} from "@/shared/ui/field/ColorField";
 import {NumberInput} from "@/shared/ui/field/NumberInput";
 import {TextInput} from "@/shared/ui/field/TextInput";

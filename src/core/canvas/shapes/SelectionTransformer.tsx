@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { Transformer } from "react-konva";
 import Konva from "konva";
-import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { DiagramElement, LeafElement } from "@/core/scene";
 import {getRenderedElement, snap, useSceneView} from "@/core/scene";
 import { MIN_SIZE } from "../types";
 import { useThemeColors } from "../useThemeColors";

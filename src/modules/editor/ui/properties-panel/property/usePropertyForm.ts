@@ -3,7 +3,7 @@ import {fetchAutomation} from "@/core/automation";
 import {checkScriptSyntax} from "@/core/runtime";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {VARIABLE_TAG_PREFIX, type AutomationVariable} from "@/core/automation";
-import type {PropertyCreateDto} from "@/types/tags.types";
+import type {PropertyCreateDto} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import {confirmDeleteProperty} from "../../../lib/confirmDeleteProperty";
 import {ACCESS_LEVEL_MIN, VARIABLE_VALUE_TYPE, variableNameOf, type PropertyType, type TagSource} from "./propertyOptions";

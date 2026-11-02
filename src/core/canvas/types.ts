@@ -1,4 +1,4 @@
-import type { DiagramElement } from "@/types/editorElement.type";
+import type { DiagramElement } from "@/core/scene";
 
 /** Минимальный размер элемента при ресайзе (совпадает с шагом сетки). */
 export const MIN_SIZE = 20;

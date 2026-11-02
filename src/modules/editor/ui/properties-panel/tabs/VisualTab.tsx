@@ -2,7 +2,7 @@
 
 import {useMemo} from "react";
 import {cn} from "@/shared/lib/cn";
-import {DiagramElement, ElementType, PropertySchema} from "@/types/editorElement.type";
+import {DiagramElement, ElementType, PropertySchema} from "@/core/scene";
 import {basePropertySchema, elementPropertyMap} from "../../../lib/propertiesPanel";
 import {StateSelect} from "../StateSelect";
 import {useEditorStore} from "../../../model/editorStore";

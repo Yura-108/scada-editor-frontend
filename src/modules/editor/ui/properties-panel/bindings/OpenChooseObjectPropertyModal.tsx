@@ -7,7 +7,7 @@ import {Button} from "@/shared/ui/Button";
 import Modal from "@/shared/ui/dialog/Modal";
 import {useEditorStore} from "../../../model/editorStore";
 import {elementRegistry} from "../../../lib/propertiesPanel";
-import {DiagramElement, ElementType} from "@/types/editorElement.type";
+import {DiagramElement, ElementType} from "@/core/scene";
 
 /** Результат выбора свойства другого компонента для ссылки в биндинге. */
 export interface PickedProperty {

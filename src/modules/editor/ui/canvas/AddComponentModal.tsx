@@ -10,7 +10,7 @@ import { Button } from "@/shared/ui/Button";
 import {Field} from "@/shared/ui/field/Field";
 import { elementRegistry } from "../../lib/propertiesPanel";
 import { getDescendants } from "../../lib/getDescendants";
-import { DiagramElement, ElementType } from "@/types/editorElement.type";
+import { DiagramElement, ElementType } from "@/core/scene";
 
 import {
   Select,

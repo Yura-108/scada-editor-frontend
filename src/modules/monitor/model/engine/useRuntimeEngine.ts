@@ -19,8 +19,8 @@ import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from 
 import {useRuntimeTagInterest} from "./runtimeTagInterest";
 import {appendTrendPoints, clearTrendSeries, isTrendWatched, mergeTrendHistory, normalizeTs, resetTrendStore, setTrendClock, setTrendWatch, useTrendStore} from "@/core/canvas";
 import {fetchArchiveValues, toTrendValue} from "../archive/archive";
-import type {ElementEventName} from "@/types/binding.types";
-import type {DiagramElement} from "@/types/editorElement.type";
+import type {ElementEventName} from "@/core/scene";
+import type {DiagramElement} from "@/core/scene";
 import {useOpenScene, getOpenScene} from "@/core/project";
 
 /** Тик применения батча: сервер и так батчит ~40мс, 5 Гц на рендер достаточно. */

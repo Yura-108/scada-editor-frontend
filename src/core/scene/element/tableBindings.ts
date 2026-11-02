@@ -1,6 +1,6 @@
-import type { CellBinding, CellSourceField, TagBinding } from "@/types/binding.types";
-import type { DiagramElement } from "@/types/editorElement.type";
-import type { PropertyCreateDto } from "@/types/tags.types";
+import type { CellBinding, CellSourceField, TagBinding } from "../types/binding.types";
+import type { DiagramElement } from "../types/editorElement.type";
+import type { PropertyCreateDto } from "../types/tags.types";
 import { cellRuntimeKey, getCellData } from "./tableCells";
 
 /**

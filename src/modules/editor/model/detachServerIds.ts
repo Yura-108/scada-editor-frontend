@@ -1,5 +1,5 @@
-import {DiagramElement} from "@/types/editorElement.type";
-import {PropertyRef} from "@/types/binding.types";
+import {DiagramElement} from "@/core/scene";
+import {PropertyRef} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 
 /**

@@ -1,5 +1,5 @@
-import type {DiagramElement} from "@/types/editorElement.type";
-import type {TagBinding} from "@/types/binding.types";
+import type {DiagramElement} from "@/core/scene";
+import type {TagBinding} from "@/core/scene";
 
 /**
  * Что в сцене ссылается на серверное свойство (`PropertyCreateDto.id`) и как это

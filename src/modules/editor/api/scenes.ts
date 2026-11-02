@@ -1,4 +1,4 @@
-import type {SceneType} from "@/types/editorElement.type";
+import type {SceneType} from "@/core/scene";
 // переедут в core/scene вместе с остальным lib (шаг 8)
 import {releaseVersionOf, type SceneSource} from "@/core/project";
 

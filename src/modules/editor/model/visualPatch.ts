@@ -1,4 +1,4 @@
-import {ComponentState, DiagramElement} from "@/types/editorElement.type";
+import {ComponentState, DiagramElement} from "@/core/scene";
 import {isGroup, recomputeAncestorBounds} from "./elementTree";
 import {isPatchEffective, splitBaseOnly} from "./elementStates";
 

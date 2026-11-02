@@ -4,7 +4,7 @@ import {getElementIndex, readMonitorMenu} from "@/core/scene";
 import { isMonitorContainer, pickMonitorContainer, pickMonitorTarget } from "../../../lib/pickMonitorTarget";
 import { isRuntimeLive, type ScreenPoint } from "@/core/runtime";
 import { buildMonitorMenu, hasMonitorMenu, isOpenableTrend } from "../lib/buildMonitorMenu";
-import type { DiagramElement } from "@/types/editorElement.type";
+import type { DiagramElement } from "@/core/scene";
 import { useEditorStore } from "../../../model/editorStore";
 import type { CanvasMenuState } from "../types";
 

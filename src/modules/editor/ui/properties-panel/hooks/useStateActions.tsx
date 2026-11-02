@@ -1,5 +1,5 @@
 import {toast} from "sonner";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {choiceModal, confirmModal, promptModal} from "@/shared/ui/dialog/confirmModal";
 import {useEditorStore} from "../../../model/editorStore";
 

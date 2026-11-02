@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "../types/editorElement.type";
 
 /**
  * Сдвиг позиционных полей — один на весь редактор.

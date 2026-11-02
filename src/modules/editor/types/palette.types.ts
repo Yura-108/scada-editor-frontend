@@ -1,5 +1,5 @@
-import {DiagramElement} from "@/types/editorElement.type";
-import {PropertyCreateDto} from "@/types/tags.types";
+import {DiagramElement} from "@/core/scene";
+import {PropertyCreateDto} from "@/core/scene";
 
 export interface PaletteItemType {
   id: number;

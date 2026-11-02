@@ -57,3 +57,6 @@ export * from "./serialization/transformElements";
 export * from "./serialization/parseBindings";
 export * from "./serialization/parseEvents";
 export * from "./serialization/conturImport";
+export * from "./types/binding.types";
+export * from "./types/editorElement.type";
+export * from "./types/tags.types";

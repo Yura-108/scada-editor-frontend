@@ -1,4 +1,4 @@
-import {DiagramElement, ElementType} from "@/types/editorElement.type";
+import {DiagramElement, ElementType} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/core/scene";
 

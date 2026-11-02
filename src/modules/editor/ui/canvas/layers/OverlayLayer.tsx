@@ -3,7 +3,7 @@
 import type { RefObject } from "react";
 import type Konva from "konva";
 import { Layer, Line, Rect } from "react-konva";
-import type { DiagramElement } from "@/types/editorElement.type";
+import type { DiagramElement } from "@/core/scene";
 import type {MonitorView, SheetSize} from "@/core/scene";
 import type { SelectionRect, ThemeColors } from "@/core/canvas";
 import type { HoverHighlight } from "../hooks/useHoverHighlight";

@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import { getElementBoundsRendered } from "@/core/scene";
 
 export interface GuideCandidates {

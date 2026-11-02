@@ -1,4 +1,4 @@
-import type {SceneType} from "@/types/editorElement.type";
+import type {SceneType} from "@/core/scene";
 import type {EditorProject} from "./projects";
 
 /**

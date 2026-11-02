@@ -1,4 +1,4 @@
-import type {ElementEventName} from "@/types/binding.types";
+import type {ElementEventName} from "@/core/scene";
 import type {ActionArgs, MenuChoice} from "./script/eventScript";
 
 /**

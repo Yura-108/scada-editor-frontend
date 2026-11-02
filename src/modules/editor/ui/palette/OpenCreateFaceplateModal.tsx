@@ -2,7 +2,7 @@ import { useModalStore } from "@/shared/ui/dialog/modalStore";
 import { usePaletteStore } from "../../model/paletteStore";
 import { useState } from "react";
 import { cn } from "@/shared/lib/cn";
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import { PaletteItemType } from "../../types/palette.types";
 import {Button} from "@/shared/ui/Button";
 import {Field} from "@/shared/ui/field/Field";

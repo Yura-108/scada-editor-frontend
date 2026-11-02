@@ -1,4 +1,4 @@
-import type {SceneType} from "@/types/editorElement.type";
+import type {SceneType} from "@/core/scene";
 // переедет в core/scene вместе с остальным lib (шаг 8)
 import {putScene} from "@/core/project";
 import type {EditorState} from "./editorStore";

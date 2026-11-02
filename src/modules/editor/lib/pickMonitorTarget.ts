@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import {ElementIndex, getChildElements, getRenderedElement, getAbsoluteRenderedPos, sortKeysByZIndex} from "@/core/scene";
 
 /**

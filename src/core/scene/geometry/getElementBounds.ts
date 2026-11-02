@@ -1,5 +1,5 @@
 import {absolutePosition} from "./getAbsolutePosition";
-import {DiagramElement, LeafElement} from "@/types/editorElement.type";
+import {DiagramElement, LeafElement} from "../types/editorElement.type";
 import {getRenderedElement} from "../render/getRenderedElement";
 import {ElementIndex, getChildElements, getElementIndex} from "../element/elementIndex";
 import {measureText} from "./measureText";

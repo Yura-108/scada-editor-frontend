@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {getElementIndex, shiftElementPositions, getAbsoluteRenderedPos} from "@/core/scene";
 import {isComponentEl, isGroup, isLeafPrimitive, recomputeAncestorBounds} from "./elementTree";
 import {syncMemberStates} from "./elementStates";

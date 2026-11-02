@@ -1,4 +1,4 @@
-import type { DiagramElement } from "@/types/editorElement.type";
+import type { DiagramElement } from "../types/editorElement.type";
 import type { Camera } from "./revealCamera";
 import type { SheetSize } from "./sheet";
 import { isMetaElement } from "./sheet";

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Group, Arrow, Line } from "react-konva";
-import { LeafElement } from "@/types/editorElement.type";
+import { LeafElement } from "@/core/scene";
 import {getRenderedElementWith, parseDashArray, parseCurvePoints, CURVE_POINTS_LENGTH, curvePointsBounds} from "@/core/scene";
 import type { ShapeElementProps } from "../types";
 import { useThemeColors } from "../useThemeColors";

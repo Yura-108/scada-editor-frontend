@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import { getDescendants } from "../../../lib/getDescendants";
 import { handleAddProperty } from "../../properties-panel/property/handleAddProperty";

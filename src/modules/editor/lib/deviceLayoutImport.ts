@@ -1,4 +1,4 @@
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {PaletteItemType} from "../types/palette.types";
 import {createUuid} from "@/shared/lib/createUuid";
 import {snap, getElementBoundsRendered, shiftElementPositions, DEFAULT_DASH, findTemplateRoot} from "@/core/scene";

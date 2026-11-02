@@ -1,4 +1,4 @@
-import {ElementType} from "@/types/editorElement.type";
+import {ElementType} from "@/core/scene";
 import {ROTATABLE_TYPES} from "../../../lib/propertiesPanel";
 import {MIN_SIZE} from "@/core/canvas";
 import {getNumberValue} from "./getNumberValue";

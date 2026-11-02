@@ -6,8 +6,8 @@
  * шаг 6): со стором работают через `editorStore()`, общие буферы — в `editorSession`.
  */
 import {toast} from "sonner";
-import type {DiagramElement, SceneType} from "@/types/editorElement.type";
-import type {PropertyCreateRequestDto} from "@/types/tags.types";
+import type {DiagramElement, SceneType} from "@/core/scene";
+import type {PropertyCreateRequestDto} from "@/core/scene";
 import type {MergeReport, VersionPreview} from "@/core/project";
 import {useRuntimeOverlayStore, transformElements} from "@/core/scene";
 import {useSessionUserStore, errorTextFromBody, grantOf} from "@/core/access";

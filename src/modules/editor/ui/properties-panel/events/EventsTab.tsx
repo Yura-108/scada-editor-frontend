@@ -4,8 +4,8 @@ import React from "react";
 import {MousePointerClick, Pencil, Plus, Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
 import {cn} from "@/shared/lib/cn";
-import {DiagramElement} from "@/types/editorElement.type";
-import {ElementEventName, ElementEvents} from "@/types/binding.types";
+import {DiagramElement} from "@/core/scene";
+import {ElementEventName, ElementEvents} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import {openEventScriptModal} from "./OpenEventScriptModal";
 

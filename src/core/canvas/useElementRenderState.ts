@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {useSceneView, useRuntimeOverlayStore, getElementIndex, sortKeysByZIndex} from "@/core/scene";
-import { DiagramElement, GroupElement } from "@/types/editorElement.type";
+import { DiagramElement, GroupElement } from "@/core/scene";
 
 /** Типы со своими специализированными ручками — Transformer к ним не цепляем. */
 // Дуга — со своими ручками (начало/раствор/радиус), рамка Transformer'а ей не нужна:

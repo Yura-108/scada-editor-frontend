@@ -1,4 +1,4 @@
-import {DiagramElement, LeafElement} from "@/types/editorElement.type";
+import {DiagramElement, LeafElement} from "@/core/scene";
 import {isComponentEl, isLeafPrimitive} from "../elementTree";
 import {syncMemberStates} from "../elementStates";
 import type {GroupResult} from "./groupElements";

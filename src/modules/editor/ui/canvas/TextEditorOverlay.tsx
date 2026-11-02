@@ -3,7 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useEditorStore } from "../../model/editorStore";
 import {getRenderedElement, getAbsoluteRenderedPos} from "@/core/scene";
-import { DiagramElement, LeafElement } from "@/types/editorElement.type";
+import { DiagramElement, LeafElement } from "@/core/scene";
 import { useThemeColors } from "@/core/canvas";
 
 interface TextEditorOverlayProps {

@@ -1,4 +1,4 @@
-import {DiagramElement, GroupElement} from "@/types/editorElement.type";
+import {DiagramElement, GroupElement} from "../types/editorElement.type";
 import {absolutePosition} from "./getAbsolutePosition";
 import {getElementBounds, getElementBoundsRendered} from "./getElementBounds";
 import {getRenderedElement} from "../render/getRenderedElement";

@@ -1,4 +1,4 @@
-import {ElementEventEntry, ElementEventName, ElementEvents, PropertyRef} from "@/types/binding.types";
+import {ElementEventEntry, ElementEventName, ElementEvents, PropertyRef} from "../types/binding.types";
 
 const EVENT_NAMES = new Set<string>(["onClick", "onDoubleClick"]);
 

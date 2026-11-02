@@ -3,7 +3,7 @@ import {create} from "zustand";
 import {paletteItems as paletteItemsStatic} from "../lib/palette";
 import {toast} from "sonner";
 import {buildPaletteComponentTree, transformElements, findTemplateRoot} from "@/core/scene";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {isSaveConflictBody, SaveConflictError} from "@/core/project";
 
 /**

@@ -1,5 +1,5 @@
 import {devLog, isDev} from "@/shared/lib/devLog";
-import type {DiagramElement} from "@/types/editorElement.type";
+import type {DiagramElement} from "@/core/scene";
 import {collectTagScope, withPropertyRefs, compileBinding, type CompiledBinding} from "@/core/runtime";
 import {cellBindings, isLiveField, propertyByName} from "@/core/scene";
 

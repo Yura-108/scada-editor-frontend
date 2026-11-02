@@ -2,7 +2,7 @@
 
 import {useMemo} from "react";
 import {Plus} from "lucide-react";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {openScriptEditorModal} from "../script/OpenScriptEditorModal";
 import {useEditorStore} from "../../../model/editorStore";

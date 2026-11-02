@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "../types/editorElement.type";
 import { isConturMeta } from "../serialization/conturImport";
 import { GRID } from "../geometry/grid";
 

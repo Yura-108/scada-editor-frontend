@@ -2,7 +2,7 @@
 
 import {Pencil, Plus, Trash2} from "lucide-react";
 import {IconButton} from "@/shared/ui/IconButton";
-import {DiagramElement} from "@/types/editorElement.type";
+import {DiagramElement} from "@/core/scene";
 import {StateSelect} from "../StateSelect";
 import {EditAllStatesToggle} from "../EditAllStatesToggle";
 import {useStateActions} from "../hooks/useStateActions";

@@ -1,4 +1,4 @@
-import { DiagramElement } from "@/types/editorElement.type";
+import { DiagramElement } from "@/core/scene";
 
 /**
  * По ключу кликнутого элемента определяет, что реально должно выделиться.
