@@ -2,8 +2,9 @@ import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
 import type {AutomationTaskStatus} from "@/core/automation";
 import {devLog} from "@/shared/lib/devLog";
 import {gatewayWsOrigin} from "@/shared/lib/gatewayOrigin";
-import {describeDenial, isAccessDenial, isAccessNotReady} from "@/core/access";
-import type {AccessDenial} from "@/core/access";
+import {ACCESS_NOT_READY_DELAY_MS, createRuntimeSession, deleteRuntimeSession} from "../../api/runtimeSession";
+import {classifyClose} from "./runtimeCloseCodes";
+import {routeRuntimeFrame} from "./runtimeFrames";
 
 /**
  * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
@@ -52,13 +53,6 @@ export interface ActionDenied {
   /** null — у NO_OPERATE / NO_PROJECT_ACCESS. */
   requiredLevel: number | null;
 }
-
-/** Коды закрытия WS, введённые правами доступа. */
-const CLOSE_ACCESS_REVOKED = 4403;
-const CLOSE_POLICY_VIOLATION = 1008;
-/** Try Again Later: сервер после рестарта ещё не загрузил права — это не отказ. */
-const CLOSE_TRY_AGAIN_LATER = 1013;
-const ACCESS_NOT_READY_DELAY_MS = 4_000;
 
 export interface RuntimeConnectionHandlers {
   onUpdate: (
@@ -118,13 +112,6 @@ export interface RuntimeConnection {
    *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
   getSessionId: () => string | null;
 }
-
-/** Причина отказа из тела ответа рантайма: у него это всегда поле `message`. */
-const messageOf = async (res: Response, fallback: string): Promise<string> => {
-  const body = await res.json().catch(() => null);
-  const message = (body as {message?: unknown} | null)?.message;
-  return typeof message === "string" && message ? message : fallback;
-};
 
 const PING_INTERVAL_MS = 20_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -189,62 +176,30 @@ export function openRuntimeConnection(
     let wsTicket: string;
 
     try {
-      const res = await fetch("/api/runtime/sessions", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({projectId}),
-      });
+      const outcome = await createRuntimeSession(projectId);
 
-      // 409 — состояние, а не сбой связи: проект не введён в эксплуатацию либо не назначен
-      // ни одному экземпляру runtime. Повторные попытки ничего не изменят, пока человек не
-      // выставит флаг или не раздаст назначение, поэтому реконнект не запускаем. Разные 409
-      // различаются только текстом — показываем его как есть, не подменяя своим.
-      if (res.status === 409) {
-        const message = await messageOf(res, "Проект недоступен для мониторинга");
-        log(`сессия отклонена: ${message} — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", message);
+      if (outcome.kind === "rejected") {
+        log(outcome.reason === "state"
+          ? `сессия отклонена: ${outcome.message} — реконнект не запускаю`
+          : `сессия отклонена по правам: ${outcome.message} — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", outcome.message);
         return;
       }
 
-      // 503 — экземпляр, на котором работает проект, недоступен или неизвестен. В отличие
-      // от 409 это временно: экземпляр могут поднять, и проект подхватится сам. Повторяем
-      // с обычной паузой, но с причиной на экране — без неё оператор видит голое
-      // «Переподключение…» и не понимает, что чинить не у него.
-      if (res.status === 503) {
-        const message = await messageOf(res, "Сервер исполнения недоступен");
-        log(`экземпляр недоступен: ${message} — повторю с паузой`);
-        scheduleReconnect(message);
+      if (outcome.kind === "retry") {
+        log(outcome.reason === "unavailable"
+          ? `экземпляр недоступен: ${outcome.detail} — повторю с паузой`
+          : "права на сервере ещё не загружены — повторю с паузой");
+        scheduleReconnect(outcome.detail, outcome.minDelay);
         return;
       }
 
-      // 403 — права. ACCESS_NOT_READY — сервер ещё грузит их после рестарта: повторяем с
-      // паузой. Любая другая причина окончательна, как и 409: повтор её не изменит.
-      if (res.status === 403) {
-        const body = await res.json().catch(() => null);
-        if (isAccessNotReady(body)) {
-          log("права на сервере ещё не загружены — повторю с паузой");
-          scheduleReconnect(describeDenial(body as AccessDenial), ACCESS_NOT_READY_DELAY_MS);
-          return;
-        }
-        const message = isAccessDenial(body) ? describeDenial(body) : "Нет доступа к проекту";
-        log(`сессия отклонена по правам: ${message} — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", message);
-        return;
-      }
+      wsPath = outcome.wsPath;
+      wsTicket = outcome.ticket;
+      currentSessionId = outcome.sessionId;
+      if (outcome.versionNo !== undefined && !closed) onRelease?.(outcome.versionNo, false);
 
-      if (!res.ok) throw new Error(`POST /api/runtime/sessions → ${res.status}`);
-
-      const data = await res.json();
-
-      if (typeof data?.wsPath !== "string") throw new Error("В ответе сессии нет wsPath");
-      if (typeof data?.ticket !== "string") throw new Error("В ответе сессии нет ticket");
-
-      wsPath = data.wsPath;
-      wsTicket = data.ticket;
-      currentSessionId = typeof data?.sessionId === "string" ? data.sessionId : null;
-      if (typeof data?.versionNo === "number" && !closed) onRelease?.(data.versionNo, false);
-
-      log(`сессия ${data.sessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
+      log(`сессия ${outcome.rawSessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
     } catch (err) {
       console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
       scheduleReconnect();
@@ -282,75 +237,9 @@ export function openRuntimeConnection(
     };
 
     socket.onmessage = (e) => {
-      let msg: {
-        type?: string;
-        tags?: RuntimeTagUpdate[] | null;
-        properties?: RuntimePropertyUpdate[] | null;
-        // В UPDATE — события хода рецепта, в SNAPSHOT — статусы активных процедур проекта.
-        procedures?: ProcedureEvent[] | ProcedureStatus[] | null;
-        // Статусы задач automation — только после SUBSCRIBE_TASKS.
-        tasks?: AutomationTaskStatus[] | null;
-        // TREE_CHANGED — номер нового prod-выпуска.
-        versionNo?: number;
-        // ACTION_DENIED — какое нажатие отклонено и почему.
-        scriptId?: number;
-        reason?: string;
-        requiredLevel?: number | null;
-      };
-      try {
-        msg = JSON.parse(String(e.data));
-      } catch {
-        console.warn("[monitor:ws] битый JSON в сообщении, игнорирую:", e.data);
-        return;
-      }
-      if (msg?.type === "SNAPSHOT") {
-        const tags = msg.tags ?? [];
-        const properties = msg.properties ?? [];
-        const procedures = (msg.procedures ?? []) as ProcedureStatus[];
-        log(
-          `SNAPSHOT — тегов: ${tags.length}, свойств: ${properties.length},`
-          + ` активных процедур: ${procedures.length}`,
-        );
-        onSnapshot?.(tags, properties, procedures);
-        return;
-      }
-      if (msg?.type === "TREE_CHANGED") {
-        log(`TREE_CHANGED — проект переключён на выпуск ${msg.versionNo}, подписка на сцену снята сервером`);
+      routeRuntimeFrame(e.data, {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied}, () => {
         sceneWanted = null;
-        if (typeof msg.versionNo === "number") onRelease?.(msg.versionNo, true);
-        return;
-      }
-      if (msg?.type === "ACTION_DENIED") {
-        log(`ACTION_DENIED — scriptId=${msg.scriptId}, причина ${msg.reason}${msg.requiredLevel != null ? `, нужен уровень ${msg.requiredLevel}` : ""}`);
-        if (typeof msg.scriptId === "number" && typeof msg.reason === "string") {
-          onActionDenied?.({
-            scriptId: msg.scriptId,
-            reason: msg.reason,
-            requiredLevel: typeof msg.requiredLevel === "number" ? msg.requiredLevel : null,
-          });
-        }
-        return;
-      }
-      if (msg?.type !== "UPDATE") {
-        log(`сообщение неизвестного типа «${msg?.type}», игнорирую`);
-        return;
-      }
-      // Ответ на ACTION приходит с tags === null (не []) — нормализация обязательна.
-      const tags = msg.tags ?? [];
-      const properties = msg.properties ?? [];
-      const procedures = msg.procedures ?? [];
-      if (tags.length || properties.length || procedures.length) {
-        console.groupCollapsed(
-          `[monitor:ws] UPDATE — тегов: ${tags.length}, свойств: ${properties.length},`
-          + ` событий процедуры: ${procedures.length}`,
-        );
-        if (tags.length) console.table(tags);
-        if (properties.length) console.table(properties);
-        if (procedures.length) console.table(procedures);
-        console.groupEnd();
-      }
-      onUpdate(tags, properties, procedures as ProcedureEvent[]);
-      if (msg.tasks?.length) onTasks?.(msg.tasks);
+      });
     };
 
     socket.onclose = (e) => {
@@ -360,25 +249,18 @@ export function openRuntimeConnection(
       // `GET /sessions/{id}/snapshot` уже не ответит. Сама работа проекта продолжается.
       currentSessionId = null;
 
-      // 1003 — окончательный отказ (у сессии уже есть живое соединение, либо она
-      // неизвестна/закрыта): реконнект-цикл тут будет крутиться вечно без толку.
-      // 1008 — подключение к чужой сессии: тоже окончательно.
-      if (e.code === 1003 || e.code === CLOSE_POLICY_VIOLATION) {
+      const outcome = classifyClose(e.code, e.reason);
+      if (outcome.kind === "rejected") {
         log(`соединение отклонено (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
-        if (!closed) setStatus("rejected", e.code === CLOSE_POLICY_VIOLATION ? "Сессия принадлежит другому пользователю" : e.reason);
+        if (!closed) setStatus("rejected", outcome.detail);
         return;
       }
-
-      // 4403 — права в проекте отозваны (или учётка отключена). Переподключение лишь
-      // получило бы тот же отказ; монитор сам уведёт к выбору проекта.
-      if (e.code === CLOSE_ACCESS_REVOKED) {
+      if (outcome.kind === "revoked") {
         log(`доступ к проекту отозван (code=4403${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
         if (!closed) setStatus("revoked", "Доступ к проекту отозван");
         return;
       }
-
-      // 1013 — сервер после рестарта ещё не загрузил права: обычный реконнект, но с паузой.
-      if (e.code === CLOSE_TRY_AGAIN_LATER) {
+      if (outcome.kind === "retry-later") {
         log("сервер ещё загружает права (code=1013) — переподключусь с паузой");
         scheduleReconnect("Сервер запускается, переподключение…", ACCESS_NOT_READY_DELAY_MS);
         return;
@@ -406,10 +288,7 @@ export function openRuntimeConnection(
       // мойка идёт дальше, гасит проект только снятие флага «в эксплуатации».
       // Не await'им (не блокируем закрытие сокета/уход со страницы), keepalive
       // переживает unload; ошибка ничего не ломает на клиенте.
-      if (currentSessionId) {
-        const sessionId = currentSessionId;
-        fetch(`/api/runtime/sessions/${sessionId}`, {method: "DELETE", keepalive: true}).catch(() => {});
-      }
+      if (currentSessionId) deleteRuntimeSession(currentSessionId);
       ws?.close();
       ws = null;
       currentSessionId = null;
