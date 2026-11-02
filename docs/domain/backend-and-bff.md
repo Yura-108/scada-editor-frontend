@@ -48,10 +48,10 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
   `GATEWAY_WS_QUERY_TOKEN_ENABLED=false` (gateway). Do not enable them for an older frontend.
 
 **Browser-side connections** (monitor WebSocket, editor STOMP) go to the gateway directly, not through
-the BFF: `src/lib/gatewayOrigin.ts` builds the origin from the **page's hostname** + port 8080
+the BFF: `src/shared/lib/gatewayOrigin.ts` builds the origin from the **page's hostname** + port 8080
 (`NEXT_PUBLIC_GATEWAY_PORT` / `_GATEWAY_URL` / `_RUNTIME_WS_URL` only override — they are baked in at
 build time and the Docker image is shared by all installs). Never hard-code `localhost` there: from
 another machine it is the client itself, and the `access_token` cookie is shared by host, not port.
 Call it at connect time, never at module level (SSR has no `window`).
 
-Three product areas share the app: **editor** (`/editor`, the SCADA scheme editor — the core of this repo), **channels/devices** (`/channels`, device hierarchy + tags), **logs** (`/log`). Stores live in `src/store/` (one Zustand store per area).
+Three product areas share the app: **editor** (`/editor`, the SCADA scheme editor — the core of this repo), **channels/devices** (`/channels`, device hierarchy + tags), **logs** (`/log`). Stores live with their area (`src/modules/<area>/model`, shared ones in `src/core/*`) — one Zustand store per area.

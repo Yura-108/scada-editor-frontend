@@ -2,7 +2,7 @@ import {NextRequest} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
 import {
   badRecipeId, missingProjectId, parseProjectId, parseRecipeId, parseSessionId, proxyProcedure,
-} from "@/lib/procedureProxy";
+} from "@/server/proxy/procedureProxy";
 
 /** Прерывание несуществующей процедуры бэкенд считает нормой и тоже отвечает 200. */
 export const POST = protectedRoute(async (req: NextRequest, {token, params}) => {

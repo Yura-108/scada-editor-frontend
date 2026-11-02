@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {EDITOR_BACKEND_URL, passThrough} from "@/lib/editorHistoryProxy";
+import {EDITOR_BACKEND_URL, passThrough} from "@/server/proxy/editorHistoryProxy";
 
 /**
  * Палитра шаблонов задач автоматизации: `GET/POST /api/editor/automation-templates`.

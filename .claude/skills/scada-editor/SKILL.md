@@ -291,8 +291,9 @@ Backend stores each component's visual state as an **opaque JSON string** in `st
 
 Keep the round-trip symmetric when changing one side. Headless check: transpile these two modules +
 `createUuid` and run `buildComponentTree → transformElements` in Node (near-zero runtime deps) —
-`npx tsc src/lib/{buildComponentTree,transformElements,createUuid}.ts --module commonjs --target
-es2020 --noResolve --skipLibCheck --outDir <scratch>`, then sed `@/lib/createUuid` → `./createUuid`.
+`npx tsc src/core/scene/serialization/{buildComponentTree,transformElements}.ts src/shared/lib/createUuid.ts
+--module commonjs --target es2020 --noResolve --skipLibCheck --outDir <scratch>` (plus the relative
+helpers `transformElements` imports), then sed `@/shared/lib/createUuid` → `./createUuid`.
 
 ## Palette templates (`buildPaletteComponentTree` ↔ `addTemplate`)
 

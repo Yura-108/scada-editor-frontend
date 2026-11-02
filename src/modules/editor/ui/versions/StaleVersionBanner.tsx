@@ -3,7 +3,7 @@
 import {Users, X} from "lucide-react";
 import {useShallow} from "zustand/react/shallow";
 import {useEditorStore} from "../../model/editorStore";
-import {useVisibleSceneChange} from "@/store/useSceneChangeStore";
+import {useVisibleSceneChange} from "../../model/sceneChangeStore";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 

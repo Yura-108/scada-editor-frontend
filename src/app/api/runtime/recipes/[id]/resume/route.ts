@@ -2,7 +2,7 @@ import {NextRequest} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
 import {
   badRecipeId, missingProjectId, parseProjectId, parseRecipeId, parseSessionId, proxyProcedure,
-} from "@/lib/procedureProxy";
+} from "@/server/proxy/procedureProxy";
 
 /**
  * Снятие паузы. Пока авария активна, бэкенд отвечает 409 с её текстом и текущим статусом —

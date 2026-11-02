@@ -1,7 +1,7 @@
 "use client";
 
 import {PaletteItemType} from "@/types/palette.types";
-import {usePaletteStore} from "@/store/usePaletteStore";
+import {usePaletteStore} from "../../model/paletteStore";
 import {useEditorStore} from "../../model/editorStore";
 import {ElementType} from "@/types/editorElement.type";
 import {Trash2} from "lucide-react";

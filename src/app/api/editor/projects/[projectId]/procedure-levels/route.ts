@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/lib/editorHistoryProxy";
+import {badPath, EDITOR_BACKEND_URL, parseId, passThrough} from "@/server/proxy/editorHistoryProxy";
 
 /**
  * Уровни операций процедур проекта (черновик): `GET` — view или edit, `PUT` — edit.

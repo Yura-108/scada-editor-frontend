@@ -3,7 +3,7 @@
 import React, {useState} from "react";
 import {Slot} from "radix-ui";
 import {LogEntry} from "@/types/logs.type";
-import {getDescription} from "@/lib/getDescription"
+import {getDescription} from "../lib/getDescription"
 import {Button} from "@/shared/ui/Button";
 import Modal from "@/shared/ui/dialog/Modal";
 

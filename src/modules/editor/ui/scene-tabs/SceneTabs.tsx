@@ -7,7 +7,7 @@ import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} 
 import {CSS} from "@dnd-kit/utilities";
 import {cn} from "@/shared/lib/cn";
 import {useEditorStore} from "../../model/editorStore";
-import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
+import {usePinnedScenesStore} from "../../model/pinnedScenesStore";
 import {handleTabListKey} from "@/shared/lib/tabListKeys";
 
 /**

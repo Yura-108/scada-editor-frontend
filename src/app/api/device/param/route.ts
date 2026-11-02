@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {protectedRoute} from "@/server/auth/protected";
-import {backendErrorResponse} from "@/lib/backendProxy";
+import {backendErrorResponse} from "@/server/proxy/backendProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 

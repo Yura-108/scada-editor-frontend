@@ -9,7 +9,7 @@ import Modal from "@/shared/ui/dialog/Modal";
 import { Button } from "@/shared/ui/Button";
 import {Field} from "@/shared/ui/field/Field";
 import { elementRegistry } from "@/constants/propertiesPanel";
-import { getDescendants } from "@/lib/getDescendants";
+import { getDescendants } from "../../lib/getDescendants";
 import { DiagramElement, ElementType } from "@/types/editorElement.type";
 
 import {

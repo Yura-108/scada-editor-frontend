@@ -3,8 +3,8 @@
 import {RefreshCw, Users, X} from "lucide-react";
 import {hasUnsavedWork} from "../../model/editorStoreInternals";
 import {useEditorStore} from "../../model/editorStore";
-import {usePaletteStore} from "@/store/usePaletteStore";
-import {useSceneChangeStore, useVisibleSceneChange} from "@/store/useSceneChangeStore";
+import {usePaletteStore} from "../../model/paletteStore";
+import {useSceneChangeStore, useVisibleSceneChange} from "../../model/sceneChangeStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {dropScene} from "@/core/project";
 import {Banner} from "@/shared/ui/Banner";

@@ -1,8 +1,8 @@
 import {NextRequest} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, parseId} from "@/lib/editorHistoryProxy";
-import {RUNTIME_BACKEND_URL} from "@/lib/procedureProxy";
-import {passThroughRelease} from "@/lib/releaseProxy";
+import {badPath, parseId} from "@/server/proxy/editorHistoryProxy";
+import {RUNTIME_BACKEND_URL} from "@/server/proxy/procedureProxy";
+import {passThroughRelease} from "@/server/proxy/releaseProxy";
 
 /**
  * Объекты prod-выпуска со свойствами — список инспектора объектов монитора

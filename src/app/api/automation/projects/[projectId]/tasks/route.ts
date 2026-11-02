@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
-import {badPath, parseId} from "@/lib/editorHistoryProxy";
+import {badPath, parseId} from "@/server/proxy/editorHistoryProxy";
 
 /** automation доступен через gateway (/api/automation/**). */
 const AUTOMATION_BACKEND_URL =

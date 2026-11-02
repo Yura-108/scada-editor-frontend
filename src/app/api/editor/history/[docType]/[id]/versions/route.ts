@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {backendErrorResponse} from "@/lib/backendProxy";
+import {backendErrorResponse} from "@/server/proxy/backendProxy";
 import {protectedRoute} from "@/server/auth/protected";
 import {
   badPath,
@@ -7,7 +7,7 @@ import {
   EDITOR_BACKEND_URL,
   parseDocType,
   parseId,
-} from "@/lib/editorHistoryProxy";
+} from "@/server/proxy/editorHistoryProxy";
 
 /**
  * Список версий документа: `GET /api/editor/{scenes|templates}/{id}/versions`.

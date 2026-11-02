@@ -1,5 +1,5 @@
 import { useModalStore } from "@/shared/ui/dialog/modalStore";
-import { usePaletteStore } from "@/store/usePaletteStore";
+import { usePaletteStore } from "../../model/paletteStore";
 import { useState } from "react";
 import { cn } from "@/shared/lib/cn";
 import { DiagramElement } from "@/types/editorElement.type";

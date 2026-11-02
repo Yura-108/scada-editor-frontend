@@ -2,7 +2,7 @@ import {NextRequest} from "next/server";
 import {protectedRoute} from "@/server/auth/protected";
 import {
   badRecipeId, missingProjectId, parseProjectId, parseRecipeId, parseSessionId, proxyProcedure,
-} from "@/lib/procedureProxy";
+} from "@/server/proxy/procedureProxy";
 
 /**
  * Пауза процедуры: оборудование переводится в `pause_action` рецепта, шаг не продвигается.
