@@ -5,7 +5,7 @@ import {devLog} from "@/shared/lib/devLog";
 import {gatewayHttpOrigin} from "@/shared/lib/gatewayOrigin";
 import {refreshSessionCookie} from "@/core/access";
 import {useEditorStore} from "../../model/editorStore";
-import {useSceneChangeStore} from "@/store/useSceneChangeStore";
+import {useSceneChangeStore} from "../../model/sceneChangeStore";
 
 const log = (...args: unknown[]) => devLog("[editor:ws]", ...args);
 

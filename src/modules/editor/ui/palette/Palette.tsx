@@ -5,7 +5,7 @@ import PaletteItem from "./PaletteItem";
 import {X, ChevronDown, Trash2} from "lucide-react";
 import {filterPalette, groupPalette, sortCategories} from "../../lib/paletteUtils";
 import {PaletteItemType} from "@/types/palette.types";
-import {usePaletteStore} from "@/store/usePaletteStore";
+import {usePaletteStore} from "../../model/paletteStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {IconButton} from "@/shared/ui/IconButton";

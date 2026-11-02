@@ -1,6 +1,6 @@
 import {hasUnsavedWork} from "./editorStoreInternals";
 import {useEditorStore} from "./editorStore";
-import {usePaletteStore} from "@/store/usePaletteStore";
+import {usePaletteStore} from "./paletteStore";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import type {EditorProject} from "@/core/project";
 

@@ -7,7 +7,7 @@ import {IconButton} from "@/shared/ui/IconButton";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {PickerSelect} from "@/shared/ui/field/PickerSelect";
 import {useCurrentProjectGrant} from "@/core/access";
-import {usePinnedScenesStore} from "@/store/usePinnedScenesStore";
+import {usePinnedScenesStore} from "../../model/pinnedScenesStore";
 import {useEditorStore} from "../../model/editorStore";
 import {createSceneGuarded, openSceneGuarded} from "../../model/openScene";
 

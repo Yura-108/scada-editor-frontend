@@ -1,9 +1,9 @@
 "use client";
 
 import {useEffect} from "react";
-import {usePaletteStore} from "@/store/usePaletteStore";
 import {
-  restoreLastProject, useAutoSaveScene, useEditorStore, useSceneChangedNotifications, useWarnOnUnsavedChanges, WorkSpace,
+  restoreLastProject, useAutoSaveScene, useEditorStore, usePaletteStore, useSceneChangedNotifications,
+  useWarnOnUnsavedChanges, WorkSpace,
 } from "@/modules/editor";
 import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
 import {registerMonitorDialogs} from "@/modules/monitor";
