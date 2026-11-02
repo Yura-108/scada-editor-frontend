@@ -19,7 +19,7 @@ import {useDeviceSelection} from "../model/deviceSelectionStore";
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
   onClick: () => void;
-  onContextMenu: (e: ContextMenuTrigger, node: any) => void;
+  onContextMenu: (e: ContextMenuTrigger, node: TitleRendererProps["node"]) => void;
   /** Текущее совпадение поиска по дереву. Это не выбор: выбранный узел в модалке — выбранный тег. */
   highlighted?: boolean;
 }
@@ -107,6 +107,8 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
     </div>
   );
 });
+
+TitleRenderer.displayName = "TitleRenderer";
 
 export default TitleRenderer;
 
