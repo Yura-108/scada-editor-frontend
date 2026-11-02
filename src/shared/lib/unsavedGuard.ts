@@ -67,6 +67,22 @@ export function useUnsavedGuard(owner: string, guard: UnsavedGuard) {
 }
 
 /**
+ * Закрытие или перезагрузка вкладки, пока `active`, спрашивает браузерным диалогом: иначе уход
+ * со страницы молча выбросил бы правки. Навигацию по шапке ловит `useUnsavedGuard`, не это.
+ */
+export function useBeforeUnloadWarning(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [active]);
+}
+
+/**
  * Обработчик клика по ссылке навигации: обычный клик ждёт `confirmLeave`, а открытие в новой
  * вкладке (Ctrl/Cmd/Shift, средняя кнопка) пропускается — текущая страница при этом не уходит.
  */

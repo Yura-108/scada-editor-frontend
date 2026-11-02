@@ -5,6 +5,8 @@ export {
   saveProjectData,
 } from "./api/projectDataApi";
 export {diffDataVersions} from "./lib/dataVersionDiff";
+export {useTablesDocument} from "./model/useTablesDocument";
+export {useVariablesDocument} from "./model/useVariablesDocument";
 
 // UI
 export {compactButton} from "./ui/ColumnsEditor";
