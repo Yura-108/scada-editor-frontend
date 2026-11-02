@@ -100,8 +100,8 @@ export function useArchiveInput({elements, buffers, flushRef, loadTrendHistory, 
   }, [loadTrendHistory, buffers]);
 
   /**
-   * Изменения из архива — тем же путём, что кадр WS: значения в pendingRef, качество в
-   * tagMetaRef, точки трендов мимо flush, затем синхронный flush. Суточная опорная точка с тем
+   * Изменения из архива — тем же путём, что кадр WS: значения в buffers.pending, качество в
+   * buffers.tagMeta, точки трендов мимо flush, затем синхронный flush. Суточная опорная точка с тем
    * же значением отсекается no-op-стражем flush и ничего не перерисовывает.
    */
   const archiveApply = useCallback((changes: readonly ArchiveTagChange[]) => {

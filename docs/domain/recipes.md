@@ -62,7 +62,7 @@ gone from both sides.
   red toast — a repeated «Запустить» must never re-apply step 0 under a running wash. `jump`
   still works without a prior `start`: that is how an operator places a procedure by hand.
 - **`procedures[]` is a third array in the WS `UPDATE` frame** and must NOT go through
-  `pendingRef`/`flush`: that path coalesces *values* last-write-wins with a "same value" guard,
+  `buffers.pending`/`flush`: that path coalesces *values* last-write-wins with a "same value" guard,
   which would swallow `STEP_STARTED`/`STEP_COMPLETED` pairs and drop `WRITE_FAILED`/`STALLED`
   entirely. Events are dispatched straight into `useProcedureStore`. It is a store rather than
   `runtimeEventBus` because that bus is a set of *single slots*, and these events need more than

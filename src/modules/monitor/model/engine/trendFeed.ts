@@ -3,7 +3,7 @@ import {toTrendValue} from "../archive/archive";
 import {isTagQualityGood} from "./engineBuffers";
 
 /**
- * Точки трендов из кадра WS. Идут МИМО pendingRef/flush — тот буфер коалесцирует значения
+ * Точки трендов из кадра WS. Идут МИМО buffers.pending/flush — тот буфер коалесцирует значения
  * (last-write-wins и страж «то же значение»), а тренду нужна каждая смена со своим
  * временем: два изменения в одном такте флаша иначе слились бы в одно.
  */

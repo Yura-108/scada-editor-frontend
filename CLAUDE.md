@@ -91,8 +91,8 @@ npm run check:ui-colors     # сырые цвета в интерфейсе вм
   на уровне модуля, никогда не хардкодить `localhost`.
 - Рендерить и измерять элемент только через `getRenderedElement(el)`, не через «сырой» `el`.
 - Сериализация `buildComponentTree` ↔ `transformElements` должна оставаться симметричной.
-- Значения из WS (`SNAPSHOT`, записанные теги) идут через `pendingRef` + `flush`; никогда не
-  записывать заранее в `valuesRef`.
+- Значения из WS (`SNAPSHOT`, записанные теги) идут через `buffers.pending` + `flush`; никогда не
+  записывать заранее в `buffers.values`.
 - Всё, что меняет или сохраняет документ, проверяет `versionPreview` и права (`canWriteCurrentProject`).
 
 ## Соглашения

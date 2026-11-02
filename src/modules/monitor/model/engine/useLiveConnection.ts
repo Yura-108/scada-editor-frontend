@@ -79,8 +79,8 @@ export function useLiveConnection({
       },
       /**
        * Снимок состояния проекта при подключении. Идёт тем же путём, что телеметрия и
-       * запись оператором: значения в pendingRef, затем синхронный flush. Предзаписывать
-       * valuesRef НЕЛЬЗЯ — no-op-страж во flush счёл бы изменение отсутствующим, и ни
+       * запись оператором: значения в buffers.pending, затем синхронный flush. Предзаписывать
+       * buffers.values НЕЛЬЗЯ — no-op-страж во flush счёл бы изменение отсутствующим, и ни
        * одна привязка не сработала бы, то есть схема осталась бы в состоянии по умолчанию
        * поверх идущего процесса.
        */
@@ -98,7 +98,7 @@ export function useLiveConnection({
       onUpdate: (tags, properties, procedures) => {
         if (tags.length || properties.length) lastMessageAtRef.current = Date.now();
 
-        // События процедуры НЕ кладём в pendingRef: тот буфер коалесцирует значения
+        // События процедуры НЕ кладём в buffers.pending: тот буфер коалесцирует значения
         // (last-write-wins плюс guard «то же значение — пропустить»), и для событий это
         // неверно вдвойне — STEP_STARTED и STEP_COMPLETED с одинаковой нагрузкой
         // схлопнулись бы, WRITE_FAILED/STALLED потерялись бы вовсе, а задержка на такте

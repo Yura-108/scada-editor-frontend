@@ -127,6 +127,17 @@ value locally — the UPDATE that follows is what proves runtime holds it. `UNKN
 the list is stale: re-read it. Opened from the monitor toolbar and the component menu, live only —
 never in the archive.
 
+**How the engine is laid out** (`modules/monitor/model/engine/`). `useRuntimeEngine` holds the
+state and calls the parts in a fixed order — the order of effects is part of the contract:
+`useSceneSubscription` → scene reseed effect (`reseedScene`) → `useRuntimeActions` (script and event
+handlers, the operator write bridge `onTagsWritten`, bus registration, the «live» flag) →
+`useLiveConnection` (session, `SNAPSHOT`/`UPDATE` intake, flush tick, stale flag) → `useArchiveMode`
+→ `useTrendWatch` → `useArchiveInput`. All session values live in one `EngineBuffers` object
+(`engineBuffers.ts`: `buffers.pending`, `buffers.values`, `buffers.tagMeta`, …); frames enter it through
+`ingestTags`/`ingestProperties`, and `flushEngine` turns them into one `applyRuntimeBatch`. The
+transport is `runtimeConnection` (session request — `api/runtimeSession`, close codes —
+`runtimeCloseCodes`, frame routing — `runtimeFrames`).
+
 **The WS authenticates with a one-time ticket** (`?ticket=`, 30 s, single use) that
 `/api/runtime/sessions` returns with every new session — never the JWT in the query (contract
 `docs/contract/2026-10-28-auth-sessions-contract.md`, §4). Each reconnect creates a new session and
@@ -138,8 +149,8 @@ tags}` makes runtime send `UPDATE.tags` only for that scene's subtree plus `tags
 scene's current values into the next `UPDATE` at once. `SNAPSHOT`, `properties`, procedures and
 tasks are not filtered. How the frontend drives it:
 
-- **The subscription effect in `useRuntimeEngine`** fires on `(sceneId, sceneTags, extraTags)` and
-  is declared *before* the "re-run bindings on scene change" effect on purpose. **`tags` carries
+- **The subscription effect (`useSceneSubscription`)** fires on `(sceneId, sceneTags, extraTags)` and
+  is called by `useRuntimeEngine` *before* the "re-run bindings on scene change" effect on purpose. **`tags` carries
   only off-scene tags** — `runtimeTagInterest` minus `sceneTags`, and no field at all when that is
   empty (`docs/contract/2026-10-09-ws-scene-subscription-tags-fix.md`). Runtime finds the scene's
   tags itself, properties and direct bindings included (`composition` primitives too). Sessions of
@@ -149,10 +160,10 @@ tasks are not filtered. How the frontend drives it:
   something to fix by adding it to `tags`. The full set (scene + panels) is still what decides
   locally whether the subscription changed and which values to drop.
 - **Values that fall out of the subscription are dropped**, not kept: only tags in *previous ∩ new*
-  survive in `valuesRef`/`pendingRef`/`tagMetaRef` (intersection, because a straggler frame that
+  survive in `buffers.values`/`buffers.pending`/`buffers.tagMeta` (intersection, because a straggler frame that
   arrived after leaving the scene is stale too). Returning to a scene therefore shows «нет данных»
   for one frame instead of a confidently wrong mimic, and the immediate `UPDATE` runs the bindings
-  through `flush` (no value in `valuesRef` → not a no-op).
+  through `flush` (no value in `buffers.values` → not a no-op).
 - `runtimeConnection` remembers the subscription and resends it in `onopen` (a new session knows
   nothing of it); `TREE_CHANGED` forgets it on both sides (`lastSubRef = null`), because runtime
   drops it and the new release's scene ids may differ — the effect resubscribes once
@@ -173,19 +184,19 @@ only; procedures keep running. Two consequences the frontend must honour:
   «Переподключение…», and the monitor shows the backend's text on the canvas instead.
 - The **first WS frame is `SNAPSHOT`** (`{tags, properties, procedures}`, where `procedures`
   are *statuses*, not events — the list is complete, so a watched recipe missing from it means
-  "not running"). Its values go through `pendingRef` + a synchronous `flush`, exactly like an
-  operator's tag write. Pre-writing `valuesRef` would make the no-op guard in `flush` swallow
+  "not running"). Its values go through `buffers.pending` + a synchronous `flush`, exactly like an
+  operator's tag write. Pre-writing `buffers.values` would make the no-op guard in `flush` swallow
   them and no binding would fire, leaving the scheme at its defaults on top of a running
   process — the worst failure mode here.
 
 **Switching scenes must re-run the bindings.** The WS session lives on `(active, projectId)`
-(`useRuntimeEngine`), so changing the scene inside a project keeps it — `valuesRef` holds the
+(`useRuntimeEngine`), so changing the scene inside a project keeps it — `buffers.values` holds the
 values of *every* project tag, including scenes that are not open. But `applyServerComponents`
 resets `currentComponentStateByElementKey` (and the runtime overrides, see below) when the
 document is replaced, and `flush` only executes bindings of tags whose value *changed*. So a
 scene opened after its values already arrived would stay in its default state forever — the
 telemetry keeps repeating the same value and the no-op guard drops it. The effect on `index`
-therefore seeds property/table values and then re-runs `index.all` (filtered by
+(`reseedScene`, `model/engine/sceneReseed.ts`) therefore seeds property/table values and then re-runs `index.all` (filtered by
 `hasKnownTrigger`) through the shared `runBindings`, applying everything in one
 `applyRuntimeBatch`. Anything that replaces `elements` must keep that path intact: a scene whose
 bindings never ran shows a confident but wrong mimic, which is the worst failure mode here.
@@ -198,17 +209,17 @@ bindings never ran shows a confident but wrong mimic, which is the worst failure
 селекторы всех подписчиков стора редактора. Два `set()` идут подряд синхронно, React сводит их в
 одну перерисовку. `applyServerComponents` сбрасывает оверрайды (`resetOverrides`) **до** смены
 `elements`, а набор «нет данных» не трогает — его ведёт движок через свой diff
-(`noDataKeysRef`). Читать оверрайды: `getRenderedElement` (нереактивно) или подпиской на
+(`buffers.noDataKeys`). Читать оверрайды: `getRenderedElement` (нереактивно) или подпиской на
 `useRuntimeOverlayStore` — как `useElementRenderState` и `NoDataOverlay`.
 
 **Written tag values are shown once, not pinned.** After a successful
 `POST /api/runtime/tags/write` the modal calls `notifyRuntimeTagsWritten` (`runtimeEventBus`), and
-the engine's handler drops the values into `pendingRef` and calls `flush` synchronously — the
+the engine's handler drops the values into `buffers.pending` and calls `flush` synchronously — the
 operator sees the command land without waiting for a frame, which on a slow tag would be minutes.
 That is the *whole* mechanism: the value carries no priority, so the next frame for that tag
 overwrites it and the tag stays free to change from a script, another operator, or the PLC itself.
-Never pre-write `valuesRef` — the no-op guard in `flush` would swallow the change and no binding
-would fire. The handler also seeds `tagMetaRef` for a tag that has **no** entry yet, so a confirmed
+Never pre-write `buffers.values` — the no-op guard in `flush` would swallow the change and no binding
+would fire. The handler also seeds `buffers.tagMeta` for a tag that has **no** entry yet, so a confirmed
 write lifts the «нет данных» overlay off the element it just set; a tag already reporting bad
 quality keeps its entry and its overlay, because our write says nothing about someone else's BAD.
 There is deliberately no sticky-override map any more (`manualTagValues` and its badge are gone):

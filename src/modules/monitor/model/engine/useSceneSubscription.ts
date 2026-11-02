@@ -33,7 +33,7 @@ interface Params {
  * Локально же сравнение «изменилась ли подписка» и сброс значений идут по полному набору.
  *
  * Объявлен РАНЬШЕ повторного прогона при смене схемы: сброс значений обязан случиться до того,
- * как прогон прочитает valuesRef и посчитает «нет данных».
+ * как прогон прочитает buffers.values и посчитает «нет данных».
  */
 export function useSceneSubscription({active, mode, sceneId, sceneTags, extraTags, buffers, connRef, lastSubRef}: Params) {
   useEffect(() => {
@@ -47,7 +47,7 @@ export function useSceneSubscription({active, mode, sceneId, sceneTags, extraTag
     // уверенно показывала бы то, чего уже нет. Держим только теги, которые были в подписке И
     // остаются в ней: значение, пришедшее «вдогонку» после ухода со сцены, тоже устарело бы.
     // Новые теги ждут немедленного UPDATE от runtime (до него — оверлей «нет данных»), и flush
-    // прогонит их биндинги: значения в valuesRef нет, no-op-страж изменение не отсечёт.
+    // прогонит их биндинги: значения в buffers.values нет, no-op-страж изменение не отсечёт.
     const keep = (tag: string) => next.has(tag) && (!prev || prev.tags.has(tag));
     const dropped = dropTags(buffers, keep);
 
