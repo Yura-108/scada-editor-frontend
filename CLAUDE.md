@@ -11,6 +11,7 @@ npm run build    # next build (standalone) — проходит: ошибки т
 npx tsc --noEmit # проверка типов
 npm run check:store-cycles  # нет ли цикла импортов обратно на стор редактора (см. ниже)
 npm run check:ui-colors     # сырые цвета в интерфейсе вместо токенов темы — не больше базы
+node scripts/ui-colors-codemod.mjs <папка> [--write]  # однозначные серые пары → токены темы
 ```
 
 - **Код стора редактора (`src/modules/editor/model/**`) не импортирует стор**, ни напрямую, ни

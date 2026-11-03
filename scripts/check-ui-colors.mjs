@@ -17,8 +17,8 @@ const BASELINE = path.join(ROOT, "scripts", "ui-colors-baseline.txt");
 // Цвета самих схем — данные документа (сохраняются на сервер, одинаковы в обеих темах),
 // а палитра холста задаётся строками для Konva. Это не интерфейс.
 const EXEMPT = [
-  "src/constants/propertiesPanel.ts",
-  "src/constants/palette.ts",
+  "src/modules/editor/lib/elementSchema/",
+  "src/modules/editor/lib/palette.ts",
   "src/modules/editor/model/newElement.ts",
   "src/core/canvas/",
 ];
