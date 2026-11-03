@@ -7,6 +7,7 @@ import {resolveParamWidget, useDeviceSelection, useDeviceTreeStore, useEditingDe
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {useParamDraft} from "../model/useParamDraft";
 import {useReleaseEditingOnLeave} from "../model/useReleaseEditingOnLeave";
+import {useParamDraftGuard} from "../model/useParamDraftGuard";
 import {DeviceParamsHeader} from "./DeviceParamsHeader";
 import {OptionParamsList} from "./OptionParamsList";
 import {ParamGrid} from "./ParamGrid";
@@ -30,7 +31,11 @@ const DeviceParams = () => {
 
   // Снятие redis-локов при уходе со страницы: перезагрузка, закрытие вкладки, SPA-навигация.
   useReleaseEditingOnLeave();
-  const {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave} = useParamDraft(selectedDevice);
+  const {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges} = useParamDraft(selectedDevice);
+  const currentDevice = nodes.find((node) => node.key === selectedDevice);
+  const {toggleEditing, confirmDiscard} = useParamDraftGuard({
+    selectedDevice, deviceTitle: currentDevice?.title, isEditingSelected, hasChanges, handleSave, discardChanges,
+  });
 
   // Тот же отбор, что у getParams, но по params из подписки — иначе список не узнал бы о правке.
   const rawParams = useMemo(
@@ -38,7 +43,6 @@ const DeviceParams = () => {
     [selectedDevice, params],
   );
 
-  const currentDevice = nodes.find((node) => node.key === selectedDevice);
   const optionItems = rawParams.filter(param => resolveParamWidget(param.type) === 'option');
   const normalParams = rawParams.filter(param => resolveParamWidget(param.type) !== 'option');
 
@@ -57,14 +61,15 @@ const DeviceParams = () => {
   return (
     <div className="min-h-full flex flex-col bg-card border border-border rounded-2xl shadow-sm">
       <DeviceParamsHeader
-        selectedDevice={selectedDevice}
         deviceTitle={currentDevice?.title}
         paramCount={rawParams.length}
         isEditingSelected={isEditingSelected}
         hasChanges={hasChanges}
         isSaving={isSaving}
         saveStatus={saveStatus}
-        handleSave={handleSave}
+        handleSave={() => void handleSave()}
+        onToggleEditing={() => void toggleEditing()}
+        onDiscard={() => void confirmDiscard()}
       />
 
       <div

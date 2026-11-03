@@ -1,21 +1,23 @@
 import {useEffect, useMemo, useState} from "react";
 import debounce from "lodash/debounce";
-import {updateParam, useDeviceTreeStore} from "@/core/devices";
+import {paramDraftKey, updateParam, useDeviceTreeStore, useParamDrafts} from "@/core/devices";
 
 export type ParamSaveStatus = "idle" | "success" | "error";
 
 /**
  * Черновик правок параметров выбранного устройства. Живёт в `localStorage` по ключу устройства
  * (переживает перезагрузку), пишется туда с задержкой. Значение, равное серверному, из черновика
- * убирается. «Сохранить» отправляет только черновик текущего устройства.
+ * убирается. «Сохранить» отправляет только черновик текущего устройства, «Отменить изменения»
+ * выбрасывает его. Признак «у узла есть черновик» для дерева — в `useParamDrafts`.
  */
 export function useParamDraft(selectedDevice: string | null) {
   const getParams = useDeviceTreeStore(s => s.getParams);
+  const markDraft = useParamDrafts(s => s.mark);
   const [editedParams, setEditedParams] = useState<Map<string, string>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<ParamSaveStatus>("idle");
 
-  const draftKey = selectedDevice ? `device-params-draft:${selectedDevice}` : null;
+  const draftKey = selectedDevice ? paramDraftKey(selectedDevice) : null;
 
   // Одна отложенная запись на всё время жизни хука (отменяется при размонтировании).
   const debouncedSaveDraft = useMemo(
@@ -59,11 +61,14 @@ export function useParamDraft(selectedDevice: string | null) {
 
 
     if (arr.length === 0) {
+      // Отложенная запись прежнего состояния иначе вернула бы черновик после очистки.
+      debouncedSaveDraft.cancel();
       localStorage.removeItem(draftKey);
     } else {
       debouncedSaveDraft(draftKey, arr);
     }
-  }, [editedParams, draftKey, selectedDevice, debouncedSaveDraft]);
+    markDraft(selectedDevice, arr.length > 0);
+  }, [editedParams, draftKey, selectedDevice, debouncedSaveDraft, markDraft]);
 
   useEffect(() => {
     return () => {
@@ -91,7 +96,8 @@ export function useParamDraft(selectedDevice: string | null) {
     setSaveStatus('idle');
   };
 
-  const handleSave = async () => {
+  /** Сохранить черновик; `false` — не получилось (уходить с несохранённым нельзя). */
+  const handleSave = async (): Promise<boolean> => {
     setIsSaving(true);
 
     try {
@@ -105,7 +111,7 @@ export function useParamDraft(selectedDevice: string | null) {
 
       if (arrayChanges.length === 0) {
         setSaveStatus('idle');
-        return;
+        return true;
       }
 
       await updateParam(arrayChanges);
@@ -114,13 +120,21 @@ export function useParamDraft(selectedDevice: string | null) {
       if (draftKey) localStorage.removeItem(draftKey);
       setEditedParams(new Map());
       setSaveStatus('success');
+      return true;
     } catch (err) {
       console.error('Ошибка сохранения параметров:', err);
       setSaveStatus('error');
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  return {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave};
+  /** «Отменить изменения»: в полях снова значения с сервера, черновик удалён. */
+  const discardChanges = () => {
+    setEditedParams(new Map());
+    setSaveStatus('idle');
+  };
+
+  return {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges};
 }

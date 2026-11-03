@@ -7,8 +7,10 @@ import {choiceModal} from "@/shared/ui/dialog/confirmModal";
  * Охрана несохранённых правок при переходе между разделами по шапке.
  *
  * App Router не умеет отменять переход сам, поэтому ссылки навигации спрашивают
- * `confirmLeave()` до `router.push`. Регистрируются только разделы, чей черновик живёт внутри
- * страницы и пропадает вместе с ней («Данные проекта», «Автоматизация»). Документ редактора
+ * `confirmLeave()` до `router.push`. Регистрируются разделы, чей черновик живёт внутри
+ * страницы и пропадает вместе с ней («Данные проекта», «Автоматизация»), и «База каналов»: её
+ * черновик параметров переживает уход, но правку без блокировки узла уже не сохранить — поэтому
+ * там «Не сохранять» его выбрасывает (`discard`). Документ редактора
  * схем лежит в общем сторе и переход переживает — ему охрана не нужна, иначе был бы ложный
  * вопрос на каждом переходе.
  *
@@ -21,6 +23,8 @@ export interface UnsavedGuard {
   isDirty: () => boolean;
   /** Сохранить; `false` — не получилось (ошибка проверки, конфликт), уходить нельзя. */
   save: () => Promise<boolean>;
+  /** «Не сохранять»: выбросить черновик, который сам с уходом не пропадёт. */
+  discard?: () => void;
 }
 
 const guards = new Map<string, UnsavedGuard>();
@@ -41,7 +45,10 @@ export async function confirmLeave(): Promise<boolean> {
     ],
     cancelLabel: "Остаться",
   });
-  if (choice === "discard") return true;
+  if (choice === "discard") {
+    dirty.forEach(g => g.discard?.());
+    return true;
+  }
   if (choice !== "save") return false;
   for (const guard of dirty) {
     if (!(await guard.save())) return false;
@@ -61,6 +68,7 @@ export function useUnsavedGuard(owner: string, guard: UnsavedGuard) {
       label: () => ref.current.label(),
       isDirty: () => ref.current.isDirty(),
       save: () => ref.current.save(),
+      discard: () => ref.current.discard?.(),
     });
     return () => { guards.delete(owner); };
   }, [owner]);

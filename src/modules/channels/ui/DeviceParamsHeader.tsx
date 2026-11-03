@@ -1,17 +1,18 @@
 'use client';
 
 import React from 'react';
-import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus} from 'lucide-react';
+import {Save, AlertCircle, CheckCircle2, Settings, Edit3, Plus, Undo2} from 'lucide-react';
 import {clsx} from 'clsx';
-import {loadParamTypes, openChooseParamTypeModal, useDeviceLocksStore} from "@/core/devices";
+import {loadParamTypes, openChooseParamTypeModal} from "@/core/devices";
+import {Button} from "@/shared/ui/Button";
 import type {ParamSaveStatus} from "../model/useParamDraft";
 
 /**
  * Шапка панели параметров: имя устройства и число параметров, «Начать/Закончить
- * редактирование», «Добавить параметр», «Сохранить изменения» и итог сохранения.
+ * редактирование», «Добавить параметр», «Сохранить изменения», «Отменить изменения» и итог
+ * сохранения. Выход из правки с несохранённым спрашивает владелец (`onToggleEditing`).
  */
-export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isEditingSelected, hasChanges, isSaving, saveStatus, handleSave}: {
-  selectedDevice: string;
+export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, hasChanges, isSaving, saveStatus, handleSave, onToggleEditing, onDiscard}: {
   deviceTitle: string | undefined;
   paramCount: number;
   isEditingSelected: boolean;
@@ -19,9 +20,9 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
   isSaving: boolean;
   saveStatus: ParamSaveStatus;
   handleSave: () => void;
+  onToggleEditing: () => void;
+  onDiscard: () => void;
 }) {
-  const { toggleEditing } = useDeviceLocksStore();
-
   const handleLoadParamsTypes = async () => {
     await loadParamTypes();
     openChooseParamTypeModal();
@@ -62,7 +63,7 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           )}
 
-          onClick={() => toggleEditing(selectedDevice)}
+          onClick={onToggleEditing}
 
         >
 
@@ -153,6 +154,12 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
           {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
 
         </button>
+
+        {hasChanges && (
+          <Button onClick={onDiscard} disabled={isSaving} title="Вернуть в полях значения с сервера">
+            <Undo2 size={16} />Отменить изменения
+          </Button>
+        )}
 
 
 
