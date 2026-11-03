@@ -37,8 +37,8 @@ export function GrantsTable({userId}: {userId: number}) {
 
   const rows = useMemo(() => [...projectList].sort((a, b) => a.name.localeCompare(b.name, "ru")), [projectList]);
 
-  if (error) return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
-  if (!saved) return <p className="text-sm text-neutral-500">Загрузка прав…</p>;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (!saved) return <p className="text-sm text-muted-foreground">Загрузка прав…</p>;
 
   const current = (projectId: number): ProjectGrant => drafts[projectId] ?? saved[projectId] ?? NO_GRANT;
   const setDraft = (projectId: number, patch: Partial<ProjectGrant>) => {
@@ -78,14 +78,14 @@ export function GrantsTable({userId}: {userId: number}) {
 
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Права в проектах</div>
-      <p className="text-xs text-neutral-500">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Права в проектах</div>
+      <p className="text-xs text-muted-foreground">
         Просмотр — открыть схемы в редакторе без сохранения; управление — действия в мониторе в пределах уровня;
         правка — всё в редакторе. Снятые галочки удаляют права в проекте.
       </p>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs uppercase tracking-wide text-gray-500">
+          <thead className="bg-muted dark:bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2">Проект</th>
               <th className="px-3 py-2 text-center">Просмотр</th>
@@ -95,7 +95,7 @@ export function GrantsTable({userId}: {userId: number}) {
               <th className="px-3 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-border">
             {rows.map(p => {
               const g = current(p.id);
               const dirty = drafts[p.id] !== undefined;
