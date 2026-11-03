@@ -15,6 +15,7 @@ import {
 } from '../types/contextMenu.type';
 import {useDeviceLocksStore} from "../model/deviceLocksStore";
 import {useDeviceSelection} from "../model/deviceSelectionStore";
+import {useParamDrafts} from "../model/paramDraftsStore";
 
 interface TitleRendererProps {
   node: { key: string; title: string; isLeaf?: boolean };
@@ -56,6 +57,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
 }) => {
   const selectedDevice = useDeviceSelection((s) => s.selectedDevice);
   const editingDevices = useDeviceLocksStore((s) => s.editingDevices);
+  const hasDraft = useParamDrafts((s) => s.keys.has(node.key));
 
   const isSelected = selectedDevice === node.key;
   const isEditing = editingDevices.includes(node.key);
@@ -90,6 +92,13 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       <NodeIcon depth={depth} isLeaf={node.isLeaf} />
 
       <span className="flex-1 truncate">{node.title}</span>
+
+      {/* Черновик параметров, не отправленный на сервер, — как точка у вкладок с несохранённым. */}
+      {hasDraft && (
+        <span className="text-warning" title="Есть несохранённые изменения параметров">
+          •<span className="sr-only"> (есть несохранённые изменения параметров)</span>
+        </span>
+      )}
 
       {/* Опционально: бейджик глубины. Очень помогает ориентироваться при бесконечной вложенности */}
       <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
