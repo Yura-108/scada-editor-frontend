@@ -107,7 +107,7 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
         <Button variant="danger" size="sm" onClick={() => void handleDelete()}><Trash2 size={14} />Удалить</Button>
       </div>
       {user.admin
-        ? <p className="text-sm text-neutral-500">Администратору доступно всё во всех проектах (уровень 10); права по проектам не нужны.</p>
+        ? <p className="text-sm text-muted-foreground">Администратору доступно всё во всех проектах (уровень 10); права по проектам не нужны.</p>
         : <GrantsTable userId={user.id} />}
     </div>
   );

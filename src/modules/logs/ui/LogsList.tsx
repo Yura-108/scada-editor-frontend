@@ -96,12 +96,12 @@ export default function LogsList() {
                   {COMMAND_LABEL[log.commandType] ?? log.commandType}
                 </Badge>
               </td>
-              <td className={`${journalTd} font-mono text-xs text-neutral-500`}>#{log.id}</td>
+              <td className={`${journalTd} font-mono text-xs text-muted-foreground`}>#{log.id}</td>
               <td className={journalTd}>
                 <LogDetailsModal
                   log={log}
                   trigger={
-                    <button type="button" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4">
+                    <button type="button" className="text-xs text-primary hover:underline underline-offset-4">
                       подробнее
                     </button>
                   }
@@ -114,7 +114,7 @@ export default function LogsList() {
                   <button
                     type="button"
                     onClick={() => void handleCancel(log)}
-                    className="rounded-lg px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
                     title={log.batchId ? 'Отменить всю операцию (все её записи)' : 'Отменить это изменение'}
                   >
                     Отменить

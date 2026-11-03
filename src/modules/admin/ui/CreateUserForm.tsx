@@ -45,8 +45,8 @@ export function CreateUserForm({onCreated}: {onCreated: (user: AdminUser) => voi
   };
 
   return (
-    <form onSubmit={e => void submit(e)} className="p-3 space-y-2 border-b border-neutral-200 dark:border-neutral-800">
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Новый пользователь</div>
+    <form onSubmit={e => void submit(e)} className="p-3 space-y-2 border-b border-border">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Новый пользователь</div>
       <Input size="sm" placeholder="Логин" autoComplete="off" value={login} onChange={e => setLogin(e.target.value)} />
       <Input size="sm" placeholder="Пароль" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
       <div className="flex items-center justify-between gap-2">

@@ -62,7 +62,7 @@ export function UsersTab() {
             onDeleted={() => { setUsers(list => list?.filter(u => u.id !== selected.id) ?? list); setSelectedId(null); }}
           />
         ) : (
-          <div className="h-full flex items-center justify-center text-sm text-neutral-500">Выберите пользователя</div>
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Выберите пользователя</div>
         )}
       </section>
     </div>

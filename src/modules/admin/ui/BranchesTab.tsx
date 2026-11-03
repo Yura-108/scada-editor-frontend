@@ -57,7 +57,7 @@ export function BranchesTab() {
 
   return (
     <div className="p-6 space-y-4 max-w-3xl">
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-muted-foreground">
         Ветки определяют, какие узлы базы каналов видят и правят пользователи проекта: «правка» в проекте —
         правка узлов под ветками, «просмотр» — чтение. Без веток каталог для них пуст. Удалять корень ветки
         и узлы выше может только администратор.
