@@ -195,7 +195,7 @@ ESLint отмечает предупреждением.
 | Ввести одну строку (имя) | `await promptModal({title, label})` |
 | Больше двух исходов (заменить / добавить / отмена) | `await choiceModal({title, options})` |
 | Окно, которое принадлежит компоненту и открыто его состоянием (выбор свойства объекта для привязки) | `<Modal open onClose title footer size>` |
-| Выбрать тег (канал) или несколько | `await pickTag({title, confirmLabel})` / `await pickTags({title, note})` из `@/core/devices` — открываются поверх вызвавшего окна; дерево внутри формы — `TagTree` |
+| Выбрать тег (канал) или несколько | `await pickTag({title, confirmLabel})` / `await pickTags({title, note})` из `@/core/devices` — открываются поверх вызвавшего окна; дерево внутри формы — `TagTree` (`multiple` — с отметками снаружи: `value` + `onChange`) |
 
 - `openModal` открывает окно **вместо** верхнего; `pushModal` — **поверх**.
   `closeModal` закрывает верхнее; содержимое окна закрывает себя через `useCloseModal()` — оно
