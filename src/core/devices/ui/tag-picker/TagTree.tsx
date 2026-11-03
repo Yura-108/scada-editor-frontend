@@ -25,8 +25,11 @@ function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
 
 type TagTreeProps = {className?: string} & (
   | {multiple?: false; value: string | null; onChange: (tag: string | null) => void}
-  /** Несколько тегов: отметка устройства отмечает всё поддерево, наружу уходят только каналы. */
-  | {multiple: true; onChange: (tags: string[]) => void}
+  /**
+   * Несколько тегов: отметка устройства отмечает всё поддерево, наружу уходят только каналы.
+   * Отметки — снаружи (`value`), чтобы окно могло снять тег из своего списка выбранных.
+   */
+  | {multiple: true; value: string[]; onChange: (tags: string[]) => void}
 );
 
 /**
@@ -37,8 +40,6 @@ type TagTreeProps = {className?: string} & (
 export function TagTree(props: TagTreeProps) {
   const nodes = useDeviceTreeStore((s) => s.nodes);
   const [query, setQuery] = useState("");
-  // Отмеченные ключи в режиме «несколько» — вместе с папками, чтобы дерево показывало их галочки.
-  const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
 
   // Дерево тысячное: фильтруем плоский список ДО сборки дерева — промежуточные узлы
   // достроятся из путей выживших листьев.
@@ -75,11 +76,11 @@ export function TagTree(props: TagTreeProps) {
     );
   }
 
+  // Отмечены только каналы; галочки папок `rc-tree` выводит из них сам (`checkStrictly` выключен).
   const check = (keys: Key[]) => {
     if (!props.multiple) return;
-    const next = [...checkedKeys.filter((k) => !visibleKeys.has(k)), ...(keys as string[])];
-    setCheckedKeys(next);
-    props.onChange(next.filter((key) => leafKeys.has(key)));
+    const hidden = props.value.filter((k) => !visibleKeys.has(k));
+    props.onChange([...hidden, ...(keys as string[]).filter((key) => leafKeys.has(key))]);
   };
 
   return (
@@ -102,7 +103,7 @@ export function TagTree(props: TagTreeProps) {
             showLine={false}
             showIcon={false}
             switcherIcon={SwitcherIcon}
-            checkedKeys={checkedKeys}
+            checkedKeys={props.value}
             onCheck={(keys) => check(Array.isArray(keys) ? keys : keys.checked)}
             className="custom-tree"
           />
