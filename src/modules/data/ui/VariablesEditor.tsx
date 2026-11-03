@@ -78,7 +78,7 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
             <Plus size={14} />Переменная
           </Button>
         </div>
-        <div className="grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2 text-xs uppercase tracking-wider text-neutral-500">
+        <div className="grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2 text-xs uppercase tracking-wider text-muted-foreground">
           <span>Имя</span><span>Тип</span><span>По умолчанию</span><span>Описание</span><span>Пишут задачи</span><span />
         </div>
         {variables.map((v, i) => {
@@ -117,7 +117,7 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
           );
         })}
         {errors.filter(e => e.field.startsWith("variables")).map((e, i) => (
-          <p key={i} className="text-xs text-red-600">{e.message}</p>
+          <p key={i} className="text-xs text-destructive">{e.message}</p>
         ))}
       </section>
     </div>

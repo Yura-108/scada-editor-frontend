@@ -68,9 +68,9 @@ export function TemplatePalette({onInsert}: Props) {
   };
 
   return (
-    <aside className="w-72 shrink-0 border-l border-neutral-200 dark:border-neutral-800 flex flex-col min-h-0">
-      <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
-        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2">
+    <aside className="w-72 shrink-0 border-l border-border flex flex-col min-h-0">
+      <div className="p-3 border-b border-border shrink-0">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
           Шаблоны задач
         </div>
         <div className="relative">
@@ -116,16 +116,16 @@ export function TemplatePalette({onInsert}: Props) {
             <button
               onClick={() => !isSearching && setCollapsed(c => ({...c, [group.category]: !c[group.category]}))}
               disabled={isSearching}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800/50 disabled:hover:bg-transparent"
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent disabled:hover:bg-transparent"
             >
               <ChevronDown
                 size={14}
-                className={cn("text-neutral-500 shrink-0 transition-transform", !isExpanded(group.category) && "-rotate-90")}
+                className={cn("text-muted-foreground shrink-0 transition-transform", !isExpanded(group.category) && "-rotate-90")}
               />
-              <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400 truncate">
+              <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground truncate">
                 {group.category}
               </span>
-              <span className="text-xs text-neutral-500 shrink-0">{group.items.length}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{group.items.length}</span>
             </button>
 
             {isExpanded(group.category) && (
@@ -133,7 +133,7 @@ export function TemplatePalette({onInsert}: Props) {
                 {group.items.map(template => (
                   <div
                     key={template.id}
-                    className="group/tpl flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    className="group/tpl flex items-center gap-1 rounded-lg hover:bg-accent"
                   >
                     <button
                       onClick={() => onInsert?.(template)}
@@ -143,7 +143,7 @@ export function TemplatePalette({onInsert}: Props) {
                     >
                       <div className="truncate text-sm">{template.name}</div>
                       {template.description && (
-                        <div className="truncate text-xs text-neutral-500">{template.description}</div>
+                        <div className="truncate text-xs text-muted-foreground">{template.description}</div>
                       )}
                     </button>
                     <IconButton

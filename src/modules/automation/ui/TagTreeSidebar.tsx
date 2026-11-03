@@ -92,7 +92,7 @@ export function TagTreeSidebar() {
         onClick={() => toggle(true)}
         title="Показать дерево тегов"
         aria-label="Показать дерево тегов"
-        className="shrink-0 w-9 flex flex-col items-center gap-3 py-3 border-l border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        className="shrink-0 w-9 flex flex-col items-center gap-3 py-3 border-l border-border text-muted-foreground hover:bg-accent"
       >
         <PanelRightOpen size={16} />
         <span className="text-xs [writing-mode:vertical-rl] rotate-180">Дерево тегов</span>
@@ -101,7 +101,7 @@ export function TagTreeSidebar() {
   }
 
   return (
-    <aside style={{width}} className="relative shrink-0 h-full flex flex-col gap-2 p-3 pl-4 border-l border-neutral-200 dark:border-neutral-800">
+    <aside style={{width}} className="relative shrink-0 h-full flex flex-col gap-2 p-3 pl-4 border-l border-border">
       <div
         role="separator"
         aria-orientation="vertical"
@@ -118,7 +118,7 @@ export function TagTreeSidebar() {
         title="Потяните, чтобы изменить ширину"
         className="absolute top-0 bottom-0 left-0 -ml-1.5 w-3 cursor-col-resize z-10 group/handle touch-none"
       >
-        <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-blue-500/60 group-focus/handle:bg-blue-500 transition-colors" />
+        <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-primary/60 group-focus/handle:bg-primary transition-colors" />
       </div>
       <div className="flex items-center justify-between">
         <span className={cn(label, "mb-0")}>Дерево тегов</span>

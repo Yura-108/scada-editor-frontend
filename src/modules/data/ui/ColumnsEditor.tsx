@@ -131,7 +131,7 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
         <Button className={compactButton} onClick={add}><Plus size={14} />Колонка</Button>
       </div>
       {columns.length > 0 && (
-        <div className={cn(GRID, "rounded-lg bg-neutral-200/70 dark:bg-neutral-800 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200")}>
+        <div className={cn(GRID, "rounded-lg bg-muted py-1.5 text-xs font-semibold text-foreground")}>
           {HEADERS.map(h => <span key={h.title} className="px-2 cursor-help" title={h.hint}>{h.title}</span>)}
           <span />
         </div>
@@ -165,7 +165,7 @@ export function ColumnsEditor({columns, rows, errors, onChange}: Props) {
       ))}
       {columns.length === 0 && <p className="text-xs text-muted-foreground">Колонок нет — у строк будет только ключ.</p>}
       {errors.filter(e => e.field.startsWith("columns")).map((e, i) => (
-        <p key={i} className="text-xs text-red-600">{e.field}: {e.message}</p>
+        <p key={i} className="text-xs text-destructive">{e.field}: {e.message}</p>
       ))}
     </section>
   );

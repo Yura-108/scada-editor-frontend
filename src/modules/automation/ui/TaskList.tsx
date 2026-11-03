@@ -23,7 +23,7 @@ export function TaskList({doc, canWrite, taskErrors, onDelete, onAdd}: {
   const statusOf = (task: AutomationTask) => (task.id != null ? statuses.find(s => s.taskId === task.id) : undefined);
 
   return (
-    <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 pb-28 space-y-1">
+    <div className="w-64 shrink-0 border-r border-border overflow-y-auto p-2 pb-28 space-y-1">
       {draft!.tasks.map((t, i) => {
         const status = statusOf(t);
         const state = taskDraftState(t, saved!);

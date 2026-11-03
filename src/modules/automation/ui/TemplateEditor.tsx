@@ -174,7 +174,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
               {draft.writes_variables.map(name => (
                 <span
                   key={name}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm bg-neutral-100 dark:bg-neutral-800"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm bg-muted"
                 >
                   {name}
                   <button
@@ -206,7 +206,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
 
           <div>
             <span className={fieldLabelClass}>Скрипт (JavaScript)</span>
-            <div className="border border-neutral-300 dark:border-neutral-700 rounded-xl overflow-hidden">
+            <div className="border border-input rounded-xl overflow-hidden">
               <CodeMirror
                 value={draft.script}
                 height="320px"

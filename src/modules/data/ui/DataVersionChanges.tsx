@@ -34,26 +34,26 @@ const tableSummary = (t: ProjectDataTable) =>
 export function DataDiffView({diff, wording = "history"}: {diff: DataVersionDiff; wording?: Wording}) {
   const labels = LABELS[wording];
   if (isEmptyDataDiff(diff)) {
-    return <p className="text-xs text-neutral-500">{wording === "restore" ? "Таблицы не изменятся." : "Содержимое не отличается от предыдущей версии."}</p>;
+    return <p className="text-xs text-muted-foreground">{wording === "restore" ? "Таблицы не изменятся." : "Содержимое не отличается от предыдущей версии."}</p>;
   }
   return (
     <ul className="space-y-2 text-sm">
       {diff.added.map(t => (
         <li key={`a-${t.name}`}>
           <div className="flex gap-2">
-            <span className="w-24 shrink-0 text-xs text-emerald-600 dark:text-emerald-400">{labels.added}</span>
+            <span className="w-24 shrink-0 text-xs text-success">{labels.added}</span>
             <span className="font-medium">{tableName(t)}</span>
           </div>
-          <p className="ml-26 text-xs text-neutral-500">{tableSummary(t)}</p>
+          <p className="ml-26 text-xs text-muted-foreground">{tableSummary(t)}</p>
         </li>
       ))}
       {diff.changed.map(t => (
         <li key={`c-${t.name}`}>
           <div className="flex gap-2">
-            <span className="w-24 shrink-0 text-xs text-amber-600 dark:text-amber-400">{labels.changed}</span>
+            <span className="w-24 shrink-0 text-xs text-warning">{labels.changed}</span>
             <span className="font-medium">{tableName(t)}</span>
           </div>
-          <ul className="ml-26 list-disc pl-4 text-xs text-neutral-600 dark:text-neutral-400">
+          <ul className="ml-26 list-disc pl-4 text-xs text-muted-foreground">
             {t.lines.map((line, i) => <li key={i}>{line}</li>)}
           </ul>
         </li>
@@ -61,10 +61,10 @@ export function DataDiffView({diff, wording = "history"}: {diff: DataVersionDiff
       {diff.removed.map(t => (
         <li key={`r-${t.name}`}>
           <div className="flex gap-2">
-            <span className="w-24 shrink-0 text-xs text-red-600 dark:text-red-400">{labels.removed}</span>
+            <span className="w-24 shrink-0 text-xs text-destructive">{labels.removed}</span>
             <span className="font-medium">{tableName(t)}</span>
           </div>
-          <p className="ml-26 text-xs text-neutral-500">{tableSummary(t)}</p>
+          <p className="ml-26 text-xs text-muted-foreground">{tableSummary(t)}</p>
         </li>
       ))}
     </ul>
@@ -73,29 +73,29 @@ export function DataDiffView({diff, wording = "history"}: {diff: DataVersionDiff
 
 /** Таблицы версии целиком: колонки с типами и первые строки. */
 export function DataVersionContent({tables}: {tables: ProjectDataTable[]}) {
-  if (!tables.length) return <p className="text-xs text-neutral-500">Таблиц в версии нет.</p>;
+  if (!tables.length) return <p className="text-xs text-muted-foreground">Таблиц в версии нет.</p>;
   return (
     <div className="space-y-4">
       {tables.map(t => (
         <div key={t.name} className="space-y-1">
           <div className="text-sm font-medium">{tableName(t)}</div>
-          {t.description && <p className="text-xs text-neutral-500">{t.description}</p>}
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="min-w-full text-xs">
-              <thead className="bg-neutral-100 dark:bg-neutral-800/60">
+              <thead className="bg-muted dark:bg-muted/60">
                 <tr>
                   <th className="px-2 py-1 text-left font-medium">key</th>
                   {t.columns.map(c => (
                     <th key={c.name} className="px-2 py-1 text-left font-medium whitespace-nowrap" title={c.title ?? undefined}>
                       {c.name}
-                      <span className="ml-1 font-normal text-neutral-500">{c.value_type}{c.required ? ", обяз." : ""}</span>
+                      <span className="ml-1 font-normal text-muted-foreground">{c.value_type}{c.required ? ", обяз." : ""}</span>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {t.rows.slice(0, PREVIEW_ROWS).map(row => (
-                  <tr key={row.key} className="border-t border-neutral-200 dark:border-neutral-800">
+                  <tr key={row.key} className="border-t border-border">
                     <td className="px-2 py-1 font-mono">{row.key}</td>
                     {t.columns.map(c => (
                       <td key={c.name} className="px-2 py-1 max-w-48 truncate">
@@ -107,7 +107,7 @@ export function DataVersionContent({tables}: {tables: ProjectDataTable[]}) {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             {t.rows.length === 0 ? "Строк нет" : t.rows.length > PREVIEW_ROWS ? `Показаны ${PREVIEW_ROWS} строк из ${t.rows.length}` : `Строк: ${t.rows.length}`}
           </p>
         </div>
@@ -146,7 +146,7 @@ export function DataVersionChanges({projectId, versionNo, previousNo}: Props) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
           {previousNo != null ? `Изменения относительно v${previousNo}` : "Первая версия"}
         </p>
         <DataDiffView diff={state.diff} />
@@ -155,7 +155,7 @@ export function DataVersionChanges({projectId, versionNo, previousNo}: Props) {
         <button
           type="button"
           onClick={() => setShowContent(v => !v)}
-          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
           {showContent ? "Скрыть содержимое версии" : `Показать таблицы v${versionNo} целиком`}
         </button>

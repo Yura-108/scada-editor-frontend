@@ -18,9 +18,9 @@ export async function confirmRestoreAutomationVersion(
     const target = await loadAutomationVersion(projectId, versionNo);
     preview = target
       ? <AutomationDiffView diff={diffVersions(saved, target)} wording="restore" />
-      : <p className="text-xs text-neutral-500">Содержимое версии не удалось разобрать.</p>;
+      : <p className="text-xs text-muted-foreground">Содержимое версии не удалось разобрать.</p>;
   } catch (err) {
-    preview = <p className="text-xs text-red-600">{(err as Error).message}</p>;
+    preview = <p className="text-xs text-destructive">{(err as Error).message}</p>;
   }
   return confirmModal({
     title: `Восстановить версию ${versionNo}?`,
@@ -30,7 +30,7 @@ export async function confirmRestoreAutomationVersion(
         восстановление запишется новой версией. Чтобы вернуть одну задачу, раскройте версию и нажмите «Вернуть» у неё.
       </p>
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">Что изменится по сравнению с текущей v{saved.version}</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">Что изменится по сравнению с текущей v{saved.version}</p>
         <div className="max-h-[40vh] overflow-y-auto">{preview}</div>
       </div>
     </div>,

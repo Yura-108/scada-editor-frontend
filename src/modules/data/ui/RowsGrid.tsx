@@ -150,21 +150,21 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold">Строки <span className="text-neutral-500 font-normal">({rows.length})</span></h3>
+          <h3 className="text-base font-semibold">Строки <span className="text-muted-foreground font-normal">({rows.length})</span></h3>
           <p className={fieldHint}>Сами данные. key — уникальный ключ строки, по нему скрипт берёт строку: data(&apos;таблица&apos;, &apos;key&apos;).</p>
         </div>
         <Button className={compactButton} onClick={addRow}><Plus size={14} />Строка</Button>
       </div>
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <table className="text-sm border-separate border-spacing-1">
             <thead>
-              <tr className="text-xs text-left text-neutral-700 dark:text-neutral-200">
-                <th className="font-semibold px-2 py-1 min-w-32 rounded-md bg-neutral-200/70 dark:bg-neutral-800">key</th>
+              <tr className="text-xs text-left text-foreground">
+                <th className="font-semibold px-2 py-1 min-w-32 rounded-md bg-muted">key</th>
                 {columns.map(c => (
-                  <th key={c.name} className="font-semibold px-2 py-1 rounded-md bg-neutral-200/70 dark:bg-neutral-800 whitespace-nowrap" title={`${c.name} · ${c.value_type}${c.required ? " · обязательна" : ""}`}>
-                    {c.title ?? c.name}{c.required && <span className="text-red-500">*</span>}
-                    <span className="ml-1 text-[10px] font-normal text-neutral-500">{c.value_type}</span>
+                  <th key={c.name} className="font-semibold px-2 py-1 rounded-md bg-muted whitespace-nowrap" title={`${c.name} · ${c.value_type}${c.required ? " · обязательна" : ""}`}>
+                    {c.title ?? c.name}{c.required && <span className="text-destructive">*</span>}
+                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">{c.value_type}</span>
                   </th>
                 ))}
                 <th />
@@ -206,12 +206,12 @@ export function RowsGrid({columns, rows, errors, onChange, onInvalidCountChange}
           </table>
         </div>
       )}
-      {rows.length === 0 && <p className="text-xs text-neutral-500">Строк нет.</p>}
+      {rows.length === 0 && <p className="text-xs text-muted-foreground">Строк нет.</p>}
       {Object.keys(invalid).length > 0 && (
-        <p className="text-xs text-red-600">Есть ячейки с неверным значением ({Object.keys(invalid).length}) — сохранить нельзя, пока они не исправлены.</p>
+        <p className="text-xs text-destructive">Есть ячейки с неверным значением ({Object.keys(invalid).length}) — сохранить нельзя, пока они не исправлены.</p>
       )}
       {errors.filter(e => e.field.startsWith("rows")).map((e, i) => (
-        <p key={i} className="text-xs text-red-600">{e.field}: {e.message}</p>
+        <p key={i} className="text-xs text-destructive">{e.field}: {e.message}</p>
       ))}
     </section>
   );
