@@ -151,7 +151,7 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
     if (!rect) return;
 
     if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-      toast.error("Нельзя добавить элемент: сцена не принадлежит выбранному проекту");
+      toast.error("Нельзя добавить элемент: схема не принадлежит выбранному проекту");
       return;
     }
 

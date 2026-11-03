@@ -26,7 +26,7 @@ export async function requestSceneList(projectId: number, source: SceneSource): 
     return {kind: "notInOperation", message: body?.message || "Проект не в эксплуатации — выпуск не исполняется"};
   }
   if (!res.ok) {
-    throw new Error(await res.text().catch(() => "Ошибка загрузки списка сцен"));
+    throw new Error(await res.text().catch(() => "Ошибка загрузки списка схем"));
   }
 
   const json = await res.json();

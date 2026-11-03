@@ -72,7 +72,7 @@ export const createClipboardSlice = (set: EditorSet, get: () => EditorState): Cl
     const {scene, currentProject} = get();
 
     if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-      toast.error("Нельзя добавить шаблон: сцена не принадлежит выбранному проекту");
+      toast.error("Нельзя добавить шаблон: схема не принадлежит выбранному проекту");
       return;
     }
 
@@ -93,7 +93,7 @@ export const createClipboardSlice = (set: EditorSet, get: () => EditorState): Cl
     const {scene, currentProject} = get();
 
     if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-      toast.error("Нельзя импортировать: сцена не принадлежит выбранному проекту");
+      toast.error("Нельзя импортировать: схема не принадлежит выбранному проекту");
       return;
     }
 
@@ -141,7 +141,7 @@ export const createClipboardSlice = (set: EditorSet, get: () => EditorState): Cl
     const {scene, currentProject} = get();
 
     if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-      toast.error("Нельзя импортировать: сцена не принадлежит выбранному проекту");
+      toast.error("Нельзя импортировать: схема не принадлежит выбранному проекту");
       return null;
     }
 
@@ -179,7 +179,7 @@ export const createClipboardSlice = (set: EditorSet, get: () => EditorState): Cl
     // сцены корни получали parentKey "" и становились сиротами — они нигде не
     // рендерятся и молча отбрасываются buildComponentTree при сохранении.
     if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-      toast.error("Нельзя вставить: сцена не принадлежит выбранному проекту");
+      toast.error("Нельзя вставить: схема не принадлежит выбранному проекту");
       return;
     }
 

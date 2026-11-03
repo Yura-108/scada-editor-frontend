@@ -172,7 +172,7 @@ export const applyLoadedScene = (scene: Record<string, unknown>, version: number
   const {currentProject} = editorStore().getState();
   // Иерархия: сцена обязана принадлежать выбранному проекту.
   if (!sceneBelongsToCurrentProject(scene as unknown as SceneType, currentProject)) {
-    toast.error("Сцена не принадлежит выбранному проекту");
+    toast.error("Схема не принадлежит выбранному проекту");
     editorStore().setState({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
     return false;
   }
@@ -306,7 +306,7 @@ export const reportMergedChanges = (merged: MergeReport) => {
   const shown = changes.slice(0, 3).map(c => c.path).filter(Boolean);
   const rest = changes.length - shown.length;
 
-  toast.info("Сохранено. В вашу сцену добавлены чужие изменения", {
+  toast.info("Сохранено. В вашу схему добавлены чужие изменения", {
     description:
       `${authors.length ? `Автор(ы): ${authors.join(", ")}. ` : ""}` +
       `${shown.join("; ")}${rest > 0 ? ` и ещё ${rest}` : ""}`,

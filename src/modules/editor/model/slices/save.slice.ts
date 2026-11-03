@@ -218,7 +218,7 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
         } else {
           // Сообщение бэкенда называет скрипт, компонент и строку — его надо успеть
           // прочитать, поэтому тост держится дольше обычного.
-          toast.error(getErrorMessage(err, "Ошибка экспорта сцены"), {duration: 30_000});
+          toast.error(getErrorMessage(err, "Ошибка сохранения схемы"), {duration: 30_000});
         }
         return false;
       } finally {

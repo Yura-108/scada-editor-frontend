@@ -10,7 +10,7 @@ export function checkBeforeSave(state: EditorState, silent: boolean | undefined)
   const {elements, scene, currentProject, versionPreview} = state;
 
   if (!sceneBelongsToCurrentProject(scene, currentProject)) {
-    if (!silent) toast.error("Сцена не принадлежит выбранному проекту");
+    if (!silent) toast.error("Схема не принадлежит выбранному проекту");
     return null;
   }
 
@@ -44,7 +44,7 @@ export function checkBeforeSave(state: EditorState, silent: boolean | undefined)
   // сцена целиком», и промах адресом стёр бы чужую сцену.
   const sceneId = Number(scene?.id);
   if (!Number.isSafeInteger(sceneId)) {
-    if (!silent) toast.error("Сцена не сохранена на сервере — сохранять состав нечему");
+    if (!silent) toast.error("Схема не сохранена на сервере — сохранять состав нечему");
     return null;
   }
 

@@ -80,7 +80,7 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
         {components.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            На сцене нет элементов со свойствами. Добавьте элементу свойство на вкладке
+            На схеме нет элементов со свойствами. Добавьте элементу свойство на вкладке
             «Свойства» (оно уходит на сервер сразу же), затем возвращайтесь сюда.
           </div>
         ) : (
