@@ -68,6 +68,8 @@ interface SceneTabsProps {
    * меняет её только редактор; монитор показывает те же вкладки только для чтения.
    */
   editable?: boolean;
+  /** Схема с несохранёнными правками — у её вкладки точка. Монитор не передаёт: там не правят. */
+  dirtySceneId?: number | null;
 }
 
 /**
@@ -91,6 +93,7 @@ export function SceneTabs({
   className,
   style,
   editable = true,
+  dirtySceneId = null,
 }: SceneTabsProps) {
   // Точечные селекторы: рядом с полосой на обоих экранах живёт тяжёлый Canvas.
   const scene = useEditorStore(s => s.scene);
@@ -215,7 +218,7 @@ export function SceneTabs({
         onKeyDown={(e) => handleTabListKey(e, tabKeys, activeKey, onActivate)}
         title={tab.sceneId !== null ? tab.label : undefined}
         className={cn(
-          "shrink-0 max-w-48 truncate px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
+          "shrink-0 max-w-48 inline-flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
           dragListeners && "cursor-grab active:cursor-grabbing",
           isActive
             ? "text-primary border-b-2 border-primary"
@@ -223,7 +226,14 @@ export function SceneTabs({
         )}
         {...dragListeners}
       >
-        {tab.label}
+        {/* Обрезается подпись, а не кнопка: иначе у длинного имени пропала бы и точка. */}
+        <span className="truncate">{tab.label}</span>
+        {/* Как у вкладок разделов (`shared/ui/Tabs`): точка цветом предупреждения. */}
+        {tab.sceneId !== null && tab.sceneId === dirtySceneId && (
+          <span className="ml-1 text-warning" title="Есть несохранённые изменения">
+            •<span className="sr-only"> (есть несохранённые изменения)</span>
+          </span>
+        )}
       </button>
     );
   };

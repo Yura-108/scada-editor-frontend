@@ -10,7 +10,9 @@ import {TooltipBtn} from "./TooltipBtn";
  * Пока сохранение идёт — спиннер и блокировка: раньше промис не
  * ожидался и не было никакого признака работы, поэтому нетерпеливые
  * клики выстраивали очередь из полных циклов «сохранение + перезагрузка».
- * Точка-индикатор показывает несохранённые изменения.
+ * Точка-индикатор показывает несохранённые изменения; без них кнопка неактивна — новую версию
+ * сохранение всё равно не создало бы. Всё, что сохраняется (лист и вид для монитора тоже), лежит
+ * в `elements`, поэтому `isDirty` других правок не пропускает.
  */
 export function SaveButton({canSave}: {canSave: boolean}) {
   const {isSaving, isDirty, exportScene} = useEditorStore(useShallow(s => ({
@@ -22,9 +24,9 @@ export function SaveButton({canSave}: {canSave: boolean}) {
       icon={isSaving
         ? <Spinner size={16} />
         : <Save size={16} strokeWidth={2.5} />}
-      label={isSaving ? "Сохранение…" : isDirty ? "Сохранить (есть изменения)" : "Сохранить"}
+      label={isSaving ? "Сохранение…" : isDirty ? "Сохранить (есть изменения)" : "Сохранить — изменений нет"}
       onClick={() => { void exportScene(); }}
-      disabled={!canSave || isSaving}
+      disabled={!canSave || isSaving || !isDirty}
       className="relative flex items-center justify-center w-9 h-9 rounded-xl
         bg-primary/10 border border-primary/30 text-primary
         hover:bg-primary/20 hover:border-primary/40

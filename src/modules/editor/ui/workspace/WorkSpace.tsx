@@ -11,6 +11,7 @@ import {usePersistedLayout} from "./hooks/usePersistedLayout";
 import {useWorkspaceTabs} from "./hooks/useWorkspaceTabs";
 import {LeftPanel} from "./LeftPanel";
 import {RightPanel} from "./RightPanel";
+import {useEditorStore} from "../../model/editorStore";
 
 // Вкладки-не-схемы для SceneTabs. На уровне модуля, а не литералом в JSX: новый объект
 // на каждый рендер сбрасывал бы мемоизацию ряда вкладок внутри компонента.
@@ -26,6 +27,8 @@ export function WorkSpace() {
   const rootRef = useRef<HTMLDivElement>(null);
   const {resizingSide, handleResizeStart, handleResizeKey} = usePanelResize(rootRef, layout);
   const {activeTabKey, activateTab} = useWorkspaceTabs(activeTab, setActiveTab);
+  // Точка у вкладки — как значок «Не сохранено» в шапке: при просмотре версии статуса нет.
+  const dirtySceneId = useEditorStore(s => (s.isDirty && !s.versionPreview ? s.scene?.id ?? null : null));
 
   // Палитра, свойства, инструменты и Canvas показываются только во вкладке «Редактор».
   const showEditorPanels = activeTab === "editor";
@@ -78,6 +81,7 @@ export function WorkSpace() {
             contentId="workspace-tab-content"
             ariaLabel="Разделы редактора"
             editable={canWrite}
+            dirtySceneId={dirtySceneId}
             className="transition-[margin] duration-300 ease-in-out"
             style={{ marginLeft: "var(--ws-left-m)", marginRight: "var(--ws-right-m)" }}
           />
