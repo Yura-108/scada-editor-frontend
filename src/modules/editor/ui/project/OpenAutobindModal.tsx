@@ -23,14 +23,14 @@ import type {AutobindMiss, AutobindReport} from "../../types/autobind.types";
 /** Строки несовпадений: имя компонента, свойство (у `not_found` его нет) и сцена. */
 function MissList({items}: {items: AutobindMiss[]}) {
   return (
-    <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-gray-600 dark:text-gray-400">
+    <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
       {items.map((miss, i) => (
         // Ключ с индексом: один компонент попадает в список по разу на каждое своё свойство.
         <li key={`${miss.component_id}-${miss.property ?? ""}-${i}`}>
           <span className="font-mono font-semibold">{miss.name}</span>
           {miss.property && <> · <span className="font-mono">{miss.property}</span></>}
           {" — "}
-          <span className="text-gray-500">{miss.scene}</span>
+          <span className="text-muted-foreground">{miss.scene}</span>
         </li>
       ))}
     </ul>
@@ -40,14 +40,14 @@ function MissList({items}: {items: AutobindMiss[]}) {
 function AutobindReportView({report}: {report: AutobindReport}) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-700 dark:text-gray-300">
+      <p className="text-sm text-foreground">
         Привязано свойств: <b>{report.bound}</b>, изменено: <b>{report.changed}</b>.
       </p>
 
       {report.scenes.length > 0 ? (
         <div className="space-y-1">
           <span className={fieldLabelClass}>Изменённые схемы</span>
-          <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
             {report.scenes.map((s) => (
               <li key={s.scene_id}>
                 {s.name} — версия {s.version_no}
@@ -56,7 +56,7 @@ function AutobindReportView({report}: {report: AutobindReport}) {
           </ul>
         </div>
       ) : (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Ничего не поменялось: теги уже соответствовали базе.
         </p>
       )}
@@ -64,9 +64,9 @@ function AutobindReportView({report}: {report: AutobindReport}) {
       {report.not_found.length > 0 && (
         <Collapsible
           title={`Объект не найден: ${report.not_found.length}`}
-          badge={<span className="text-xs text-gray-500">теги этих компонентов не тронуты</span>}
+          badge={<span className="text-xs text-muted-foreground">теги этих компонентов не тронуты</span>}
         >
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             В базе нет объекта с таким именем — либо старое имя («Имя в ПЛК») указывает сразу
             на несколько объектов, и выбрать однозначно нельзя.
           </p>
@@ -77,14 +77,14 @@ function AutobindReportView({report}: {report: AutobindReport}) {
       {report.missing_fields.length > 0 && (
         <Collapsible
           title={`Нет поля у объекта: ${report.missing_fields.length}`}
-          badge={<span className="text-xs text-amber-600 dark:text-amber-400">проверьте имя свойства</span>}
+          badge={<span className="text-xs text-warning">проверьте имя свойства</span>}
         >
           <MissList items={report.missing_fields} />
         </Collapsible>
       )}
 
       {report.in_operation && (
-        <p className="flex items-start gap-2 text-sm text-amber-600 dark:text-amber-400">
+        <p className="flex items-start gap-2 text-sm text-warning">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
           Проект в эксплуатации — новые теги подхватятся после повторного подъёма.
         </p>

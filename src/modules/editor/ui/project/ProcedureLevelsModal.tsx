@@ -93,7 +93,7 @@ function ProcedureLevelsContent({projectId, projectName, editable}: {projectId: 
             ))}
           </div>
         )}
-        {!editable && <p className="mt-4 text-xs text-gray-500">Только просмотр — менять уровни может пользователь с правом правки.</p>}
+        {!editable && <p className="mt-4 text-xs text-muted-foreground">Только просмотр — менять уровни может пользователь с правом правки.</p>}
       </DialogBody>
       <DialogFooter>
         <Button onClick={closeModal}>{editable ? "Отмена" : "Закрыть"}</Button>

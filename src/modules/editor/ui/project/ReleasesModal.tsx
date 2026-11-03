@@ -161,7 +161,7 @@ function ReleasesContent({projectId, projectName}: Props) {
           <button
             type="button"
             onClick={() => { setLoading(true); void load(rows[rows.length - 1].created_at); }}
-            className="self-center text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+            className="self-center text-sm text-primary hover:underline"
           >
             Показать ещё
           </button>

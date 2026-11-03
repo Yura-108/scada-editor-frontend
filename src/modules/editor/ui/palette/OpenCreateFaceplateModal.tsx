@@ -69,7 +69,7 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
 
       <DialogBody>
         {/* Режим выбора */}
-        <div className="space-y-4 mb-6 pb-6 border-b border-gray-300 dark:border-gray-700">
+        <div className="space-y-4 mb-6 pb-6 border-b border-input">
           <span className={fieldLabelClass}>Режим</span>
           <div className="flex gap-3">
             <button
@@ -82,8 +82,8 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
               className={cn(
                 "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
                 mode === 'create'
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                  : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                  : "bg-muted text-foreground hover:bg-muted-foreground/20"
               )}
             >
               Создать новый
@@ -99,10 +99,10 @@ export function CreateFaceplateContent({ onLoadAction, onUpdateAction, faceplate
               className={cn(
                 "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all",
                 mode === 'update' && customTemplates.length > 0
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                   : customTemplates.length === 0
-                    ? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-muted text-foreground hover:bg-muted-foreground/20"
               )}
             >
               Обновить существующий

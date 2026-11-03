@@ -36,9 +36,9 @@ export default function Palette() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-950/70 border-r border-neutral-200 dark:border-neutral-800">
+    <div className="h-full flex flex-col bg-background dark:bg-background/70 border-r border-border">
       {/* Поиск */}
-      <div className="p-4 pb-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
+      <div className="p-4 pb-3 border-b border-border shrink-0">
         <div className="relative">
           <SearchInput
             placeholder="Поиск элементов..."
@@ -75,18 +75,18 @@ export default function Palette() {
                   <button
                     onClick={() => !isSearchActive && toggleCategory(category)}
                     disabled={isSearchActive}
-                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800/50 disabled:hover:bg-transparent"
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md transition-all hover:bg-accent disabled:hover:bg-transparent"
                   >
                     <ChevronDown
                       size={16}
-                      className={`text-neutral-500 transition-transform shrink-0 ${
+                      className={`text-muted-foreground transition-transform shrink-0 ${
                         isExpanded ? "" : "-rotate-90"
                       }`}
                     />
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400 text-left flex-1 truncate">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-left flex-1 truncate">
                       {category}
                     </h3>
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium shrink-0">
+                    <span className="text-xs text-muted-foreground font-medium shrink-0">
                 {items.length}
               </span>
                   </button>
