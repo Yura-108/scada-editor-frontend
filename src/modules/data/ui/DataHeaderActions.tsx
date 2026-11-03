@@ -5,9 +5,13 @@ import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
 
+/** Подпись второстепенной кнопки: на узком окне — только иконка, текст в подсказке. */
+const secondaryLabel = "hidden lg:inline";
+
 /**
  * Кнопки справа в шапке «Данных»: номер версии документа вкладки, «Перечитать», «Удалить
  * таблицу», «Применить данные», «Сохранить». Без права правки остаются версия и «Перечитать».
+ * На узком окне у второстепенных кнопок остаётся иконка с подсказкой — «Сохранить» всегда с подписью.
  */
 export function DataHeaderActions({
   onVariablesTab, tablesTab, loaded, version, canWrite, canRemoveTable, tablesLoaded, tablesDirty,
@@ -40,8 +44,9 @@ export function DataHeaderActions({
         className="text-destructive"
         onClick={onRemoveTable}
         title="Удалить выбранную таблицу (применится при сохранении)"
+        aria-label="Удалить таблицу"
       >
-        <Trash2 size={14} />Удалить таблицу
+        <Trash2 size={14} /><span className={secondaryLabel}>Удалить таблицу</span>
       </Button>
     )}
     {canWrite ? <>
@@ -49,9 +54,10 @@ export function DataHeaderActions({
         size="sm"
         onClick={onApply}
         disabled={!tablesLoaded || tablesDirty}
-        title={tablesDirty ? "Сначала сохраните таблицы" : "Попросить automation перечитать сохранённые данные"}
+        title={tablesDirty ? "Сначала сохраните таблицы" : "Применить данные: попросить automation перечитать сохранённые данные"}
+        aria-label="Применить данные"
       >
-        <Upload size={14} />Применить данные
+        <Upload size={14} /><span className={secondaryLabel}>Применить данные</span>
       </Button>
       <Button
         variant="primary"

@@ -145,7 +145,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
   const stacked = layout === "stacked";
 
   return (
-    <div className={cn(stacked ? "flex flex-col gap-2 w-full max-w-xs" : "contents")}>
+    <div className={cn(stacked ? "flex flex-col gap-2 w-full max-w-xs" : "contents [&>*]:shrink-0")}>
       <span id={sitesLabelId} className="sr-only">Площадки</span>
       <MultiSelect
         labelId={sitesLabelId}

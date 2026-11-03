@@ -7,6 +7,7 @@ import {Select} from "@/shared/ui/field/Select";
 /**
  * Выбор проекта в шапке раздела (монитор, автоматизация, данные). Что делать с выбором —
  * спросить про несохранённое, перечитать данные — решает раздел (`onChange`).
+ * Уже 160px не сжимается: имя проекта должно читаться, на узком окне шапка прокручивается.
  */
 export function ProjectSelect({projects, value, onChange, labelOf, className}: {
   projects: {id: number; name: string}[];
@@ -19,7 +20,7 @@ export function ProjectSelect({projects, value, onChange, labelOf, className}: {
   return (
     <Select
       size="sm"
-      className={cn("min-w-0 max-w-48 shrink", className)}
+      className={cn("min-w-40 max-w-48", className)}
       value={value == null ? "" : String(value)}
       onValueChange={(v) => onChange(Number(v))}
       placeholder="Проект…"

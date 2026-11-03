@@ -18,8 +18,9 @@ export default function ChannelsToolbar() {
       actions={
         // Импорт создаёт НОВЫЙ проект: после отчёта он сам подгружается в дерево и появляется
         // в списке проектов слева.
-        <Button size="sm" onClick={openImportCdbxModal} title="Создать проект из файла базы каналов .cdbx">
-          <FileUp size={14} />Импорт .cdbx
+        // На узком окне — только иконка: подпись в подсказке и для скринридера.
+        <Button size="sm" onClick={openImportCdbxModal} title="Импорт .cdbx: создать проект из файла базы каналов" aria-label="Импорт .cdbx">
+          <FileUp size={14} /><span className="hidden lg:inline">Импорт .cdbx</span>
         </Button>
       }
     >
