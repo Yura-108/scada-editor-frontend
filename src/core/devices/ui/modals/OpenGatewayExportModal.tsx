@@ -94,7 +94,7 @@ function GatewayExportContent({root}: {root: string}) {
                 <button
                   type="button"
                   onClick={() => void handleCopy()}
-                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                   {copied ? "Скопировано" : "Копировать"}
@@ -102,14 +102,14 @@ function GatewayExportContent({root}: {root: string}) {
                 <button
                   type="button"
                   onClick={() => downloadText(`${safeFileName(root, "gateway")}.yaml`, yaml)}
-                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                 >
                   <Download size={14} />
                   Скачать
                 </button>
               </div>
             </div>
-            <pre className="max-h-72 overflow-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 p-3 text-xs text-gray-800 dark:text-gray-200">
+            <pre className="max-h-72 overflow-auto rounded-xl border border-border bg-muted p-3 text-xs text-foreground">
               {yaml}
             </pre>
           </div>

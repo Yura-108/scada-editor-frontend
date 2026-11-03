@@ -16,10 +16,10 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
   return (
     <div
       className={clsx(
-        'text-sm group relative flex flex-col h-full bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border-2 transition-all duration-200 p-4',
+        'text-sm group relative flex flex-col h-full bg-card rounded-2xl shadow-sm border-2 transition-all duration-200 p-4',
         hasChanged
-          ? 'border-purple-400 ring-4 ring-purple-100 dark:border-purple-500 dark:ring-purple-500/20'
-          : 'border-gray-300 hover:border-gray-400 dark:border-neutral-700 dark:hover:border-neutral-600',
+          ? 'border-param ring-4 ring-param/20'
+          : 'border-input hover:border-muted-foreground/50',
         resolveParamWidget(param.type) === 'textarea'
           ? 'col-span-2'
           : 'col-span-1'
@@ -28,7 +28,7 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
       {/* Метка изменения */}
       {hasChanged && (
         <div
-          className="absolute -top-3 -right-3 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+          className="absolute -top-3 -right-3 bg-param text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow-lg">
           Изменено
         </div>
       )}
@@ -45,7 +45,7 @@ const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onR
         />
       )}
 
-      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <label className="block text-sm font-semibold text-foreground mb-3">
         {param.name}
       </label>
 

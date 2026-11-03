@@ -39,12 +39,12 @@ export function OptionParamsList({optionItems}: {optionItems: DeviceParamsType[]
     )}
     {/* Общие параметры */}
     <div className='text-sm group relative flex flex-col justify-between transition-all duration-200 px-6 py-6 col-span-2'>
-      <label className="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <label className="block text-lg font-semibold text-foreground mb-3">
         Общие параметры
       </label>
       <div
         onContextMenu={(e) => handleContextMenu(e, null)}
-        className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-gray-400 dark:border-neutral-700 bg-white dark:bg-neutral-950 transition-all text-gray-600 dark:text-gray-400 "}
+        className={"w-full h-48 overflow-y-auto pb-8 px-4 py-3 rounded-xl border border-input bg-card transition-all text-muted-foreground "}
       >
         {optionItems.map(p => (
           // Строка достижима с клавиатуры: единственное действие над ней —
@@ -62,9 +62,9 @@ export function OptionParamsList({optionItems}: {optionItems: DeviceParamsType[]
               }
             }}
             className={clsx(
-              "text-gray-700 dark:text-gray-300 px-2 py-1 cursor-pointer transition-all duration-150 \n" +
-              "    border-l-0 hover:border-l-4 hover:border-blue-500",
-              contextMenu?.visible && contextMenu?.key === p.key ? "bg-blue-300 dark:bg-blue-500/40" : ""
+              "text-foreground px-2 py-1 cursor-pointer transition-all duration-150 \n" +
+              "    border-l-0 hover:border-l-4 hover:border-primary",
+              contextMenu?.visible && contextMenu?.key === p.key ? "bg-primary/30" : ""
             )}
           >
             {p.value}

@@ -19,7 +19,7 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
   const unmapped = report.unmapped ?? [];
 
   const list = (names: string[]) => (
-    <ul className="max-h-48 overflow-y-auto space-y-0.5 text-xs text-gray-600 dark:text-gray-400 font-mono">
+    <ul className="max-h-48 overflow-y-auto space-y-0.5 text-xs text-muted-foreground font-mono">
       {/* Имя в ключе не уникально: один и тот же канал бэкенд перечисляет столько раз,
           сколько групп в него слились. Это плоский список для чтения, порядок не меняется. */}
       {names.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}
@@ -40,7 +40,7 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
         {report.merged.length > 0 && (
           <Collapsible
             title={`Объединено каналов: ${report.merged.length}`}
-            badge={<span className="text-xs text-gray-500">одна переменная ПЛК была в двух группах</span>}
+            badge={<span className="text-xs text-muted-foreground">одна переменная ПЛК была в двух группах</span>}
           >
             {list(report.merged)}
           </Collapsible>
@@ -49,7 +49,7 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
         {report.guessedType.length > 0 && (
           <Collapsible
             title={`Тип данных угадан: ${report.guessedType.length}`}
-            badge={<span className="text-xs text-amber-600 dark:text-amber-400">проверьте параметр «Тип данных»</span>}
+            badge={<span className="text-xs text-warning">проверьте параметр «Тип данных»</span>}
           >
             {list(report.guessedType)}
           </Collapsible>
@@ -58,7 +58,7 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
         {report.skipped.length > 0 && (
           <Collapsible
             title={`Пропущено: ${report.skipped.length}`}
-            badge={<span className="text-xs text-gray-500">имена без поля</span>}
+            badge={<span className="text-xs text-muted-foreground">имена без поля</span>}
           >
             {list(report.skipped)}
           </Collapsible>
@@ -77,19 +77,19 @@ function ImportReportContent({report}: {report: CdbxImportReport}) {
         ) : unmapped.length > 0 && (
           <Collapsible
             title={`Не найдено в исходниках ПЛК: ${unmapped.length}`}
-            badge={<span className="text-xs text-gray-500">разложены по общему правилу</span>}
+            badge={<span className="text-xs text-muted-foreground">разложены по общему правилу</span>}
           >
             {list(unmapped)}
           </Collapsible>
         )}
 
         {report.merged.length === 0 && report.guessedType.length === 0 && report.skipped.length === 0 && unmapped.length === 0 && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Все каналы перенесены без замечаний.
           </p>
         )}
 
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Чтобы теги нового проекта пошли с контроллера, выгрузите блок для шлюза: правый клик
           по узлу проекта → «Выгрузить для шлюза».
         </p>
