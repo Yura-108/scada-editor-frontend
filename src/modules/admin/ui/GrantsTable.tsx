@@ -10,6 +10,7 @@ import {useOpenScene} from "@/core/project";
 import {NO_GRANT, type ProjectGrant} from "@/core/access";
 import {fetchUserGrants, putUserGrant, type UserGrants} from "../api/adminApi";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {cn} from "@/shared/lib/cn";
 
 const sameGrant = (a: ProjectGrant, b: ProjectGrant) =>
   a.view === b.view && a.operate === b.operate && a.edit === b.edit
@@ -123,11 +124,13 @@ export function GrantsTable({userId}: {userId: number}) {
                     <Checkbox aria-label={`Правка в «${p.name}»`} checked={g.edit} onChange={e => setDraft(p.id, {edit: e.target.checked})} />
                   </td>
                   <td className="px-3 py-1.5 text-right">
-                    {dirty && (
-                      <Button variant="primary" size="sm" className="px-2.5 text-xs" disabled={savingId === p.id} onClick={() => void save(p.id)}>
-                        {savingId === p.id ? <Spinner size={12} /> : <Save size={12} />}Сохранить
-                      </Button>
-                    )}
+                    {/* Кнопка есть в каждой строке, но видна только у изменённой: место под неё
+                        занято всегда, и отметка права больше не раздвигает таблицу. `invisible`
+                        заодно убирает её из порядка Tab. */}
+                    <Button variant="primary" size="sm" className={cn("px-2.5 text-xs", !dirty && "invisible")}
+                      disabled={!dirty || savingId === p.id} onClick={() => void save(p.id)}>
+                      {savingId === p.id ? <Spinner size={12} /> : <Save size={12} />}Сохранить
+                    </Button>
                   </td>
                 </tr>
               );

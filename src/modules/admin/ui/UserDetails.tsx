@@ -104,6 +104,8 @@ export function UserDetails({user, onChanged, onDeleted}: {user: AdminUser; onCh
         <div className="flex-1" />
         <Button size="sm" onClick={() => void handleResetPassword()}><KeyRound size={14} />Сбросить пароль</Button>
         <Button size="sm" onClick={() => void handleRevokeSessions()}><LogOut size={14} />Завершить сеансы</Button>
+        {/* Удаление — отдельно от обычных действий: черта и отступ, чтобы не попасть случайно. */}
+        <div aria-hidden className="mx-2 h-6 w-px bg-border" />
         <Button variant="danger" size="sm" onClick={() => void handleDelete()}><Trash2 size={14} />Удалить</Button>
       </div>
       {user.admin
