@@ -70,9 +70,8 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
         isSelected
           ? 'bg-primary/20 text-foreground border-primary/30 shadow-xs'
           : 'hover:bg-accent text-foreground border-transparent',
-        isEditing
-          ? 'bg-linear-to-r from-success/15 via-success/5 to-transparent border-success/40 text-foreground'
-          : 'text-foreground border-transparent',
+        // Без ветки «иначе»: её `border-transparent` шёл в cn последним и снимал рамку выбранного узла.
+        isEditing && 'bg-linear-to-r from-success/15 via-success/5 to-transparent border-success/40',
         highlighted && 'ring-2 ring-warning',
       )}
       // По этому атрибуту панель дерева находит строку, чтобы прокрутить к найденному узлу.
