@@ -44,8 +44,8 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
 
   return (
     <div className="pt-3 space-y-3">
-      <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700" />
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="h-px bg-border" />
+      <h4 className="text-sm font-medium text-foreground">
         Меню в мониторе (ПКМ)
       </h4>
       <div className="grid grid-cols-3 gap-3">
@@ -71,13 +71,13 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
         ))}
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-muted-foreground">
           Пустое поле — по умолчанию. Длинные подписи при заданной ширине переносятся.
         </span>
         {value && (
           <button
             type="button"
-            className="shrink-0 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
             onClick={() => onChange(undefined)}
           >
             По умолчанию
@@ -86,7 +86,7 @@ export function MonitorMenuSettingsBlock({element, onChange, inputClassName}: Pr
       </div>
       {previewItems.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Так меню увидит оператор:</div>
+          <div className="text-xs text-muted-foreground">Так меню увидит оператор:</div>
           {/* Превью шире панели не бывает: иначе широкое меню растянуло бы её. */}
           <div className="overflow-x-auto">
             <ContextMenuPanel

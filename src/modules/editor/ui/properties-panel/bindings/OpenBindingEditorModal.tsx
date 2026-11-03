@@ -79,18 +79,18 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
           />
 
           {scope.invalidNames.length > 0 && (
-            <div className="text-xs text-amber-600 dark:text-amber-400">
+            <div className="text-xs text-warning">
               Имена {scope.invalidNames.map(n => `«${n}»`).join(", ")} нельзя использовать
               в коде (не являются JS-идентификаторами или конфликтуют) — переименуйте свойство.
             </div>
           )}
           {stateNames.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wider">Состояния:</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Состояния:</span>
               {stateNames.map(stateName => (
                 <span
                   key={stateName}
-                  className={cn(chipClasses, "bg-blue-950/60 text-blue-300 border-blue-800/40 hover:bg-blue-900/70")}
+                  className={cn(chipClasses, "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20")}
                   onClick={() => insertAtCursor(`setState("${stateName}")`)}
                 >
                   {stateName}
@@ -114,7 +114,7 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
         )}
 
         {syntaxError && (
-          <div role="alert" className="shrink-0 text-sm text-red-600 dark:text-red-400">
+          <div role="alert" className="shrink-0 text-sm text-destructive">
             Синтаксическая ошибка: {syntaxError}
           </div>
         )}

@@ -12,7 +12,7 @@ export const baseAddButtonClasses = cn(
   "hover:underline hover:scale-105",
   "rounded-xl",
   "text-sm font-medium",
-  "text-gray-800 dark:text-gray-200",
+  "text-foreground",
   "transition-all duration-200",
   "active:scale-95"
 );

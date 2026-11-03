@@ -10,7 +10,7 @@ export function TagChips({scope, onInsert}: {scope: TagScope; onInsert: (text: s
   if (!scope.names.some(n => n in scope.tagIdByName)) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-gray-500 uppercase tracking-wider">Теги:</span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wider">Теги:</span>
       {scope.names
         .filter(n => n in scope.tagIdByName)
         .map(tagName => (
@@ -42,11 +42,11 @@ export function PropertyRefChips({refs, titleOf, onInsert, onRemove, onPick}: {
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-gray-500 uppercase tracking-wider">Свойства:</span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wider">Свойства:</span>
       {refs.map(ref => (
         <span
           key={ref.propertyId}
-          className={cn(chipClasses, "bg-emerald-950/60 text-emerald-300 border-emerald-800/40 hover:bg-emerald-900/70")}
+          className={cn(chipClasses, "bg-success/10 text-success border-success/30 hover:bg-success/20")}
           title={titleOf(ref)}
           onClick={() => onInsert(ref)}
         >
@@ -54,7 +54,7 @@ export function PropertyRefChips({refs, titleOf, onInsert, onRemove, onPick}: {
           {ref.varName}
           <X
             size={11}
-            className="ml-0.5 hover:text-red-300"
+            className="ml-0.5 hover:text-destructive"
             onClick={e => {
               e.stopPropagation();
               onRemove(ref.propertyId);
@@ -65,7 +65,7 @@ export function PropertyRefChips({refs, titleOf, onInsert, onRemove, onPick}: {
       <button
         type="button"
         onClick={onPick}
-        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border border-dashed border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/40 transition-colors"
+        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border border-dashed border-success/50 text-success hover:bg-success/10 transition-colors"
       >
         <Boxes size={12} />
         Выбрать свойства объекта

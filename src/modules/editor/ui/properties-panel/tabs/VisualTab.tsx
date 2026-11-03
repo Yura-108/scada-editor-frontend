@@ -46,8 +46,8 @@ export function VisualTab({element, values}: VisualTabProps) {
           <p className={cn(
             "text-[11px]",
             editAllStates
-              ? "text-amber-600 dark:text-amber-400"
-              : "text-gray-500 dark:text-neutral-500",
+              ? "text-warning"
+              : "text-muted-foreground",
           )}>
             {editAllStates
               ? "Значения ниже пишутся во ВСЕ состояния элемента."
@@ -79,7 +79,7 @@ export function VisualTab({element, values}: VisualTabProps) {
       {/* Цветовые параметры - полная ширина */}
       {schema.some(p => p.type === "color") && (
         <div className="space-y-4 pt-2">
-          <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700" />
+          <div className="h-px bg-border" />
           <div className="space-y-4">
             {schema
               .filter(property => property.type === "color")

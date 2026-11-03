@@ -34,10 +34,10 @@ export function ScenePropertiesPanel() {
   return (
     <div className="h-full overflow-y-auto custom-scrollbar p-4 space-y-5">
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Лист
         </h3>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Размер сцены в единицах холста. Рамка листа — подсказка: за её край можно выйти.
         </p>
       </div>
@@ -88,8 +88,8 @@ export function ScenePropertiesPanel() {
         </div>
       </div>
 
-      <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
-        <p className="text-xs text-neutral-500 dark:text-neutral-500">
+      <div className="pt-4 border-t border-border">
+        <p className="text-xs text-muted-foreground">
           Выберите элемент на схеме, чтобы изменить его свойства.
         </p>
       </div>

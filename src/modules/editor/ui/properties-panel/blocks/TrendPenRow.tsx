@@ -24,7 +24,7 @@ export function TrendPenRow({pen, property, style, elementKey, inputClassName, c
 }) {
   return (
     <div
-      className="rounded-lg border border-gray-200 dark:border-neutral-700 p-2 space-y-2"
+      className="rounded-lg border border-border p-2 space-y-2"
     >
       <div className="flex items-center gap-2">
         <input
@@ -35,13 +35,13 @@ export function TrendPenRow({pen, property, style, elementKey, inputClassName, c
           className="h-6 w-6 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm text-gray-800 dark:text-gray-200">
+          <div className="truncate text-sm text-foreground">
             {pen.label}
             {pen.label !== pen.name && (
-              <span className="ml-1 font-mono text-xs text-gray-500">{pen.name}</span>
+              <span className="ml-1 font-mono text-xs text-muted-foreground">{pen.name}</span>
             )}
           </div>
-          <div className="truncate text-xs text-gray-500" title={pen.tag}>{shortTagPath(pen.tag)}</div>
+          <div className="truncate text-xs text-muted-foreground" title={pen.tag}>{shortTagPath(pen.tag)}</div>
         </div>
         {property && (
           <>
@@ -57,7 +57,7 @@ export function TrendPenRow({pen, property, style, elementKey, inputClassName, c
             {style?.k !== undefined && (
               <button
                 type="button"
-                className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-[10px] text-primary hover:underline"
                 onClick={() => commitPen(pen.name, {}, "k")}
               >
                 сбросить
@@ -80,7 +80,7 @@ export function TrendPenRow({pen, property, style, elementKey, inputClassName, c
             {style?.b !== undefined && (
               <button
                 type="button"
-                className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-[10px] text-primary hover:underline"
                 onClick={() => commitPen(pen.name, {}, "b")}
               >
                 сбросить

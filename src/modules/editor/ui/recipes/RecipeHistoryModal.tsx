@@ -90,7 +90,7 @@ function RecipeHistoryContent({recipe, documentId, editable, dirty}: Props) {
         )}
 
         {dirty && editable && (
-          <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
+          <p className="mt-3 text-xs text-warning">
             В панели есть несохранённые значения шагов — сохраните или сбросьте их перед восстановлением.
           </p>
         )}

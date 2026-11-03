@@ -19,7 +19,7 @@ export function RecipePauseSection({tags, pauseAction, setPauseAction}: {
         <span className={sectionTitle}>Безопасное состояние на паузе ({pauseAction.length})</span>
         <button
           type="button"
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
+          className="text-xs text-primary hover:underline disabled:opacity-40"
           disabled={tags.length === 0}
           title={tags.length === 0 ? "Сначала добавьте теги в манифест" : undefined}
           onClick={() => setPauseAction(prev => [
@@ -31,7 +31,7 @@ export function RecipePauseSection({tags, pauseAction, setPauseAction}: {
         </button>
       </div>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Что записать, когда процедура встаёт на паузу — вручную или сама по аварии.
         Обычно это остановка подачи и нагрева; клапаны сюда не включают, чтобы пауза не
         сливала контур. При снятии паузы к значениям текущего шага вернутся <b>только</b>
@@ -39,7 +39,7 @@ export function RecipePauseSection({tags, pauseAction, setPauseAction}: {
       </p>
 
       {pauseAction.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-600 italic">
+        <p className="text-xs text-muted-foreground italic">
           Пусто — пауза остановит продвижение по шагам, но ничего в ПЛК не запишет.
         </p>
       ) : pauseAction.map((action, ai) => (

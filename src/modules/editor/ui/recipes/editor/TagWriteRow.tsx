@@ -38,7 +38,7 @@ export function TagWriteRow({action, tags, onChange, onRemove}: {
         placeholder={tag?.value_type === "bool" ? "true / false" : "значение"}
         onChange={(e) => onChange({...action, value: coerceActionValue(e.target.value, tag?.value_type)})}
       />
-      <span className="text-xs text-gray-400 dark:text-gray-600 truncate max-w-[28%]" title={tag?.tag}>
+      <span className="text-xs text-muted-foreground truncate max-w-[28%]" title={tag?.tag}>
         {tag ? shortTagPath(tag.tag) : "тег не найден"}
       </span>
       <IconButton icon={Trash2} label="Убрать запись" size="xs" variant="danger" onClick={onRemove} />

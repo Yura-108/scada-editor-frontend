@@ -41,8 +41,8 @@ export function SortablePropertyPill({property, onClick, onDelete}: {property: P
         "border transition-colors",
         // Ненастроенное теговое свойство видно списком, без раскрытия каждой строки.
         wantsTag
-          ? "bg-amber-950/60 text-amber-300 border-amber-700/50 hover:bg-amber-900/70"
-          : "bg-indigo-950/60 text-indigo-300 border-indigo-800/40 hover:bg-indigo-900/70"
+          ? "bg-warning/10 text-warning border-warning/30 hover:bg-warning/20"
+          : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
       )}
     >
       <button
@@ -50,7 +50,7 @@ export function SortablePropertyPill({property, onClick, onDelete}: {property: P
         {...attributes}
         {...listeners}
         className={cn("cursor-grab active:cursor-grabbing -ml-1",
-          wantsTag ? "text-amber-400/70 hover:text-amber-200" : "text-indigo-400/70 hover:text-indigo-200")}
+          wantsTag ? "text-warning/70 hover:text-warning" : "text-primary/70 hover:text-primary")}
         title="Перетащить для изменения порядка"
         aria-label={`Перетащить «${label}» для изменения порядка`}
       >
@@ -67,8 +67,8 @@ export function SortablePropertyPill({property, onClick, onDelete}: {property: P
       <button
         type="button"
         onClick={onDelete}
-        className={cn("hover:text-red-400 transition-colors -mr-1",
-          wantsTag ? "text-amber-400/70" : "text-indigo-400/70")}
+        className={cn("hover:text-destructive transition-colors -mr-1",
+          wantsTag ? "text-warning/70" : "text-primary/70")}
         title="Удалить свойство"
         aria-label={`Удалить «${label}»`}
       >

@@ -126,7 +126,7 @@ export function TableCellSection({element, values, cell}: TableCellSectionProps)
         <button
           className={canBindCell
             ? baseAddButtonClasses
-            : "flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed"}
+            : "flex items-center gap-2 py-2 text-sm text-muted-foreground cursor-not-allowed"}
           disabled={!canBindCell}
           title={canBindCell ? undefined : "Сначала сохраните схему и добавьте элементу свойство на вкладке «Свойства» — привязка требует сохранённого свойства."}
           onClick={() => canBindCell && setCellPickerOpen(true)}

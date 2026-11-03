@@ -35,7 +35,7 @@ export function ScriptsTab({element}: {element: DiagramElement}) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <h4 className="text-sm font-medium text-foreground">
         Добавленные скрипты
       </h4>
 
@@ -53,9 +53,9 @@ export function ScriptsTab({element}: {element: DiagramElement}) {
               className={`
                 inline-flex items-center px-2.5 py-1.5
                 text-xs font-medium rounded-full
-                bg-blue-950/60 text-blue-300
-                border border-blue-800/40
-                hover:bg-blue-900/70 transition-colors cursor-pointer
+                bg-primary/10 text-primary
+                border border-primary/30
+                hover:bg-primary/20 transition-colors cursor-pointer
               `}
               onClick={() => {
                   openScriptEditorModal({
@@ -77,11 +77,11 @@ export function ScriptsTab({element}: {element: DiagramElement}) {
               {/* Точка = скрипт выведен пунктом в меню монитора: иначе
                   отличить его от обычного можно только открыв модалку. */}
               {script.displayed && (
-                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-success" />
               )}
               {script.name}
               {script.accessLevel != null && (
-                <span className="ml-1.5 rounded bg-blue-800/60 px-1 text-[10px]">ур. {script.accessLevel}</span>
+                <span className="ml-1.5 rounded bg-primary/20 px-1 text-[10px]">ур. {script.accessLevel}</span>
               )}
             </button>
           ))}

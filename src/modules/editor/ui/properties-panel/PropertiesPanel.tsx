@@ -55,7 +55,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({element}) => {
   if (!element) return null;
 
   return (
-    <div key={element.key} className="h-full flex flex-col bg-white/70 dark:bg-neutral-950/70 backdrop-blur-sm border-l border-gray-200 dark:border-neutral-800 overflow-hidden">
+    <div key={element.key} className="h-full flex flex-col bg-card/70 backdrop-blur-sm border-l border-border overflow-hidden">
       <PanelHeader element={element}/>
 
       <PanelTabs activeTab={activeTab} onChange={setActiveTab}/>

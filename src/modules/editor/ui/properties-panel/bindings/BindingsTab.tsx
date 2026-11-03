@@ -66,8 +66,8 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Привязки</h4>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <h4 className="text-sm font-medium text-foreground">Привязки</h4>
+      <p className="text-xs text-muted-foreground">
         В режиме монитора значение элемента может следовать за тегом, браться из свойства
         другого компонента, либо управляться JavaScript-скриптом (переключение состояния,
         смена визуальных свойств).
@@ -92,7 +92,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
                 key={binding.id}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-xl border",
-                  "bg-white/60 dark:bg-neutral-900/60 border-gray-200 dark:border-neutral-700",
+                  "bg-card/60 border-border",
                   !binding.enabled && "opacity-60",
                 )}
               >
@@ -105,27 +105,27 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
 
                 {binding.direct && binding.tag ? (
                   <div
-                    className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 truncate flex items-center gap-1.5"
+                    className="flex-1 min-w-0 text-sm text-foreground truncate flex items-center gap-1.5"
                     title={`Значение ← тег ${binding.tag}`}
                   >
-                    <TagIcon size={13} className="text-sky-500 shrink-0" />
-                    <span className="text-gray-500 dark:text-gray-400">значение ←</span>
+                    <TagIcon size={13} className="text-tag shrink-0" />
+                    <span className="text-muted-foreground">значение ←</span>
                     <span className="truncate">{shortTagPath(binding.tag)}</span>
                   </div>
                 ) : binding.direct && ref ? (
                   <div
-                    className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 truncate flex items-center gap-1.5"
+                    className="flex-1 min-w-0 text-sm text-foreground truncate flex items-center gap-1.5"
                     title={`Значение ← ${ref.componentLabel} · ${ref.propertyName}`}
                   >
-                    <Boxes size={13} className="text-emerald-500 shrink-0" />
-                    <span className="text-gray-500 dark:text-gray-400">значение ←</span>
+                    <Boxes size={13} className="text-success shrink-0" />
+                    <span className="text-muted-foreground">значение ←</span>
                     <span className="truncate">
                       {ref.componentLabel} · {ref.propertyName}
                     </span>
                   </div>
                 ) : (
                   <button
-                    className="flex-1 min-w-0 text-left text-sm text-gray-800 dark:text-gray-200 truncate hover:underline"
+                    className="flex-1 min-w-0 text-left text-sm text-foreground truncate hover:underline"
                     title="Редактировать привязку"
                     onClick={() => openBindingEditorModal({element, binding})}
                   >
@@ -154,7 +154,7 @@ export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClass
       </button>
 
       <button
-        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800/60 border border-dashed border-gray-300 dark:border-neutral-700 transition-colors"
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent border border-dashed border-input transition-colors"
         onClick={() => openBindingEditorModal({element})}
       >
         <Plus size={14} />

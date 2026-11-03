@@ -36,7 +36,7 @@ export function PropertiesTab({element}: {element: DiagramElement}) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <h4 className="text-sm font-medium text-foreground">
         Добавленные свойства
       </h4>
 
@@ -66,7 +66,7 @@ export function PropertiesTab({element}: {element: DiagramElement}) {
       <button
         className={canAddProperty
           ? baseAddButtonClasses
-          : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"}
+          : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-muted-foreground cursor-not-allowed"}
         onClick={() => canAddProperty && handleAddProperty(element.key)}
         disabled={!canAddProperty}
         title={canAddProperty ? undefined : addPropertyHint}

@@ -135,12 +135,12 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
   const sharedH = sharedValue("h");
 
   return (
-    <div className="h-full flex flex-col bg-white/70 dark:bg-neutral-950/70 backdrop-blur-sm border-l border-gray-200 dark:border-neutral-800 overflow-hidden">
-      <div className="shrink-0 p-4 pb-3 border-b border-gray-200 dark:border-neutral-800">
-        <h3 className="text-base font-medium text-gray-900 dark:text-neutral-200 tracking-tight">
+    <div className="h-full flex flex-col bg-card/70 backdrop-blur-sm border-l border-border overflow-hidden">
+      <div className="shrink-0 p-4 pb-3 border-b border-border">
+        <h3 className="text-base font-medium text-foreground tracking-tight">
           Выбрано элементов: {elements.length}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Изменения применяются ко всем выбранным
         </p>
       </div>
@@ -148,7 +148,7 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
         {/* Общая геометрия: размер (позицию массово не задаём — элементы наложатся друг на друга) */}
         <div>
-          <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 mb-2 uppercase tracking-wider">
+          <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
             Размер
           </h4>
           <div className="grid grid-cols-2 gap-4">
@@ -175,8 +175,8 @@ export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
 
         {commonSchema.length > 0 && (
           <div className="space-y-4">
-            <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700" />
-            <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 uppercase tracking-wider">
+            <div className="h-px bg-border" />
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Общие параметры
             </h4>
             <div className="grid grid-cols-2 gap-4">

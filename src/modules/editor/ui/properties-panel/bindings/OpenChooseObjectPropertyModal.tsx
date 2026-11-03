@@ -79,7 +79,7 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
     >
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
         {components.length === 0 ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-sm text-muted-foreground">
             На сцене нет элементов со свойствами. Добавьте элементу свойство на вкладке
             «Свойства» (оно уходит на сервер сразу же), затем возвращайтесь сюда.
           </div>
@@ -92,17 +92,17 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
             return (
               <div
                 key={c.key}
-                className="rounded-lg border border-gray-200 dark:border-gray-800/70 overflow-hidden"
+                className="rounded-lg border border-border overflow-hidden"
               >
                 <button
                   type="button"
                   onClick={() => toggle(c.key)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent transition-colors"
                 >
                   {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  <Puzzle size={14} className="text-indigo-400 shrink-0" />
+                  <Puzzle size={14} className="text-primary shrink-0" />
                   <span className="font-medium text-sm truncate">{componentLabel(c)}</span>
-                  <span className="ml-auto text-xs text-gray-500 shrink-0">
+                  <span className="ml-auto text-xs text-muted-foreground shrink-0">
                     {props.length} св-в
                   </span>
                 </button>
@@ -110,7 +110,7 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
                 {isOpen && (
                   <div className="px-2 pb-2 space-y-1">
                     {props.length === 0 ? (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 pl-6 py-1">
+                      <div className="text-xs text-muted-foreground pl-6 py-1">
                         У компонента нет свойств.
                       </div>
                     ) : (
@@ -141,22 +141,22 @@ export function ChooseObjectPropertyModal({open, onClose, onPick, pickedIds}: Pr
                             className={cn(
                               "w-full flex items-center gap-2 pl-6 pr-3 py-1.5 rounded-md text-left text-sm transition-colors",
                               saved
-                                ? "hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer"
+                                ? "hover:bg-primary/10 cursor-pointer"
                                 : "opacity-50 cursor-not-allowed",
-                              already && "bg-indigo-50 dark:bg-indigo-950/40",
+                              already && "bg-primary/10",
                             )}
                           >
                             <span className="font-medium truncate">{p.name || "(без имени)"}</span>
                             {p.value_type && (
-                              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
+                              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
                                 {p.value_type}
                               </span>
                             )}
-                            <span className="ml-auto text-[10px] text-gray-500 shrink-0">
+                            <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
                               {p.property_type}
                             </span>
                             {already && (
-                              <span className="text-[10px] text-indigo-500 shrink-0">добавлено</span>
+                              <span className="text-[10px] text-primary shrink-0">добавлено</span>
                             )}
                           </button>
                         );

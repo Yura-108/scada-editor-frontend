@@ -19,14 +19,14 @@ export function ScriptCodeField({code, setCode, viewRef}: {
         <button
           type="button"
           onClick={() => setCode(c => formatCode(c))}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           title="Автоматически расставить отступы"
         >
           <Wand2 size={13} />
           Форматировать
         </button>
       </div>
-      <div className="flex-1 min-h-0 border border-gray-300 dark:border-gray-700/80 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/70">
+      <div className="flex-1 min-h-0 border border-input rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/70">
         <CodeMirror
           value={code}
           height="100%"

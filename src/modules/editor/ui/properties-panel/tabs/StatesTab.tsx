@@ -15,7 +15,7 @@ export function StatesTab({element}: {element: DiagramElement}) {
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <h4 className="text-sm font-medium text-foreground mb-3">
           Состояние:
         </h4>
         <StateSelect elementKey={element.key} states={element.states}/>
@@ -24,20 +24,20 @@ export function StatesTab({element}: {element: DiagramElement}) {
       <EditAllStatesToggle withHint/>
 
       <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <h4 className="text-sm font-medium text-foreground mb-2">
           Список состояний
         </h4>
         <div className="space-y-1.5">
           {element.states.map(state => (
             <div
               key={state.id}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white/60 dark:bg-neutral-900/60 px-3 py-1.5"
+              className="flex items-center gap-2 rounded-lg border border-input bg-card/60 px-3 py-1.5"
             >
-              <span className="text-sm text-gray-800 dark:text-gray-200 truncate">
+              <span className="text-sm text-foreground truncate">
                 {state.name}
               </span>
               {state.isDefault && (
-                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="text-[11px] text-muted-foreground">
                   по умолчанию
                 </span>
               )}
