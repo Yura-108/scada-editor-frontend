@@ -19,9 +19,9 @@ export async function confirmRestoreDataVersion(
     const target = await loadDataVersion(projectId, versionNo);
     preview = target
       ? <DataDiffView diff={diffDataVersions(currentTables, target)} wording="restore" />
-      : <p className="text-xs text-neutral-500">Содержимое версии не удалось разобрать.</p>;
+      : <p className="text-xs text-muted-foreground">Содержимое версии не удалось разобрать.</p>;
   } catch (err) {
-    preview = <p className="text-xs text-red-600">{(err as Error).message}</p>;
+    preview = <p className="text-xs text-destructive">{(err as Error).message}</p>;
   }
   return confirmModal({
     title: `Восстановить версию таблиц ${versionNo}?`,
@@ -31,7 +31,7 @@ export async function confirmRestoreDataVersion(
         Чтобы задачи automation увидели откат, нажмите «Применить данные».
       </p>
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">Что изменится по сравнению с текущей v{currentVersion}</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">Что изменится по сравнению с текущей v{currentVersion}</p>
         <div className="max-h-[40vh] overflow-y-auto">{preview}</div>
       </div>
     </div>,

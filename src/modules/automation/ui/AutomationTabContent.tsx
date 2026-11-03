@@ -54,7 +54,7 @@ export function AutomationTabContent({tab, projectId, canWrite, doc, actions, ta
                 readOnly={!canWrite}
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-sm text-neutral-500">Задач нет</div>
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Задач нет</div>
             )}
           </div>
           <TemplatePalette onInsert={canWrite ? actions.insertTemplate : undefined} />

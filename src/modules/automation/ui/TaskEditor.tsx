@@ -148,7 +148,7 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
             inputs.alias · input(alias) → {"{value, good, ageMs, stale}"} · write(alias, value) · vars.имя · setVar(имя, value) ·
             state (объект, до 64 КБ) · dt · firstRun · log.info(...) / log.warn(...)
           </p>
-          <div className="border border-neutral-300 dark:border-neutral-700 rounded-xl overflow-hidden">
+          <div className="border border-input rounded-xl overflow-hidden">
             <CodeMirror value={task.script} height="360px" extensions={[javascript()]} theme="dark" readOnly={readOnly} editable={!readOnly} onChange={script => set({script})} />
           </div>
           {errorOf("script") && <p className="text-xs text-destructive mt-1">{errorOf("script")}</p>}

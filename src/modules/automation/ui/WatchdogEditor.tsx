@@ -46,7 +46,7 @@ export function WatchdogEditor({watchdog, errors, onChange, readOnly = false}: P
     <fieldset disabled={readOnly} className="m-0 border-0 min-w-0 p-4 max-w-3xl space-y-4">
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Сторожевой таймер (watchdog)</h3>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-muted-foreground">
           Пока автоматика работает, она с заданным периодом пишет в выбранный тег ПЛК счётчик
           0, 1, 2 … 65535, 0, 1 … Программа ПЛК следит за ним: если значение перестало меняться,
           значит автоматика остановилась или пропала связь, и ПЛК переводит оборудование

@@ -67,15 +67,15 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange, se
 
   return (
     <div className="flex-1 min-h-0 flex">
-      <div className="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto p-2 pb-28 space-y-1">
+      <div className="w-64 shrink-0 border-r border-border overflow-y-auto p-2 pb-28 space-y-1">
         {tables.map((t, i) => (
           <button
             key={i}
             onClick={() => setSelected(i)}
-            className={cn("w-full text-left px-3 py-2 rounded-lg text-sm", i === selected ? "bg-indigo-500/15" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")}
+            className={cn("w-full text-left px-3 py-2 rounded-lg text-sm", i === selected ? "bg-primary/15" : "hover:bg-accent")}
           >
-            <div className={cn("truncate", errorsOf(t.name).length > 0 && "text-red-600 dark:text-red-400")}>{t.title ?? t.name}</div>
-            <div className="text-[11px] text-neutral-500 font-mono truncate">{t.name} · {t.rows.length} стр.</div>
+            <div className={cn("truncate", errorsOf(t.name).length > 0 && "text-destructive")}>{t.title ?? t.name}</div>
+            <div className="text-[11px] text-muted-foreground font-mono truncate">{t.name} · {t.rows.length} стр.</div>
           </button>
         ))}
         {!readOnly && <Button className={cn(compactButton, "w-full")} onClick={add}><Plus size={14} />Таблица</Button>}
@@ -84,7 +84,7 @@ export function TablesEditor({tables, errors, onChange, onInvalidCountChange, se
       {/* Список слева — вне fieldset: таблицы можно листать и в режиме просмотра. */}
       <fieldset disabled={readOnly} className="flex-1 min-w-0 m-0 p-0 border-0 overflow-y-auto">
         {!table ? (
-          <div className="h-full flex items-center justify-center text-sm text-neutral-500">Таблиц нет</div>
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Таблиц нет</div>
         ) : (
           <div className="p-4 pb-28 space-y-6 max-w-6xl">
             <div className="grid grid-cols-1 md:grid-cols-[18rem_1fr] gap-4">

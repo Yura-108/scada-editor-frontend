@@ -46,7 +46,7 @@ const isEmpty = (diff: AutomationVersionDiff) =>
 export function AutomationDiffView({diff, wording = "history", onReturnTask, returnTitle}: DiffViewProps) {
   const labels = LABELS[wording];
   if (isEmpty(diff)) {
-    return <p className="text-xs text-neutral-500">{wording === "restore" ? "Набор не изменится." : "Содержимое не отличается от предыдущей версии."}</p>;
+    return <p className="text-xs text-muted-foreground">{wording === "restore" ? "Набор не изменится." : "Содержимое не отличается от предыдущей версии."}</p>;
   }
 
   const returnButton = (task: AutomationTask) => onReturnTask && (
@@ -60,20 +60,20 @@ export function AutomationDiffView({diff, wording = "history", onReturnTask, ret
       {diff.added.map(t => (
         <li key={`a-${t.id}-${t.name}`}>
           <div className="flex items-center gap-2">
-            <span className="w-24 shrink-0 text-xs text-emerald-600 dark:text-emerald-400">{labels.added}</span>
+            <span className="w-24 shrink-0 text-xs text-success">{labels.added}</span>
             <span className="flex-1 truncate font-medium">{t.name}</span>
           </div>
-          <p className="ml-26 text-xs text-neutral-500">{taskSummary(t)}</p>
+          <p className="ml-26 text-xs text-muted-foreground">{taskSummary(t)}</p>
         </li>
       ))}
       {diff.changed.map(({before, after}) => (
         <li key={`c-${after.id}`}>
           <div className="flex items-center gap-2">
-            <span className="w-24 shrink-0 text-xs text-amber-600 dark:text-amber-400">{labels.changed}</span>
+            <span className="w-24 shrink-0 text-xs text-warning">{labels.changed}</span>
             <span className="flex-1 truncate font-medium">{after.name}</span>
             {returnButton(before)}
           </div>
-          <ul className="ml-26 list-disc pl-4 text-xs text-neutral-600 dark:text-neutral-400">
+          <ul className="ml-26 list-disc pl-4 text-xs text-muted-foreground">
             {taskFieldChanges(before, after).map((line, i) => <li key={i}>{line}</li>)}
           </ul>
         </li>
@@ -81,15 +81,15 @@ export function AutomationDiffView({diff, wording = "history", onReturnTask, ret
       {diff.removed.map(t => (
         <li key={`r-${t.id}-${t.name}`}>
           <div className="flex items-center gap-2">
-            <span className="w-24 shrink-0 text-xs text-red-600 dark:text-red-400">{labels.removed}</span>
+            <span className="w-24 shrink-0 text-xs text-destructive">{labels.removed}</span>
             <span className="flex-1 truncate font-medium">{t.name}</span>
             {returnButton(t)}
           </div>
-          <p className="ml-26 text-xs text-neutral-500">{taskSummary(t)}</p>
+          <p className="ml-26 text-xs text-muted-foreground">{taskSummary(t)}</p>
         </li>
       ))}
-      {diff.watchdogChanged && <li className="text-xs text-neutral-600 dark:text-neutral-400">Изменён watchdog</li>}
-      {diff.variablesChanged && <li className="text-xs text-neutral-600 dark:text-neutral-400">Изменены переменные проекта</li>}
+      {diff.watchdogChanged && <li className="text-xs text-muted-foreground">Изменён watchdog</li>}
+      {diff.variablesChanged && <li className="text-xs text-muted-foreground">Изменены переменные проекта</li>}
     </ul>
   );
 }
@@ -98,14 +98,14 @@ export function AutomationDiffView({diff, wording = "history", onReturnTask, ret
 export function AutomationVersionContent({set}: {set: VersionSet}) {
   return (
     <div className="space-y-1 text-sm">
-      {set.tasks.length === 0 && <p className="text-xs text-neutral-500">Задач в версии нет.</p>}
+      {set.tasks.length === 0 && <p className="text-xs text-muted-foreground">Задач в версии нет.</p>}
       {set.tasks.map(t => (
         <div key={`${t.id}-${t.name}`} className="flex flex-wrap gap-x-2">
           <span className="font-medium">{t.name}</span>
-          <span className="text-xs text-neutral-500 self-center">{taskSummary(t)}</span>
+          <span className="text-xs text-muted-foreground self-center">{taskSummary(t)}</span>
         </div>
       ))}
-      <p className="text-xs text-neutral-500 pt-1">
+      <p className="text-xs text-muted-foreground pt-1">
         Watchdog: {set.watchdog ? `${set.watchdog.tag || "тег не задан"}, каждые ${set.watchdog.period_ms} мс` : "выключен"}
       </p>
     </div>
@@ -151,7 +151,7 @@ export function AutomationVersionChanges({projectId, versionNo, previousNo, onRe
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
           {previousNo != null ? `Изменения относительно v${previousNo}` : "Первая версия"}
         </p>
         <AutomationDiffView
@@ -164,7 +164,7 @@ export function AutomationVersionChanges({projectId, versionNo, previousNo, onRe
         <button
           type="button"
           onClick={() => setShowContent(v => !v)}
-          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
           {showContent ? "Скрыть содержимое версии" : `Показать всё содержимое v${versionNo}`}
         </button>
