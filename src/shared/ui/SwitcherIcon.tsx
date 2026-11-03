@@ -6,9 +6,9 @@ import React from 'react';
 const SwitcherIcon = ({ expanded, isLeaf }: TreeNodeProps<DataNode>) => {
   if (isLeaf) return null;
   return expanded ? (
-    <ChevronDown className="w-4 h-4 text-gray-500" />
+    <ChevronDown className="w-4 h-4 text-muted-foreground" />
   ) : (
-    <ChevronRight className="w-4 h-4 text-gray-500" />
+    <ChevronRight className="w-4 h-4 text-muted-foreground" />
   );
 };
 

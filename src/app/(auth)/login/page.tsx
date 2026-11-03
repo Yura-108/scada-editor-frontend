@@ -64,14 +64,14 @@ export default function LoginPage() {
     // Раньше тут стоял `bg-linear-to-br bg-gray-100`: класс градиента без from-*/to-*
     // ничего не рисовал, страница была просто серой и не знала про тёмную тему.
     <div className="w-full max-w-md">
-      <div className="bg-white/95 dark:bg-neutral-900/95 border border-transparent dark:border-neutral-800 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+      <div className="bg-card/95 border border-transparent dark:border-border backdrop-blur-xl rounded-3xl shadow-2xl p-8">
         {/* Заголовок */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-indigo-600 to-blue-600 rounded-full mb-4">
-            <LogIn className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+            <LogIn className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">С возвращением!</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Войдите в свой аккаунт</p>
+          <h1 className="text-4xl font-bold text-foreground">С возвращением!</h1>
+          <p className="text-muted-foreground mt-2">Войдите в свой аккаунт</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -165,7 +165,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-5 rounded-2xl bg-linear-to-r from-indigo-600 to-blue-600  text-white text-xl font-bold hover:from-indigo-500 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+            className="w-full py-5 rounded-2xl bg-primary text-primary-foreground text-xl font-bold hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
           >
             {isLoading ? (
               <>
@@ -179,7 +179,7 @@ export default function LoginPage() {
         </form>
 
         {/* Регистрации нет: пользователей заводит администратор. */}
-        <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Нет учётной записи — обратитесь к администратору.
         </p>
       </div>

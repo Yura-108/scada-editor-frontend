@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {user && <SessionUserBootstrap login={user.login} admin={user.admin} />}
       <EditorStoreBinding />
       <DocumentTitle />
-      <header className="sticky top-0 z-header w-full border-b border-gray-200 dark:border-gray-800/60 bg-white dark:bg-gray-900/70 backdrop-blur-md">
+      <header className="sticky top-0 z-header w-full border-b border-border bg-card dark:bg-card/70 backdrop-blur-md">
         {/* Во всю ширину, а не `container`: разделов стало 7, и в фиксированную ширину
             контейнера они не помещались. Навигация занимает место между логотипом и
             кнопками и сама ужимается по ширине (см. HeaderNav). */}
@@ -37,10 +37,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             className="flex shrink-0 items-center gap-3 rounded-lg"
             label="SCADA — на главную"
           >
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Cpu className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <Cpu className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="hidden sm:inline md:hidden lg:inline font-bold text-lg tracking-tight text-gray-900 dark:text-white">
+            <span className="hidden sm:inline md:hidden lg:inline font-bold text-lg tracking-tight text-foreground">
               SCADA
             </span>
           </LogoLink>
@@ -52,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <ThemeToggle />
             {user && (
               <>
-                <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
+                <div className="h-8 w-px bg-muted" />
                 <UserMenu login={user.login} />
               </>
             )}

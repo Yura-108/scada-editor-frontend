@@ -34,19 +34,19 @@ export default function UserMenu({login}: {login: string}) {
         aria-expanded={open}
         aria-haspopup="menu"
         title={login || "Пользователь"}
-        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5"
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/60"
       >
         <User className="w-5 h-5" />
         <span className="hidden lg:inline max-w-40 truncate">{login}</span>
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full mt-2 z-dropdown w-56 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1 shadow-2xl">
-          {login && <div className="px-4 py-2 text-xs text-gray-500 truncate">Вы вошли как <b>{login}</b></div>}
+        <div role="menu" className="absolute right-0 top-full mt-2 z-dropdown w-56 rounded-xl border border-border bg-card p-1 shadow-2xl">
+          {login && <div className="px-4 py-2 text-xs text-muted-foreground truncate">Вы вошли как <b>{login}</b></div>}
           <button
             type="button"
             role="menuitem"
             onClick={() => { setOpen(false); openModal(<ChangePasswordModal />, {size: "sm", closeOnOverlay: false}); }}
-            className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-600 dark:text-gray-400 hover:bg-gray-900/5 dark:hover:bg-white/5 rounded-xl"
+            className="flex items-center gap-3 w-full px-4 py-3 text-left text-muted-foreground hover:bg-accent/60 rounded-xl"
           >
             <KeyRound className="w-5 h-5" />
             <span className="font-medium">Сменить пароль</span>

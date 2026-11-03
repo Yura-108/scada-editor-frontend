@@ -56,7 +56,7 @@ export default function EditorPage() {
   }, []);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-muted text-foreground overflow-hidden">
       {/* Элементы добавляются кликом: клик по элементу палитры «вооружает» инструмент,
           клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick). */}
       <WorkSpace />
