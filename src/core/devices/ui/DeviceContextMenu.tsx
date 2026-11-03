@@ -188,7 +188,7 @@ const ContextMenu = <T extends string = string>({
       onContextMenu={(e) => e.preventDefault()}
     >
       <div
-        className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+        className="bg-card rounded-xl shadow-2xl border border-border overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
         <div className="py-2 min-w-[180px]">
           {visibleItems.map((item) => (
             <React.Fragment key={item.key}>
@@ -206,8 +206,8 @@ const ContextMenu = <T extends string = string>({
                 className={clsx(
                   'w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-left transition-all',
                   item.danger
-                    ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40'
-                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-neutral-800',
+                    ? 'text-destructive hover:bg-destructive/10'
+                    : 'text-foreground hover:bg-accent',
                   item.disabled && 'opacity-50 cursor-not-allowed',
                 )}
               >
@@ -215,7 +215,7 @@ const ContextMenu = <T extends string = string>({
                 <span>{item.label}</span>
               </button>
               {item.dividerAfter && (
-                <hr role="separator" className="border-gray-200 dark:border-neutral-700 mx-2"/>
+                <hr role="separator" className="border-border mx-2"/>
               )}
             </React.Fragment>
           ))}

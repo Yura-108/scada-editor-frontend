@@ -167,11 +167,11 @@ function ImportCdbxContent() {
           <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="BN1_MCA2" />
         </Field>
 
-        <details className="rounded-xl border border-gray-200 dark:border-gray-700/80 px-4 py-3">
-          <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+        <details className="rounded-xl border border-border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
             Исходники проекта ПЛК (необязательно, но дерево получится точнее)
           </summary>
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-3 text-xs text-muted-foreground">
             Эти файлы лежат в проекте ПЛК рядом с <code>main.plua</code>. Без них приборы
             раскладываются по общему правилу, а объекты получают имена вида <code>LINE1.OBJECT</code>.
           </p>

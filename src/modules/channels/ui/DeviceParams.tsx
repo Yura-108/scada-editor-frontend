@@ -55,7 +55,7 @@ const DeviceParams = () => {
     );
   }
   return (
-    <div className="min-h-full flex flex-col bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm">
+    <div className="min-h-full flex flex-col bg-card border border-border rounded-2xl shadow-sm">
       <DeviceParamsHeader
         selectedDevice={selectedDevice}
         deviceTitle={currentDevice?.title}

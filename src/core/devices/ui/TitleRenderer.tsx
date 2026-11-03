@@ -26,25 +26,25 @@ interface TitleRendererProps {
 
 const NodeIcon = ({ depth, isLeaf }: { depth: number; isLeaf?: boolean }) => {
   if (!isLeaf && depth > 2) {
-    return <FolderOpen className="w-5 h-5 text-indigo-500" />;
+    return <FolderOpen className="w-5 h-5 text-warning" />;
   }
 
   // Логика по уровням вложенности
   switch (depth) {
     case 1:
       // Уровень 1: Площадка
-      return <Building2 className="w-5 h-5 text-purple-600" />;
+      return <Building2 className="w-5 h-5 text-primary" />;
     case 2:
       // Уровень 2: Проект
-      return <FolderOpen className="w-5 h-5 text-indigo-600" />;
+      return <FolderOpen className="w-5 h-5 text-warning" />;
     case 3:
       // Уровень 3: Главное устройство
-      return <Cpu className="w-5 h-5 text-emerald-600" />;
+      return <Cpu className="w-5 h-5 text-info" />;
     default:
       // Уровень 4 и глубже (сабдевайсы, каналы)
       return isLeaf
-        ? <Activity className="w-5 h-5 text-teal-500" /> // Конечный сигнал/канал
-        : <Box className="w-5 h-5 text-blue-500" />;     // Промежуточный узел
+        ? <Activity className="w-5 h-5 text-tag" /> // Конечный сигнал/канал
+        : <Box className="w-5 h-5 text-muted-foreground" />;     // Промежуточный узел
   }
 };
 
@@ -68,12 +68,12 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium text-sm select-none cursor-pointer border',
         isSelected
-          ? 'bg-indigo-200 text-indigo-900 border-indigo-200 shadow-xs dark:bg-indigo-500/30 dark:text-indigo-100 dark:border-indigo-500/40'
-          : 'hover:bg-gray-300 text-gray-700 border-transparent dark:text-gray-300 dark:hover:bg-neutral-800',
+          ? 'bg-primary/20 text-foreground border-primary/30 shadow-xs'
+          : 'hover:bg-accent text-foreground border-transparent',
         isEditing
-          ? 'bg-linear-to-r from-teal-50/40 via-teal-50/20 to-transparent border-teal-300/60 text-teal-900 dark:from-teal-500/20 dark:via-teal-500/10 dark:border-teal-500/40 dark:text-teal-200'
-          : 'text-gray-700 border-transparent dark:text-gray-300',
-        highlighted && 'ring-2 ring-amber-400 dark:ring-amber-500',
+          ? 'bg-linear-to-r from-success/15 via-success/5 to-transparent border-success/40 text-foreground'
+          : 'text-foreground border-transparent',
+        highlighted && 'ring-2 ring-warning',
       )}
       // По этому атрибуту панель дерева находит строку, чтобы прокрутить к найденному узлу.
       data-tree-key={node.key}
@@ -93,7 +93,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       <span className="flex-1 truncate">{node.title}</span>
 
       {/* Опционально: бейджик глубины. Очень помогает ориентироваться при бесконечной вложенности */}
-      <span className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded-md">
+      <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
         L{depth}
       </span>
 
@@ -101,7 +101,7 @@ const TitleRenderer: React.FC<TitleRendererProps> = memo(({
       {isEditing && (
         <Pencil
           size={14}
-          className="text-teal-600 dark:text-teal-400 ml-2"
+          className="text-success ml-2"
         />
       )}
     </div>

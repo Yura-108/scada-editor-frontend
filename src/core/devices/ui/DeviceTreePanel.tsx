@@ -160,13 +160,13 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   const searchActive = appliedQuery.trim() !== '';
 
   return (
-    <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm flex flex-col overflow-hidden`}>
-      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-          <Router className={'w-5 h-5 text-indigo-600 dark:text-indigo-400'}/>
+    <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-card border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden`}>
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <Router className={'w-5 h-5 text-primary'}/>
           Дерево устройств
         </h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}
         </p>
 
@@ -198,7 +198,7 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
             {Array.from({length: 8}).map((_, i) => (
               <div
                 key={i}
-                className="h-6 rounded bg-gray-200 dark:bg-neutral-800 animate-pulse"
+                className="h-6 rounded bg-muted animate-pulse"
                 style={{width: `${90 - (i % 4) * 15}%`}}
               />
             ))}
@@ -216,12 +216,12 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
           fill ? (
             // Встроенное дерево («Автоматизация», выбор тега): выбор проекта прямо здесь, а не
             // отсылка в другой раздел.
-            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-muted-foreground">
               <p>Дерево пусто — загрузите площадку и проект:</p>
               <ChannelsProjectPicker layout="stacked" />
             </div>
           ) : (
-            <div className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
               Дерево пусто — выберите площадку и проект на панели сверху.
             </div>
           )

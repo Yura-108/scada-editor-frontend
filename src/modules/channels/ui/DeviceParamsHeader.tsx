@@ -32,15 +32,15 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
     <div className="px-4 py-3">
 
-      <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+      <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
 
-        <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/>
+        <Settings className="w-5 h-5 text-primary"/>
 
         Параметры
 
       </h2>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+      <p className="text-xs text-muted-foreground mt-0.5">
 
         {deviceTitle || 'Device'} • {paramCount} параметров
 
@@ -50,7 +50,7 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
     {/* Футер с кнопкой */}
 
-    <div className="px-6 border-b-2 py-2 border-t border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+    <div className="px-6 border-b-2 py-2 border-t border-border bg-card">
 
       <div className="flex items-center gap-2">
 
@@ -58,7 +58,7 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           className={clsx(
 
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 shadow-xl',
+            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform bg-primary hover:bg-primary/90 hover:scale-105 shadow-xl',
 
           )}
 
@@ -80,19 +80,19 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           className={clsx(
 
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform shadow-xl',
+            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform shadow-xl',
 
 
 
             // активная кнопка
 
-            'bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
+            'bg-primary hover:bg-primary/90 hover:scale-105',
 
 
 
             // disabled стили
 
-            'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:from-purple-600 disabled:hover:to-indigo-600'
+            'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-primary'
 
           )}
 
@@ -118,19 +118,19 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           className={clsx(
 
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-white transition-all transform',
+            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform',
 
 
 
             // базовый стиль (как у первой кнопки)
 
-            'bg-linear-to-r from-purple-600 to-indigo-600 shadow-xl',
+            'bg-primary shadow-xl',
 
 
 
             // hover только когда не disabled
 
-            'hover:from-purple-700 hover:to-indigo-700 hover:scale-105',
+            'hover:bg-primary/90 hover:scale-105',
 
 
 
@@ -162,7 +162,7 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           {saveStatus === 'success' && (
 
-            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
+            <div className="flex items-center gap-2 text-success font-medium">
 
               <CheckCircle2 className="w-5 h-5"/>
 
@@ -174,7 +174,7 @@ export function DeviceParamsHeader({selectedDevice, deviceTitle, paramCount, isE
 
           {saveStatus === 'error' && (
 
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-medium">
+            <div className="flex items-center gap-2 text-destructive font-medium">
 
               <AlertCircle className="w-5 h-5"/>
 
