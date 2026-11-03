@@ -39,11 +39,11 @@ export function ProcedureHud() {
 
   // Пауза важнее «завис»: стоящая мойка не должна выглядеть идущей, поэтому пульсацию
   // снимаем — она и означает «процесс идёт».
-  const dotClass = !status ? "bg-neutral-400"
-    : status.completed ? "bg-emerald-500"
-    : status.paused ? "bg-amber-500"
-    : status.stalled ? "bg-amber-500"
-    : "bg-blue-500 animate-pulse";
+  const dotClass = !status ? "bg-muted-foreground"
+    : status.completed ? "bg-success"
+    : status.paused ? "bg-warning"
+    : status.stalled ? "bg-warning"
+    : "bg-primary animate-pulse";
 
   return (
     <div
@@ -52,8 +52,8 @@ export function ProcedureHud() {
       aria-label="Управление процедурой"
       className={cn(
         "absolute z-toolbar w-max min-w-[min(720px,calc(100%-1rem))] max-w-[min(980px,calc(100%-1rem))]",
-        "rounded-xl border border-neutral-200 dark:border-neutral-800",
-        "bg-white/95 dark:bg-neutral-900/95 shadow-2xl backdrop-blur-xl",
+        "rounded-xl border border-border",
+        "bg-card/95 shadow-2xl backdrop-blur-xl",
         // До чтения настройки не показываем: иначе окно прыгнуло бы из угла в угол.
         hydrated ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
@@ -63,7 +63,7 @@ export function ProcedureHud() {
       <div className="flex items-center gap-2 px-2 py-1.5">
         <div
           onPointerDown={handleDragStart}
-          className="cursor-grab active:cursor-grabbing text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 touch-none"
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
           title="Перетащить"
         >
           <GripVertical size={16} />
@@ -82,7 +82,7 @@ export function ProcedureHud() {
 
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} />
 
-        <span className="min-w-0 flex-1 truncate text-xs text-neutral-700 dark:text-neutral-300">
+        <span className="min-w-0 flex-1 truncate text-xs text-foreground">
           {!recipeId ? "процедура не выбрана"
             : !status ? "не запущена"
             : status.completed ? "завершена"
@@ -94,7 +94,7 @@ export function ProcedureHud() {
         </span>
 
         {status?.stalled && (
-          <span className="shrink-0 text-amber-600 dark:text-amber-400" title="Шаг долго не завершается">
+          <span className="shrink-0 text-warning" title="Шаг долго не завершается">
             <AlertTriangle size={14} />
           </span>
         )}
@@ -104,7 +104,7 @@ export function ProcedureHud() {
         )}
 
         <button
-          className={cn(hudIconButton, "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800")}
+          className={cn(hudIconButton, "text-muted-foreground hover:bg-accent")}
           onClick={toggleCollapsed}
           title={prefs.collapsed ? "Показать шаги" : "Свернуть"}
         >

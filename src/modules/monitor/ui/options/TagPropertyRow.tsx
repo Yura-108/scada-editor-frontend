@@ -25,16 +25,16 @@ export function TagPropertyRow({property: p, shownValue, draft, isWriting, isBus
   return (
     <div className="px-4 py-3 space-y-2">
       <div className="flex items-center gap-3">
-        <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" />
+        <Waypoints className="h-4 w-4 shrink-0 text-tag" />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+          <span className="block text-sm font-medium text-foreground">
             {propertyTitle(p)}
           </span>
           {/* Полный путь — в title: подпись короткая, но узел проверить можно.
               Технический name — рядом, если подпись его скрыла: он нужен при
               отладке скриптов. */}
           <span
-            className="block truncate text-xs text-gray-500 dark:text-gray-400"
+            className="block truncate text-xs text-muted-foreground"
             title={tagId || undefined}
           >
             {p.label?.trim() ? `${p.name} · ` : ""}
@@ -42,10 +42,10 @@ export function TagPropertyRow({property: p, shownValue, draft, isWriting, isBus
           </span>
         </span>
         <span className="shrink-0 text-right">
-          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+          <span className="block text-sm font-medium text-foreground">
             {shownValue}
           </span>
-          <span className="block text-xs text-gray-500 dark:text-gray-400">
+          <span className="block text-xs text-muted-foreground">
             текущее значение
           </span>
         </span>

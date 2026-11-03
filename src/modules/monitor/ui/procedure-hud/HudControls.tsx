@@ -27,7 +27,7 @@ export function HudControls({recipeId, status, isRunning, controls}: Props) {
     <>
       {!isRunning && (
         <button
-          className={cn(hudIconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
+          className={cn(hudIconButton, "gap-1 px-2 bg-primary text-primary-foreground hover:bg-primary/90")}
           disabled={busy || !!denied.start}
           onClick={() => start(recipeId)}
           title={denied.start ?? "Запустить процедуру"}
@@ -40,7 +40,7 @@ export function HudControls({recipeId, status, isRunning, controls}: Props) {
       {isRunning && (
         <>
           <button
-            className={cn(hudIconButton, "gap-1 px-2 bg-blue-600 text-white hover:bg-blue-500")}
+            className={cn(hudIconButton, "gap-1 px-2 bg-primary text-primary-foreground hover:bg-primary/90")}
             disabled={busy || !!denied.confirm}
             onClick={() => confirm(recipeId)}
             title={denied.confirm ?? "Подтвердить текущий шаг"}
@@ -54,7 +54,7 @@ export function HudControls({recipeId, status, isRunning, controls}: Props) {
               и это не сбой, а причина, по которой продолжать нельзя. */}
           {status?.paused ? (
             <button
-              className={cn(hudIconButton, "gap-1 px-2 bg-emerald-600 text-white hover:bg-emerald-500")}
+              className={cn(hudIconButton, "gap-1 px-2 bg-success text-success-foreground hover:bg-success/90")}
               disabled={busy || !!denied.resume}
               onClick={() => resume(recipeId)}
               title={denied.resume ?? "Продолжить процедуру: теги безопасного состояния вернутся к значениям текущего шага"}
@@ -64,7 +64,7 @@ export function HudControls({recipeId, status, isRunning, controls}: Props) {
             </button>
           ) : (
             <button
-              className={cn(hudIconButton, "gap-1 px-2 bg-amber-600 text-white hover:bg-amber-500")}
+              className={cn(hudIconButton, "gap-1 px-2 bg-warning text-warning-foreground hover:bg-warning/90")}
               disabled={busy || !!denied.pause}
               onClick={() => pause(recipeId)}
               title={denied.pause ?? "Пауза: оборудование перейдёт в безопасное состояние рецепта"}
@@ -74,7 +74,7 @@ export function HudControls({recipeId, status, isRunning, controls}: Props) {
             </button>
           )}
           <button
-            className={cn(hudIconButton, "bg-red-600 text-white hover:bg-red-500")}
+            className={cn(hudIconButton, "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
             disabled={busy || !!denied.abort}
             onClick={() => abort(recipeId)}
             title={denied.abort ?? "Прервать процедуру"}

@@ -55,7 +55,7 @@ export function ProcedurePanel() {
       <div className="mx-auto max-w-3xl space-y-5">
         <div className="flex items-end gap-3">
           <div className="flex-1 space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Процедура
             </label>
             <ProcedureRecipeSelect

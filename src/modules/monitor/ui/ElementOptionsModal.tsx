@@ -36,18 +36,18 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
   return (
     // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
     <div className="flex flex-col flex-1 min-h-0">
-      <p className="shrink-0 mb-4 text-gray-500 dark:text-gray-400 text-sm">
+      <p className="shrink-0 mb-4 text-muted-foreground text-sm">
         Значения привязанных тегов. Записанное показывается, пока контроллер не пришлёт
         следующее.
       </p>
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {tagProps.length === 0 ? (
-          <div className="flex min-h-[120px] items-center justify-center text-sm text-gray-500 dark:text-gray-400 italic">
+          <div className="flex min-h-[120px] items-center justify-center text-sm text-muted-foreground italic">
             У компонента нет свойств, привязанных к тегам
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
+          <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
             {tagProps.map((p) => {
               const tagId = p.tag_id ?? "";
               return (
@@ -67,8 +67,8 @@ function ElementOptionsContent({elementKey, onClose}: ContentProps) {
         )}
       </div>
 
-      <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-        <span className="mr-auto flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+      <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-border">
+        <span className="mr-auto flex items-center gap-1.5 text-xs text-warning">
           <AlertTriangle size={14} />
           Запись в ПЛК необратима
         </span>

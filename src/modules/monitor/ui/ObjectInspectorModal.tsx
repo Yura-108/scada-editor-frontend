@@ -40,7 +40,7 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
     // Плавающее окно (заголовок — в его шапке): высоту задаёт окно, прокручивается список.
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 mb-4 space-y-2">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           Свойства любого объекта проекта. Теговые записываются в ПЛК, локальные — в runtime.
         </p>
         <ObjectPicker
@@ -65,7 +65,7 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
               : "Выберите объект"}
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800/70">
+          <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
             {selected.properties.map(p => (
               <InspectorPropertyRow
                 key={p.id}
@@ -81,8 +81,8 @@ function ObjectInspectorContent({initialObjectId, onClose}: {initialObjectId?: n
         )}
       </div>
 
-      <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800/80">
-        <span className="mr-auto flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+      <ModalFooter className="shrink-0 mt-6 pt-4 border-t border-border">
+        <span className="mr-auto flex items-center gap-1.5 text-xs text-warning">
           <AlertTriangle size={14} />
           Запись в ПЛК необратима
         </span>
