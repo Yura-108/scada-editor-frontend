@@ -40,10 +40,10 @@ export default function PaletteItem({item}: PaletteItemProps) {
         onClick={toggleArm}
         aria-pressed={armed}
         title={armed ? `${item.name} — выбран, кликните по холсту` : item.name}
-        className={`flex-1 min-w-0 text-left bg-gray-100 hover:bg-gray-200 dark:bg-[#1b1b1b] dark:hover:bg-[#262626]
-                 text-gray-900 dark:text-gray-100 px-3 py-2 rounded cursor-pointer
+        className={`flex-1 min-w-0 text-left bg-muted hover:bg-muted-foreground/15
+                 text-foreground px-3 py-2 rounded cursor-pointer
                  flex items-center transition-colors${
-                   armed ? " ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-500/10" : ""
+                   armed ? " ring-2 ring-primary bg-primary/10" : ""
                  }`}
       >
         <span className="text-sm truncate">{item.name}</span>

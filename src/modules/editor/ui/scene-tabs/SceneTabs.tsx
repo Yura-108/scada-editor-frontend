@@ -218,8 +218,8 @@ export function SceneTabs({
           "shrink-0 max-w-48 truncate px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
           dragListeners && "cursor-grab active:cursor-grabbing",
           isActive
-            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
-            : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 border-b-2 border-transparent",
+            ? "text-primary border-b-2 border-primary"
+            : "text-muted-foreground hover:text-foreground border-b-2 border-transparent",
         )}
         {...dragListeners}
       >
@@ -249,7 +249,7 @@ export function SceneTabs({
                 onClick={() => unpinScene(tab.sceneId!)}
                 title={`Открепить «${tab.label}»`}
                 aria-label={`Открепить схему «${tab.label}»`}
-                className="ml-0.5 shrink-0 rounded p-0.5 text-neutral-400 opacity-0 transition-opacity hover:text-indigo-500 focus:opacity-100 group-hover/tab:opacity-100"
+                className="ml-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-primary focus:opacity-100 group-hover/tab:opacity-100"
               >
                 <PinOff size={12} />
               </button>
@@ -270,7 +270,7 @@ export function SceneTabs({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "h-11 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar",
+        "h-11 shrink-0 border-b border-border bg-card dark:bg-card/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar",
         className,
       )}
     >

@@ -107,7 +107,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
         <IconButton icon={X} label="Закрыть историю версий" onClick={onClose} />
       </header>
 
-      <div className="shrink-0 space-y-3 border-b border-neutral-200 dark:border-neutral-800 p-3">
+      <div className="shrink-0 space-y-3 border-b border-border p-3">
         <Checkbox
           className="text-xs text-muted-foreground"
           checked={showAll}
@@ -143,12 +143,12 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!versions.length && !isVersionsLoading && (
-          <p className="p-4 text-center text-xs text-neutral-500">
+          <p className="p-4 text-center text-xs text-muted-foreground">
             {showAll ? "Версий пока нет" : "Ручных сохранений пока нет"}
           </p>
         )}
 
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+        <ul className="divide-y divide-border">
           {versions.map(v => (
             <li
               key={v.version_no}
@@ -160,7 +160,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                 <span className="font-semibold">
                   Версия {v.version_no}
                   {v.version_no === sceneVersion && (
-                    <span className="ml-1 font-normal text-neutral-500">(текущая)</span>
+                    <span className="ml-1 font-normal text-muted-foreground">(текущая)</span>
                   )}
                 </span>
                 <Badge tone={VERSION_KIND_TONE[v.kind] ?? "neutral"} className="shrink-0">
@@ -168,7 +168,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                 </Badge>
               </div>
 
-              <div className="mt-0.5 text-neutral-500">
+              <div className="mt-0.5 text-muted-foreground">
                 {formatVersionTime(v.created_at)}
                 {v.user_name ? ` · ${v.user_name}` : ""}
                 {v.restored_from != null ? ` · из версии ${v.restored_from}` : ""}
@@ -178,8 +178,8 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                 <button
                   type="button"
                   onClick={() => { void previewVersion(v.version_no); }}
-                  className="flex items-center gap-1 rounded-md border border-neutral-300 dark:border-neutral-700
-                             px-2 py-0.5 hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center gap-1 rounded-md border border-input
+                             px-2 py-0.5 hover:bg-accent"
                 >
                   <Eye size={12} />
                   Посмотреть
@@ -187,8 +187,8 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
                 {canWrite && <button
                   type="button"
                   onClick={() => { void handleRestore(v.version_no); }}
-                  className="flex items-center gap-1 rounded-md border border-neutral-300 dark:border-neutral-700
-                             px-2 py-0.5 hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center gap-1 rounded-md border border-input
+                             px-2 py-0.5 hover:bg-accent"
                 >
                   <RotateCcw size={12} />
                   Восстановить
@@ -206,7 +206,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
           <button
             type="button"
             onClick={handleMore}
-            className="w-full p-2 text-xs text-primary hover:bg-black/5 dark:hover:bg-white/10"
+            className="w-full p-2 text-xs text-primary hover:bg-accent"
           >
             Показать ещё
           </button>

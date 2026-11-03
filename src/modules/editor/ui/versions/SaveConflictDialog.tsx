@@ -79,8 +79,8 @@ export default function SaveConflictDialog() {
       {rows.length ? (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-xs">
-            <thead className="text-neutral-500">
-              <tr className="border-b border-neutral-200 dark:border-neutral-800">
+            <thead className="text-muted-foreground">
+              <tr className="border-b border-border">
                 <th className="py-2 pr-3 font-medium">Что</th>
                 <th className="py-2 pr-3 font-medium">Расхождение</th>
                 <th className="py-2 pr-3 font-medium">Было</th>
@@ -91,10 +91,10 @@ export default function SaveConflictDialog() {
             </thead>
             <tbody>
               {rows.map((c, i) => (
-                <tr key={`${c.path}-${i}`} className="border-b border-neutral-100 dark:border-neutral-800/60">
+                <tr key={`${c.path}-${i}`} className="border-b border-border">
                   <td className="py-2 pr-3">
                     <div className="font-medium">{formatConflictPath(c.path)}</div>
-                    <div className="text-neutral-500">
+                    <div className="text-muted-foreground">
                       {/* `path === "Сцена"` — не компонент с таким именем, а
                           зарезервированный адрес порядка корней сцены. Показывать
                           рядом с ним «component» значило бы отправить человека
@@ -105,10 +105,10 @@ export default function SaveConflictDialog() {
                     </div>
                   </td>
                   <td className="py-2 pr-3">{CONFLICT_KIND_LABEL[c.kind] ?? c.kind}</td>
-                  <td className="py-2 pr-3 text-neutral-500">{c.base ?? "—"}</td>
-                  <td className="py-2 pr-3 font-medium text-emerald-700 dark:text-emerald-400">{c.yours ?? "—"}</td>
-                  <td className="py-2 pr-3 font-medium text-sky-700 dark:text-sky-400">{c.theirs ?? "—"}</td>
-                  <td className="py-2 text-neutral-500">{c.their_user ?? "—"}</td>
+                  <td className="py-2 pr-3 text-muted-foreground">{c.base ?? "—"}</td>
+                  <td className="py-2 pr-3 font-medium text-success">{c.yours ?? "—"}</td>
+                  <td className="py-2 pr-3 font-medium text-info">{c.theirs ?? "—"}</td>
+                  <td className="py-2 text-muted-foreground">{c.their_user ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -117,7 +117,7 @@ export default function SaveConflictDialog() {
       ) : (
         // Список расхождений появится, когда на бэкенде включится слияние. До тех
         // пор честнее сказать «мы не знаем, что именно разошлось», чем молчать.
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-muted-foreground">
           Список расхождений сервер не прислал. Откройте версию {current_version ?? "—"},
           чтобы сравнить, и решите: сохранить своё поверх или отказаться и перенести
           правки вручную.
