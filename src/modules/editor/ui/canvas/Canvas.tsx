@@ -193,7 +193,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     <div
       ref={containerRef}
       id="canvas-viewport"
-      className="relative w-full h-full overflow-hidden bg-white dark:bg-neutral-950 context-menu-container"
+      className="relative w-full h-full overflow-hidden bg-card context-menu-container"
     >
       <div style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
         <Stage

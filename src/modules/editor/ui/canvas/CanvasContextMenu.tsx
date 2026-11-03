@@ -109,7 +109,7 @@ export function ContextMenuPanel({ items, settings, style, interactive = true }:
     <div
       style={{ ...style, ...styles.panel }}
       className={[
-        "min-w-40 overflow-y-auto bg-white dark:bg-neutral-800 rounded-md p-1 shadow-xl border border-gray-200 dark:border-neutral-700",
+        "min-w-40 overflow-y-auto bg-card rounded-md p-1 shadow-xl border border-border",
         interactive ? "" : "pointer-events-none select-none",
       ].join(" ")}
       aria-hidden={interactive ? undefined : true}
@@ -127,12 +127,12 @@ export function ContextMenuPanel({ items, settings, style, interactive = true }:
           style={styles.item}
           className={[
             "group flex w-full items-center px-3 py-2 text-sm text-left rounded-sm whitespace-nowrap",
-            "focus-visible:outline-none focus-visible:bg-indigo-500 focus-visible:text-white",
+            "focus-visible:outline-none focus-visible:bg-primary focus-visible:text-primary-foreground",
             item.disabled
-              ? "cursor-not-allowed opacity-40 text-gray-500 dark:text-neutral-500"
+              ? "cursor-not-allowed opacity-40 text-muted-foreground"
               : item.variant === "danger"
-                ? "cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white"
-                : "cursor-pointer text-gray-700 dark:text-white hover:bg-indigo-500 hover:text-white",
+                ? "cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                : "cursor-pointer text-foreground hover:bg-primary hover:text-primary-foreground",
           ].join(" ")}
         >
           {item.label}

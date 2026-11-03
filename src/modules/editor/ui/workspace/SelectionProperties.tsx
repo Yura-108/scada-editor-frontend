@@ -31,7 +31,7 @@ export function SelectionProperties() {
        молча пропали при выходе (стеш восстанавливает исходное состояние). */
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-6">
-        <div className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">
+        <div className="text-muted-foreground text-sm font-medium">
           Просмотр версии — свойства доступны только для чтения.
           <br />
           Выйдите из просмотра, чтобы редактировать схему.

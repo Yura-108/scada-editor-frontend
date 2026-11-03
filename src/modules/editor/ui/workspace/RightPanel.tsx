@@ -26,7 +26,7 @@ export function RightPanel({
   return (
     <aside
       style={{width: "var(--ws-right-w)"}}
-      className={`absolute right-0 top-0 bottom-0 z-panel border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md ease-in-out ${
+      className={`absolute right-0 top-0 bottom-0 z-panel border-l border-border bg-card dark:bg-card/80 backdrop-blur-md ease-in-out ${
         resizing ? 'transition-none' : 'transition-transform duration-300'
       } ${
         shown ? 'translate-x-0' : 'translate-x-full'
@@ -44,7 +44,7 @@ export function RightPanel({
         title="Свернуть панель свойств"
         aria-hidden={!shown}
         tabIndex={shown ? 0 : -1}
-        className={`absolute top-[50%] -left-8 p-1 text-neutral-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-opacity ${
+        className={`absolute top-[50%] -left-8 p-1 text-muted-foreground hover:text-foreground transition-opacity ${
           shown ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -59,7 +59,7 @@ export function RightPanel({
         title="Развернуть панель свойств"
         aria-hidden={visible || !showEditorPanels}
         tabIndex={!visible && showEditorPanels ? 0 : -1}
-        className={`absolute top-4 -left-12 p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-l-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 shadow-xl transition-opacity ${
+        className={`absolute top-4 -left-12 p-2 bg-card border border-border rounded-l-md text-muted-foreground hover:bg-accent shadow-xl transition-opacity ${
           !visible && showEditorPanels ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >

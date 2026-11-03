@@ -33,9 +33,9 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         {report.missing.length > 0 && (
           <Collapsible
             title={`Шаблон не найден: ${skipped} устройств`}
-            badge={<span className="text-xs text-amber-600 dark:text-amber-400">нет в палитре</span>}
+            badge={<span className="text-xs text-warning">нет в палитре</span>}
           >
-            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-gray-600 dark:text-gray-400">
+            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
               {report.missing.map((m) => (
                 <li key={`${m.group ?? ""}/${m.template}`}>
                   <span className="font-mono font-semibold">
@@ -44,7 +44,7 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
                   {" — "}
                   {/* Две разные беды: нет всей группы (переименовали/не завели) или нет
                       одного шаблона в ней. Чинятся по-разному, поэтому и пишутся по-разному. */}
-                  <span className="text-amber-600 dark:text-amber-400">
+                  <span className="text-warning">
                     {m.reason === "no-group" ? `группы «${m.group}» нет в палитре` : m.group ? `в группе «${m.group}» нет шаблона` : "шаблона нет в палитре"}
                   </span>
                   {", "}
@@ -59,9 +59,9 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         {report.ambiguous.length > 0 && (
           <Collapsible
             title={`Имя шаблона неоднозначно: ${report.ambiguous.length}`}
-            badge={<span className="text-xs text-gray-500">в палитре несколько, взят первый</span>}
+            badge={<span className="text-xs text-muted-foreground">в палитре несколько, взят первый</span>}
           >
-            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-gray-600 dark:text-gray-400 font-mono">
+            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground font-mono">
               {report.ambiguous.map((a) => (
                 <li key={`${a.group ?? ""}/${a.template}`}>
                   {a.group ? `${a.group} / ${a.template}` : a.template} — {a.count} шт.
@@ -74,16 +74,16 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
         {report.unsupportedRotation.length > 0 && (
           <Collapsible
             title={`Угол не кратен 90°: ${report.unsupportedRotation.length}`}
-            badge={<span className="text-xs text-amber-600 dark:text-amber-400">поставлены без поворота</span>}
+            badge={<span className="text-xs text-warning">поставлены без поворота</span>}
           >
-            <p className="max-h-48 overflow-y-auto text-xs text-gray-600 dark:text-gray-400 font-mono">
+            <p className="max-h-48 overflow-y-auto text-xs text-muted-foreground font-mono">
               {report.unsupportedRotation.join(", ")}
             </p>
           </Collapsible>
         )}
 
         {report.missing.length > 0 && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Чтобы эти устройства встали на схему, сохраните компонент с таким именем в
             указанную группу палитры и повторите импорт. Шаблон берётся только из группы,
             указанной в файле, — одноимённый шаблон из другой группы не подставляется.
