@@ -35,16 +35,16 @@ export function InspectorPropertyRow({property: p, draft, isWriting, busy, onDra
     <div className="px-4 py-3 space-y-2">
       <div className="flex items-center gap-3">
         {p.tag_id
-          ? <Waypoints className="h-4 w-4 shrink-0 text-indigo-500" aria-label="тег" />
-          : <SlidersHorizontal className="h-4 w-4 shrink-0 text-gray-400" aria-label="локальное свойство" />}
+          ? <Waypoints className="h-4 w-4 shrink-0 text-tag" aria-label="тег" />
+          : <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="локальное свойство" />}
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+          <span className="block text-sm font-medium text-foreground">
             {title(p)}
           </span>
           {/* Как в «Опциях»: короткий путь тега, полный — в title; технический name
               рядом, если подпись его скрыла. */}
           <span
-            className="block truncate text-xs text-gray-500 dark:text-gray-400"
+            className="block truncate text-xs text-muted-foreground"
             title={p.tag_id || undefined}
           >
             {p.label?.trim() ? `${p.name} · ` : ""}
@@ -55,13 +55,13 @@ export function InspectorPropertyRow({property: p, draft, isWriting, busy, onDra
           <span
             className={cn(
               "block text-sm font-medium",
-              bad ? "text-gray-400 line-through" : "text-gray-900 dark:text-gray-100",
+              bad ? "text-muted-foreground line-through" : "text-foreground",
             )}
             title={bad ? "Значение недостоверно (качество тега не GOOD)" : undefined}
           >
             {value == null ? (p.tag_id ? "нет данных" : "не задано") : String(value)}
           </span>
-          <span className="block text-xs text-gray-500 dark:text-gray-400">
+          <span className="block text-xs text-muted-foreground">
             текущее значение
           </span>
         </span>

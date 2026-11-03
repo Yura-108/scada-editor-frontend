@@ -28,8 +28,8 @@ export function TrendLegend({pens, geometry, hidden, setHidden, scale, setScale}
 
   return (
     <>
-      <div className="shrink-0 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-        <span className="font-medium text-gray-700 dark:text-gray-300">Шкала Y</span>
+      <div className="shrink-0 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Шкала Y</span>
         {(["min", "max"] as const).map(key => (
           <label key={key} className="flex items-center gap-1">
             {key === "min" ? "мин" : "макс"}
@@ -46,7 +46,7 @@ export function TrendLegend({pens, geometry, hidden, setHidden, scale, setScale}
           </label>
         ))}
         {(scale.min !== undefined || scale.max !== undefined) && (
-          <button type="button" className="text-blue-600 dark:text-blue-400 hover:underline" onClick={() => setScale({})}>
+          <button type="button" className="text-primary hover:underline" onClick={() => setScale({})}>
             как в настройке
           </button>
         )}
@@ -67,14 +67,14 @@ export function TrendLegend({pens, geometry, hidden, setHidden, scale, setScale}
                   })}
                 />
                 <span className="inline-block h-3 w-3 rounded-sm" style={{background: pen.color}} />
-                <span className="text-gray-800 dark:text-gray-200">{pen.label}</span>
-                <span className="text-xs text-gray-500" title={pen.tag}>{shortTagPath(pen.tag)}</span>
+                <span className="text-foreground">{pen.label}</span>
+                <span className="text-xs text-muted-foreground" title={pen.tag}>{shortTagPath(pen.tag)}</span>
               </label>
-              <span className="w-24 text-right font-mono text-xs text-gray-600 dark:text-gray-300">
+              <span className="w-24 text-right font-mono text-xs text-muted-foreground">
                 {g?.last === null || g?.last === undefined ? "—" : formatTrendValue(g.last)}
               </span>
               {(pen.k !== 1 || pen.b !== 0) && (
-                <span className="text-xs text-gray-500" title="Коэффициент и сдвиг пера: на графике значение тега × k + b">
+                <span className="text-xs text-muted-foreground" title="Коэффициент и сдвиг пера: на графике значение тега × k + b">
                   {pen.k !== 1 ? `×${pen.k}` : ""}{pen.b !== 0 ? ` ${pen.b > 0 ? "+" : "−"}${Math.abs(pen.b)}` : ""}
                 </span>
               )}

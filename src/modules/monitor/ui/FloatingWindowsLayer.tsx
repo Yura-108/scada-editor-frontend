@@ -89,8 +89,8 @@ function FloatingWindowView({win, cascadeIndex}: {win: FloatingWindow; cascadeIn
       onPointerDown={() => focusFloatingWindow(win.id)}
       className={cn(
         "absolute pointer-events-auto flex flex-col max-h-[calc(100%-1rem)] max-w-[calc(100%-1rem)]",
-        "rounded-xl border border-neutral-200 dark:border-neutral-800",
-        "bg-white/95 dark:bg-neutral-900/95 shadow-2xl backdrop-blur-xl",
+        "rounded-xl border border-border",
+        "bg-card/95 shadow-2xl backdrop-blur-xl",
         // До расчёта места не показываем: иначе окно мигнуло бы в левом верхнем углу.
         pos ? "opacity-100" : "opacity-0",
       )}
