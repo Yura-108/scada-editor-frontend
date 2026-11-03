@@ -53,14 +53,14 @@ export function RecipesPanel() {
     <div className="p-6 space-y-5 max-w-5xl">
       <div className="flex items-center justify-between gap-4">
         {/* Единый вид заголовка панели (как в «Слоях» и «Свойствах»). */}
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Рецепты
         </h3>
 
         {canEditRecipes && <button
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-            "bg-blue-600 text-white hover:bg-blue-500",
+            "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
           onClick={() => openRecipeEditorModal()}
         >
@@ -83,10 +83,10 @@ export function RecipesPanel() {
       ) : recipes.length === 0 ? (
         <EmptyState size="sm" icon={ListOrdered} title="Рецептов пока нет" className="min-h-[180px] justify-center" />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/70 backdrop-blur-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-card dark:bg-card/70 backdrop-blur-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/80 text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">
+              <tr className="border-b border-border bg-muted dark:bg-muted/80 text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="w-10" />
                 <th className={cn(headClass, "whitespace-nowrap py-3.5")}>Название</th>
                 <th className={cn(headClass, "whitespace-nowrap py-3.5")}>Теги</th>
@@ -94,7 +94,7 @@ export function RecipesPanel() {
                 <th className={cn(headClass, "whitespace-nowrap py-3.5 text-center")}>Действия</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70 text-sm text-gray-700 dark:text-gray-300">
+            <tbody className="divide-y divide-border text-sm text-foreground">
               {recipes.map((recipe) => {
                 const isOpen = expanded === recipe.id;
                 const steps = stepsOf(recipe);
@@ -137,7 +137,7 @@ export function RecipesPanel() {
         </div>
       )}
 
-      <p className="text-xs text-gray-500 dark:text-gray-500">
+      <p className="text-xs text-muted-foreground">
         Выполняется процедура в мониторе — вкладка «Процедуры». До мойки рецепт доходит только
         с выпуском: после сохранения выпустите проект и назначьте выпуск prod.
       </p>

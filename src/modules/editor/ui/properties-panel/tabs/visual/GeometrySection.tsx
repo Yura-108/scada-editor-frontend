@@ -26,7 +26,7 @@ export function GeometrySection({elementKey, type, values}: GeometrySectionProps
 
   return (
     <div>
-      <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 mb-2 uppercase tracking-wider">
+      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
         Геометрия
       </h4>
       <div className="grid grid-cols-2 gap-4">
@@ -50,7 +50,7 @@ export function GeometrySection({elementKey, type, values}: GeometrySectionProps
           </div>
         ))}
       </div>
-      <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700 mt-5" />
+      <div className="h-px bg-border mt-5" />
     </div>
   );
 }

@@ -23,7 +23,7 @@ export function ScriptTestRun({names, mockValues, setMockValues, onRun, outcome}
       <div className="flex justify-end">
         <button
           onClick={onRun}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/80 hover:bg-emerald-600 text-white transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-success/80 hover:bg-success text-success-foreground transition-colors"
         >
           <Play size={12} />
           Выполнить
@@ -32,7 +32,7 @@ export function ScriptTestRun({names, mockValues, setMockValues, onRun, outcome}
       <div className="grid grid-cols-2 gap-2">
         {names.map(varName => (
           <div key={varName} className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 dark:text-gray-400 font-mono shrink-0">{varName} =</span>
+            <span className="text-xs text-muted-foreground font-mono shrink-0">{varName} =</span>
             <Input
               size="sm"
               placeholder="значение"

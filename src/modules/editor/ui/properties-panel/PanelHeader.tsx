@@ -15,14 +15,14 @@ export function PanelHeader({element}: {element: DiagramElement}) {
   return (
     <>
       {/* Header */}
-      <div className="shrink-0 p-4 pb-3 border-b border-gray-200 dark:border-neutral-800">
+      <div className="shrink-0 p-4 pb-3 border-b border-border">
         {/* Единый вид заголовка панели (как в «Слоях»): раньше здесь был
             h3 text-base «Progress_bar Properties», в LayersPanel — h3 text-xs
             uppercase, а в RecipesPanel — h1 text-2xl. */}
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Свойства: {elementTypeLabel(element.type)}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1 font-mono">
+        <p className="text-xs text-muted-foreground mt-1 font-mono">
           ID: {element.key.slice(0, 8)}...
         </p>
       </div>

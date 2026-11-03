@@ -21,10 +21,10 @@ export function RecipeTagValuesTable({tags, step, onChange}: {
   onChange: (tagName: string, text: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card dark:bg-card/60">
       <table className="w-full text-left border-collapse text-sm">
         <thead>
-          <tr className="bg-gray-100 dark:bg-gray-800/80 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <tr className="bg-muted dark:bg-muted/80 text-xs uppercase tracking-wider text-muted-foreground">
             <th className={cn(headClass, "w-10")}>№</th>
             <th className={headClass}>Имя</th>
             <th className={headClass}>Тег</th>
@@ -33,25 +33,25 @@ export function RecipeTagValuesTable({tags, step, onChange}: {
             <th className={cn(headClass, "w-44")}>Значение</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70">
+        <tbody className="divide-y divide-border">
           {tags.map((tag, i) => {
             const text = step ? stepValueText(step, tag.name) : "";
             return (
               <tr key={tag.name}>
-                <td className={cn(cellClass, "text-gray-400")}>{i + 1}</td>
-                <td className={cn(cellClass, "font-medium text-gray-900 dark:text-gray-100")}>
+                <td className={cn(cellClass, "text-muted-foreground")}>{i + 1}</td>
+                <td className={cn(cellClass, "font-medium text-foreground")}>
                   {tag.name}
                 </td>
                 {/* Полный путь — в подсказке: в строку он не помещается. */}
-                <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")} title={tag.tag}>
+                <td className={cn(cellClass, "text-muted-foreground")} title={tag.tag}>
                   {shortTagPath(tag.tag)}
                 </td>
-                <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")}>
+                <td className={cn(cellClass, "text-muted-foreground")}>
                   {tag.value_type
                     ? VALUE_TYPE_LABELS[tag.value_type] ?? tag.value_type
-                    : <span className="italic text-gray-400">без проверки</span>}
+                    : <span className="italic text-muted-foreground">без проверки</span>}
                 </td>
-                <td className={cn(cellClass, "text-gray-500 dark:text-gray-400")}>
+                <td className={cn(cellClass, "text-muted-foreground")}>
                   {tag.description || "—"}
                 </td>
                 <td className={cellClass}>

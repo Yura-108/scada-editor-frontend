@@ -38,7 +38,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
         <span className={sectionTitle}>Шаги ({steps.length})</span>
         <button
           type="button"
-          className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="flex items-center gap-1.5 text-sm text-primary hover:underline"
           onClick={() => setSteps(prev => [...prev, emptyStep()])}
         >
           <Plus size={15} />
@@ -48,9 +48,9 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
 
       <div className="space-y-3">
         {steps.map((step, index) => (
-          <div key={index} className="rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3">
+          <div key={index} className="rounded-xl border border-border p-3 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="shrink-0 w-7 h-7 grid place-items-center rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
+              <span className="shrink-0 w-7 h-7 grid place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
                 {index + 1}
               </span>
               <Input
@@ -68,12 +68,12 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
             {/* Действие */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-muted-foreground">
                   Действие при входе в шаг
                 </span>
                 <button
                   type="button"
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
+                  className="text-xs text-primary hover:underline disabled:opacity-40"
                   disabled={tags.length === 0}
                   title={tags.length === 0 ? "Сначала добавьте теги в манифест" : undefined}
                   onClick={() => patchStep(index, {
@@ -85,7 +85,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
               </div>
 
               {step.action.length === 0 ? (
-                <p className="text-xs text-gray-400 dark:text-gray-600 italic">
+                <p className="text-xs text-muted-foreground italic">
                   Без записи — например, шаг ожидания подтверждения.
                 </p>
               ) : step.action.map((action, ai) => (
@@ -101,7 +101,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
 
             {/* Условие перехода */}
             <div className="space-y-1.5">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 Условие перехода (JavaScript; пусто — сразу после действия)
               </span>
               <Textarea
@@ -110,14 +110,14 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
                 placeholder="return elapsedMs >= 2000;"
                 onChange={(e) => patchStep(index, {condition_script: e.target.value})}
               />
-              <p className="text-xs text-gray-400 dark:text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Доступны <code>elapsedMs</code>, <code>confirmed</code>,{" "}
                 <code>readProjectTag(&quot;путь.тега&quot;)</code>. Скрипт исполняет рантайм.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 Таймаут «зависания», мс
               </span>
               <Input
@@ -131,7 +131,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
                   timeout_ms: e.target.value === "" ? null : Number(e.target.value),
                 })}
               />
-              <span className="text-xs text-gray-400 dark:text-gray-600">
+              <span className="text-xs text-muted-foreground">
                 процедуру не останавливает — только помечает шаг
               </span>
             </div>

@@ -33,8 +33,8 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">События</h4>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <h4 className="text-sm font-medium text-foreground">События</h4>
+      <p className="text-xs text-muted-foreground">
         JavaScript-обработчики, исполняемые в режиме монитора при клике по элементу. Могут менять
         значение свойства объекта (<code>setProperty</code>) или визуал/состояние самого элемента.
       </p>
@@ -47,14 +47,14 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
               key={name}
               className={cn(
                 "rounded-xl border px-3 py-2.5",
-                "bg-white/60 dark:bg-neutral-900/60 border-gray-200 dark:border-neutral-700",
+                "bg-card/60 border-border",
               )}
             >
               <div className="flex items-center gap-2">
-                <MousePointerClick size={15} className="text-indigo-500 shrink-0" />
+                <MousePointerClick size={15} className="text-primary shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</div>
-                  <div className="text-[11px] text-gray-500 dark:text-gray-400">{hint}</div>
+                  <div className="text-sm font-medium text-foreground">{label}</div>
+                  <div className="text-[11px] text-muted-foreground">{hint}</div>
                 </div>
 
                 <div className="ml-auto flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
                     </>
                   ) : (
                     <button
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
                       onClick={() => openEventScriptModal({element, event: name})}
                     >
                       <Plus size={13} />
@@ -79,7 +79,7 @@ export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
         })}
       </div>
 
-      <p className="text-[11px] text-gray-400 dark:text-gray-500">
+      <p className="text-[11px] text-muted-foreground">
         Обработчики срабатывают только в режиме «Монитор» — в редакторе клики выделяют элемент.
       </p>
     </div>

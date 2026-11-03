@@ -61,8 +61,8 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
 
   return (
     <div className="pt-3 space-y-3">
-      <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700" />
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Тренд</h4>
+      <div className="h-px bg-border" />
+      <h4 className="text-sm font-medium text-foreground">Тренд</h4>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -89,7 +89,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
           />
         </div>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Окно — сколько времени видно в мониторе; оператор может сменить его у себя, не сохраняя.
         Шаг — только сетка и подписи времени ({step} с).
       </p>
@@ -106,7 +106,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
               {settings?.[key] !== undefined && (
                 <button
                   type="button"
-                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-[10px] text-primary hover:underline"
                   onClick={() => commit({[key]: undefined})}
                 >
                   авто
@@ -123,7 +123,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
           </div>
         ))}
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Пусто — по данным всех перьев. Единицу пишите в «Имя» пера («Масса, т»), а к шкале её
         приводят коэффициент и сдвиг: на графике значение тега × коэффициент + сдвиг.
       </p>
@@ -131,7 +131,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
       <div className="space-y-2">
         <div className={labelClass}>Перья</div>
         {pens.length === 0 && (
-          <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+          <div className="text-sm text-muted-foreground italic">
             Перьев нет — тренд пустой.
           </div>
         )}
@@ -156,7 +156,7 @@ export function TrendSettingsBlock({element, onChange, inputClassName, addButton
         type="button"
         className={canAddPen
           ? addButtonClassName
-          : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"}
+          : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-muted-foreground cursor-not-allowed"}
         onClick={addPen}
         disabled={!canAddPen}
         title={canAddPen ? undefined : addPenHint}

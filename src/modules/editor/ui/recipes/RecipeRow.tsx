@@ -21,23 +21,23 @@ export function RecipeRow({recipe, isOpen, dirty, stepCount, canEditRecipes, tog
   const tags = recipe.tags ?? [];
   return (
     <tr
-      className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+      className="group cursor-pointer transition-colors hover:bg-accent"
       onClick={() => toggle(recipe)}
     >
-      <td className="pl-4 text-gray-400">
+      <td className="pl-4 text-muted-foreground">
         {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
       </td>
-      <td className="px-4 py-4 font-medium text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-4 font-medium text-foreground">
         {recipe.name}
         {dirty && (
           <Badge tone="warning" className="ml-2 font-normal">не сохранено</Badge>
         )}
-        <div className="text-xs font-normal text-gray-400 dark:text-gray-600">{recipe.id}</div>
+        <div className="text-xs font-normal text-muted-foreground">{recipe.id}</div>
       </td>
-      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
+      <td className="px-4 py-4 text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><Tags size={14} />{tags.length}</span>
       </td>
-      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
+      <td className="px-4 py-4 text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><ListOrdered size={14} />{stepCount}</span>
       </td>
       {/* Клик по кнопкам не должен заодно сворачивать строку. */}

@@ -68,7 +68,7 @@ export const confirmDeleteProperty = async (
           </span>
         )}
         {leavesBindingsWithoutProperty && (
-          <span className="block text-red-500 dark:text-red-400 font-medium">
+          <span className="block text-destructive font-medium">
             У элемента останутся привязки, но ни одного сохранённого свойства — схема перестанет
             сохраняться (бэкенд отклонит весь сейв), пока вы не добавите свойство заново или не
             удалите привязки.

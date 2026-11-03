@@ -19,7 +19,7 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
         <span className={sectionTitle}>Теги ({tags.length})</span>
         <button
           type="button"
-          className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="flex items-center gap-1.5 text-sm text-primary hover:underline"
           onClick={onPickTags}
         >
           <Tags size={15} />
@@ -28,7 +28,7 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
       </div>
 
       {tags.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+        <p className="text-sm text-muted-foreground italic">
           Манифест пуст — шагам будет нечего записывать.
         </p>
       ) : (
@@ -36,7 +36,7 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
           {tags.map((tag, index) => (
             <div
               key={`${tag.tag}-${index}`}
-              className="grid grid-cols-[1fr_1.4fr_auto_auto] gap-2 items-center rounded-lg border border-gray-200 dark:border-gray-800 p-2"
+              className="grid grid-cols-[1fr_1.4fr_auto_auto] gap-2 items-center rounded-lg border border-border p-2"
             >
               <Input
                 size="sm"

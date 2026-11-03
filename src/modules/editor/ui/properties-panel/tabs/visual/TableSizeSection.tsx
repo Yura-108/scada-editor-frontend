@@ -18,7 +18,7 @@ export function TableSizeSection({elementKey, tableTracks}: {elementKey: string;
 
   return (
     <div>
-      <h4 className="text-xs font-medium text-gray-600 dark:text-neutral-400 mb-2 uppercase tracking-wider">
+      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
         Размеры таблицы
       </h4>
       <div className="grid grid-cols-2 gap-4 items-end">
@@ -47,14 +47,14 @@ export function TableSizeSection({elementKey, tableTracks}: {elementKey: string;
         )}
         <button
           type="button"
-          className={cn(baseInputClasses, "cursor-pointer text-center hover:bg-gray-100 dark:hover:bg-neutral-800")}
+          className={cn(baseInputClasses, "cursor-pointer text-center hover:bg-accent")}
           title="Сделать все столбцы и строки одинаковыми"
           onClick={() => updateElementVisual(elementKey, {colWidths: undefined, rowHeights: undefined})}
         >
           Выровнять
         </button>
       </div>
-      <div className="h-px bg-linear-to-r from-neutral-700 via-neutral-600 to-neutral-700 mt-5" />
+      <div className="h-px bg-border mt-5" />
     </div>
   );
 }

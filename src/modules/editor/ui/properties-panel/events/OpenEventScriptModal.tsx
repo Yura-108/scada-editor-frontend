@@ -68,11 +68,11 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
           {/* Серверные скрипты компонента — клик вставит runScript("Имя") */}
           {element.scripts && element.scripts.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wider">Скрипты:</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Скрипты:</span>
               {element.scripts.map(script => (
                 <span
                   key={script.id}
-                  className={cn(chipClasses, "bg-amber-950/60 text-amber-300 border-amber-800/40 hover:bg-amber-900/70")}
+                  className={cn(chipClasses, "bg-warning/10 text-warning border-warning/30 hover:bg-warning/20")}
                   title={`Серверный скрипт «${script.name}» — клик вставит runScript`}
                   onClick={() => insertAtCursor(`runScript("${script.name}")`)}
                 >
@@ -88,11 +88,11 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
               вставка посреди строки не закомментировала её хвост. */}
           {otherScenes.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wider">Схемы:</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Схемы:</span>
               {otherScenes.map(scene => (
                 <span
                   key={scene.id}
-                  className={cn(chipClasses, "bg-sky-950/60 text-sky-300 border-sky-800/40 hover:bg-sky-900/70")}
+                  className={cn(chipClasses, "bg-info/10 text-info border-info/30 hover:bg-info/20")}
                   title={`Схема «${scene.name}» — клик вставит openScene`}
                   onClick={() => insertAtCursor(`openScene(${scene.id} /* ${scene.name.replace(/\*\//g, "* /")} */)`)}
                 >
@@ -104,7 +104,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
           )}
 
           {scope.invalidNames.length > 0 && (
-            <div className="text-xs text-amber-600 dark:text-amber-400">
+            <div className="text-xs text-warning">
               Имена {scope.invalidNames.map(n => `«${n}»`).join(", ")} нельзя использовать
               в коде (невалидный идентификатор или конфликт).
             </div>
@@ -124,7 +124,7 @@ function EventScriptModalContent({element, event}: EventScriptProps) {
         )}
 
         {syntaxError && (
-          <div role="alert" className="shrink-0 text-sm text-red-600 dark:text-red-400">
+          <div role="alert" className="shrink-0 text-sm text-destructive">
             Синтаксическая ошибка: {syntaxError}
           </div>
         )}
