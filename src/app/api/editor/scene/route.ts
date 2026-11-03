@@ -46,7 +46,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   if (!scenePayload?.name) {
     return NextResponse.json(
-      {error: "Имя сцены не валидное!"},
+      {error: "Недопустимое название схемы"},
       {status: 400}
     );
   }

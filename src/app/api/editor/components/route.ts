@@ -58,7 +58,7 @@ export const PUT = protectedRoute(async (req: NextRequest, {token}) => {
   // полезнее, чем тот же 400 от бэкенда без указания, чего не хватило.
   if (envelope.scene_id == null) {
     return NextResponse.json(
-      {message: "Не указана сцена (scene_id) — сохранять состав нечему."},
+      {message: "Не указана схема (scene_id) — сохранять состав нечему."},
       {status: 400}
     );
   }

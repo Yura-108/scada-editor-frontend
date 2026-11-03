@@ -36,7 +36,7 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
         description={
           <>
             JavaScript-код исполняется в мониторе при изменении тегов и свойств. В скоупе — свойства-теги
-            элемента и свойства других компонентов сцены и API: <code>setState(&quot;Имя&quot;)</code>,{" "}
+            элемента и свойства других компонентов схемы и API: <code>setState(&quot;Имя&quot;)</code>,{" "}
             <code>setProp(&quot;color&quot;, значение)</code>, <code>self</code>.
             <br />
             <b>Переменная — это само значение</b>: пишите <code>ST &gt; 100</code>, без{" "}
@@ -58,7 +58,7 @@ function BindingEditorModalContent({element, binding}: BindingEditorProps) {
             компонента; падает 400 на ВЕСЬ POST) — это обязательное условие для Save. */}
         {!canSave && (
           <Banner tone="destructive" className="shrink-0">
-            У элемента нет ни одного сохранённого свойства — бэкенд не позволит сохранить сцену
+            У элемента нет ни одного сохранённого свойства — бэкенд не позволит сохранить схему
             с такой привязкой (весь сейв целиком откатится с ошибкой). Сначала добавьте элементу
             свойство на вкладке «Свойства» (оно уходит на сервер сразу же), затем возвращайтесь
             сюда — привязка сохранится.

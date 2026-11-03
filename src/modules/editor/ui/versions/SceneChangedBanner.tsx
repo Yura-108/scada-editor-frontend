@@ -67,7 +67,7 @@ export default function SceneChangedBanner() {
         </>}
       >
         <div className="truncate">
-          Сцену сохранил{notice.userName ? <> <b>{notice.userName}</b></> : " другой пользователь"},
+          Схему сохранил{notice.userName ? <> <b>{notice.userName}</b></> : " другой пользователь"},
           версия <b>{notice.versionNo}</b>.
         </div>
       </Banner>

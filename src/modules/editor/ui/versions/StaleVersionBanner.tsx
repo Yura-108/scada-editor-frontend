@@ -53,7 +53,7 @@ export default function StaleVersionBanner() {
         }
       >
         <div className="truncate">
-          Сцену сохранил другой пользователь: у вас версия <b>{sceneVersion ?? "—"}</b> из{" "}
+          Схему сохранил другой пользователь: у вас версия <b>{sceneVersion ?? "—"}</b> из{" "}
           <b>{staleBaseVersion}</b>. Автосохранение отложено — нажмите «Сохранить», чтобы
           свести правки.
         </div>

@@ -33,7 +33,7 @@ export const SCENE_ORDER_CONFLICT_PATH = "Сцена";
 
 /** Человекочитаемая подпись пути конфликта. */
 export const formatConflictPath = (path: string): string =>
-  path === SCENE_ORDER_CONFLICT_PATH ? "Порядок компонентов сцены" : path;
+  path === SCENE_ORDER_CONFLICT_PATH ? "Порядок компонентов схемы" : path;
 
 /** Дата версии в локальном формате; пустая строка вместо «Invalid Date» на кривом вводе. */
 export const formatVersionTime = (iso: string): string => {

@@ -235,7 +235,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
           return;
         }
       }
-      toast.error(getErrorMessage(err, "Ошибка загрузки сцены"));
+      toast.error(getErrorMessage(err, "Ошибка загрузки схемы"));
       // Сбрасываем состояние при ошибке, чтобы не показывать данные от предыдущей сцены
       set(emptyDocument());
     } finally {
@@ -267,8 +267,8 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // Если имя не передано из UI (например, нажата кнопка «Создать сцену»
       // в ToolsPanel), спрашиваем модалкой.
       const sceneName = (name ?? await promptModal({
-        title: "Новая сцена",
-        label: "Название сцены",
+        title: "Новая схема",
+        label: "Название схемы",
         placeholder: "Например: Линия розлива",
         confirmLabel: "Создать",
       }))?.trim();
@@ -293,11 +293,11 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       discardVersionPreview();
       editorStore().temporal.getState().clear();
 
-      toast.success("Сцена создана");
+      toast.success("Схема создана");
       return {id: newScene.id, name: newScene.name};
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка создания сцены"));
+      toast.error(getErrorMessage(err, "Ошибка создания схемы"));
     }
   },
   deleteScene: async (id: number) => {
@@ -336,10 +336,10 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // readOnly без единого способа выйти — сцены-то больше нет.
       if (wasCurrent) discardVersionPreview();
 
-      toast.success('Сцена удалена');
+      toast.success('Схема удалена');
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, 'Ошибка удаления сцены'));
+      toast.error(getErrorMessage(err, 'Ошибка удаления схемы'));
     }
   },
 });

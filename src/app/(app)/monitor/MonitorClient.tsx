@@ -175,7 +175,7 @@ export default function MonitorClient() {
         ) : scene ? (
           <Canvas readOnly archive={isArchive} />
         ) : (
-          <EmptyState size="sm" title="Выберите проект и сцену для мониторинга" className="h-full justify-center" />
+          <EmptyState size="sm" title={currentProject ? "Выберите схему" : "Выберите проект и схему"} className="h-full justify-center" />
         )}
 
         {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
