@@ -11,12 +11,12 @@ import {guardedClick} from "@/shared/lib/unsavedGuard";
 
 const linkBase = cn(
   "flex shrink-0 items-center justify-center gap-2 rounded-xl transition-all duration-200 whitespace-nowrap",
-  "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50",
+  "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
 );
-const linkActive = "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]";
+const linkActive = "text-foreground bg-accent shadow-[inset_0_0_0_1px_var(--border)]";
 // Было "hover:text-gray-900 dark:text-white": tailwind-merge оставлял последний dark:text-*,
 // поэтому в тёмной теме неактивный пункт всегда был белым и не отличался от активного.
-const linkIdle = "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/5 dark:hover:bg-white/5";
+const linkIdle = "text-muted-foreground hover:text-foreground hover:bg-accent/60";
 
 /** Пункт с подписью: им же меряется, помещаются ли подписи. */
 const labeledClass = "px-3 py-2 text-sm font-medium";
@@ -25,7 +25,7 @@ const iconOnlyClass = "p-2.5";
 function ItemContent({item, isActive, labeled}: {item: NavItem; isActive: boolean; labeled: boolean}) {
   return (
     <>
-      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-indigo-400" : "text-current")} />
+      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-primary" : "text-current")} />
       {labeled && <span>{item.name}</span>}
     </>
   );
@@ -96,10 +96,10 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
                 <Tooltip.Content
                   side="bottom"
                   sideOffset={6}
-                  className="z-dropdown rounded-md bg-gray-900 dark:bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-white dark:text-gray-900 shadow-lg select-none"
+                  className="z-dropdown rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-lg select-none"
                 >
                   {item.name}
-                  <Tooltip.Arrow className="fill-gray-900 dark:fill-gray-100" />
+                  <Tooltip.Arrow className="fill-foreground" />
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip.Root>
@@ -118,7 +118,7 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
         aria-controls="mobile-nav"
         aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
         title={mobileOpen ? "Закрыть меню" : "Открыть меню"}
-        className="p-2 rounded-md text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors"
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -127,7 +127,7 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
         <nav
           id="mobile-nav"
           aria-label="Основная навигация"
-          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-dropdown min-w-52 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1 shadow-2xl"
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-dropdown min-w-52 rounded-xl border border-border bg-card p-1 shadow-2xl"
         >
           {navItems.map(item => {
             const isActive = isSectionActive(pathname, item.href);
@@ -144,11 +144,11 @@ export default function HeaderNav({isAdmin = false}: {isAdmin?: boolean}) {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive
-                    ? "text-gray-900 dark:text-white bg-gray-900/5 dark:bg-white/10"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-900/5 dark:hover:bg-white/5",
+                    ? "text-foreground bg-accent"
+                    : "text-muted-foreground hover:bg-accent/60",
                 )}
               >
-                <item.icon className={cn("w-4 h-4", isActive ? "text-indigo-400" : "text-current")} />
+                <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-current")} />
                 {item.name}
               </Link>
             );

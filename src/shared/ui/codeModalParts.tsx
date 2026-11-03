@@ -21,17 +21,17 @@ export function Collapsible({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="shrink-0 rounded-xl border border-gray-300 dark:border-gray-700/80 overflow-hidden">
+    <div className="shrink-0 rounded-xl border border-input overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-1.5 px-3 py-2 text-left hover:bg-gray-100/60 dark:hover:bg-gray-800/40 transition-colors"
+        className="w-full flex items-center gap-1.5 px-3 py-2 text-left hover:bg-accent/60 transition-colors"
       >
         <ChevronRight
           size={14}
-          className={cn("text-gray-500 transition-transform", open && "rotate-90")}
+          className={cn("text-muted-foreground transition-transform", open && "rotate-90")}
         />
-        <span className="text-xs font-medium uppercase tracking-wider text-gray-500">{title}</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</span>
         {badge != null && <span className="ml-auto">{badge}</span>}
       </button>
       {open && <div className="px-3 pb-3 pt-1 space-y-2">{children}</div>}

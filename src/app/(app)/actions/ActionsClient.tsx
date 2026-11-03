@@ -237,7 +237,7 @@ export default function ActionsClient() {
                         <Badge tone="destructive">
                           {r.outcome === "ERROR" ? "Ошибка" : r.outcome}
                         </Badge>
-                        {r.error && <div className="text-xs text-red-600 dark:text-red-400 break-words">{r.error}</div>}
+                        {r.error && <div className="text-xs text-destructive break-words">{r.error}</div>}
                       </div>
                     )}
                   </td>
@@ -254,7 +254,7 @@ export default function ActionsClient() {
               type="button"
               disabled={loading}
               onClick={() => filterRef.current && load(filterRef.current, page + 1)}
-              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
             >
               {loading && <Spinner />}
               Показать ещё

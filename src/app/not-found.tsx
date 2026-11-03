@@ -16,26 +16,26 @@ import { ArrowLeft, Home, SearchX } from 'lucide-react';
  */
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-neutral-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-muted flex items-center justify-center px-4">
       <div className="w-full max-w-lg text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800">
-          <SearchX className="h-8 w-8 text-gray-500 dark:text-neutral-400" />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted border border-border">
+          <SearchX className="h-8 w-8 text-muted-foreground" />
         </div>
 
-        <p className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-500">
+        <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Ошибка 404
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
           Страница не найдена
         </h1>
-        <p className="mt-3 text-gray-600 dark:text-neutral-400">
+        <p className="mt-3 text-muted-foreground">
           Проверьте адрес — возможно, раздел был переименован или удалён.
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/channels"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-indigo-600 to-blue-600 px-6 py-2.5 font-medium text-white shadow-lg shadow-indigo-500/30 transition-all hover:from-indigo-500 hover:to-blue-500"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 font-medium text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary/90"
           >
             <Home className="h-4 w-4" />
             На главную
@@ -44,7 +44,7 @@ export default function NotFound() {
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-6 py-2.5 font-medium text-gray-700 dark:text-neutral-300 transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card px-6 py-2.5 font-medium text-foreground transition-colors hover:bg-accent"
           >
             <ArrowLeft className="h-4 w-4" />
             Вернуться назад
