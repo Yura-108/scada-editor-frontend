@@ -35,7 +35,7 @@ export function ResizeHandle({side, label, value, min, max, onPointerDown, onKey
         ? "absolute top-0 bottom-0 right-0 -mr-1.5 w-3 cursor-col-resize z-panel-handle group/handle"
         : "absolute top-0 bottom-0 left-0 -ml-1.5 w-3 cursor-col-resize z-panel-handle group/handle"}
     >
-      <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-blue-500/50 group-focus/handle:bg-blue-500 transition-colors" />
+      <div className="mx-auto h-full w-px bg-transparent group-hover/handle:bg-primary/50 group-focus/handle:bg-primary transition-colors" />
     </div>
   );
 }

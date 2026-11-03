@@ -105,7 +105,7 @@ export function ArrangeButtons({canEdit}: {canEdit: boolean}) {
       {/*  disabled={!canEdit || selectedIds.length < 3}*/}
       {/*/>*/}
 
-      {/*<div className="w-px h-6 bg-gray-300 dark:bg-white/10 self-center mx-0.5" />*/}
+      {/*<div className="w-px h-6 bg-border self-center mx-0.5" />*/}
     </>
   );
 }

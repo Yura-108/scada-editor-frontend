@@ -35,7 +35,7 @@ export function LeftPanel({
   return (
     <aside
       style={{width: "var(--ws-left-w)"}}
-      className={`absolute left-0 top-0 bottom-0 z-panel border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 backdrop-blur-md ease-in-out ${
+      className={`absolute left-0 top-0 bottom-0 z-panel border-r border-border bg-card dark:bg-card/80 backdrop-blur-md ease-in-out ${
         resizing ? 'transition-none' : 'transition-transform duration-300'
       } ${
         shown ? 'translate-x-0' : '-translate-x-full'
@@ -62,7 +62,7 @@ export function LeftPanel({
         title="Свернуть левую панель"
         aria-hidden={!shown}
         tabIndex={shown ? 0 : -1}
-        className={`absolute top-[50%] -right-8 p-2 text-neutral-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-opacity ${
+        className={`absolute top-[50%] -right-8 p-2 text-muted-foreground hover:text-foreground transition-opacity ${
           shown ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -77,7 +77,7 @@ export function LeftPanel({
         title="Развернуть левую панель"
         aria-hidden={visible || !showEditorPanels}
         tabIndex={!visible && showEditorPanels ? 0 : -1}
-        className={`absolute top-4 -right-12 p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-r-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 shadow-xl transition-opacity ${
+        className={`absolute top-4 -right-12 p-2 bg-card border border-border rounded-r-md text-muted-foreground hover:bg-accent shadow-xl transition-opacity ${
           !visible && showEditorPanels ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >

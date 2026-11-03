@@ -39,8 +39,8 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
       className={cn(
         "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer select-none text-sm transition-colors",
         isSelected
-          ? "bg-blue-600/20 text-blue-700 dark:text-blue-300"
-          : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60",
+          ? "bg-primary/20 text-primary"
+          : "text-foreground hover:bg-accent",
         isComposition && "opacity-60",
       )}
       style={{paddingLeft: `${8 + depth * 14}px`}}
@@ -64,7 +64,7 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
       ) : (
         <span className="w-[13px] shrink-0" />
       )}
-      <span className={cn("shrink-0", el.isComponent ? "text-indigo-500" : "text-neutral-400")}>{icon}</span>
+      <span className={cn("shrink-0", el.isComponent ? "text-primary" : "text-muted-foreground")}>{icon}</span>
       <span className="truncate">{title}</span>
     </div>
   );

@@ -88,7 +88,7 @@ export function WorkSpace() {
             id="workspace-tab-content"
             role="tabpanel"
             aria-labelledby={`scene-tab-${activeTabKey}`}
-            className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
+            className="flex-1 min-h-0 overflow-hidden bg-card"
           >
             {renderTabContent()}
           </div>

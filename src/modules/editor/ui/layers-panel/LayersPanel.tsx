@@ -41,10 +41,10 @@ export function LayersPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0 flex items-center justify-between gap-2">
+      <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between gap-2">
         <h3
           id="layers-panel-heading"
-          className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           Слои
         </h3>
@@ -65,7 +65,7 @@ export function LayersPanel() {
         className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-0.5"
       >
         {visibleRows.length === 0 ? (
-          <div className="text-center text-neutral-500 text-sm py-8">Схема пуста</div>
+          <div className="text-center text-muted-foreground text-sm py-8">Схема пуста</div>
         ) : (
           visibleRows.map(({el, depth, isComposition}) => (
             <LayerRow
