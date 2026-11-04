@@ -23,20 +23,43 @@ export function resolveParamWidget(rawType: string | null | undefined): ParamWid
 }
 
 const NUMBER = /^-?\d+(\.\d+)?$/;
+const INTEGER = /^-?\d+$/;
+// Булево в базе каналов — по-разному: «Включен» хранит Delphi-булево -1/0, «Строковый» — 0/1.
+const BOOLEAN = /^(-1|0|1|true|false)$/i;
 
 /** Целое или дробное с точкой, в том числе отрицательное: «5000», «-1», «0.5». */
 export const isNumericParamValue = (value: unknown): boolean => NUMBER.test(String(value ?? '').trim());
 
 /**
- * Ошибка значения параметра или `null`. Тип значения бэкенд не присылает (`type` — это вид поля),
- * поэтому числовым считаем текстовый параметр, у которого на сервере сейчас число: «Период»
- * `5000`, «Протокол» `-1`. Пустой или текстовый на сервере так не проверить — нужен тип с бэкенда
- * (контракт `docs/contract/2026-11-04-channel-param-value-type-contract.md`).
+ * Ошибка значения параметра или `null`. Проверяется только текстовое поле (флажок и список
+ * неверного значения не дадут).
+ *
+ * Тип значения — `valueType` с бэкенда (int / float / bool / string): `type` у параметра — это
+ * вид поля, а не тип данных. Старый бэкенд `valueType` не присылает — тогда угадываем: числовым
+ * считаем параметр, у которого на сервере сейчас число («Период» `5000`, «Протокол» `-1`).
+ * Неизвестный `valueType` — как строка, без проверки.
  */
-export function paramValueError(rawType: string | null | undefined, serverValue: unknown, value: string): string | null {
-  if (resolveParamWidget(rawType) !== 'input') return null;
-  if (!isNumericParamValue(serverValue)) return null;
-  return isNumericParamValue(value) ? null : 'Должно быть число';
+export function paramValueError(
+  param: {type: string | null | undefined; value: unknown; valueType?: string | null},
+  value: string,
+): string | null {
+  if (resolveParamWidget(param.type) !== 'input') return null;
+  const v = value.trim();
+  switch ((param.valueType ?? '').trim().toLowerCase()) {
+    case 'int':
+      return INTEGER.test(v) ? null : 'Должно быть целое число';
+    case 'float':
+      return NUMBER.test(v) ? null : 'Должно быть число (дробная часть — через точку)';
+    case 'bool':
+      return BOOLEAN.test(v) ? null : 'Должно быть 0, 1, -1, true или false';
+    case 'string':
+      return null;
+    case '':
+      if (!isNumericParamValue(param.value)) return null;
+      return isNumericParamValue(v) ? null : 'Должно быть число';
+    default:
+      return null;
+  }
 }
 
 const TRUTHY = ['1', 'true', 'on', 'yes'];
