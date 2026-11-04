@@ -11,3 +11,7 @@ export * from "./script/eventScript";
 export * from "./script/scriptSyntax";
 export * from "./script/sceneTarget";
 export * from "./types/runtimeWrite.types";
+
+// Песочница скриптов схем: воркер, где выполняются привязки и обработчики (#20 п. 1).
+export * from "./sandbox/scriptSandbox";
+export type * from "./sandbox/protocol";
