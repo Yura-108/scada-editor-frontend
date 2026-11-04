@@ -18,6 +18,7 @@ export const JOURNAL_PRESETS: {label: string; ms: number}[] = [
 export const toLocalInput = (ts: number) =>
   new Date(ts - new Date(ts).getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
+/** Время журнала действий (runtime отдаёт его с поясом). Журнал базы каналов — `formatServerTime`. */
 export const formatTs = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())

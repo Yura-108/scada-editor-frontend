@@ -3,6 +3,7 @@ import {useQueryClient} from "@tanstack/react-query";
 import type {LogEntry} from "../types/logs.type";
 import {logsKeys, useLogs} from "../api/logs";
 import {useLogsFilterStore} from "./logsFilterStore";
+import {parseServerTime} from "@/shared/lib/serverTime";
 
 const NO_LOGS: LogEntry[] = [];
 
@@ -25,7 +26,7 @@ export function useLogsSearch() {
     const needle = searchQuery.toLowerCase();
     return logs
       .filter(log => log.userName.toLowerCase().includes(needle))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => parseServerTime(b.createdAt).getTime() - parseServerTime(a.createdAt).getTime());
   }, [logs, searchQuery]);
 
   /** «Показать»: новый период — новый запрос, тот же период — перечитать его. */

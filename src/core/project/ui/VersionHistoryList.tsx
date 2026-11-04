@@ -8,6 +8,7 @@ import {EmptyState} from "@/shared/ui/EmptyState";
 import {IconButton} from "@/shared/ui/IconButton";
 import type {Tone} from "@/shared/ui/tone";
 import type {VersionSummary} from "../types/editorVersion.types";
+import {formatServerTime} from "@/shared/lib/serverTime";
 
 interface Props {
   versions: VersionSummary[];
@@ -75,7 +76,7 @@ export function VersionHistoryList({versions, currentVersion, dirty, onRestore, 
               <span className="font-medium">v{v.version_no}</span>
               <Badge tone={KIND_TONE[v.kind] ?? "neutral"} title={kind.hint}>{kind.label}</Badge>
               <span className="text-muted-foreground">{v.user_name}</span>
-              <span className="text-muted-foreground">{new Date(v.created_at).toLocaleString("ru")}</span>
+              <span className="text-muted-foreground">{formatServerTime(v.created_at)}</span>
               <span className="flex-1" />
               {renderDetails && (
                 <button type="button" onClick={toggle} className="text-xs text-primary hover:underline">

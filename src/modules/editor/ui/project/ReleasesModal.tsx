@@ -16,13 +16,12 @@ import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import {fetchReleases} from "@/core/project";
 import type {VersionSummary} from "@/core/project";
+import {formatServerTime} from "@/shared/lib/serverTime";
 
 const PAGE = 30;
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU")}`;
-};
+/** `created_at` выпуска — без пояса, UTC (см. shared/lib/serverTime). */
+const formatDate = (iso: string) => formatServerTime(iso);
 
 interface Props {
   projectId: number;

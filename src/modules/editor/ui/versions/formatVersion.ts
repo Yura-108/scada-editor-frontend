@@ -1,5 +1,6 @@
 import type {ConflictKind, VersionKind} from "@/core/project";
 import type {Tone} from "@/shared/ui/tone";
+import {formatServerTime} from "@/shared/lib/serverTime";
 
 /** Подписи видов версий: `kind` отделяет осознанные сохранения от автоматических. */
 export const VERSION_KIND_LABEL: Record<VersionKind, string> = {
@@ -35,16 +36,9 @@ export const SCENE_ORDER_CONFLICT_PATH = "Сцена";
 export const formatConflictPath = (path: string): string =>
   path === SCENE_ORDER_CONFLICT_PATH ? "Порядок компонентов схемы" : path;
 
-/** Дата версии в локальном формате; пустая строка вместо «Invalid Date» на кривом вводе. */
-export const formatVersionTime = (iso: string): string => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
+/**
+ * Дата версии в местном поясе; пустая строка вместо «Invalid Date» на кривом вводе. `created_at`
+ * приходит без пояса и это UTC — без `parseServerTime` история отставала на смещение пояса.
+ */
+export const formatVersionTime = (iso: string): string =>
+  formatServerTime(iso, {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
