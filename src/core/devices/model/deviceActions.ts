@@ -146,15 +146,19 @@ export const updateParam = async (changes: { key: string; value: string }[]) => 
     value: string;
   }
 
+  // Ключи сравниваем строками: в ответе ключ — строка («235808»), а в параметрах из иерархии —
+  // число. Строгое сравнение не находило параметр — значение в сторе оставалось старым (после
+  // «Сохранено!» в поле возвращалось прежнее), а каждый сохранённый параметр дописывался «новым».
+  const sameKey = (a: unknown, b: unknown) => String(a) === String(b);
   tree.setState((state) => {
     // Обновляем существующие
     const merged = state.params.map((param) => {
-      const upd = updatedList.find((u: paramFromServer) => u.key === param.key);
+      const upd = updatedList.find((u: paramFromServer) => sameKey(u.key, param.key));
       return upd ? {...param, value: upd.value} : param;
     });
 
     // Добавляем новые, которых не было
-    const newParams = updatedList.filter((u: paramFromServer) => !state.params.some((p) => p.key === u.key));
+    const newParams = updatedList.filter((u: paramFromServer) => !state.params.some((p) => sameKey(p.key, u.key)));
 
     return {
       params: [...merged, ...newParams],

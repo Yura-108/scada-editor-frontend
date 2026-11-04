@@ -8,14 +8,21 @@ import type {resolveParamWidget} from '@/core/devices';
  * Значение параметра узла базы каналов — тем полем, которое задаёт тип параметра:
  * строка, многострочный текст или флажок («true»/«false»).
  */
-export function ParamValueField({widget, value, checked, onChange}: {
+export function ParamValueField({widget, value, checked, error, onChange}: {
   widget: ReturnType<typeof resolveParamWidget>;
   value: string;
   checked: boolean;
+  /** Ошибка значения («Должно быть число») — поле подсвечено, текст под ним. */
+  error?: string | null;
   onChange: (value: string) => void;
 }) {
   if (widget === 'input') {
-    return <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Введите значение..." />;
+    return (
+      <div className="space-y-1.5">
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Введите значение..." aria-invalid={error ? true : undefined} />
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
   }
   if (widget === 'textarea') {
     return (

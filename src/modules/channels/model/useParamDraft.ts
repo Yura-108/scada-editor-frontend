@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react";
 import debounce from "lodash/debounce";
-import {paramDraftKey, updateParam, useDeviceTreeStore, useParamDrafts} from "@/core/devices";
+import {toast} from "sonner";
+import {paramDraftKey, paramValueError, updateParam, useDeviceTreeStore, useParamDrafts} from "@/core/devices";
 
 export type ParamSaveStatus = "idle" | "success" | "error";
 
@@ -80,6 +81,20 @@ export function useParamDraft(selectedDevice: string | null) {
     return editedParams.size > 0;
   }, [editedParams]);
 
+  // Ошибки значений черновика: ключ параметра → текст. Пока они есть, сохранять нельзя — раньше
+  // «abc» в «Период» уходило на сервер, тот отвечал 200, а в базе оставался мусор.
+  const errors = useMemo(() => {
+    const result = new Map<string, string>();
+    if (!selectedDevice) return result;
+    const server = getParams(selectedDevice);
+    for (const [key, value] of editedParams) {
+      const param = server.find(p => String(p.key) === key);
+      const error = param ? paramValueError(param.type, param.value, value) : null;
+      if (error) result.set(key, error);
+    }
+    return result;
+  }, [editedParams, selectedDevice, getParams]);
+
   const handleChange = (key: string, value: string) => {
     if (!selectedDevice) return;
     const serverValue = getParams(selectedDevice).find((param) => String(param.key) === key)?.value ?? '';
@@ -98,6 +113,11 @@ export function useParamDraft(selectedDevice: string | null) {
 
   /** Сохранить черновик; `false` — не получилось (уходить с несохранённым нельзя). */
   const handleSave = async (): Promise<boolean> => {
+    // Кнопка при ошибках неактивна, но сюда приходит и «Сохранить и перейти» из охраны ухода.
+    if (errors.size > 0) {
+      toast.error("Исправьте значения параметров: есть ошибки");
+      return false;
+    }
     setIsSaving(true);
 
     try {
@@ -136,5 +156,5 @@ export function useParamDraft(selectedDevice: string | null) {
     setSaveStatus('idle');
   };
 
-  return {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges};
+  return {editedParams, errors, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges};
 }

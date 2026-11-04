@@ -12,11 +12,13 @@ import type {ParamSaveStatus} from "../model/useParamDraft";
  * редактирование», «Добавить параметр», «Сохранить изменения», «Отменить изменения» и итог
  * сохранения. Выход из правки с несохранённым спрашивает владелец (`onToggleEditing`).
  */
-export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, hasChanges, isSaving, saveStatus, handleSave, onToggleEditing, onDiscard}: {
+export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, hasChanges, errorCount, isSaving, saveStatus, handleSave, onToggleEditing, onDiscard}: {
   deviceTitle: string | undefined;
   paramCount: number;
   isEditingSelected: boolean;
   hasChanges: boolean;
+  /** Сколько значений с ошибкой: пока они есть, «Сохранить изменения» неактивна. */
+  errorCount: number;
   isSaving: boolean;
   saveStatus: ParamSaveStatus;
   handleSave: () => void;
@@ -115,7 +117,9 @@ export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, 
 
           onClick={handleSave}
 
-          disabled={!hasChanges || isSaving}
+          disabled={!hasChanges || isSaving || errorCount > 0}
+
+          title={errorCount > 0 ? `Исправьте значения с ошибкой: ${errorCount}` : undefined}
 
           className={clsx(
 
