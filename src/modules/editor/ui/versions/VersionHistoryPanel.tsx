@@ -2,6 +2,7 @@
 
 import React, {useEffect, useState} from "react";
 import {createPortal} from "react-dom";
+import {toServerTime} from "@/shared/lib/serverTime";
 import {Clock, Eye, RotateCcw, X} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Badge} from "@/shared/ui/Badge";
@@ -87,12 +88,11 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
 
   const handleAt = () => {
     if (!atTime) return;
-    // Шлём строку из поля КАК ЕСТЬ. `datetime-local` отдаёт настенное время без зоны
-    // ("2026-09-08T14:00"), и бэкенд ждёт ровно такое: параметр связывается в
-    // LocalDateTime и сравнивается с таким же локальным created_at. Прежний
-    // `new Date(...).toISOString()` переводил его в UTC — запрос уходил на величину
-    // смещения раньше, и молча открывалась версия не того момента.
-    void previewVersionAt(atTime);
+    // Поле `datetime-local` — местное время без пояса, а бэкенд связывает параметр в
+    // LocalDateTime и сравнивает с `created_at`, который у него в UTC (тоже без пояса).
+    // Поэтому переводим в UTC и шлём без пояса; прежнее «как есть» открывало версию на
+    // величину смещения пояса раньше нужной. Подробно — shared/lib/serverTime.
+    void previewVersionAt(toServerTime(new Date(atTime)));
   };
 
   // Портал в `body`: панель монтируется из тулбара, а он внутри холста — отдельного слоя

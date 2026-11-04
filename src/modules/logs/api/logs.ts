@@ -1,5 +1,5 @@
 import {keepPreviousData, useQuery} from "@tanstack/react-query";
-import {formatLocalDateTime} from "@/shared/lib/formatLocalDateTime";
+import {toServerTime} from "@/shared/lib/serverTime";
 import type {LogEntry} from "../types/logs.type";
 import type {LogsRange} from "../model/logsFilterStore";
 
@@ -9,7 +9,8 @@ export const logsKeys = {
 };
 
 const fetchLogs = async ({from, to}: LogsRange): Promise<LogEntry[]> => {
-  const params = new URLSearchParams({from: formatLocalDateTime(from), to: formatLocalDateTime(to)});
+  // Поля фильтра — местное время, журнал на сервере — UTC без пояса (см. shared/lib/serverTime).
+  const params = new URLSearchParams({from: toServerTime(new Date(from)), to: toServerTime(new Date(to))});
   const response = await fetch(`/api/logs?${params}`);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

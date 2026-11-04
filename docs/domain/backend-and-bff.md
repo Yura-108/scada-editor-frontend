@@ -11,6 +11,8 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
 - Auth: `protectedRoute` (`src/server/auth/protected.ts`) reads the `access_token` httpOnly cookie and forwards it as `Authorization: Bearer …`. Wrap every backend-touching route with it.
 - The cookie's `Secure` flag follows the **request's protocol** (`isHttpsRequest` in `src/server/auth/setTokenCookies.ts`, honours `x-forwarded-proto`), never `NODE_ENV`: the stand and the Docker package are production builds served over http, where a `Secure` cookie is silently dropped for anything but `localhost`. Login and logout must set the same attributes, or the logout cannot overwrite it.
 
+- **Times without a zone are UTC.** The channel log (`createdAt`, `undoneAt`), version history and releases (`created_at`) come as `LocalDateTime` with no offset — the backend runs in Docker, UTC. Read them with `parseServerTime` and send `from`/`to`/`at` with `toServerTime` (`src/shared/lib/serverTime.ts`); `new Date(s)` reads them as local time and shifts by the zone offset (#17, #21). The runtime action journal carries `Z` and is read as is. Contract for zoned times: `docs/contract/2026-11-04-server-time-zone-contract.md`.
+
 ## Sessions: access + refresh (contract `docs/contract/2026-10-28-auth-sessions-contract.md`)
 
 - **Two httpOnly cookies, both `Path=/`**: `access_token` (`maxAge` from the JWT `exp`) and

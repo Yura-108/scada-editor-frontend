@@ -6,10 +6,12 @@ import LogDetailsModal from './LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
 import { toast } from "sonner";
 import {
-  formatTs, journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
+  journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
 } from './journalUi';
 import {useDeviceTreeStore} from "@/core/devices";
 import {Badge} from "@/shared/ui/Badge";
+// Журнал базы каналов приходит без пояса — это UTC (см. shared/lib/serverTime).
+import {formatServerTime} from "@/shared/lib/serverTime";
 import type {Tone} from "@/shared/ui/tone";
 
 const COLUMNS = 7;
@@ -86,7 +88,7 @@ export default function LogsList() {
             <JournalEmptyRow colSpan={COLUMNS}>{empty}</JournalEmptyRow>
           ) : filteredLogs.map((log) => (
             <tr key={log.id} className={cn('align-top', log.undoneAt && 'opacity-60')}>
-              <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{formatTs(log.createdAt)}</td>
+              <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{formatServerTime(log.createdAt)}</td>
               <td className={journalTd}>{log.userName || '—'}</td>
               <td className={journalTd}>
                 {log.entityType === 'Node' ? 'Устройство' : 'Параметр'} №{log.entityId}
@@ -109,7 +111,7 @@ export default function LogsList() {
               </td>
               <td className={`${journalTd} text-right`}>
                 {log.undoneAt ? (
-                  <Badge title={`Отменено ${formatTs(log.undoneAt)}`}>отменено</Badge>
+                  <Badge title={`Отменено ${formatServerTime(log.undoneAt)}`}>отменено</Badge>
                 ) : (
                   <button
                     type="button"
