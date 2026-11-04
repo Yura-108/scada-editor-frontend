@@ -7,7 +7,7 @@
 ```bash
 npm run dev      # Next.js dev server (Turbopack) на http://localhost:3000
 npm run lint     # eslint
-npm run build    # next build (standalone) — проходит: ошибки типов и eslint сборку не роняют
+npm run build    # next build (standalone) — ошибка типов роняет сборку, eslint — нет
 npx tsc --noEmit # проверка типов
 npm run check:store-cycles  # нет ли цикла импортов обратно на стор редактора (см. ниже)
 npm run check:ui-colors     # сырые цвета в интерфейсе вместо токенов темы — не больше базы
@@ -24,9 +24,8 @@ node scripts/ui-colors-codemod.mjs <папка> [--write]  # однозначн�
   нет, поэтому при коммите ничего не запускается. Проверяйте сами: `npm run lint` — без ошибок
   и предупреждений, `any` запрещён.
 - Алиас путей: `@/*` → `src/*`.
-- **`tsc --noEmit` — без ошибок.** `next build` типы не проверяет (`ignoreBuildErrors` в
-  `next.config.ts`), поэтому ошибка типов не уронит сборку — проверяйте сами, после правки должно
-  остаться 0.
+- **`tsc --noEmit` — без ошибок.** `next build` тоже проверяет типы и падает на ошибке; eslint
+  он не запускает — `npm run lint` сами.
 
 ## Архитектура — читать перед любой правкой
 
