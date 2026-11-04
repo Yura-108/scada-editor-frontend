@@ -190,6 +190,9 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     const stash = editorSession.versionPreviewStash;
     editorSession.versionPreviewStash = null;
 
+    // Снимок «что лежит на сервере» возвращаем ДО элементов: подписчик пересчитывает isDirty
+    // в момент `set`, и со снимком просмотренной версии схема выходила «изменённой» (#21 п. 3).
+    editorSession.savedElementsSnapshot = stash.savedSnapshot;
     set({
       versionPreview: null,
       elements: stash.elements,
@@ -199,9 +202,6 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
       currentComponentStateByElementKey: stash.currentComponentStateByElementKey,
       isDirty: stash.isDirty,
     });
-    // Снимок «что лежит на сервере» тоже возвращаем: без него подписчик
-    // пересчитает isDirty от чужого снимка и флаг соврёт.
-    editorSession.savedElementsSnapshot = stash.savedSnapshot;
 
     editorStore().temporal.getState().resume();
   },

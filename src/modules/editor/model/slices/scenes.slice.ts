@@ -11,7 +11,7 @@ import {draftStashPatch, takeDraftStash} from "../draftStash";
 import {emptyDocument, noVersions} from "../scenePatches";
 import {
   applyLoadedScene, canWriteCurrentProject, deleteComponentsRequest, discardVersionPreview, getErrorMessage,
-  logSceneTiming, refuseViewOnly, revalidateCachedScene, scheduleScenePrefetch,
+  logSceneTiming, markSceneSaved, refuseViewOnly, revalidateCachedScene, scheduleScenePrefetch,
 } from "../editorStoreInternals";
 
 /**
@@ -110,9 +110,11 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     const projectId = state.currentProject?.id ?? null;
     set({sceneSource: "draft", releaseVersionNo: null, releaseError: null});
     if (stash && stash.projectId === projectId) {
-      set(draftStashPatch(stash));
-      // Снимок «что на сервере» — тоже прежний, иначе isDirty пересчитался бы от выпуска.
+      // Снимок «что на сервере» — тоже прежний, и ДО элементов: подписчик стора пересчитывает
+      // isDirty в момент `set`, и со снимком выпуска черновик всегда выходил «изменённым»
+      // (#18 п. 6: «Редактор → Монитор → Редактор» без правок).
       editorSession.savedElementsSnapshot = stash.savedSnapshot;
+      set(draftStashPatch(stash));
       return;
     }
     // Проект сменили в мониторе — черновик прежнего отброшен. Та схема, что открыта
@@ -292,6 +294,9 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // сцены сюда не переносится (иначе холст остался бы readOnly).
       discardVersionPreview();
       editorStore().temporal.getState().clear();
+      // Пустая новая схема — уже «как на сервере»: без этого снимок оставался от прошлой схемы,
+      // и новая сразу выглядела изменённой, ещё до первой правки (#18 п. 6).
+      markSceneSaved(false);
 
       toast.success("Схема создана");
       return {id: newScene.id, name: newScene.name};
