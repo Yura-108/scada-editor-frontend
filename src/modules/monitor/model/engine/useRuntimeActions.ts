@@ -1,18 +1,18 @@
-import {useCallback, useEffect, type RefObject} from "react";
+import {useCallback, useEffect, useRef, type RefObject} from "react";
 import {toast} from "sonner";
 import {devLog} from "@/shared/lib/devLog";
 import {getRenderedElement, getSceneView, type DiagramElement, type ElementEventName} from "@/core/scene";
 import {
-  collectTagScope, compileEventScript, executeEventScript, setRuntimeEventHandler, setRuntimeLive,
-  setRuntimePropertyValueGetter, setRuntimeScriptHandler, setRuntimeSessionGetter, setRuntimeTagQualityGetter,
-  setRuntimeTagWriteHandler, setRuntimeValueGetter, showRuntimeMenu, showRuntimeNotice, withPropertyRefs,
-  type ActionArgs, type ScreenPoint,
+  collectTagScope, createScriptSandbox, SANDBOX_TIMEOUTS, SandboxTimeoutError, setRuntimeEventHandler,
+  setRuntimeLive, setRuntimePropertyValueGetter, setRuntimeScriptHandler, setRuntimeSessionGetter,
+  setRuntimeTagQualityGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, showRuntimeNotice,
+  withPropertyRefs, type ActionArgs, type ScreenPoint, type ScriptSandbox,
 } from "@/core/runtime";
 import {actionDenialText, getCurrentProjectGrant} from "@/core/access";
 import type {RuntimeMode} from "./useRuntimeEngine";
 import type {RuntimeConnection, RuntimeStatus} from "./runtimeConnection";
 import {ingestOperatorWrites, type EngineBuffers} from "./engineBuffers";
-import {openSceneFromScript} from "./openSceneFromScript";
+import {applyEventResult, scopeValues} from "./applyEventResult";
 
 const log = (...args: unknown[]) => devLog("[monitor:engine]", ...args);
 
@@ -76,64 +76,59 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
     runScriptOn(el, scriptName, args, point);
   }, [runScriptOn]);
 
-  // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas):
-  // компилирует и исполняет element.events[event], пишет свойства в общий буфер
-  // и применяет self-интенты. Использует стабильные ref-ы — deps пустые.
+  // Песочница обработчиков событий: своя у монитора, живёт, пока движок в живом режиме, —
+  // поднимаем сразу, чтобы первый клик не ждал запуска воркера.
+  const sandboxRef = useRef<ScriptSandbox | null>(null);
+  useEffect(() => {
+    if (!active || mode !== "live") return;
+    const sandbox = createScriptSandbox();
+    sandboxRef.current = sandbox;
+    return () => {
+      sandboxRef.current = null;
+      sandbox.dispose();
+    };
+  }, [active, mode]);
+
+  // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas): element.events[event]
+  // выполняется в песочнице (#20 п. 1) над значениями скоупа на момент клика; результат —
+  // записи свойств, интенты и вызовы runScript — применяет страница (applyEventResult).
   const runEvent = useCallback((elementKey: string, event: ElementEventName, point?: ScreenPoint) => {
-    const store = getSceneView();
-    const el = store.elements.find(e => e.key === elementKey);
+    const sandbox = sandboxRef.current;
+    const {elements} = getSceneView();
+    const el = elements.find(e => e.key === elementKey);
     const handler = el?.events?.find(e => e.event_type === event)?.handler;
-    if (!el || !handler || !handler.code?.trim()) return;
+    if (!sandbox || !el || !handler || !handler.code?.trim()) return;
 
     const scope = withPropertyRefs(collectTagScope(el.properties), handler.propertyRefs);
-    const compiled = compileEventScript(el.key, handler, scope);
-    if ("error" in compiled) {
-      console.warn(`[monitor:event] ${event} «${el.label ?? el.key}» не скомпилирован: ${compiled.error}`);
-      return;
-    }
-    // onClick вызывает runScript("Имя", args?) — тот же мост, что и у пунктов меню монитора.
-    const runScript = (name: string, args?: ActionArgs) => runScriptOn(el, name, args, point);
-
-    const res = executeEventScript(compiled, buffers.values, buffers.valuesByProp, getRenderedElement(el), runScript);
-    if ("error" in res) {
-      console.warn(`[monitor:event] ${event} ошибка исполнения: ${res.error}`);
-      return;
-    }
-
-    // Записи свойств → тот же буфер, что и WS properties[]: на них реагируют
-    // биндинги других элементов. НЕ трогаем valuesByPropRef здесь: flush сравнивает
-    // pending со «старым» valuesByPropRef, чтобы понять, что значение изменилось —
-    // предварительная запись сделала бы изменение «no-op», и биндинги бы не сработали.
-    // flush (вызывается синхронно ниже) сам обновит valuesByPropRef для следующего клика.
-    for (const w of res.writes) {
-      buffers.pendingProps.set(w.propertyId, w.value);
-    }
-
-    // Интенты setProp/setState — на сам элемент, применяем немедленно.
-    if (res.intents.length) {
-      const stateNameByKey: Record<string, string> = {};
-      const propsByKey: Record<string, Record<string, unknown>> = {};
-      for (const intent of res.intents) {
-        if (intent.kind === "state") stateNameByKey[el.key] = intent.stateName;
-        else (propsByKey[el.key] ??= {})[intent.key] = intent.value;
-      }
-      store.applyRuntimeBatch({stateNameByKey, propsByKey});
-    }
-
-    log(`событие ${event} по «${el.label ?? el.key}»: записей ${res.writes.length}, интентов ${res.intents.length}`);
-    if (res.writes.length) flushRef.current();
-
-    // Переход — последним: записи setProperty уже ушли во flush выше, а смена схемы
-    // заменит elements, и применять интенты было бы уже не к чему.
-    if (res.openScene !== undefined) {
-      void openSceneFromScript(res.openScene, el.label ?? el.key);
-      // Меню выбора поверх схемы, которая сейчас сменится, было бы не к месту.
-      if (res.menu) console.warn(`[monitor:event] ${event} «${el.label ?? el.key}»: openScene и showMenu сразу — меню не показано`);
-      return;
-    }
-    // Меню выбора рисует холст: пункт подтверждается и уходит через emitRuntimeScript.
-    // Без точки клика (не из слоя интеракции) показывать его негде.
-    if (res.menu && point) showRuntimeMenu({elementKey: el.key, point, items: res.menu});
+    const id = `${el.key}:${event}`;
+    const name = el.label ?? el.key;
+    void sandbox.runEventOnce({id, elementKey: el.key, handler, scope}, scopeValues(scope, buffers), getRenderedElement(el))
+      .then(result => {
+        // Пока ждали ответа, схема могла смениться (или монитор — уйти из живого режима):
+        // поздний результат на другую схему не кладём — ни записей, ни ACTION, ни перехода.
+        if (sandboxRef.current !== sandbox || getSceneView().elements !== elements) {
+          log(`событие ${event} по «${name}»: схема сменилась, результат отброшен`);
+          return;
+        }
+        if ("error" in result) {
+          const what = result.stage === "compile" ? "не скомпилирован" : "ошибка исполнения";
+          console.warn(`[monitor:event] ${event} «${name}» ${what}: ${result.error}`);
+          return;
+        }
+        // onClick вызывает runScript("Имя", args?) — тот же мост, что и у пунктов меню монитора.
+        const runScript = (scriptName: string, args?: ActionArgs) => runScriptOn(el, scriptName, args, point);
+        applyEventResult({el, event, point, result, buffers, runScript, flush: () => flushRef.current()});
+      })
+      .catch(err => {
+        if (err instanceof SandboxTimeoutError) {
+          const text = `Обработчик «${name}» не ответил за ${SANDBOX_TIMEOUTS.event / 1000} с и остановлен — проверьте циклы`;
+          console.warn(`[monitor:event] ${event}: ${text}`);
+          if (!showRuntimeNotice(text, point)) toast.warning(text);
+        } else {
+          // Воркер перезапущен из-за чужого зависания или закрыт при выходе из живого режима.
+          log(`событие ${event} по «${name}» не выполнено: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      });
   }, [runScriptOn, buffers, flushRef]);
 
   /**
