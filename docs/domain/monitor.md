@@ -248,7 +248,7 @@ with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` r
 
 ## Script sandbox (in progress, #20 p. 1)
 
-Bindings and event handlers still run on the page through `new Function`, with the viewer's cookies — any user with edit rights can act as whoever opens the scheme. The fix moves them into a dedicated worker (`core/runtime/sandbox/`, plan: `docs/plan-2026-11-04-script-sandbox.md`). Step 1 is done: the worker and its host exist but **nothing uses them yet**.
+Bindings and event handlers still run on the page through `new Function`, with the viewer's cookies — any user with edit rights can act as whoever opens the scheme. The fix moves them into a dedicated worker (`core/runtime/sandbox/`, plan: `docs/plan-2026-11-04-script-sandbox.md`). Done: step 1 (worker and host) and step 2 — the editor's test runs («Тест» in the binding and event script dialogs) go through `editorTestSandbox()` (one per tab, lazy). The monitor engine still runs scripts on the page (steps 3–4).
 
 - The worker runs the same pure `executeBinding` / `eventScript`; inputs are values and `self`, outputs are intents. `runScript` comes back as a list of calls — the page sends ACTION itself, with its own checks.
 - Before any user code, `lockDownWorkerScope` removes network APIs (`fetch`, `XMLHttpRequest`, `WebSocket`, `importScripts`, nested workers, …) and the worker's own `postMessage` / `addEventListener` from the whole prototype chain; the host channel is captured first, so a script cannot forge a reply. The worker CSP (`connect-src 'none'`, step 5) is the stronger layer — `import()` can only be closed by it.

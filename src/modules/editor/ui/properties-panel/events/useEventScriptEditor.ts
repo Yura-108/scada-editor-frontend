@@ -1,6 +1,9 @@
 import {useMemo, useState} from "react";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
-import {compileEventScript, describeSceneTarget, executeEventScript, modernizeScopeCode, resolveSceneTarget} from "@/core/runtime";
+import {
+  describeSandboxFailure, describeSceneTarget, editorTestSandbox, modernizeScopeCode, resolveSceneTarget, toSandboxValues,
+  type EventRunResult,
+} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import type {DiagramElement} from "@/core/scene";
 import type {ElementEventHandler, ElementEventName, ElementEvents} from "@/core/scene";
@@ -40,25 +43,29 @@ export function useEventScriptEditor(element: DiagramElement, event: ElementEven
     [sceneList, currentSceneId],
   );
 
-  const runTest = () => {
+  // Прогон — в песочнице (см. useBindingEditor). runScript в тест-прогоне ничего не отправляет:
+  // песочница и так возвращает вызовы списком, здесь их только показываем.
+  const runTest = async () => {
     const handler: ElementEventHandler = {code, propertyRefs};
-    const compiled = compileEventScript(element.key, handler, scope);
-    if ("error" in compiled) {
-      setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
-      return;
-    }
     const {valuesByTagId, valuesByPropertyId} = draft.mockMaps();
-    // runScript в тест-прогоне ничего не отправляет — только показывает, что ушло бы.
-    const scriptCalls: string[] = [];
-    const recordRunScript = (name: string, args?: Record<string, unknown>) =>
-      scriptCalls.push(`runScript(${JSON.stringify(name)}${args ? `, ${JSON.stringify(args)}` : ""})`);
-    const res = executeEventScript(
-      compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element), recordRunScript,
-    );
-    if ("error" in res) {
-      setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
+    let res: EventRunResult;
+    try {
+      res = await editorTestSandbox().testEvent(
+        {id: `${element.key}:${event}`, elementKey: element.key, handler, scope},
+        toSandboxValues(valuesByTagId, valuesByPropertyId),
+        getRenderedElement(element),
+      );
+    } catch (err) {
+      setTestResult({kind: "error", message: describeSandboxFailure(err)});
       return;
     }
+    if ("error" in res) {
+      const stage = res.stage === "compile" ? "компиляции" : "исполнения";
+      setTestResult({kind: "error", message: `Ошибка ${stage}: ${res.error}`});
+      return;
+    }
+    const scriptCalls = res.runScript.map(c =>
+      `runScript(${JSON.stringify(c.name)}${c.args ? `, ${JSON.stringify(c.args)}` : ""})`);
     const parts = [
       ...res.writes.map(w => `setProperty(#${w.propertyId}) ← ${JSON.stringify(w.value)}`),
       ...res.intents.map(i =>

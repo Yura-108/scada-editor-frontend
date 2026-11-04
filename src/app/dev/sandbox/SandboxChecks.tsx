@@ -27,6 +27,12 @@ const CHECKS: Check[] = [
     const r = await sb.testEvent(event("e1", 'runScript("Пуск", {n: T}); openScene("Схема 2");'), VALUES, null);
     return "runScript" in r && r.runScript[0]?.name === "Пуск" && r.openScene === "Схема 2" ? true : JSON.stringify(r);
   }},
+  {name: "Синтаксическая ошибка — этап «компиляция», ошибка в коде — «исполнение»", run: async sb => {
+    const bad = await sb.testBinding(binding("bc", "if ("), VALUES, null);
+    const thrown = await sb.testBinding(binding("bt", "throw new Error('x')"), VALUES, null);
+    return "error" in bad && bad.stage === "compile" && "error" in thrown && thrown.stage !== "compile"
+      ? true : JSON.stringify({bad, thrown});
+  }},
   {name: "Сети нет: fetch недоступен", run: async sb => {
     const r = await sb.testBinding(binding("b2", 'fetch("/api/auth/me");'), VALUES, null);
     return "error" in r ? true : "fetch сработал";
