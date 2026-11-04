@@ -40,6 +40,12 @@ export interface ScriptSandbox {
   runEvent(generation: number, id: string, self: unknown): Promise<EventRunResult | null>;
   testBinding(binding: SandboxBinding, values: SandboxValues, self: unknown): Promise<BindingRunResult>;
   testEvent(event: SandboxEvent, values: SandboxValues, self: unknown): Promise<EventRunResult>;
+  /**
+   * Разовый прогон обработчика в мониторе — по клику, со значениями скоупа на момент клика.
+   * То же, что `testEvent`, но со сроком `event`: обработчик компилируется на каждый клик и
+   * раньше, загружать события схемы заранее незачем.
+   */
+  runEventOnce(event: SandboxEvent, values: SandboxValues, self: unknown): Promise<EventRunResult>;
   dispose(): void;
 }
 
@@ -113,6 +119,13 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
       ensure().postMessage(msg);
     });
 
+  const oneShotEvent = async (event: SandboxEvent, values: SandboxValues, self: unknown, timeoutMs: number) => {
+    const requestId = nextId++;
+    const res = await request(requestId, {type: "testEvent", requestId, event, values, self}, [event.id], timeoutMs);
+    if (res.type !== "testEventResult") throw new Error("Неожиданный ответ песочницы");
+    return res.result;
+  };
+
   return {
     async load(generation, scripts) {
       lastLoad = {generation, scripts};
@@ -147,12 +160,8 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
       if (res.type !== "testBindingResult") throw new Error("Неожиданный ответ песочницы");
       return res.result;
     },
-    async testEvent(event, values, self) {
-      const requestId = nextId++;
-      const res = await request(requestId, {type: "testEvent", requestId, event, values, self}, [event.id], SANDBOX_TIMEOUTS.test);
-      if (res.type !== "testEventResult") throw new Error("Неожиданный ответ песочницы");
-      return res.result;
-    },
+    testEvent: (event, values, self) => oneShotEvent(event, values, self, SANDBOX_TIMEOUTS.test),
+    runEventOnce: (event, values, self) => oneShotEvent(event, values, self, SANDBOX_TIMEOUTS.event),
     dispose() {
       disposed = true;
       restart(null);
