@@ -1,6 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
+import {createPortal} from "react-dom";
 import {Clock, Eye, RotateCcw, X} from "lucide-react";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Badge} from "@/shared/ui/Badge";
@@ -94,13 +95,16 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
     void previewVersionAt(atTime);
   };
 
-  return (
+  // Портал в `body`: панель монтируется из тулбара, а он внутри холста — отдельного слоя
+  // (`z-canvas`). Изнутри него никакой z-index не поднимет панель над боковыми: история
+  // открывалась ПОД панелью свойств, и от неё была видна полоска в 40px (#18 п. 1).
+  return createPortal(
     <aside
       aria-label="История версий"
-      // fixed, а не absolute: панель монтируется из тулбара (он сам fixed и высотой в
-      // одну строку), но должна занимать всю высоту рабочей области под шапкой.
-      className="fixed right-0 top-[calc(var(--app-header-h)+var(--page-header-h))] bottom-0 z-panel flex w-[360px] flex-col border-l
-                 bg-card/95 backdrop-blur-md"
+      // На всю высоту рабочей области под шапкой; слой `z-drawer` — над боковыми панелями и
+      // их ручками, под шапкой приложения и окнами.
+      className="fixed right-0 top-[calc(var(--app-header-h)+var(--page-header-h))] bottom-0 z-drawer flex w-[360px] flex-col border-l
+                 bg-card/95 backdrop-blur-md shadow-2xl"
     >
       <header className="flex h-11 shrink-0 items-center justify-between border-b px-3">
         <span className="text-sm font-semibold">История версий</span>
@@ -212,6 +216,7 @@ export default function VersionHistoryPanel({open, onClose}: {open: boolean; onC
           </button>
         )}
       </div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

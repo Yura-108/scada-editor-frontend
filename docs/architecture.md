@@ -175,7 +175,7 @@ ui/properties-panel/
 - Мягкий фон и рамка статуса — прозрачностью: `bg-warning/10 border-warning/30 text-warning`.
   Текст на сплошной заливке — `-foreground` того же токена (`bg-destructive text-destructive-foreground`).
 - Скругления: поля и кнопки — `rounded-lg`, карточки и панели — `rounded-xl`, окна — `rounded-2xl`.
-- Слои — только шкалой `z-*` из `globals.css` (`z-modal`, `z-dropdown`, `z-floating`, …), без чисел.
+- Слои — только шкалой `z-*` из `globals.css` (`z-modal`, `z-dropdown`, `z-floating`, …), без чисел. Холст редактора (`z-canvas`) — свой контекст наложения: что смонтировано внутри него, не поднимется над боковыми панелями ни при каком `z-*` — такую панель рисуют порталом в `body` (так «История версий», слой `z-drawer`).
 - **Не интерфейс:** цвета самих схем (заливки и обводки элементов по умолчанию —
   `modules/editor/lib/elementSchema/`, `modules/editor/lib/palette.ts`, `model/newElement.ts`) — это данные
   документа; палитра холста — строки для Konva в `core/canvas/useThemeColors.ts`. Её `selection` и

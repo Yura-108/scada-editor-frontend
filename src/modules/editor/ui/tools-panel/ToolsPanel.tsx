@@ -81,9 +81,8 @@ export function ToolsPanel() {
       <SceneChangedBanner />
       <StaleVersionBanner />
       <AutosaveErrorBanner />
-      <div className="pointer-events-auto">
-        <VersionHistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
-      </div>
+      {/* Сама панель уходит порталом в body — над боковыми панелями (см. VersionHistoryPanel). */}
+      <VersionHistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <SaveConflictDialog />
     </nav>
   );
