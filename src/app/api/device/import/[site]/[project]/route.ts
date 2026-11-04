@@ -1,6 +1,7 @@
 import {protectedRoute} from "@/server/auth/protected";
 import {backendErrorResponse} from "@/server/proxy/backendProxy";
 import {NextRequest, NextResponse} from "next/server";
+import {parsePathSegment} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -15,15 +16,14 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
  * DELETE-роуты: в обоих отказах вся ценность в тексте бэкенда, и терять его нельзя.
  */
 export const DELETE = protectedRoute(async (_req: NextRequest, {token, params}) => {
-  const {site, project} = params as {site?: string; project?: string};
-
-  if (!site || !project) {
+  // Оба сегмента — проверенные и закодированные: площадка кириллическая («Барановичи-1»), а
+  // `..` encodeURIComponent не кодирует — без проверки запрос ушёл бы выше по пути (#20 п. 3).
+  const site = parsePathSegment(params.site);
+  const project = parsePathSegment(params.project);
+  if (site === null || project === null) {
     return NextResponse.json({message: 'Нужны площадка и проект'}, {status: 400});
   }
-
-  // Кодируем оба сегмента: площадка кириллическая («Барановичи-1»), и без кодирования
-  // путь до бэкенда не доедет.
-  const path = `${encodeURIComponent(site)}/${encodeURIComponent(project)}`;
+  const path = `${site}/${project}`;
 
   const response = await fetch(`${BACKEND_URL}/api/channel/import/${path}`, {
     method: 'DELETE',

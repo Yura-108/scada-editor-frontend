@@ -30,6 +30,22 @@ export const parseId = (raw: unknown): number | null => {
   return Number.isSafeInteger(value) ? value : null;
 };
 
+const MAX_SEGMENT = 512;
+
+/**
+ * Один сегмент пути к бэкенду из строки (ключ узла базы каналов `BN1.Танки….TANK1`, UUID),
+ * уже закодированный, или `null`. Next раскодирует `%2F` и `..` в параметрах маршрута, и без
+ * проверки `DELETE /api/device/..%2F..%2Fauth%2Fadmin%2Fusers%2F5` ушёл бы на другой адрес бэкенда
+ * с токеном пользователя (#20 п. 3). `encodeURIComponent` сам по себе не спасает: `..` он не
+ * кодирует, и `fetch` поднялся бы на уровень вверх.
+ */
+export const parsePathSegment = (raw: unknown): string | null => {
+  if (typeof raw !== "string") return null;
+  if (!raw || raw.length > MAX_SEGMENT || raw === "." || raw === "..") return null;
+  if (/[/\\?#\x00-\x1f]/.test(raw)) return null;
+  return encodeURIComponent(raw);
+};
+
 /** Ответ на кривые сегменты пути — 400 в том же формате `{message}`, что и остальные ошибки. */
 export const badPath = (message: string) => NextResponse.json({message}, {status: 400});
 

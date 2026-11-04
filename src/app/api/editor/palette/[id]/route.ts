@@ -1,11 +1,13 @@
 import {backendErrorResponse} from "@/server/proxy/backendProxy";
 import {protectedRoute} from "@/server/auth/protected";
 import {NextResponse} from "next/server";
+import {badPath, parseId} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
 export const PUT = protectedRoute(async (req, { token, params }) => {
-  const { id } = params;
+  const id = parseId(params.id);
+  if (id === null) return badPath('Неверный id шаблона');
 
   const newPaletteItem = await req.json();
 
@@ -36,7 +38,8 @@ export const PUT = protectedRoute(async (req, { token, params }) => {
 });
 
 export const DELETE = protectedRoute(async (_request, { token, params }) => {
-  const { id } = params;
+  const id = parseId(params.id);
+  if (id === null) return badPath('Неверный id шаблона');
 
   const response = await fetch(`${BACKEND_URL}/api/editor/templates/${id}`, {
     method: "DELETE",
