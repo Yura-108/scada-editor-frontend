@@ -12,6 +12,12 @@ import {DeviceParamsHeader} from "./DeviceParamsHeader";
 import {OptionParamsList} from "./OptionParamsList";
 import {ParamGrid} from "./ParamGrid";
 
+/** Числовые ключи — по числу (иначе «10» шёл бы раньше «9»), прочие — как строки. */
+const byParamKey = (a: {key: string}, b: {key: string}) => {
+  const x = Number(a.key), y = Number(b.key);
+  return Number.isFinite(x) && Number.isFinite(y) ? x - y : String(a.key).localeCompare(String(b.key));
+};
+
 /**
  * Панель параметров выбранного узла на странице «Каналы»: шапка с правкой и сохранением,
  * сетка обычных параметров, «Общие параметры». Вне режима правки форма заблокирована.
@@ -31,15 +37,17 @@ const DeviceParams = () => {
 
   // Снятие redis-локов при уходе со страницы: перезагрузка, закрытие вкладки, SPA-навигация.
   useReleaseEditingOnLeave();
-  const {editedParams, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges} = useParamDraft(selectedDevice);
+  const {editedParams, errors, hasChanges, isSaving, saveStatus, handleChange, handleSave, discardChanges} = useParamDraft(selectedDevice);
   const currentDevice = nodes.find((node) => node.key === selectedDevice);
   const {toggleEditing, confirmDiscard} = useParamDraftGuard({
     selectedDevice, deviceTitle: currentDevice?.title, isEditingSelected, hasChanges, handleSave, discardChanges,
   });
 
   // Тот же отбор, что у getParams, но по params из подписки — иначе список не узнал бы о правке.
+  // Порядок — по ключу: бэкенд отдаёт параметры в порядке изменения, и после F5 правленый
+  // уезжал в конец списка. Ключ при правке не меняется, порядок совпадает с порядком создания.
   const rawParams = useMemo(
-    () => (selectedDevice ? params.filter(p => p.parentKey === selectedDevice) : []),
+    () => (selectedDevice ? params.filter(p => p.parentKey === selectedDevice).sort(byParamKey) : []),
     [selectedDevice, params],
   );
 
@@ -65,6 +73,7 @@ const DeviceParams = () => {
         paramCount={rawParams.length}
         isEditingSelected={isEditingSelected}
         hasChanges={hasChanges}
+        errorCount={errors.size}
         isSaving={isSaving}
         saveStatus={saveStatus}
         handleSave={() => void handleSave()}
@@ -80,7 +89,7 @@ const DeviceParams = () => {
       >
         {/* Форма */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
-          <ParamGrid normalParams={normalParams} editedParams={editedParams} handleChange={handleChange} />
+          <ParamGrid normalParams={normalParams} editedParams={editedParams} errors={errors} handleChange={handleChange} />
         </div>
 
         <OptionParamsList optionItems={optionItems} />

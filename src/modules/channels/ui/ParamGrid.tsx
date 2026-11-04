@@ -9,9 +9,10 @@ import ParamWrapper from "./ParamWrapper";
 import {ParamValueField} from "./ParamValueField";
 
 /** Сетка обычных параметров устройства: значение с учётом черновика, удаление с подтверждением. */
-export function ParamGrid({normalParams, editedParams, handleChange}: {
+export function ParamGrid({normalParams, editedParams, errors, handleChange}: {
   normalParams: DeviceParamsType[];
   editedParams: Map<string, string>;
+  errors: Map<string, string>;
   handleChange: (key: string, value: string) => void;
 }) {
   const handleRemoveParam = async (key: string) => {
@@ -54,6 +55,7 @@ export function ParamGrid({normalParams, editedParams, handleChange}: {
               widget={widget}
               value={value}
               checked={checked}
+              error={errors.get(keyStr)}
               onChange={(next) => handleChange(keyStr, next)}
             />
           </ParamWrapper>

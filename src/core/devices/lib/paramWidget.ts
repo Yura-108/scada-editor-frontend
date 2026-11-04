@@ -22,6 +22,23 @@ export function resolveParamWidget(rawType: string | null | undefined): ParamWid
   }
 }
 
+const NUMBER = /^-?\d+(\.\d+)?$/;
+
+/** Целое или дробное с точкой, в том числе отрицательное: «5000», «-1», «0.5». */
+export const isNumericParamValue = (value: unknown): boolean => NUMBER.test(String(value ?? '').trim());
+
+/**
+ * Ошибка значения параметра или `null`. Тип значения бэкенд не присылает (`type` — это вид поля),
+ * поэтому числовым считаем текстовый параметр, у которого на сервере сейчас число: «Период»
+ * `5000`, «Протокол» `-1`. Пустой или текстовый на сервере так не проверить — нужен тип с бэкенда
+ * (контракт `docs/contract/2026-11-04-channel-param-value-type-contract.md`).
+ */
+export function paramValueError(rawType: string | null | undefined, serverValue: unknown, value: string): string | null {
+  if (resolveParamWidget(rawType) !== 'input') return null;
+  if (!isNumericParamValue(serverValue)) return null;
+  return isNumericParamValue(value) ? null : 'Должно быть число';
+}
+
 const TRUTHY = ['1', 'true', 'on', 'yes'];
 
 // Терпимое чтение булева значения параметра (бэк отдаёт true/false, но встречаются 1/0/on).
