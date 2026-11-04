@@ -100,7 +100,8 @@ export const createDeviceRequest = async (node: {type: number; idNode: string; p
 };
 
 export const deleteDeviceRequest = async (key: string) => {
-  const res = await fetch(`/api/device/${key}`, {
+  // Ключ узла — путь с точками и кириллицей: кодируем сами, а не полагаемся на браузер.
+  const res = await fetch(`/api/device/${encodeURIComponent(key)}`, {
     method: 'DELETE',
     headers: {'Content-Type': 'application/json'},
   });

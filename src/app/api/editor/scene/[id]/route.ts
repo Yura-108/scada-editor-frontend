@@ -1,6 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import { backendErrorResponse } from '@/server/proxy/backendProxy';
 import {protectedRoute} from "@/server/auth/protected";
+import {badPath, parseId} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -15,7 +16,8 @@ function parseProjectId(searchParams: URLSearchParams): number | null {
 }
 
 export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
-  const {id} = params;
+  const id = parseId(params.id);
+  if (id === null) return badPath('Неверный id схемы');
 
   // Иерархия Проект -> Схема: project_id обязателен, чтобы бэкенд
   // мог валидировать, что запрашиваемая сцена принадлежит проекту.

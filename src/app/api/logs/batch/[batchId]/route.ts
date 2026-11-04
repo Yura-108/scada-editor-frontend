@@ -1,6 +1,7 @@
 import { protectedRoute } from "@/server/auth/protected";
 import { backendErrorResponse } from "@/server/proxy/backendProxy";
 import { NextRequest, NextResponse } from "next/server";
+import {badPath, parsePathSegment} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -8,11 +9,8 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 // Проксирует запрос на бэкенд: POST /api/channel/undo/batch/{batchId}
 export const POST = protectedRoute(async (_req: NextRequest, { token, params }) => {
   try {
-    const { batchId } = params;
-
-    if (!batchId) {
-      return NextResponse.json({ error: 'Missing batchId' }, { status: 400 });
-    }
+    const batchId = parsePathSegment(params.batchId);
+    if (batchId === null) return badPath('Неверный batchId');
 
     const response = await fetch(`${BACKEND_URL}/api/channel/undo/batch/${batchId}`, {
       method: 'POST',

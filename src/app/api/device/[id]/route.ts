@@ -1,10 +1,13 @@
 import { protectedRoute } from "@/server/auth/protected";
 import {NextResponse} from "next/server";
+import {badPath, parsePathSegment} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 export const DELETE = protectedRoute(async (_request, { token, params }) => {
-  const { id } = params;
+  // Ключ узла — путь с точками и кириллицей, не число: проверяем как сегмент пути (#20 п. 3).
+  const id = parsePathSegment(params.id);
+  if (id === null) return badPath('Неверный ключ узла');
 
   const response = await fetch(`${BACKEND_URL}/api/channel/node/${id}`, {
         method: "DELETE",

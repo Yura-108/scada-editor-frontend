@@ -1,10 +1,12 @@
 import { protectedRoute } from "@/server/auth/protected";
 import {NextResponse} from "next/server";
+import {badPath, parseId} from "@/server/proxy/editorHistoryProxy";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 export const DELETE = protectedRoute(async (_request, { token, params }) => {
-  const { id } = params;
+  const id = parseId(params.id);
+  if (id === null) return badPath('Неверный ключ параметра');
 
   const response = await fetch(`${BACKEND_URL}/api/channel/param/${id}`, {
     method: "DELETE",

@@ -35,7 +35,7 @@ export default function LogsList() {
   const handleCancel = async (log: LogEntry) => {
     try {
       const res = log.batchId != null
-        ? await fetch(`/api/logs/batch/${log.batchId}`, {
+        ? await fetch(`/api/logs/batch/${encodeURIComponent(log.batchId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
