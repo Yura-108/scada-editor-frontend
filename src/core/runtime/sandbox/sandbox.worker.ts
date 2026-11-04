@@ -106,7 +106,7 @@ const handle = (msg: SandboxRequest) => {
       const props = new Map<number, string>();
       applyValues(msg.values, tags, props);
       const result: BindingRunResult = "error" in c
-        ? {id: msg.binding.id, error: c.error}
+        ? {id: msg.binding.id, error: c.error, stage: "compile"}
         : runBinding(msg.binding.id, c, tags, props, msg.self);
       post({type: "testBindingResult", requestId: msg.requestId, result});
       return;
@@ -116,7 +116,7 @@ const handle = (msg: SandboxRequest) => {
       const tags = new Map<string, string | null>();
       const props = new Map<number, string>();
       applyValues(msg.values, tags, props);
-      const result: EventRunResult = "error" in c ? {error: c.error} : runEvent(c, tags, props, msg.self);
+      const result: EventRunResult = "error" in c ? {error: c.error, stage: "compile"} : runEvent(c, tags, props, msg.self);
       post({type: "testEventResult", requestId: msg.requestId, result});
       return;
     }

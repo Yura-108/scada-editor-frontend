@@ -14,4 +14,5 @@ export * from "./types/runtimeWrite.types";
 
 // Песочница скриптов схем: воркер, где выполняются привязки и обработчики (#20 п. 1).
 export * from "./sandbox/scriptSandbox";
+export * from "./sandbox/testRun";
 export type * from "./sandbox/protocol";

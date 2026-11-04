@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {createUuid} from "@/shared/lib/createUuid";
-import {compileBinding, executeBinding, modernizeScopeCode, type BindingIntent} from "@/core/runtime";
+import {describeSandboxFailure, editorTestSandbox, modernizeScopeCode, toSandboxValues, type BindingIntent} from "@/core/runtime";
 import {getRenderedElement} from "@/core/scene";
 import type {DiagramElement} from "@/core/scene";
 import type {TagBinding} from "@/core/scene";
@@ -61,7 +61,9 @@ export function useBindingEditor(element: DiagramElement, binding: TagBinding | 
 
   const [testResult, setTestResult] = useState<TestResult>(null);
 
-  const runTest = () => {
+  // Прогон — в песочнице, а не на странице: код привязки не получит ни сети с cookie
+  // пользователя, ни самой страницы, а зависший цикл не повесит редактор (#20 п. 1).
+  const runTest = async () => {
     const testDraft: TagBinding = {
       v: 1,
       id: binding?.id ?? "test",
@@ -70,17 +72,21 @@ export function useBindingEditor(element: DiagramElement, binding: TagBinding | 
       code,
       propertyRefs,
     };
-    const compiled = compileBinding(element.key, testDraft, scope);
-    if ("error" in compiled) {
-      setTestResult({kind: "error", message: `Ошибка компиляции: ${compiled.error}`});
-      return;
-    }
     const {valuesByTagId, valuesByPropertyId} = draft.mockMaps();
-    const res = executeBinding(compiled, valuesByTagId, valuesByPropertyId, getRenderedElement(element));
-    if ("error" in res) {
-      setTestResult({kind: "error", message: `Ошибка исполнения: ${res.error}`});
-    } else {
-      setTestResult({kind: "ok", intents: res.intents});
+    try {
+      const res = await editorTestSandbox().testBinding(
+        {id: testDraft.id, elementKey: element.key, binding: testDraft, scope},
+        toSandboxValues(valuesByTagId, valuesByPropertyId),
+        getRenderedElement(element),
+      );
+      if ("error" in res) {
+        const stage = res.stage === "compile" ? "компиляции" : "исполнения";
+        setTestResult({kind: "error", message: `Ошибка ${stage}: ${res.error}`});
+      } else {
+        setTestResult({kind: "ok", intents: res.intents});
+      }
+    } catch (err) {
+      setTestResult({kind: "error", message: describeSandboxFailure(err)});
     }
   };
 

@@ -45,13 +45,16 @@ export interface RunScriptCall {
   args?: ActionArgs;
 }
 
+/** `stage: "compile"` — код не разобрался (тест-прогон показывает «Ошибка компиляции»), иначе — ошибка исполнения. */
+export type RunErrorStage = "compile" | "run";
+
 export type BindingRunResult =
   | {id: string; intents: BindingIntent[]}
-  | {id: string; error: string};
+  | {id: string; error: string; stage?: RunErrorStage};
 
 export type EventRunResult =
   | {writes: PropertyWrite[]; intents: BindingIntent[]; openScene?: SceneTarget; menu?: MenuChoice[]; runScript: RunScriptCall[]}
-  | {error: string};
+  | {error: string; stage?: RunErrorStage};
 
 export type SandboxRequest =
   /** Новая схема: компилирует скрипты, значения сбрасываются. */
