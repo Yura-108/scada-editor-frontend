@@ -245,3 +245,13 @@ with `direct: true` + `tag: "<path>"` and an empty `code`. `buildBindingIndex` r
   tags.
 - The tag value is taken **as percent 0-100** by the progress bar and merely clamped; there is
   no min/max scaling. A physical quantity must be normalised on the PLC side.
+
+## Script sandbox (in progress, #20 p. 1)
+
+Bindings and event handlers still run on the page through `new Function`, with the viewer's cookies — any user with edit rights can act as whoever opens the scheme. The fix moves them into a dedicated worker (`core/runtime/sandbox/`, plan: `docs/plan-2026-11-04-script-sandbox.md`). Step 1 is done: the worker and its host exist but **nothing uses them yet**.
+
+- The worker runs the same pure `executeBinding` / `eventScript`; inputs are values and `self`, outputs are intents. `runScript` comes back as a list of calls — the page sends ACTION itself, with its own checks.
+- Before any user code, `lockDownWorkerScope` removes network APIs (`fetch`, `XMLHttpRequest`, `WebSocket`, `importScripts`, nested workers, …) and the worker's own `postMessage` / `addEventListener` from the whole prototype chain; the host channel is captured first, so a script cannot forge a reply. The worker CSP (`connect-src 'none'`, step 5) is the stronger layer — `import()` can only be closed by it.
+- Every request has a watchdog (`SANDBOX_TIMEOUTS`): no reply in time → the worker is terminated, restarted with the last scheme and values, and the request rejects with `SandboxTimeoutError` (`ids` of the scripts). What to do with the culprit is the caller's call.
+- `generation` = scheme load number. A reply for an older generation resolves to `null` and must not be applied; the worker answers stale requests (empty) so the watchdog never mistakes them for a hang.
+- `/dev/sandbox` (dev build only) runs the checks in a real browser: intents, `runScript`/`openScene`, no network, bypass attempts, no forged replies, the infinite-loop restart, stale generations.
