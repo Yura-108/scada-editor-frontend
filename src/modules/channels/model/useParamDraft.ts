@@ -89,7 +89,7 @@ export function useParamDraft(selectedDevice: string | null) {
     const server = getParams(selectedDevice);
     for (const [key, value] of editedParams) {
       const param = server.find(p => String(p.key) === key);
-      const error = param ? paramValueError(param.type, param.value, value) : null;
+      const error = param ? paramValueError(param, value) : null;
       if (error) result.set(key, error);
     }
     return result;

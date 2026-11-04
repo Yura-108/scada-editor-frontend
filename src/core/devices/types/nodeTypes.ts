@@ -18,12 +18,16 @@ export type DeviceParamsType = {
   name: string;
   type: string;
   value: string;
+  /** Тип значения с бэкенда: int / float / bool / string. Старый бэкенд не присылает. */
+  valueType?: string;
 };
 
 export type DeviceParamsLayoutType = {
   id: string;
   name: string;
   type: string;
+  /** Тип значения с бэкенда: int / float / bool / string. Старый бэкенд не присылает. */
+  valueType?: string;
 }
 export type DeviceParamsFromAddFunc = {
   parentKey: string;
