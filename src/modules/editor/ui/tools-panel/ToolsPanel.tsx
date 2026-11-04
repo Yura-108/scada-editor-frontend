@@ -23,7 +23,15 @@ import AutosaveErrorBanner from "../versions/AutosaveErrorBanner";
  *
  * Проект, схема и статус сохранения — в шапке редактора (`EditorHeader`), здесь только
  * действия над схемой. Отступ сверху — шапка приложения, шапка раздела и полоса вкладок.
+ *
+ * Полоса не шире места между боковыми панелями: раньше она центрировалась и на окне уже
+ * ~1280px уходила под них — «Сохранить» и «Импорт» было не нажать. Не помещается — группы
+ * переносятся во вторую строку целиком; ничего не прячется, «Сохранить» всегда последняя.
+ * Плашки над холстом стоят выше, на полосе вкладок, вторая строка их не задевает.
  */
+/** Группа кнопок переносится целиком; разделитель — в конце группы, а не в начале строки. */
+const group = "flex gap-1.5";
+
 export function ToolsPanel() {
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -39,19 +47,22 @@ export function ToolsPanel() {
       className="fixed top-[calc(var(--app-header-h)+var(--page-header-h)+2.5rem)] z-toolbar flex justify-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      <div className="flex gap-1.5 p-1.5 bg-card dark:bg-card/50 backdrop-blur-xl border border-border rounded-2xl shadow-2xl pointer-events-auto">
+      <div className="flex min-w-0 max-w-full flex-wrap justify-center gap-x-1.5 gap-y-1 p-1.5 bg-card dark:bg-card/50 backdrop-blur-xl border border-border rounded-2xl shadow-2xl pointer-events-auto">
 
-        <SceneButtons canEdit={canEdit} onImport={handleImport} />
+        <div className={group}>
+          <SceneButtons canEdit={canEdit} onImport={handleImport} />
+          <ToolbarDivider />
+        </div>
 
-        <ToolbarDivider />
+        <div className={group}>
+          <HistoryButtons canEdit={canEdit} canWrite={canWrite} onToggleHistory={() => setHistoryOpen(v => !v)} />
+          <ToolbarDivider />
+        </div>
 
-        <HistoryButtons canEdit={canEdit} canWrite={canWrite} onToggleHistory={() => setHistoryOpen(v => !v)} />
-
-        <ToolbarDivider />
-
-        <ArrangeButtons canEdit={canEdit} />
-
-        {canWrite && <SaveButton canSave={canSave} />}
+        <div className={group}>
+          <ArrangeButtons canEdit={canEdit} />
+          {canWrite && <SaveButton canSave={canSave} />}
+        </div>
       </div>
 
       <input

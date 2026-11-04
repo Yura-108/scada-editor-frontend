@@ -28,6 +28,23 @@ export function shouldIgnoreEditorHotkey(e: KeyboardEvent): boolean {
   return false;
 }
 
+/**
+ * Ctrl+S / Cmd+S: то же, что кнопка «Сохранить». Без правок или во время сохранения — ничего
+ * (кнопка в этот момент тоже неактивна); права, принадлежность схемы проекту и просмотр версии
+ * проверяет сам `exportScene` и объясняет отказ тостом.
+ *
+ * Фокус в поле панели свойств: поле применяет набранное по потере фокуса, поэтому сначала
+ * снимаем фокус, а сохраняем следующим тиком — иначе ушла бы схема без последней правки.
+ */
+function saveFromHotkey(target: EventTarget | null) {
+  const inField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+  if (inField) target.blur();
+  setTimeout(() => {
+    const {isDirty, isSaving, exportScene} = useEditorStore.getState();
+    if (isDirty && !isSaving) void exportScene();
+  }, 0);
+}
+
 const ARROW_STEPS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
 };
@@ -74,7 +91,7 @@ interface EditorHotkeysDeps {
 /**
  * ЕДИНСТВЕННЫЙ реестр горячих клавиш редактора: Escape / Delete / Ctrl+C / Ctrl+V /
  * Ctrl+D (дубликат) / Ctrl+A (выделить всё в скоупе) / Ctrl+Z / Ctrl+Y (undo/redo) /
- * Ctrl+G (группировка) / стрелки (сдвиг на шаг сетки, с Shift — на 1px).
+ * Ctrl+G (группировка) / Ctrl+S (сохранить) / стрелки (сдвиг на шаг сетки, с Shift — на 1px).
  *
  * Раньше Ctrl+Z/Y/G жили отдельно в EditorClient со своим, более слабым набором
  * guard-условий (без contentEditable), из-за чего Ctrl+Z внутри редактора скриптов
@@ -98,6 +115,15 @@ export function useEditorHotkeys({
   useEffect(() => {
     if (!enabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S — до общей проверки: в поле панели свойств он тоже сохраняет схему. Браузерное
+      // «Сохранить страницу» гасим всегда; в открытом окне (скрипт, привязка, рецепт) схему не
+      // сохраняем — там своя кнопка, а схема под окном не то, что сейчас правят.
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyS" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        const inDialog = e.target instanceof HTMLElement && e.target.closest('[role="dialog"], [role="alertdialog"]');
+        if (!inDialog && !isModalOpen()) saveFromHotkey(e.target);
+        return;
+      }
       if (shouldIgnoreEditorHotkey(e)) return;
 
       if (e.key === "Escape") {
