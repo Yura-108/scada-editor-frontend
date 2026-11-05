@@ -60,3 +60,6 @@ hs_err_pid*.log
 # IDE и анализаторы
 /.idea/
 /qodana.yaml
+
+# воркер-песочница, собирается scripts/build-sandbox-worker.mjs
+/public/sandbox/
