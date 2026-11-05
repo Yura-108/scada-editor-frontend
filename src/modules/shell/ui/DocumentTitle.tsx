@@ -21,12 +21,17 @@ export default function DocumentTitle() {
 
   useEffect(() => {
     const section = sectionOf(pathname);
-    if (!section) {
-      document.title = APP_NAME;
-      return;
-    }
-    const project = section.projectScoped && projectName ? ` · ${projectName}` : "";
-    document.title = `${section.name}${project} — ${APP_NAME}`;
+    const project = section?.projectScoped && projectName ? ` · ${projectName}` : "";
+    const title = section ? `${section.name}${project} — ${APP_NAME}` : APP_NAME;
+    const apply = () => { if (document.title !== title) document.title = title; };
+    apply();
+
+    // После F5 Next присылает `<title>` из metadata корневого layout позже этого эффекта и
+    // затирает заголовок, а эффект не перезапускается — адрес и проект те же (#12 п. 1).
+    // Возвращаем свой, когда `<head>` меняется; ставим только при отличии, так что без цикла.
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, {childList: true, subtree: true, characterData: true});
+    return () => observer.disconnect();
   }, [pathname, projectName]);
 
   return null;

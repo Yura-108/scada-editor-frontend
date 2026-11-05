@@ -104,12 +104,12 @@ export const widgetFields = {
   text: [
     {
       key: "text",
-      label: "Text Content",
+      label: "Текст",
       type: "text",
     },
     {
       key: "fontSize",
-      label: "Font Size",
+      label: "Кегль",
       type: "number",
       min: 8,
       max: 72,
@@ -117,24 +117,24 @@ export const widgetFields = {
     },
     {
       key: "color",
-      label: "Text Color",
+      label: "Цвет текста",
       type: "color",
       defaultValue: "#ffffff",
     },
     {
       key: "align",
-      label: "Text Align",
+      label: "Выравнивание",
       type: "select",
       options: [
-        {label: "Left", value: "left"},
-        {label: "Center", value: "center"},
-        {label: "Right", value: "right"},
+        {label: "По левому краю", value: "left"},
+        {label: "По центру", value: "center"},
+        {label: "По правому краю", value: "right"},
       ],
       defaultValue: "center",
     },
     {
       key: "bold",
-      label: "Bold",
+      label: "Жирный",
       type: "boolean",
       defaultValue: false,
     },

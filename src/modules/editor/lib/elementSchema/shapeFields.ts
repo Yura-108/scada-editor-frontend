@@ -238,7 +238,7 @@ export const shapeFields = {
   path: [
     {
       key: "d",
-      label: "Path (d)",
+      label: "Контур (SVG path)",
       type: "text",
       defaultValue: "M10 50 Q50 10 90 50 T90 90",
     },
