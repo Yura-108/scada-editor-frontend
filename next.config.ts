@@ -36,6 +36,17 @@ const reportOnlyCsp = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+/**
+ * Политика воркера-песочницы скриптов схем (`public/sandbox/worker.js`, #20 п. 1): у кода схемы
+ * нет ни сети (`connect-src` через `default-src 'none'` — `fetch`, WebSocket, …), ни загрузки
+ * скриптов (`import()`, `importScripts` — ни один источник не разрешён). `'unsafe-eval'` — сами
+ * скрипты схем компилируются через `new Function`. Это второй слой: первый — `lockDownWorkerScope`.
+ * Действует, только пока воркер загружается по своему адресу, а не из blob-URL.
+ */
+const sandboxWorkerHeaders = [
+  { key: 'Content-Security-Policy', value: "default-src 'none'; script-src 'unsafe-eval'" },
+];
+
 const securityHeaders = [
   { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -51,7 +62,11 @@ const nextConfig: NextConfig = {
   // Ошибки типов роняют сборку: их 0, и ошибка в проверке прав не пройдёт незамеченной
   // (#20 п. 5). Раньше здесь стоял `ignoreBuildErrors: true`.
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    // Порядок важен: из двух правил с одним заголовком действует последнее.
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      { source: '/sandbox/worker.js', headers: sandboxWorkerHeaders },
+    ];
   },
 };
 

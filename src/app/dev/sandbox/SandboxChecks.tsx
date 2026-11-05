@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {createScriptSandbox, SandboxTimeoutError, type SandboxBinding, type SandboxEvent, type TagScope} from "@/core/runtime";
+import {createScriptSandbox, SANDBOX_WORKER_URL, SandboxTimeoutError, type SandboxBinding, type SandboxEvent, type TagScope} from "@/core/runtime";
 import {Badge} from "@/shared/ui/Badge";
 
 /** Скоуп из одной тег-переменной `T`. */
@@ -19,6 +19,10 @@ type Check = {name: string; run: (sb: ReturnType<typeof createScriptSandbox>) =>
  * проверка зависания перезапускает воркер, и следующая показывает, что он снова работает.
  */
 const CHECKS: Check[] = [
+  {name: "У воркера своя политика: без сети и import() (заголовок ответа)", run: async () => {
+    const csp = (await fetch(SANDBOX_WORKER_URL, {method: "HEAD"})).headers.get("content-security-policy");
+    return csp === "default-src 'none'; script-src 'unsafe-eval'" ? true : `CSP воркера: ${csp}`;
+  }},
   {name: "Привязка читает тег и выдаёт намерения", run: async sb => {
     const r = await sb.testBinding(binding("b1", 'if (T > 10) setState("Авария"); setProp("color", "red");'), VALUES, null);
     return "intents" in r && JSON.stringify(r.intents).includes("Авария") ? true : JSON.stringify(r);

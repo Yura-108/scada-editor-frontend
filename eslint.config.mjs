@@ -128,6 +128,8 @@ const eslintConfig = defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    // Собранный воркер-песочница (scripts/build-sandbox-worker.mjs).
+    'public/sandbox/**',
   ]),
 ]);
 

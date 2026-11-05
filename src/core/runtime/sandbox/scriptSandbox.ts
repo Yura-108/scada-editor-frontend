@@ -57,8 +57,14 @@ interface Pending {
   reject: (err: Error) => void;
 }
 
-const defaultWorker = () =>
-  new Worker(new URL("./sandbox.worker.ts", import.meta.url), {type: "module", name: "script-sandbox"});
+/**
+ * Воркер — отдельный файл (`scripts/build-sandbox-worker.mjs`), а не `new URL(…, import.meta.url)`:
+ * у него своя политика безопасности из заголовка ответа (`next.config.ts` — без сети и `import()`),
+ * а воркер из blob-URL, как его создаёт Turbopack, унаследовал бы политику страницы.
+ */
+export const SANDBOX_WORKER_URL = "/sandbox/worker.js";
+
+const defaultWorker = () => new Worker(SANDBOX_WORKER_URL, {name: "script-sandbox"});
 
 export function createScriptSandbox({createWorker = defaultWorker}: {createWorker?: () => Worker} = {}): ScriptSandbox {
   let worker: Worker | null = null;
