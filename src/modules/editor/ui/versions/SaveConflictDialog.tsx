@@ -7,9 +7,22 @@ import {Button} from "@/shared/ui/Button";
 import Modal from "@/shared/ui/dialog/Modal";
 import {
   CONFLICT_KIND_LABEL,
+  formatConflictEntity,
   formatConflictPath,
   SCENE_ORDER_CONFLICT_PATH,
 } from "./formatVersion";
+import {conflictColumns, type ConflictLine} from "../../lib/conflictValues";
+
+/** «Было / У вас / У них»: по строке на различающееся поле, длинное — с подсказкой. */
+function ValueCell({lines, className}: {lines: ConflictLine[]; className: string}) {
+  return (
+    <td className={`py-2 pr-3 break-words ${className}`}>
+      {lines.length
+        ? lines.map((line, i) => <div key={i} title={line.title}>{line.text}</div>)
+        : "—"}
+    </td>
+  );
+}
 
 /**
  * Диалог расхождения версий (ответ 409 на сохранение).
@@ -90,8 +103,10 @@ export default function SaveConflictDialog() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((c, i) => (
-                <tr key={`${c.path}-${i}`} className="border-b border-border">
+              {rows.map((c, i) => {
+                const values = conflictColumns(c.base, c.yours, c.theirs);
+                return (
+                <tr key={`${c.path}-${i}`} className="border-b border-border align-top">
                   <td className="py-2 pr-3">
                     <div className="font-medium">{formatConflictPath(c.path)}</div>
                     <div className="text-muted-foreground">
@@ -101,16 +116,17 @@ export default function SaveConflictDialog() {
                           искать несуществующий компонент. */}
                       {c.path === SCENE_ORDER_CONFLICT_PATH
                         ? "порядок верхнего уровня"
-                        : c.entity}
+                        : formatConflictEntity(c.entity)}
                     </div>
                   </td>
                   <td className="py-2 pr-3">{CONFLICT_KIND_LABEL[c.kind] ?? c.kind}</td>
-                  <td className="py-2 pr-3 text-muted-foreground">{c.base ?? "—"}</td>
-                  <td className="py-2 pr-3 font-medium text-success">{c.yours ?? "—"}</td>
-                  <td className="py-2 pr-3 font-medium text-info">{c.theirs ?? "—"}</td>
+                  <ValueCell lines={values.base} className="text-muted-foreground" />
+                  <ValueCell lines={values.yours} className="font-medium text-success" />
+                  <ValueCell lines={values.theirs} className="font-medium text-info" />
                   <td className="py-2 text-muted-foreground">{c.their_user ?? "—"}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
