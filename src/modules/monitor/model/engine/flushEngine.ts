@@ -1,6 +1,6 @@
 import {cellRuntimeKey, getRenderedElement, getSceneView} from "@/core/scene";
 import type {BindingEntry, ScriptSandbox} from "@/core/runtime";
-import {devLog} from "@/shared/lib/devLog";
+import {devLog, isDev} from "@/shared/lib/devLog";
 import type {BindingIndex} from "./bindingIndex";
 import {collectResults, EMPTY_RUN, startBindings} from "./runBindings";
 import {applyInOrder, computeNoDataElementKeys, setsEqual, type EngineBuffers} from "./engineBuffers";
@@ -122,14 +122,18 @@ export function flushEngine(
 
     publishErrors(errors);
 
-    console.groupCollapsed(
-      `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
-    );
-    if (changedTags.length) console.table(changedTags);
-    if (changedProps.length) console.table(changedProps);
-    if (changedNames.length) console.table(changedNames);
-    if (fired.length) console.table(fired);
-    console.groupEnd();
+    // Только при разработке: таблицы на каждый тик (сотни тегов) в рабочей сборке забивали
+    // консоль оператора и держали в памяти копии значений.
+    if (isDev) {
+      console.groupCollapsed(
+        `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
+      );
+      if (changedTags.length) console.table(changedTags);
+      if (changedProps.length) console.table(changedProps);
+      if (changedNames.length) console.table(changedNames);
+      if (fired.length) console.table(fired);
+      console.groupEnd();
+    }
 
     if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
       // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
