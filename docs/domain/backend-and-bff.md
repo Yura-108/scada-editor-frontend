@@ -41,6 +41,8 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
   (`revoke-sessions`), a password change/reset or disabling the user kills them at once.
 - **Login 429**: 10 failed attempts per login in 15 minutes lock it until the window ends;
   `login/route.ts` turns `Retry-After` into «Слишком много неудачных попыток, повторите через N мин.».
+  A login 401 always reads «Неверный логин или пароль» (the backend sends English «Invalid
+  credentials»); other refusals pass the backend's message through.
 - **Monitor WebSocket uses a one-time ticket**, not the JWT: `/api/runtime/sessions` fetches
   `POST /api/auth/ws-ticket` (30 s, single use, not valid for REST) and returns `{...session, ticket}`;
   `runtimeConnection` opens `wsPath?ticket=…`. A new session (and ticket) is created on every

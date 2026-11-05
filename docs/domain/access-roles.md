@@ -22,7 +22,10 @@ here is convenience, never protection.
   `ACCESS_NOT_READY` (403) means "server is starting" — retry, not a denial.
 - **Global logout**: `authInterceptor.ts` wraps `window.fetch` at module load (in `providers.tsx`,
   not an effect — child effects run first) and sends any 401 / 403 `USER_DISABLED` from `/api/*`
-  to `/login`. Login/logout routes are exempt.
+  to `/login?reason=session` (401) or `?reason=disabled` (`USER_DISABLED`); the login page shows why
+  («Сеанс завершён — войдите снова.» / «Учётная запись отключена администратором.»,
+  `LOGIN_LEAVE_MESSAGES`). A 401 cannot tell an admin's «Завершить сеансы» from an expired session,
+  so that text stays generic. Login/logout routes are exempt.
 - **Sessions die all at once** (refresh *and* issued access tokens) on a password change, an admin
   password reset, disabling the user, or the admin card's «Завершить сеансы»
   (`POST /api/auth/admin/users/{id}/revoke-sessions`). This includes the current session:
