@@ -4,7 +4,7 @@ import React, { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { CircleAlert, Eye, EyeOff, LogIn, Mail } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff, Lock, LogIn, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginSchema } from '@/core/access';
 import {Input} from "@/shared/ui/field/Input";
@@ -83,11 +83,11 @@ export default function LoginPage() {
         <Suspense fallback={null}><LeaveNotice /></Suspense>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Email */}
+          {/* Логин: значок человека — раньше здесь был конверт, а человек стоял у пароля (#5). */}
           <div className="space-y-2">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <User className="h-4 w-4 text-muted-foreground" />
               </div>
               <Input
                 {...register('login')}
@@ -115,19 +115,7 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-4 w-4 text-muted-foreground"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"
-                  />
-                </svg>
+                <Lock className="h-4 w-4 text-muted-foreground" />
               </div>
               <Input
                 {...register('password')}
