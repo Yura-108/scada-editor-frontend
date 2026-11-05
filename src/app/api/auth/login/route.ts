@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   }
 
   if (!ok) {
-    return Response.json({ message: data.message ?? 'Неверный логин или пароль' }, { status });
+    // На 401 бэкенд присылает английское «Invalid credentials» — оператору нужен свой текст.
+    // Остальные отказы (учётка отключена, сервис недоступен) — как сказал бэкенд.
+    const message = status === 401 ? 'Неверный логин или пароль' : data.message ?? 'Не удалось войти';
+    return Response.json({ message }, { status });
   }
 
   const pair = parseSessionPair(data);
