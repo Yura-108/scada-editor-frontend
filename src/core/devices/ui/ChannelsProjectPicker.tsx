@@ -7,11 +7,10 @@ import {Button} from "@/shared/ui/Button";
 import {MultiSelect} from "@/shared/ui/MultiSelect";
 import {loadParamTypes} from "../model/deviceDictionaries";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
+import {useRestoreLoadedProjects} from "../model/useRestoreLoadedProjects";
+import {useProjectSelection} from "./useProjectSelection";
 
 const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
-
-/** Площадка проекта — первый сегмент его ключа (`площадка.проект`). */
-const siteOf = (projectKey: string) => projectKey.split('.')[0];
 
 interface Props {
   /** `toolbar` — в строку панели «Базы каналов»; `stacked` — столбиком внутри пустого дерева. */
@@ -24,13 +23,10 @@ interface Props {
  * текст «выберите площадку и проект ниже», а ниже ничего не было.
  */
 export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
-  const { loadNodes, loadedRootPath } = useDeviceTreeStore();
-
-  // Возвращаясь в раздел, видим то, что уже загружено, а не пустые поля.
-  const [selectedProjects, setSelectedProjects] = useState<string[]>(() => loadedRootPath ?? []);
-  const [selectedSites, setSelectedSites] = useState<string[]>(
-    () => [...new Set((loadedRootPath ?? []).map(siteOf))],
-  );
+  const loadNodes = useDeviceTreeStore(s => s.loadNodes);
+  const {selectedSites, setSelectedSites, selectedProjects, setSelectedProjects} = useProjectSelection();
+  // После F5 — снова загрузить проекты этой вкладки (#16 п. 9).
+  useRestoreLoadedProjects();
 
   const [availableSites, setAvailableSites] = useState<{value: string, label: string}[]>([]);
   const [sitesLoaded, setSitesLoaded] = useState(false);
@@ -107,7 +103,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
 
     void fetchProjects();
     return () => { cancelled = true; };
-  }, [selectedSites]);
+  }, [selectedSites, setSelectedProjects]);
 
   const handleLoad = async () => {
     if (isSubmitting || selectedProjects.length === 0) return;

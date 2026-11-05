@@ -7,6 +7,8 @@ import type {DeviceParamsType} from '../types/nodeTypes';
 import type {NodeParamType, NodeType} from "../types/channelsTypes";
 import {errorMessage} from "../api/devicesApi";
 import {fetchDeviceTree} from "../api/deviceTreeApi";
+import {useSessionUserStore} from "@/core/access";
+import {rememberLoadedProjects} from "./loadedProjectsMemory";
 
 /**
  * База каналов: дерево узлов и их параметры.
@@ -84,3 +86,10 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
     }),
   ),
 );
+
+// Загруженные проекты помнит вкладка: после F5 их снова грузит `useRestoreLoadedProjects`.
+// Пишем на любую смену — «Загрузить», удаление проекта, повторная загрузка.
+useDeviceTreeStore.subscribe((state, prev) => {
+  if (state.loadedRootPath === prev.loadedRootPath) return;
+  rememberLoadedProjects(useSessionUserStore.getState().login, state.loadedRootPath);
+});
