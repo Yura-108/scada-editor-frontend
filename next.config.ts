@@ -8,9 +8,12 @@ import type { NextConfig } from 'next';
  * кнопке управления), `nosniff`, `Referrer-Policy`.
  *
  * Полная CSP — пока только отчётом (`…-Report-Only`): нарушения видны в консоли браузера, но
- * ничего не блокируется. Сразу включить её нельзя: скрипты схем исполняются через `new Function`
- * (нужен `'unsafe-eval'`, см. #20 п. 1), Next вставляет встроенные скрипты, а gateway — тот же
- * хост на другом порту, который на этапе сборки неизвестен (см. `shared/lib/gatewayOrigin.ts`).
+ * ничего не блокируется. Сразу включить её нельзя: Next вставляет встроенные скрипты, а gateway —
+ * тот же хост на другом порту, который на этапе сборки неизвестен (см. `shared/lib/gatewayOrigin.ts`).
+ *
+ * `'unsafe-eval'` странице больше не нужен (#20 п. 1, шаг 6): скрипты схем исполняет воркер-песочница
+ * со своей политикой (ниже), синтаксис проверяет acorn, zod — без JIT. Остаётся только в dev:
+ * там им пользуются инструменты разработки React и Next, и отчёт был бы шумом.
  * Когда отчёты на стенде чистые — переносим политику в `Content-Security-Policy`, сужая
  * `connect-src` до хоста страницы — уже в `proxy.ts`, где хост запроса известен.
  */
@@ -22,9 +25,11 @@ const gatewaySources = [
   process.env.NEXT_PUBLIC_GATEWAY_URL, process.env.NEXT_PUBLIC_RUNTIME_WS_URL,
 ].filter(Boolean);
 
+const devEval = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
+
 const reportOnlyCsp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  `script-src 'self' 'unsafe-inline'${devEval}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
