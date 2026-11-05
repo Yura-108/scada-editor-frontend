@@ -86,14 +86,14 @@ export function GrantsTable({userId}: {userId: number}) {
       </p>
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-muted dark:bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-muted dark:bg-muted/60 text-left text-xs font-medium text-muted-foreground">
             <tr>
-              <th className="px-3 py-2">Проект</th>
-              <th className="px-3 py-2 text-center">Просмотр</th>
-              <th className="px-3 py-2 text-center">Управление</th>
-              <th className="px-3 py-2 text-center">Уровень</th>
-              <th className="px-3 py-2 text-center">Правка</th>
-              <th className="px-3 py-2" />
+              <th className="px-2 py-2">Проект</th>
+              <th className="px-2 py-2 text-center">Просмотр</th>
+              <th className="px-2 py-2 text-center">Управление</th>
+              <th className="px-2 py-2 text-center">Уровень</th>
+              <th className="px-2 py-2 text-center">Правка</th>
+              <th className="px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -102,15 +102,15 @@ export function GrantsTable({userId}: {userId: number}) {
               const dirty = drafts[p.id] !== undefined;
               return (
                 <tr key={p.id} className={dirty ? "bg-warning/5" : undefined}>
-                  <td className="px-3 py-1.5">{p.name}</td>
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-2 py-1.5">{p.name}</td>
+                  <td className="px-2 py-1.5 text-center">
                     <Checkbox aria-label={`Просмотр в «${p.name}»`} checked={g.view} onChange={e => setDraft(p.id, {view: e.target.checked})} />
                   </td>
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-2 py-1.5 text-center">
                     <Checkbox aria-label={`Управление в «${p.name}»`} checked={g.operate}
                       onChange={e => setDraft(p.id, {operate: e.target.checked, level: e.target.checked ? (g.level ?? 1) : null})} />
                   </td>
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-2 py-1.5 text-center">
                     <AccessLevelSelect
                       size="sm"
                       className="mx-auto"
@@ -120,16 +120,20 @@ export function GrantsTable({userId}: {userId: number}) {
                       onChange={level => setDraft(p.id, {level})}
                     />
                   </td>
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-2 py-1.5 text-center">
                     <Checkbox aria-label={`Правка в «${p.name}»`} checked={g.edit} onChange={e => setDraft(p.id, {edit: e.target.checked})} />
                   </td>
-                  <td className="px-3 py-1.5 text-right">
+                  <td className="px-2 py-1.5 text-right">
                     {/* Кнопка есть в каждой строке, но видна только у изменённой: место под неё
                         занято всегда, и отметка права больше не раздвигает таблицу. `invisible`
                         заодно убирает её из порядка Tab. */}
+                    {/* Уже 1280 px — только значок: с подписью таблица не влезала рядом со
+                        списком пользователей и уезжала в горизонтальную прокрутку (#12 п. 4). */}
                     <Button variant="primary" size="sm" className={cn("px-2.5 text-xs", !dirty && "invisible")}
+                      title="Сохранить права в проекте" aria-label={`Сохранить права в «${p.name}»`}
                       disabled={!dirty || savingId === p.id} onClick={() => void save(p.id)}>
-                      {savingId === p.id ? <Spinner size={12} /> : <Save size={12} />}Сохранить
+                      {savingId === p.id ? <Spinner size={12} /> : <Save size={12} />}
+                      <span className="hidden xl:inline">Сохранить</span>
                     </Button>
                   </td>
                 </tr>
