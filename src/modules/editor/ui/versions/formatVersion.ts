@@ -32,6 +32,24 @@ export const CONFLICT_KIND_LABEL: Record<ConflictKind, string> = {
  */
 export const SCENE_ORDER_CONFLICT_PATH = "Сцена";
 
+/**
+ * Вид сущности в конфликте (`entity`). Контракт называет `component` и `component_property`;
+ * остальные — вероятные имена вложенных сущностей. Незнакомый вид показываем как есть.
+ */
+const CONFLICT_ENTITY_LABEL: Record<string, string> = {
+  component: "компонент",
+  component_property: "свойство",
+  component_state: "состояние",
+  state: "состояние",
+  component_script: "скрипт",
+  script: "скрипт",
+  binding: "привязка",
+  component_event: "событие",
+  event: "событие",
+};
+
+export const formatConflictEntity = (entity: string): string => CONFLICT_ENTITY_LABEL[entity] ?? entity;
+
 /** Человекочитаемая подпись пути конфликта. */
 export const formatConflictPath = (path: string): string =>
   path === SCENE_ORDER_CONFLICT_PATH ? "Порядок компонентов схемы" : path;

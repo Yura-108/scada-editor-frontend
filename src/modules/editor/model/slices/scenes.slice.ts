@@ -162,7 +162,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       return list;
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка загрузки списка сцен"));
+      toast.error(getErrorMessage(err, "Не удалось загрузить список схем"));
     }
   },
   loadScene: async (id, loadOpts) => {
@@ -270,7 +270,8 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // в ToolsPanel), спрашиваем модалкой.
       const sceneName = (name ?? await promptModal({
         title: "Новая схема",
-        label: "Название схемы",
+        // «Название», а не «Название схемы»: «схема» уже в заголовке над полем (#10 п. 6).
+        label: "Название",
         placeholder: "Например: Линия розлива",
         confirmLabel: "Создать",
       }))?.trim();
