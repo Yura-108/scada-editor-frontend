@@ -136,6 +136,32 @@ export function ancestorKeysOf(key: string): string[] {
 }
 
 /**
+ * Что раскрыть, чтобы найденное поиском по пути было видно (#11 п. 3).
+ *
+ * Поиск — подстрока полного ключа, так что вместе с узлом совпадает и всё его поддерево.
+ * Раскрываем только предков ПЕРВОГО совпадения на пути — самого короткого префикса ключа, в
+ * котором есть строка: нашли канал — виден канал, нашли устройство — видно устройство (каналы
+ * в один клик). Совпадение по одной букве так не разворачивает тысячи строк.
+ */
+export function searchExpandKeys(nodes: FlatDeviceNode[], query: string): string[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const keys = new Set<string>();
+  for (const node of nodes) {
+    const parts = node.key.split(".");
+    let prefix = "";
+    for (let i = 0; i < parts.length; i++) {
+      prefix = i ? `${prefix}.${parts[i]}` : parts[i];
+      if (prefix.toLowerCase().includes(needle)) {
+        for (const ancestor of ancestorKeysOf(prefix)) keys.add(ancestor);
+        break;
+      }
+    }
+  }
+  return [...keys];
+}
+
+/**
  * Все ключи дерева, включая достроенные промежуточные сегменты.
  *
  * Нужно, чтобы отличить «узел сейчас в дереве» от «узел отфильтрован»: `rc-tree`

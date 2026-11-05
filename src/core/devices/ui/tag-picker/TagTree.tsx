@@ -8,7 +8,7 @@ import {cn} from "@/shared/lib/cn";
 import SwitcherIcon from "@/shared/ui/SwitcherIcon";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
-import {allTreeKeys, buildDeviceTreeData, leafKeysOf, type DeviceTreeNodeInfo} from "../../lib/deviceTreeData";
+import {allTreeKeys, buildDeviceTreeData, leafKeysOf, searchExpandKeys, type DeviceTreeNodeInfo} from "../../lib/deviceTreeData";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 import ChannelsProjectPicker from "../ChannelsProjectPicker";
 
@@ -40,6 +40,14 @@ type TagTreeProps = {className?: string} & (
 export function TagTree(props: TagTreeProps) {
   const nodes = useDeviceTreeStore((s) => s.nodes);
   const [query, setQuery] = useState("");
+  // Раскрытие — своё, а не внутреннее `rc-tree`: иначе поиск оставлял найденное в свёрнутых
+  // ветках (#11 п. 3). Путь к совпадениям добавляется к раскрытому руками, а не заменяет его.
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
+  const search = (text: string) => {
+    setQuery(text);
+    const reveal = searchExpandKeys(nodes, text);
+    if (reveal.length) setExpandedKeys((prev) => [...new Set([...prev, ...reveal])]);
+  };
 
   // Дерево тысячное: фильтруем плоский список ДО сборки дерева — промежуточные узлы
   // достроятся из путей выживших листьев.
@@ -89,7 +97,7 @@ export function TagTree(props: TagTreeProps) {
         size="sm"
         className="shrink-0"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => search(e.target.value)}
         placeholder="Поиск по пути тега"
       />
       <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar rounded-lg border bg-background px-2 py-3">
@@ -103,6 +111,9 @@ export function TagTree(props: TagTreeProps) {
             showLine={false}
             showIcon={false}
             switcherIcon={SwitcherIcon}
+            expandedKeys={expandedKeys}
+            onExpand={setExpandedKeys}
+            autoExpandParent={false}
             checkedKeys={props.value}
             onCheck={(keys) => check(Array.isArray(keys) ? keys : keys.checked)}
             className="custom-tree"
@@ -113,6 +124,9 @@ export function TagTree(props: TagTreeProps) {
             showLine={false}
             showIcon={false}
             switcherIcon={SwitcherIcon}
+            expandedKeys={expandedKeys}
+            onExpand={setExpandedKeys}
+            autoExpandParent={false}
             selectedKeys={props.value ? [props.value] : []}
             // Ветку выбрать нельзя: значение есть только у конечного узла.
             onSelect={(keys: Key[]) => {
