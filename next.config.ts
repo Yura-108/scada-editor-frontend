@@ -50,6 +50,7 @@ const reportOnlyCsp = [
  */
 const sandboxWorkerHeaders = [
   { key: 'Content-Security-Policy', value: "default-src 'none'; script-src 'unsafe-eval'" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
 ];
 
 const securityHeaders = [
@@ -67,9 +68,12 @@ const nextConfig: NextConfig = {
   // Ошибки типов роняют сборку: их 0, и ошибка в проверке прав не пройдёт незамеченной
   // (#20 п. 5). Раньше здесь стоял `ignoreBuildErrors: true`.
   async headers() {
-    // Порядок важен: из двух правил с одним заголовком действует последнее.
+    // Воркер исключён из общего правила, а не перекрыт следующим: Next.js складывает заголовки
+    // всех подходящих правил, и разные ключи не заменяют друг друга. Отчётная политика страницы
+    // (без `'unsafe-eval'`) доставалась воркеру вдобавок к своей — отчёт на каждую компиляцию
+    // привязки, а перевод её в обязательную остановил бы привязки монитора.
     return [
-      { source: '/:path*', headers: securityHeaders },
+      { source: '/:path((?!sandbox/worker\\.js$).*)', headers: securityHeaders },
       { source: '/sandbox/worker.js', headers: sandboxWorkerHeaders },
     ];
   },
