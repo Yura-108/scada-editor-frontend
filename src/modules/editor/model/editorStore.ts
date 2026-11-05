@@ -93,7 +93,13 @@ useEditorStore.subscribe((state, prev) => {
 
   // Флаг «есть несохранённые изменения» — здесь же, чтобы не заводить второй
   // подписчик на тот же самый сигнал.
-  const dirty = state.elements !== editorSession.savedElementsSnapshot;
+  //
+  // Пустой лист без схемы терять нечего: сбросы холста (`setCurrentProject` при открытии
+  // редактора, уход в монитор, чужая схема) кладут НОВЫЙ `[]`, а снимка у пустого листа нет —
+  // по одной ссылке он выходил «изменённым», и выбор схемы спрашивал «Схема не сохранена»
+  // (#10 п. 3). Открытая схема без элементов и нарисованное на пустом листе — по-прежнему правки.
+  const dirty = state.elements !== editorSession.savedElementsSnapshot
+    && (state.scene != null || state.elements.length > 0);
   if (dirty !== state.isDirty) useEditorStore.setState({isDirty: dirty});
 
   if (state.selectedIds.length === 0 && state.activeGroupKey === null) return;
