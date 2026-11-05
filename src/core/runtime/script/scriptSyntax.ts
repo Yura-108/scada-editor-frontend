@@ -1,4 +1,5 @@
 import {parse} from "acorn";
+import {translateSyntaxMessage} from "./scriptSyntaxMessages";
 
 /**
  * Синтаксическая проверка скрипта — до сохранения, в редакторе.
@@ -27,7 +28,7 @@ export const checkScriptSyntax = (code: string | null | undefined): string | nul
     if (!(err instanceof SyntaxError)) return null;
     // acorn дописывает к сообщению «(строка:колонка)» — переносим их вперёд по-русски.
     const loc = (err as SyntaxError & {loc?: {line: number; column: number}}).loc;
-    const message = err.message.replace(/\s*\(\d+:\d+\)$/, "");
+    const message = translateSyntaxMessage(err.message.replace(/\s*\(\d+:\d+\)$/, ""));
     return loc ? `строка ${loc.line}, позиция ${loc.column + 1}: ${message}` : message;
   }
 };
