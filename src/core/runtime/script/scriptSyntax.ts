@@ -1,3 +1,5 @@
+import {parse} from "acorn";
+
 /**
  * Синтаксическая проверка скрипта — до сохранения, в редакторе.
  *
@@ -7,21 +9,25 @@
  * при сохранении, одним сообщением на всю сцену.
  *
  * Правила те же, что у бэкенда: текст разбирается как ТЕЛО функции (`return` на верхнем
- * уровне допустим), пустой скрипт допустим. `new Function` код только разбирает и не
- * исполняет — проверка ничего не запишет. Необъявленные имена (теги, `runScript`) ошибкой
+ * уровне допустим), пустой скрипт допустим. Необъявленные имена (теги, `runScript`) ошибкой
  * синтаксиса не являются, так что параметры скоупа не нужны.
  *
- * Возвращает текст ошибки или `null`. Номера строки браузер в SyntaxError из
- * `new Function` не сообщает — его назовёт бэкенд при сохранении.
+ * Разбирает acorn, а не `new Function`: страница обходится без `'unsafe-eval'` (#20 п. 1,
+ * шаг 6) — скрипты схем исполняет только воркер-песочница со своей политикой. Заодно в тексте
+ * ошибки есть строка и позиция.
+ *
+ * Возвращает текст ошибки или `null`.
  */
 export const checkScriptSyntax = (code: string | null | undefined): string | null => {
   if (!code || !code.trim()) return null;
   try {
-    new Function(code);
+    parse(code, {ecmaVersion: "latest", sourceType: "script", allowReturnOutsideFunction: true});
     return null;
   } catch (err) {
-    if (err instanceof SyntaxError) return err.message;
-    // Не синтаксис (в теории недостижимо при одном разборе) — решать бэкенду.
-    return null;
+    if (!(err instanceof SyntaxError)) return null;
+    // acorn дописывает к сообщению «(строка:колонка)» — переносим их вперёд по-русски.
+    const loc = (err as SyntaxError & {loc?: {line: number; column: number}}).loc;
+    const message = err.message.replace(/\s*\(\d+:\d+\)$/, "");
+    return loc ? `строка ${loc.line}, позиция ${loc.column + 1}: ${message}` : message;
   }
 };

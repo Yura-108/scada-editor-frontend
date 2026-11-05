@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {createScriptSandbox, SANDBOX_WORKER_URL, SandboxTimeoutError, type SandboxBinding, type SandboxEvent, type TagScope} from "@/core/runtime";
+import {checkScriptSyntax, createScriptSandbox, SANDBOX_WORKER_URL, SandboxTimeoutError, type SandboxBinding, type SandboxEvent, type TagScope} from "@/core/runtime";
 import {Badge} from "@/shared/ui/Badge";
 
 /** Скоуп из одной тег-переменной `T`. */
@@ -19,6 +19,12 @@ type Check = {name: string; run: (sb: ReturnType<typeof createScriptSandbox>) =>
  * проверка зависания перезапускает воркер, и следующая показывает, что он снова работает.
  */
 const CHECKS: Check[] = [
+  {name: "Синтаксис на странице без eval: return сверху и пустой — можно, ошибка — со строкой", run: async () => {
+    const got = ["return 1", "", "if (T > 1) setState(\"x\")", "a\nb +", "let x = 1; let x = 2;"].map(checkScriptSyntax);
+    const ok = got[0] === null && got[1] === null && got[2] === null
+      && got[3]?.startsWith("строка 2, позиция 4:") && got[4]?.includes("already been declared");
+    return ok ? true : JSON.stringify(got);
+  }},
   {name: "У воркера своя политика: без сети и import() (заголовок ответа)", run: async () => {
     const csp = (await fetch(SANDBOX_WORKER_URL, {method: "HEAD"})).headers.get("content-security-policy");
     return csp === "default-src 'none'; script-src 'unsafe-eval'" ? true : `CSP воркера: ${csp}`;
