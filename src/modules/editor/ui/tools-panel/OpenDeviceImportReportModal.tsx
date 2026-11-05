@@ -2,6 +2,7 @@
 
 import React from "react";
 import {CheckCircle2} from "lucide-react";
+import {countOf} from "@/shared/lib/plural";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
@@ -32,7 +33,7 @@ function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
       <DialogBody className="space-y-3">
         {report.missing.length > 0 && (
           <Collapsible
-            title={`Шаблон не найден: ${skipped} устройств`}
+            title={`Шаблон не найден: ${countOf(skipped, "устройство", "устройства", "устройств")}`}
             badge={<span className="text-xs text-warning">нет в палитре</span>}
           >
             <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">

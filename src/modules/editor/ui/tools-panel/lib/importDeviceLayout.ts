@@ -1,4 +1,5 @@
 import {toast} from "sonner";
+import {countOf} from "@/shared/lib/plural";
 import {buildDeviceLayout, type DeviceLayoutFile} from "../../../lib/deviceLayoutImport";
 import {openDeviceImportReportModal} from "../OpenDeviceImportReportModal";
 import {getPaletteItems, loadPaletteItems} from "../../../model/palette";
@@ -35,7 +36,9 @@ export async function importDeviceLayout(file: DeviceLayoutFile): Promise<void> 
   }
 
   const mode = await askImportMode(
-    `В файле ${report.devices} устройств, ${report.lines} линий и ${report.junctions} узлов соединения. Что с ними сделать?`,
+    `В файле ${countOf(report.devices, "устройство", "устройства", "устройств")}, `
+    + `${countOf(report.lines, "линия", "линии", "линий")} и `
+    + `${countOf(report.junctions, "узел", "узла", "узлов")} соединения. Что с ними сделать?`,
   );
   if (!mode) return;
 

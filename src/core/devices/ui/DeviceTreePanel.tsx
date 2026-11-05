@@ -17,6 +17,7 @@ import {handleContextAction} from "../model/deviceActions";
 import {useDeviceTreeStore} from "../model/deviceTreeStore";
 import {useDeviceSelection} from "../model/deviceSelectionStore";
 import {TreeSearchBox} from "./TreeSearchBox";
+import {countOf} from "@/shared/lib/plural";
 
 /** Пауза после последнего символа, прежде чем искать: дерево не раскрывается на каждую букву. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -167,7 +168,7 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
           Дерево устройств
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {isLoadingNodes ? 'Загрузка…' : `${deviceCount} устройств • ${channelCount} каналов`}
+          {isLoadingNodes ? 'Загрузка…' : `${countOf(deviceCount, 'устройство', 'устройства', 'устройств')} • ${countOf(channelCount, 'канал', 'канала', 'каналов')}`}
         </p>
 
         <TreeSearchBox
