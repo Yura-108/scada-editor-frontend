@@ -1,4 +1,4 @@
-import {DiagramElement, LeafElement} from "@/core/scene";
+import {DiagramElement, shiftElementPositions} from "@/core/scene";
 import {isComponentEl, isLeafPrimitive} from "../elementTree";
 import {syncMemberStates} from "../elementStates";
 import type {GroupResult} from "./groupElements";
@@ -44,19 +44,15 @@ export function componentFromGroup(
   };
   walk(groupKey, 0, 0);
 
+  // Сдвиг — и в базе, и в overrides всех состояний (`shiftElementPositions`): у фигуры, которую
+  // двигали, живая позиция лежит в overrides, и сдвиг одной базы ставил её на старые локальные
+  // координаты уже внутри компонента — фигуры распущенной группы съезжали на её x/y (#18 п. 7).
   const shift = (el: DiagramElement): DiagramElement => {
     const off = offsetByKey.get(el.key) ?? {dx: 0, dy: 0};
-    const leaf = el as LeafElement;
     return {
-      ...el,
+      ...shiftElementPositions(el, off.dx, off.dy),
       parentKey: groupKey,
       parentId: group.id,
-      x: el.x + off.dx,
-      y: el.y + off.dy,
-      ...(leaf.x1 !== undefined ? {x1: leaf.x1 + off.dx} : {}),
-      ...(leaf.y1 !== undefined ? {y1: leaf.y1 + off.dy} : {}),
-      ...(leaf.x2 !== undefined ? {x2: leaf.x2 + off.dx} : {}),
-      ...(leaf.y2 !== undefined ? {y2: leaf.y2 + off.dy} : {}),
     } as DiagramElement;
   };
 
