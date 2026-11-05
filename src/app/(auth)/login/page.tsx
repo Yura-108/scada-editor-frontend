@@ -31,6 +31,10 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setServerError('');
+    // Плашка «Сеанс завершён…» (LeaveNotice) держится на ?reason= — после первой попытки она
+    // уже не к месту и стояла рядом с «Неверный логин или пароль». replaceState Next отражает в
+    // useSearchParams без навигации и запроса к серверу.
+    if (window.location.search) window.history.replaceState(null, '', '/login');
 
     try {
       const res = await fetch('/api/auth/login', {
