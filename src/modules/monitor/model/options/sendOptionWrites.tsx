@@ -11,7 +11,8 @@ import {
   tagWriteStatusLabel,
 } from "@/core/runtime";
 import {postTagWrites} from "../../api/runtimeWrite";
-import {isNumericType, plural, propertyTitle, type WriteRow} from "../../lib/optionRows";
+import {plural} from "@/shared/lib/plural";
+import {isNumericType, propertyTitle, type WriteRow} from "../../lib/optionRows";
 
 /**
  * Отправка записи «Опций» — единственный путь и для одной строки, и для «Применить для всех».
