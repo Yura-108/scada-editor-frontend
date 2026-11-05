@@ -11,7 +11,7 @@ import {useLiveConnection} from "./useLiveConnection";
 import {useArchiveInput, useArchiveMode, type RuntimeArchiveInput} from "./useArchiveInput";
 import {useTrendHistoryLoader, useTrendWatch} from "./useTrendHistory";
 import {newEngineBuffers, resetSessionBuffers} from "./engineBuffers";
-import type {ScreenPoint} from "@/core/runtime";
+import {createScriptSandbox, type ScreenPoint, type ScriptSandbox} from "@/core/runtime";
 import type {RuntimeConnection, RuntimeStatus} from "./runtimeConnection";
 import {useRuntimeTagInterest} from "./runtimeTagInterest";
 import {resetTrendStore} from "@/core/canvas";
@@ -109,6 +109,19 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   /** Где оператор нажал скрипт (по серверному id) — туда же ляжет отказ ACTION_DENIED. */
   const actionPointsRef = useRef(new Map<number, ScreenPoint | undefined>());
 
+  // Песочница скриптов схемы (#20 п. 1): одна на движок — обработчики кликов и привязки, в
+  // живом режиме и в архиве. Поднимаем сразу, чтобы первый клик не ждал запуска воркера.
+  const sandboxRef = useRef<ScriptSandbox | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const sandbox = createScriptSandbox();
+    sandboxRef.current = sandbox;
+    return () => {
+      sandboxRef.current = null;
+      sandbox.dispose();
+    };
+  }, [active]);
+
   const flush = useCallback(() => {
     flushEngine(buffers, indexRef.current, runtimeErrorsRef.current, publishRuntimeErrors);
   }, [publishRuntimeErrors, buffers]);
@@ -150,7 +163,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   }, [active, index, publishRuntimeErrors, buffers]);
 
   // Действия и шина: после повторного прогона при смене схемы, до эффекта соединения.
-  useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef});
+  useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef, sandboxRef});
 
   const {loadTrendHistory, trendHistoryAbortRef} = useTrendHistoryLoader();
 
