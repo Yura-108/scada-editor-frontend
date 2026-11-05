@@ -19,6 +19,8 @@ import {useOpenScene} from "@/core/project";
 
 export type {ArchiveTagChange, RuntimeArchiveInput} from "./useArchiveInput";
 
+const NO_ERRORS = new Map<string, string>();
+
 /** Источник значений: живой WS или воспроизведение архива. */
 export type RuntimeMode = "live" | "archive";
 
@@ -69,6 +71,11 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     const map = next instanceof Map ? next : new Map(next);
     runtimeErrorsRef.current = map;
     setRuntimeErrors(map);
+  }, []);
+  // Ошибки компиляции приходят ответом песочницы на загрузку схемы (reseedScene).
+  const [compileErrors, setCompileErrors] = useState<Map<string, string>>(new Map());
+  const publishCompileErrors = useCallback((next: ReadonlyMap<string, string>) => {
+    setCompileErrors(prev => (prev.size === 0 && next.size === 0 ? prev : new Map(next)));
   }, []);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
@@ -123,7 +130,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   }, [active]);
 
   const flush = useCallback(() => {
-    flushEngine(buffers, indexRef.current, runtimeErrorsRef.current, publishRuntimeErrors);
+    flushEngine(buffers, indexRef.current, sandboxRef.current, () => runtimeErrorsRef.current, publishRuntimeErrors);
   }, [publishRuntimeErrors, buffers]);
 
   const flushRef = useRef(flush);
@@ -157,10 +164,10 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!active) return;
     const idx = indexRef.current;
     if (!idx) return;
-    reseedScene(buffers, idx, publishRuntimeErrors);
-    // publishRuntimeErrors стабилен (useCallback без зависимостей) — в списке он ради
-    // правила exhaustive-deps, пересчёт схемы им не запускается.
-  }, [active, index, publishRuntimeErrors, buffers]);
+    reseedScene(buffers, idx, sandboxRef.current, publishRuntimeErrors, publishCompileErrors);
+    // publish* стабильны (useCallback без зависимостей) — в списке они ради
+    // правила exhaustive-deps, пересчёт схемы ими не запускается.
+  }, [active, index, publishRuntimeErrors, publishCompileErrors, buffers]);
 
   // Действия и шина: после повторного прогона при смене схемы, до эффекта соединения.
   useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef, sandboxRef});
@@ -193,7 +200,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   return {
     status,
-    compileErrors: index?.compileErrors ?? new Map(),
+    compileErrors: index ? compileErrors : NO_ERRORS,
     runtimeErrors,
     sessionId,
     statusDetail,

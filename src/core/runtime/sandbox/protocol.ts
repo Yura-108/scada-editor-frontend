@@ -33,10 +33,14 @@ export interface SandboxScripts {
   events: SandboxEvent[];
 }
 
-/** Значения скоупа: теги по `tag_id` (null — нет достоверного значения), свойства по `propertyId`. */
+/**
+ * Значения скоупа: теги по `tag_id` (null — нет достоверного значения), свойства по
+ * `propertyId` (null — значения нет, воркер его забывает: иначе после сброса сессии скрипт
+ * прочитал бы прошлое).
+ */
 export interface SandboxValues {
   tags: [string, string | null][];
-  props: [number, string][];
+  props: [number, string | null][];
 }
 
 /** Вызов `runScript(имя, args)` из обработчика: страница отправит ACTION сама, со своими проверками. */

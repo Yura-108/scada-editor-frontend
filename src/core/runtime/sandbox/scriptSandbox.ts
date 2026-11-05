@@ -116,7 +116,15 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
     new Promise<SandboxResponse>((resolve, reject) => {
       const timer = setTimeout(() => restart(key), timeoutMs);
       pending.set(key, {type: msg.type, ids, timer, resolve, reject});
-      ensure().postMessage(msg);
+      try {
+        ensure().postMessage(msg);
+      } catch (err) {
+        // Не клонируется (`self` с функцией) или песочница закрыта: ответа не будет, и сторож
+        // не должен принять это за зависание.
+        clearTimeout(timer);
+        pending.delete(key);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     });
 
   const oneShotEvent = async (event: SandboxEvent, values: SandboxValues, self: unknown, timeoutMs: number) => {
@@ -138,7 +146,9 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
     setValues(generation, values) {
       if (generation !== lastLoad?.generation) return;
       for (const [id, v] of values.tags) tags.set(id, v);
-      for (const [id, v] of values.props) props.set(id, v);
+      for (const [id, v] of values.props) {
+        if (v === null) props.delete(id); else props.set(id, v);
+      }
       ensure().postMessage({type: "values", generation, values} satisfies SandboxRequest);
     },
     async runBindings(generation, items) {
