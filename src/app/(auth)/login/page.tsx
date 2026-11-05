@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,6 +10,7 @@ import { loginSchema } from '@/core/access';
 import {Input} from "@/shared/ui/field/Input";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Banner} from "@/shared/ui/Banner";
+import { LeaveNotice } from './LeaveNotice';
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -73,6 +74,9 @@ export default function LoginPage() {
           <h1 className="text-4xl font-bold text-foreground">С возвращением!</h1>
           <p className="text-muted-foreground mt-2">Войдите в свой аккаунт</p>
         </div>
+
+        {/* useSearchParams без Suspense не даёт собрать страницу статически. */}
+        <Suspense fallback={null}><LeaveNotice /></Suspense>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Email */}
