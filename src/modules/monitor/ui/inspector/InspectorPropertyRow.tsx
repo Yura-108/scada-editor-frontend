@@ -29,7 +29,9 @@ const isBadQuality = (p: InspectorPropertyDto) => {
 export function InspectorPropertyRow({property: p, draft, isWriting, busy, onDraft, onWrite}: Props) {
   const value = valueOf(p);
   const isBool = isBooleanValueType(p.value_type ?? "");
-  const bad = isBadQuality(p);
+  // Зачёркнуто — пришедшее, но недостоверное значение. «нет данных» под зачёркиванием
+  // читалось как удалённое значение — его показываем просто серым.
+  const bad = value != null && isBadQuality(p);
 
   return (
     <div className="px-4 py-3 space-y-2">
@@ -55,7 +57,7 @@ export function InspectorPropertyRow({property: p, draft, isWriting, busy, onDra
           <span
             className={cn(
               "block text-sm font-medium",
-              bad ? "text-muted-foreground line-through" : "text-foreground",
+              bad ? "text-muted-foreground line-through" : value == null ? "text-muted-foreground" : "text-foreground",
             )}
             title={bad ? "Значение недостоверно (качество тега не GOOD)" : undefined}
           >

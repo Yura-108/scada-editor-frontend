@@ -1,5 +1,6 @@
 import React, {useRef} from "react";
 import {toast} from "sonner";
+import {countOf} from "@/shared/lib/plural";
 import {isDeviceLayoutFile} from "../../../lib/deviceLayoutImport";
 import {useEditorStore} from "../../../model/editorStore";
 import {SCENE_EXPORT_FORMAT} from "../../../model/editorStoreInternals";
@@ -57,7 +58,7 @@ export function useSceneFileImport(sceneBelongsToProject: boolean) {
           ? json.elements
           : (Array.isArray(json) ? json : [json]);
 
-        const mode = await askImportMode(`В файле ${arr.length} элементов. Что с ними сделать?`);
+        const mode = await askImportMode(`В файле ${countOf(arr.length, "элемент", "элемента", "элементов")}. Что с ними сделать?`);
         if (!mode) return;
 
         const stats = useEditorStore.getState().importElementsFromJson(arr, {mode, native});

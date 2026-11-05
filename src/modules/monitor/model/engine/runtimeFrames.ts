@@ -1,6 +1,6 @@
 import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
 import type {AutomationTaskStatus} from "@/core/automation";
-import {devLog} from "@/shared/lib/devLog";
+import {devLog, isDev} from "@/shared/lib/devLog";
 import type {RuntimeConnectionHandlers, RuntimePropertyUpdate, RuntimeTagUpdate} from "./runtimeConnection";
 
 const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
@@ -74,7 +74,8 @@ export function routeRuntimeFrame(
   const tags = msg.tags ?? [];
   const properties = msg.properties ?? [];
   const procedures = msg.procedures ?? [];
-  if (tags.length || properties.length || procedures.length) {
+  // Только при разработке: в рабочей сборке — таблица на 1000+ тегов на каждое сообщение.
+  if (isDev && (tags.length || properties.length || procedures.length)) {
     console.groupCollapsed(
       `[monitor:ws] UPDATE — тегов: ${tags.length}, свойств: ${properties.length},`
       + ` событий процедуры: ${procedures.length}`,

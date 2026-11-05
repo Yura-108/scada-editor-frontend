@@ -19,10 +19,10 @@ type Check = {name: string; run: (sb: ReturnType<typeof createScriptSandbox>) =>
  * проверка зависания перезапускает воркер, и следующая показывает, что он снова работает.
  */
 const CHECKS: Check[] = [
-  {name: "Синтаксис на странице без eval: return сверху и пустой — можно, ошибка — со строкой", run: async () => {
+  {name: "Синтаксис на странице без eval: return сверху и пустой — можно, ошибка — со строкой и по-русски", run: async () => {
     const got = ["return 1", "", "if (T > 1) setState(\"x\")", "a\nb +", "let x = 1; let x = 2;"].map(checkScriptSyntax);
     const ok = got[0] === null && got[1] === null && got[2] === null
-      && got[3]?.startsWith("строка 2, позиция 4:") && got[4]?.includes("already been declared");
+      && got[3]?.startsWith("строка 2, позиция 4:") && got[3]?.endsWith("неожиданный символ или слово") && got[4]?.endsWith("«x» уже объявлено");
     return ok ? true : JSON.stringify(got);
   }},
   {name: "У воркера своя политика: без сети и import() (заголовок ответа)", run: async () => {
