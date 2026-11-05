@@ -3,7 +3,7 @@ import {toast} from "sonner";
 import {devLog} from "@/shared/lib/devLog";
 import {getRenderedElement, getSceneView, type DiagramElement, type ElementEventName} from "@/core/scene";
 import {
-  collectTagScope, createScriptSandbox, SANDBOX_TIMEOUTS, SandboxTimeoutError, setRuntimeEventHandler,
+  collectTagScope, SANDBOX_TIMEOUTS, SandboxTimeoutError, setRuntimeEventHandler,
   setRuntimeLive, setRuntimePropertyValueGetter, setRuntimeScriptHandler, setRuntimeSessionGetter,
   setRuntimeTagQualityGetter, setRuntimeTagWriteHandler, setRuntimeValueGetter, showRuntimeNotice,
   withPropertyRefs, type ActionArgs, type ScreenPoint, type ScriptSandbox,
@@ -25,6 +25,8 @@ interface Params {
   /** Где оператор нажал скрипт (по серверному id) — туда же ляжет отказ ACTION_DENIED. */
   actionPointsRef: RefObject<Map<number, ScreenPoint | undefined>>;
   flushRef: RefObject<() => void>;
+  /** Песочница скриптов движка (общая с привязками); null — движок не активен. */
+  sandboxRef: RefObject<ScriptSandbox | null>;
 }
 
 /**
@@ -32,7 +34,7 @@ interface Params {
  * событий фигур, мост записи оператора в ПЛК — и их регистрация в шине, пока движок в живом
  * режиме. Плюс признак «связь есть» для интерфейса вне движка.
  */
-export function useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef}: Params) {
+export function useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef, sandboxRef}: Params) {
   // Мост к серверному Java-скрипту: находим скрипт компонента по имени и шлём ACTION
   // по WS. sendAction ждёт ЧИСЛОВОЙ серверный id — ElementScript.id это String(серверный
   // id) после loadScene (см. transformElements); если id не число (напр. uuid у ещё не
@@ -76,28 +78,21 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
     runScriptOn(el, scriptName, args, point);
   }, [runScriptOn]);
 
-  // Песочница обработчиков событий: своя у монитора, живёт, пока движок в живом режиме, —
-  // поднимаем сразу, чтобы первый клик не ждал запуска воркера.
-  const sandboxRef = useRef<ScriptSandbox | null>(null);
-  useEffect(() => {
-    if (!active || mode !== "live") return;
-    const sandbox = createScriptSandbox();
-    sandboxRef.current = sandbox;
-    return () => {
-      sandboxRef.current = null;
-      sandbox.dispose();
-    };
-  }, [active, mode]);
+  // Живая сессия обработчиков: новый объект на каждую регистрацию в шине. Песочница общая для
+  // живого режима и архива, поэтому поздний ответ клика сверяем ещё и с этим — в архиве он
+  // не должен ни запустить действие, ни поменять вид элемента.
+  const liveRef = useRef<object | null>(null);
 
   // Обработчик кликов по фигурам в мониторе (из слоя интеракции Canvas): element.events[event]
   // выполняется в песочнице (#20 п. 1) над значениями скоупа на момент клика; результат —
   // записи свойств, интенты и вызовы runScript — применяет страница (applyEventResult).
   const runEvent = useCallback((elementKey: string, event: ElementEventName, point?: ScreenPoint) => {
     const sandbox = sandboxRef.current;
+    const live = liveRef.current;
     const {elements} = getSceneView();
     const el = elements.find(e => e.key === elementKey);
     const handler = el?.events?.find(e => e.event_type === event)?.handler;
-    if (!sandbox || !el || !handler || !handler.code?.trim()) return;
+    if (!sandbox || !live || !el || !handler || !handler.code?.trim()) return;
 
     const scope = withPropertyRefs(collectTagScope(el.properties), handler.propertyRefs);
     const id = `${el.key}:${event}`;
@@ -106,7 +101,7 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
       .then(result => {
         // Пока ждали ответа, схема могла смениться (или монитор — уйти из живого режима):
         // поздний результат на другую схему не кладём — ни записей, ни ACTION, ни перехода.
-        if (sandboxRef.current !== sandbox || getSceneView().elements !== elements) {
+        if (sandboxRef.current !== sandbox || liveRef.current !== live || getSceneView().elements !== elements) {
           log(`событие ${event} по «${name}»: схема сменилась, результат отброшен`);
           return;
         }
@@ -129,7 +124,7 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
           log(`событие ${event} по «${name}» не выполнено: ${err instanceof Error ? err.message : String(err)}`);
         }
       });
-  }, [runScriptOn, buffers, flushRef]);
+  }, [runScriptOn, buffers, flushRef, sandboxRef]);
 
   /**
    * Значения, записанные оператором в ПЛК («Опции»), вливаются в общий поток ОДИН раз.
@@ -156,6 +151,7 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
   // дошедший до скрипта, не должен ни запустить действие, ни поменять вид элемента.
   useEffect(() => {
     if (!active || mode !== "live") return;
+    liveRef.current = {};
     setRuntimeEventHandler(runEvent);
     setRuntimeScriptHandler(runScriptByKey);
     // Значения тегов держит движок, а не стор — окно «Опции» читает их геттером.
@@ -168,6 +164,7 @@ export function useRuntimeActions({active, mode, status, buffers, connRef, actio
     setRuntimeTagWriteHandler(onTagsWritten);
     setRuntimeSessionGetter(() => connRef.current?.getSessionId() ?? null);
     return () => {
+      liveRef.current = null;
       setRuntimeEventHandler(null);
       setRuntimeScriptHandler(null);
       setRuntimeValueGetter(null);

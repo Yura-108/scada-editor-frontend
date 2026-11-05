@@ -1,21 +1,28 @@
 import {cellRuntimeKey, getRenderedElement, getSceneView} from "@/core/scene";
-import type {CompiledBinding} from "@/core/runtime";
+import type {BindingEntry, ScriptSandbox} from "@/core/runtime";
 import {devLog} from "@/shared/lib/devLog";
 import type {BindingIndex} from "./bindingIndex";
-import {runBindings} from "./runBindings";
-import {computeNoDataElementKeys, setsEqual, type EngineBuffers} from "./engineBuffers";
+import {collectResults, EMPTY_RUN, startBindings} from "./runBindings";
+import {applyInOrder, computeNoDataElementKeys, setsEqual, type EngineBuffers} from "./engineBuffers";
 
 const log = (...args: unknown[]) => devLog("[monitor:engine]", ...args);
 
 /**
  * Тик движка: изменившиеся значения из буферов → привязки → один `applyRuntimeBatch`.
  *
- * `knownErrors` — текущие ошибки исполнения (для автоотключения), `publishErrors` — новая карта.
+ * Синхронно — только буферы: защита от повторов, «нет данных», ячейки таблиц и прямые
+ * привязки. JS-привязки выполняет песочница; батч (ячейки вместе с интентами — по-прежнему
+ * один на такт) ложится по её ответу, строго в порядке тактов (`applyInOrder`). Ответ для
+ * другой схемы не применяется: её повторный прогон (`reseedScene`) покрывает всё сам.
+ *
+ * `knownErrors` — текущие ошибки исполнения (для автоотключения) на момент ответа,
+ * `publishErrors` — новая карта.
  */
 export function flushEngine(
   buf: EngineBuffers,
   idx: BindingIndex | null,
-  knownErrors: ReadonlyMap<string, string>,
+  sandbox: ScriptSandbox | null,
+  knownErrors: () => ReadonlyMap<string, string>,
   publishErrors: (errors: ReadonlyMap<string, string>) => void,
 ) {
   const pending = buf.pending;
@@ -33,7 +40,7 @@ export function flushEngine(
   // Записанное оператором значение приходит сюда тем же путём, что и телеметрия (см.
   // мост записи `onTagsWritten` в движке), и никакого приоритета не имеет: следующий кадр по этому тегу
   // просто перезапишет его. Именно поэтому показ не «залипает» на записанном.
-  const affected = new Set<CompiledBinding>();
+  const affected = new Set<BindingEntry>();
   const changedTags: {tagId: string; value: string | null}[] = [];
   for (const [tagId, value] of pending) {
     if (buf.values.get(tagId) === value) continue;
@@ -69,7 +76,7 @@ export function flushEngine(
   }
 
   // Живые значения ячеек таблиц (тег- и локальные, маршрутизация по tag_id/имени,
-  // НЕ через CompiledBinding — это не JS-биндинги, а прямая запись в ячейку,
+  // НЕ через BindingEntry — это не JS-биндинги, а прямая запись в ячейку,
   // адрес которой задан привязкой; см. tableBindings.ts).
   const tableRowProps: Record<string, Record<string, unknown>> = {};
   for (const {tagId, value} of changedTags) {
@@ -93,38 +100,42 @@ export function flushEngine(
 
   if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
-  const store = getSceneView();
-  const byKey = new Map(store.elements.map(el => [el.key, el] as const));
+  const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
+  const selfOf = (key: string) => {
+    const el = byKey.get(key);
+    return el ? getRenderedElement(el) : null;
+  };
+  const generation = idx.generation;
+  const work = sandbox && affected.size
+    ? startBindings(sandbox, generation, affected, buf, selfOf)
+    : Promise.resolve(EMPTY_RUN);
 
-  // Тот же прогон, что и при смене схемы (см. эффект ниже) — одна трактовка ошибок
-  // и автоотключения на оба пути.
-  const {stateNameByKey, propsByKey, errors, fired} = runBindings(affected, {
-    valuesByTagId: buf.values,
-    valuesByPropertyId: buf.valuesByProp,
-    selfOf: key => {
-      const el = byKey.get(key);
-      return el ? getRenderedElement(el) : null;
-    },
-    errorCounts: buf.errorCount,
-    disabled: buf.disabled,
-    knownErrors,
-  }, tableRowProps);
+  applyInOrder(buf, work, run => {
+    if (!run || buf.generation !== generation) return;
+    // Тот же разбор, что и при смене схемы, — одна трактовка ошибок и автоотключения.
+    const {stateNameByKey, propsByKey, errors, fired} = collectResults(run, {
+      errorCounts: buf.errorCount,
+      disabled: buf.disabled,
+      notCompiled: buf.notCompiled,
+      knownErrors: knownErrors(),
+    }, tableRowProps);
 
-  publishErrors(errors);
+    publishErrors(errors);
 
-  console.groupCollapsed(
-    `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
-  );
-  if (changedTags.length) console.table(changedTags);
-  if (changedProps.length) console.table(changedProps);
-  if (changedNames.length) console.table(changedNames);
-  if (fired.length) console.table(fired);
-  console.groupEnd();
+    console.groupCollapsed(
+      `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
+    );
+    if (changedTags.length) console.table(changedTags);
+    if (changedProps.length) console.table(changedProps);
+    if (changedNames.length) console.table(changedNames);
+    if (fired.length) console.table(fired);
+    console.groupEnd();
 
-  if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
-    // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
-    // applyRuntimeBatch: без фактических изменений set() не вызывается.
-    log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
-    store.applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
-  }
+    if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
+      // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
+      // applyRuntimeBatch: без фактических изменений set() не вызывается.
+      log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
+      getSceneView().applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
+    }
+  });
 }

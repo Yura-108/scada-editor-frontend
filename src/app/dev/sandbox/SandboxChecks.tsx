@@ -75,6 +75,30 @@ const CHECKS: Check[] = [
     const ok = fresh && "intents" in fresh[0] && JSON.stringify(fresh[0].intents).includes("Много") && stale === null;
     return ok ? true : JSON.stringify({fresh, stale});
   }},
+  {name: "Пакет с зависшей привязкой: срок по пакету, поодиночке остальные отвечают", run: async sb => {
+    await sb.load(3, {bindings: [binding("ok1", 'setState("Да")'), binding("hang", "while (true) {}")], events: []});
+    sb.setValues(3, VALUES);
+    try {
+      await sb.runBindings(3, [{id: "ok1", self: null}, {id: "hang", self: null}]);
+      return "пакет ответил";
+    } catch (err) {
+      if (!(err instanceof SandboxTimeoutError) || !err.ids.includes("hang") || !err.ids.includes("ok1")) return String(err);
+    }
+    const alone = await sb.runBindings(3, [{id: "ok1", self: null}]);
+    return alone && "intents" in alone[0] ? true : JSON.stringify(alone);
+  }},
+  {name: "Значение null у свойства — воркер его забывает", run: async sb => {
+    const scope: TagScope = {names: ["P"], tagIdByName: {}, propertyIdByName: {P: 7}, invalidNames: []};
+    const b: SandboxBinding = {id: "p1", elementKey: "el", scope, binding: {v: 1, id: "p1", name: "p1", enabled: true, code: "setProp(\"v\", RAW.P)"}};
+    await sb.load(4, {bindings: [b], events: []});
+    sb.setValues(4, {tags: [], props: [[7, "5"]]});
+    const before = await sb.runBindings(4, [{id: "p1", self: null}]);
+    sb.setValues(4, {tags: [], props: [[7, null]]});
+    const after = await sb.runBindings(4, [{id: "p1", self: null}]);
+    const v = (r: typeof before) => (r && "intents" in r[0] ? r[0].intents[0] : null);
+    return JSON.stringify(v(before)).includes("5") && JSON.stringify(v(after)).includes("null")
+      ? true : JSON.stringify({before, after});
+  }},
 ];
 
 /** Ручная проверка песочницы скриптов: прогоняет CHECKS в настоящем воркере браузера. */

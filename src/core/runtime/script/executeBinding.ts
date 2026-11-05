@@ -8,16 +8,17 @@ import {modernizeScopeCode, type TagScope} from "./bindingScope";
  * Код биндинга компилируется ОДИН раз на загрузку сцены (new Function), на
  * горячем пути — только вызов готовой функции. Скрипт не имеет доступа к стору:
  * setState/setProp — коллекторы, которые лишь копят интенты; применяет их движок
- * одним applyRuntimeBatch. new Function — НЕ песочница (авторы биндингов — те же
- * доверенные инженеры, что пишут Java-скрипты); изоляция сбоев — try/catch на
- * каждый вызов + автоотключение после серии ошибок (см. useRuntimeEngine).
+ * одним applyRuntimeBatch. Сам `new Function` — не песочница: и в мониторе, и в
+ * тест-прогоне модуль выполняется внутри воркера-песочницы (`../sandbox`). Сбой одного
+ * вызова ловит try/catch, серию — автоотключение (см. runBindings монитора).
  */
 
 export type BindingIntent =
   | {kind: "state"; stateName: string}
   | {kind: "prop"; key: string; value: unknown};
 
-export interface CompiledBinding {
+/** Биндинг без кода: что он читает и на что реагирует. Маршрутизацию движок строит по нему. */
+export interface BindingEntry {
   elementKey: string;
   binding: TagBinding;
   scope: TagScope;
@@ -25,8 +26,24 @@ export interface CompiledBinding {
   triggerTagIds: string[];
   /** propertyId-ы свойств-ссылок: их изменение (properties[]) также запускает биндинг. */
   triggerPropertyIds: number[];
+}
+
+export interface CompiledBinding extends BindingEntry {
   fn: (...args: unknown[]) => unknown;
 }
+
+/** Триггеры биндинга — без компиляции: монитору они нужны на странице, а код живёт в песочнице. */
+export const bindingEntry = (elementKey: string, binding: TagBinding, scope: TagScope): BindingEntry => {
+  const scopeTagIds = scope.names
+    .map(n => scope.tagIdByName[n])
+    .filter((t): t is string => typeof t === "string");
+  const triggerTagIds = binding.triggers?.length
+    ? binding.triggers.filter(t => scopeTagIds.includes(t))
+    : scopeTagIds;
+  // Свойства-ссылки триггерят биндинг всегда (сужения по triggers пока нет).
+  const triggerPropertyIds = Object.values(scope.propertyIdByName);
+  return {elementKey, binding, scope, triggerTagIds, triggerPropertyIds};
+};
 
 /**
  * Значение в скоупе кода: переменная — это САМО значение (`Test > 100`), число, если
@@ -67,17 +84,7 @@ export const compileBinding = (
     const code = modernizeScopeCode(binding.code, scope.names);
     const fn = new Function(...scope.names, "RAW", "setState", "setProp", "self", code) as
       (...args: unknown[]) => unknown;
-
-    const scopeTagIds = scope.names
-      .map(n => scope.tagIdByName[n])
-      .filter((t): t is string => typeof t === "string");
-    const triggerTagIds = binding.triggers?.length
-      ? binding.triggers.filter(t => scopeTagIds.includes(t))
-      : scopeTagIds;
-    // Свойства-ссылки триггерят биндинг всегда (сужения по triggers пока нет).
-    const triggerPropertyIds = Object.values(scope.propertyIdByName);
-
-    return {elementKey, binding, scope, triggerTagIds, triggerPropertyIds, fn};
+    return {...bindingEntry(elementKey, binding, scope), fn};
   } catch (err) {
     return {error: err instanceof Error ? err.message : String(err)};
   }

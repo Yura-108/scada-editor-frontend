@@ -29,7 +29,9 @@ let propValues = new Map<number, string>();
 
 const applyValues = (values: SandboxValues, tags: Map<string, string | null>, props: Map<number, string>) => {
   for (const [id, value] of values.tags) tags.set(id, value);
-  for (const [id, value] of values.props) props.set(id, value);
+  for (const [id, value] of values.props) {
+    if (value === null) props.delete(id); else props.set(id, value);
+  }
 };
 
 const compileBindingItem = (b: SandboxBinding) => compileBinding(b.elementKey, b.binding, b.scope);

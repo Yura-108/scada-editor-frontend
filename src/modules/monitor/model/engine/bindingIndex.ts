@@ -1,6 +1,6 @@
 import {devLog, isDev} from "@/shared/lib/devLog";
 import type {DiagramElement} from "@/core/scene";
-import {collectTagScope, withPropertyRefs, compileBinding, type CompiledBinding} from "@/core/runtime";
+import {bindingEntry, collectTagScope, withPropertyRefs, type BindingEntry} from "@/core/runtime";
 import {cellBindings, isLiveField, propertyByName} from "@/core/scene";
 
 /** Ячейка таблицы, в которую пишется живое значение свойства (см. tableBindings.ts). */
@@ -17,17 +17,23 @@ export interface DirectTagTarget {
 }
 
 export interface BindingIndex {
+  /**
+   * Номер загрузки схемы в песочницу: свой у каждого индекса. Ответ песочницы на другой номер
+   * относится к другой схеме и не применяется.
+   */
+  generation: number;
   /** tag_id → биндинги, которые он триггерит (O(1)-маршрутизация входящего значения). */
-  byTagId: Map<string, CompiledBinding[]>;
+  byTagId: Map<string, BindingEntry[]>;
   /** propertyId → биндинги, которые он триггерит (маршрутизация properties[] UPDATE). */
-  byPropertyId: Map<number, CompiledBinding[]>;
-  /** Все скомпилированные биндинги (для сида/повторного прогона). */
-  all: CompiledBinding[];
-  /** binding.id → сообщение ошибки компиляции (для индикации во вкладке «Привязки»). */
-  compileErrors: Map<string, string>;
-  /** Все tag_id, задействованные скомпилированными биндингами. */
+  byPropertyId: Map<number, BindingEntry[]>;
+  /**
+   * Все JS-биндинги схемы (для загрузки в песочницу и повторного прогона). Компилирует их
+   * песочница: ошибки компиляции приходят ответом на загрузку (`reseedScene`).
+   */
+  all: BindingEntry[];
+  /** Все tag_id, задействованные биндингами. */
   tagIds: Set<string>;
-  /** Все propertyId, задействованные скомпилированными биндингами. */
+  /** Все propertyId, задействованные биндингами. */
   propertyIds: Set<number>;
   /** tag_id → ячейки таблиц, привязанные к этому тегу (привязка ячейки, НЕ JS-биндинг). */
   tableCellsByTagId: Map<string, TableCellTarget[]>;
@@ -51,16 +57,17 @@ export interface BindingIndex {
   directTagsByTagId: Map<string, DirectTagTarget[]>;
 }
 
+let lastGeneration = 0;
+
 /**
- * Строит индекс биндингов сцены: скоуп по свойствам-тегам каждого элемента,
- * компиляция каждого включённого биндинга (один раз — на горячем пути только
- * вызов), маршрутизация tag_id → CompiledBinding[].
+ * Строит индекс биндингов сцены: скоуп по свойствам-тегам каждого элемента, триггеры
+ * каждого включённого биндинга, маршрутизация tag_id → BindingEntry[]. Код здесь не
+ * компилируется — это делает песочница при загрузке схемы.
  */
 export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
-  const byTagId = new Map<string, CompiledBinding[]>();
-  const byPropertyId = new Map<number, CompiledBinding[]>();
-  const all: CompiledBinding[] = [];
-  const compileErrors = new Map<string, string>();
+  const byTagId = new Map<string, BindingEntry[]>();
+  const byPropertyId = new Map<number, BindingEntry[]>();
+  const all: BindingEntry[] = [];
   const tagIds = new Set<string>();
   const propertyIds = new Set<number>();
   const tableCellsByTagId = new Map<string, TableCellTarget[]>();
@@ -117,13 +124,7 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
       if (binding.direct && binding.tag) continue;
 
       const scope = withPropertyRefs(tagScope, binding.propertyRefs);
-      const compiled = compileBinding(el.key, binding, scope);
-      if ("error" in compiled) {
-        compileErrors.set(binding.id, compiled.error);
-        console.warn(`[monitor:engine] биндинг «${binding.name}» не скомпилирован: ${compiled.error}`);
-        continue;
-      }
-
+      const compiled = bindingEntry(el.key, binding, scope);
       all.push(compiled);
       for (const tagId of compiled.triggerTagIds) {
         tagIds.add(tagId);
@@ -141,7 +142,7 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   }
 
   devLog(
-    `[monitor:engine] индекс собран: биндингов ${all.length}, ошибок компиляции ${compileErrors.size}, отслеживаемых тегов ${tagIds.size}, свойств ${propertyIds.size}`,
+    `[monitor:engine] индекс собран: биндингов ${all.length}, отслеживаемых тегов ${tagIds.size}, свойств ${propertyIds.size}`,
   );
   if (isDev) {
     if (tagIds.size) console.table([...tagIds].map(tagId => ({tagId})));
@@ -149,7 +150,8 @@ export const buildBindingIndex = (elements: DiagramElement[]): BindingIndex => {
   }
 
   return {
-    byTagId, byPropertyId, all, compileErrors, tagIds, propertyIds,
+    generation: ++lastGeneration,
+    byTagId, byPropertyId, all, tagIds, propertyIds,
     tableCellsByTagId, tableCellsByPropertyName, elementKeysByTagId,
     directTagsByTagId,
   };

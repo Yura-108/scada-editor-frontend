@@ -11,13 +11,15 @@ import {useLiveConnection} from "./useLiveConnection";
 import {useArchiveInput, useArchiveMode, type RuntimeArchiveInput} from "./useArchiveInput";
 import {useTrendHistoryLoader, useTrendWatch} from "./useTrendHistory";
 import {newEngineBuffers, resetSessionBuffers} from "./engineBuffers";
-import type {ScreenPoint} from "@/core/runtime";
+import {createScriptSandbox, type ScreenPoint, type ScriptSandbox} from "@/core/runtime";
 import type {RuntimeConnection, RuntimeStatus} from "./runtimeConnection";
 import {useRuntimeTagInterest} from "./runtimeTagInterest";
 import {resetTrendStore} from "@/core/canvas";
 import {useOpenScene} from "@/core/project";
 
 export type {ArchiveTagChange, RuntimeArchiveInput} from "./useArchiveInput";
+
+const NO_ERRORS = new Map<string, string>();
 
 /** Источник значений: живой WS или воспроизведение архива. */
 export type RuntimeMode = "live" | "archive";
@@ -70,6 +72,11 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     runtimeErrorsRef.current = map;
     setRuntimeErrors(map);
   }, []);
+  // Ошибки компиляции приходят ответом песочницы на загрузку схемы (reseedScene).
+  const [compileErrors, setCompileErrors] = useState<Map<string, string>>(new Map());
+  const publishCompileErrors = useCallback((next: ReadonlyMap<string, string>) => {
+    setCompileErrors(prev => (prev.size === 0 && next.size === 0 ? prev : new Map(next)));
+  }, []);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
@@ -109,8 +116,21 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
   /** Где оператор нажал скрипт (по серверному id) — туда же ляжет отказ ACTION_DENIED. */
   const actionPointsRef = useRef(new Map<number, ScreenPoint | undefined>());
 
+  // Песочница скриптов схемы (#20 п. 1): одна на движок — обработчики кликов и привязки, в
+  // живом режиме и в архиве. Поднимаем сразу, чтобы первый клик не ждал запуска воркера.
+  const sandboxRef = useRef<ScriptSandbox | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const sandbox = createScriptSandbox();
+    sandboxRef.current = sandbox;
+    return () => {
+      sandboxRef.current = null;
+      sandbox.dispose();
+    };
+  }, [active]);
+
   const flush = useCallback(() => {
-    flushEngine(buffers, indexRef.current, runtimeErrorsRef.current, publishRuntimeErrors);
+    flushEngine(buffers, indexRef.current, sandboxRef.current, () => runtimeErrorsRef.current, publishRuntimeErrors);
   }, [publishRuntimeErrors, buffers]);
 
   const flushRef = useRef(flush);
@@ -144,13 +164,13 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
     if (!active) return;
     const idx = indexRef.current;
     if (!idx) return;
-    reseedScene(buffers, idx, publishRuntimeErrors);
-    // publishRuntimeErrors стабилен (useCallback без зависимостей) — в списке он ради
-    // правила exhaustive-deps, пересчёт схемы им не запускается.
-  }, [active, index, publishRuntimeErrors, buffers]);
+    reseedScene(buffers, idx, sandboxRef.current, publishRuntimeErrors, publishCompileErrors);
+    // publish* стабильны (useCallback без зависимостей) — в списке они ради
+    // правила exhaustive-deps, пересчёт схемы ими не запускается.
+  }, [active, index, publishRuntimeErrors, publishCompileErrors, buffers]);
 
   // Действия и шина: после повторного прогона при смене схемы, до эффекта соединения.
-  useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef});
+  useRuntimeActions({active, mode, status, buffers, connRef, actionPointsRef, flushRef, sandboxRef});
 
   const {loadTrendHistory, trendHistoryAbortRef} = useTrendHistoryLoader();
 
@@ -180,7 +200,7 @@ export function useRuntimeEngine(active: boolean, mode: RuntimeMode = "live"): R
 
   return {
     status,
-    compileErrors: index?.compileErrors ?? new Map(),
+    compileErrors: index ? compileErrors : NO_ERRORS,
     runtimeErrors,
     sessionId,
     statusDetail,

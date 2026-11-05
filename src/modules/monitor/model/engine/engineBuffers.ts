@@ -35,6 +35,17 @@ export interface EngineBuffers {
   valuesByPropName: Map<string, string>;
   errorCount: Map<string, number>;
   disabled: Set<string>;
+  /** binding.id, которые песочница не скомпилировала: их не прогоняем и ошибок исполнения не считаем. */
+  notCompiled: Set<string>;
+  /**
+   * Номер загрузки схемы, которую движок сейчас показывает (`BindingIndex.generation`).
+   * Ставит повторный прогон при смене схемы; ответ песочницы для другого номера не применяется.
+   */
+  generation: number;
+  /** Номер сессии значений: растёт на каждый сброс. Ответ, начатый до сброса, не применяется. */
+  epoch: number;
+  /** Хвост очереди применений: ответы песочницы ложатся на холст строго в порядке тактов. */
+  applyTail: Promise<void>;
 }
 
 export const newEngineBuffers = (): EngineBuffers => ({
@@ -49,7 +60,24 @@ export const newEngineBuffers = (): EngineBuffers => ({
   valuesByPropName: new Map(),
   errorCount: new Map(),
   disabled: new Set(),
+  notCompiled: new Set(),
+  generation: 0,
+  epoch: 0,
+  applyTail: Promise.resolve(),
 });
+
+/**
+ * Применить результат асинхронной работы такта — после всех, начатых раньше. Работа идёт
+ * сразу (параллельно с прошлыми), а применение — по очереди: иначе поздний ответ прошлого
+ * такта лёг бы поверх свежего. Ответ, начатый до сброса сессии, отбрасывается.
+ */
+export function applyInOrder<T>(b: EngineBuffers, work: Promise<T>, apply: (result: T) => void) {
+  const epoch = b.epoch;
+  b.applyTail = b.applyTail
+    .then(() => work)
+    .then(result => { if (b.epoch === epoch) apply(result); })
+    .catch(err => console.error("[monitor:engine] такт не применён:", err));
+}
 
 /** quality отсутствует или "GOOD" — достоверно; всё остальное — нет (не сравнивать на "BAD"). */
 export const isTagQualityGood = (quality?: string) => quality === undefined || quality === "GOOD";
@@ -151,6 +179,7 @@ export function resetBindingErrors(b: EngineBuffers) {
 
 /** Сброс всей сессии значений: при выходе из живого режима и из архива. */
 export function resetSessionBuffers(b: EngineBuffers) {
+  b.epoch++;
   b.pending = new Map();
   b.values = new Map();
   // Теневой буфер живых значений тоже принадлежит сессии: без сброса «снять подмену»
@@ -167,6 +196,7 @@ export function resetSessionBuffers(b: EngineBuffers) {
 
 /** Перемотка архива: значения тегов и качество — с чистого листа, свойства остаются. */
 export function resetArchiveBuffers(b: EngineBuffers) {
+  b.epoch++;
   b.pending = new Map();
   b.values = new Map();
   b.tagMeta = new Map();
