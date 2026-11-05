@@ -193,6 +193,9 @@ export default function ActionsClient() {
               value={username}
               onChange={e => setUsername(e.target.value)}
               placeholder="точное имя"
+              // Сравнивает сервер, и пока строго (`username = ?`): по части имени и без учёта
+              // регистра не ищет (#9 п. 2, передано бэкенду).
+              title="Логин целиком, с учётом регистра"
             />
           </JournalField>
           <Button type="submit" variant="primary" size="sm" disabled={loading}>
