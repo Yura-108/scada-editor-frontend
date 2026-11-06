@@ -55,8 +55,10 @@ export function ProcedurePanel() {
       <div className="mx-auto max-w-3xl space-y-5">
         <div className="flex items-end gap-3">
           <div className="flex-1 space-y-1.5">
+            {/* Выбирают РЕЦЕПТ (так он называется в редакторе), а процедура — его выполнение:
+                раньше поле звалось «Процедура», а список — «Выберите рецепт…» (#6 п. 4). */}
             <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Процедура
+              Рецепт
             </label>
             <ProcedureRecipeSelect
               recipes={recipes}
@@ -183,7 +185,7 @@ export function ProcedurePanel() {
         )}
 
         {!recipeId && (
-          <EmptyState size="sm" title="Выберите процедуру, чтобы увидеть её шаги и запустить выполнение." />
+          <EmptyState size="sm" title="Выберите рецепт, чтобы увидеть его шаги и запустить выполнение." />
         )}
       </div>
     </div>
