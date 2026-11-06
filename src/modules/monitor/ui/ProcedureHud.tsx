@@ -29,7 +29,7 @@ export function ProcedureHud() {
   const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
   const controls = useProcedureControls();
 
-  const {hudRef, prefs, hydrated, handleDragStart, toggleCollapsed} = useHudPosition();
+  const {hudRef, prefs, style, hydrated, handleDragStart, toggleCollapsed} = useHudPosition(recipeId);
   const elapsed = useStepElapsed(stepStartedAt);
 
   const recipe = recipes.find(r => r.id === recipeId) ?? null;
@@ -51,13 +51,15 @@ export function ProcedureHud() {
       role="region"
       aria-label="Управление процедурой"
       className={cn(
-        "absolute z-toolbar w-max min-w-[min(720px,calc(100%-1rem))] max-w-[min(980px,calc(100%-1rem))]",
+        "absolute z-toolbar w-max max-w-[min(980px,calc(100%-1rem))]",
+        // Без рецепта — только выбор рецепта: широкая плашка закрывала верх схемы (#6 п. 1).
+        recipeId && "min-w-[min(720px,calc(100%-1rem))]",
         "rounded-xl border border-border",
         "bg-card/95 shadow-2xl backdrop-blur-xl",
         // До чтения настройки не показываем: иначе окно прыгнуло бы из угла в угол.
         hydrated ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
-      style={{left: prefs.x, top: prefs.y}}
+      style={style}
     >
       {/* ─── Свёрнутая полоска: в ней уже есть всё для ведения процесса ─── */}
       <div className="flex items-center gap-2 px-2 py-1.5">
@@ -80,36 +82,39 @@ export function ProcedureHud() {
           placeholder="Рецепт…"
         />
 
-        <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} />
-
-        <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-          {!recipeId ? "рецепт не выбран"
-            : !status ? "не запущена"
-            : status.completed ? "завершена"
-            : `Шаг ${status.stepIndex + 1}/${steps.length || "?"}`
-              + `${status.stepName ? ` · ${status.stepName}` : ""} · ${formatElapsed(elapsed)}`
-              // Причину показываем всегда: авария могла уйти сама (пауза выключила насос),
-              // и без неё оператор видит стоящую мойку без объяснения.
-              + `${status.paused ? ` · ПАУЗА${status.pauseReason ? `: ${status.pauseReason}` : ""}` : ""}`}
-        </span>
-
-        {status?.stalled && (
-          <span className="shrink-0 text-warning" title="Шаг долго не завершается">
-            <AlertTriangle size={14} />
-          </span>
-        )}
-
+        {/* Пока рецепт не выбран, плашка — только выбор рецепта: статуса, кнопок и шагов
+            ещё нет, а широкая полоса закрывала верх схемы (#6 п. 1). */}
         {recipeId && (
-          <HudControls recipeId={recipeId} status={status} isRunning={isRunning} controls={controls} />
-        )}
+          <>
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} />
 
-        <button
-          className={cn(hudIconButton, "text-muted-foreground hover:bg-accent")}
-          onClick={toggleCollapsed}
-          title={prefs.collapsed ? "Показать шаги" : "Свернуть"}
-        >
-          {prefs.collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-        </button>
+            <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+              {!status ? "не запущена"
+                : status.completed ? "завершена"
+                : `Шаг ${status.stepIndex + 1}/${steps.length || "?"}`
+                  + `${status.stepName ? ` · ${status.stepName}` : ""} · ${formatElapsed(elapsed)}`
+                  // Причину показываем всегда: авария могла уйти сама (пауза выключила насос),
+                  // и без неё оператор видит стоящую мойку без объяснения.
+                  + `${status.paused ? ` · ПАУЗА${status.pauseReason ? `: ${status.pauseReason}` : ""}` : ""}`}
+            </span>
+
+            {status?.stalled && (
+              <span className="shrink-0 text-warning" title="Шаг долго не завершается">
+                <AlertTriangle size={14} />
+              </span>
+            )}
+
+            <HudControls recipeId={recipeId} status={status} isRunning={isRunning} controls={controls} />
+
+            <button
+              className={cn(hudIconButton, "text-muted-foreground hover:bg-accent")}
+              onClick={toggleCollapsed}
+              title={prefs.collapsed ? "Показать шаги" : "Свернуть"}
+            >
+              {prefs.collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </button>
+          </>
+        )}
       </div>
 
       {/* ─── Развёрнутая часть: шаги ─── */}

@@ -92,11 +92,15 @@ export default function MonitorClient() {
         <Select
           size="sm"
           className="min-w-0 max-w-56 shrink"
-          value={scene?.id == null ? "" : String(scene.id)}
+          // На экране процедур схема не показана — и в списке её нет (#6 п. 3): выбор любой,
+          // в том числе той же, возвращает к схеме.
+          value={showProcedures || scene?.id == null ? "" : String(scene.id)}
           disabled={!currentProject}
           onValueChange={(v) => {
             const id = Number(v);
-            if (Number.isSafeInteger(id)) void loadScene(id);
+            if (!Number.isSafeInteger(id)) return;
+            setShowProcedures(false);
+            if (id !== scene?.id) void loadScene(id);
           }}
           placeholder="Схема…"
           options={sceneList.map(s => ({value: String(s.id), label: s.name}))}
@@ -120,8 +124,6 @@ export default function MonitorClient() {
 
         <MonitorActions
           live={isLive && Boolean(sessionId)}
-          showProcedures={showProcedures}
-          onShowProcedures={() => setShowProcedures(true)}
           showTasks={showTasks}
           onToggleTasks={() => setShowTasks(v => !v)}
         />
