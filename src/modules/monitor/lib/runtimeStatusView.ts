@@ -4,7 +4,9 @@ import type {RuntimeStatus} from "../model/engine/runtimeConnection";
 /** Подпись и цвет статуса соединения монитора. */
 export const STATUS_VIEW: Record<RuntimeStatus, {label: string; tone: Tone}> = {
   connecting: {label: "Подключение…", tone: "warning"},
-  live: {label: "Живые данные", tone: "success"},
+  // «Подключено», а не «Живые данные»: так уже называется переключатель режима рядом, и без
+  // связи активное «Живые данные» стояло рядом с «Нет соединения» (#6 п. 2).
+  live: {label: "Подключено", tone: "success"},
   reconnecting: {label: "Переподключение…", tone: "warning"},
   closed: {label: "Нет соединения", tone: "neutral"},
   // Окончательный отказ: код закрытия 1003 либо 409 на создание сессии (проект не введён
