@@ -1,14 +1,12 @@
 'use client';
 
 import { useLogsSearch } from '../model/useLogsSearch';
-import { LogEntry } from '../types/logs.type';
+import { useLogUndo } from '../model/useLogUndo';
 import LogDetailsModal from './LogDetailsModal';
 import { cn } from '@/shared/lib/cn';
-import { toast } from "sonner";
 import {
   journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
 } from './journalUi';
-import {useDeviceTreeStore} from "@/core/devices";
 import {Badge} from "@/shared/ui/Badge";
 // Журнал базы каналов приходит без пояса — это UTC (см. shared/lib/serverTime).
 import {formatServerTime} from "@/shared/lib/serverTime";
@@ -29,34 +27,7 @@ export default function LogsList() {
   const { logs, filteredLogs, isLoading, hasSearched, searchQuery, refresh } = useLogsSearch();
   const typeName = useParamTypeName();
 
-  const handleCancel = async (log: LogEntry) => {
-    try {
-      const res = log.batchId != null
-        ? await fetch(`/api/logs/batch/${encodeURIComponent(log.batchId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        : await fetch('/api/logs/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(log.id),
-        });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Ошибка при попытке отката');
-      }
-
-      toast.success(`Действие #${log.id} успешно отменено!`);
-      await refresh();
-      // Помечаем базу каналов устаревшей — при следующем входе в /channels она пере-синхронизируется.
-      useDeviceTreeStore.getState().markStale();
-
-    } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Не удалось выполнить отмену');
-      console.error('Ошибка при отмене:', err);
-    }
-  };
+  const handleCancel = useLogUndo(logs, typeName, refresh);
 
   // Три разных пустых состояния вместо одного: до первого запроса, «за период пусто» и
   // «фильтр ничего не нашёл» — раньше все три выглядели одинаково.
