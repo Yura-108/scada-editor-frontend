@@ -76,7 +76,7 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
     const at = Math.min(Math.max(rawAt, Date.now() - ARCHIVE_DEPTH_MS), to - 1000);
     const {sceneTags: tags, projectId} = archiveRef.current;
     const set = useArchiveReplayStore.setState;
-    set({loading: true, buffering: false, ended: false, error: null});
+    set({loading: true, buffering: false, ended: false, error: null, noData: false});
 
     if (tags.length && projectId == null) {
       set({loading: false, playing: false, error: "Проект монитора не выбран"});
@@ -107,7 +107,11 @@ export function useArchiveReplay(archive: RuntimeArchiveInput, enabled: boolean)
         requestProjectRef.current = projectId;
         bufferRef.current = {changes: page.changes, applied: 0, next: page.next, periodTo: to};
         lastTickAtRef.current = Date.now();
-        set({cursor: at, loading: false});
+        // Ни начального состояния, ни изменений, ни следующей страницы с начала периода — в
+        // архиве за период пусто: панель скажет об этом, а не оставит серую схему (#6 п. 7).
+        const noData = at <= useArchiveReplayStore.getState().from
+          && initial.length === 0 && page.changes.length === 0 && page.next === null;
+        set({cursor: at, loading: false, noData});
         log(`страница 1: изменений ${page.changes.length}, дальше ${page.next ? "есть" : "нет"}`);
       })
       .catch(e => {

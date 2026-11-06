@@ -2,6 +2,7 @@
 
 import React, {useEffect, useState} from "react";
 import {Info, Pause, Play} from "lucide-react";
+import {useShallow} from "zustand/react/shallow";
 import {Spinner} from "@/shared/ui/Spinner";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
@@ -27,7 +28,12 @@ const formatCursor = (ts: number) => {
  * Состояние — useArchiveReplayStore, команды — из useArchiveReplay (смонтирован в MonitorClient).
  */
 export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) {
-  const {from, to, cursor, playing, speed, loading, buffering, ended, error} = useArchiveReplayStore();
+  const {from, to, cursor, playing, speed, loading, buffering, ended, noData, error} = useArchiveReplayStore(
+    useShallow(s => ({
+      from: s.from, to: s.to, cursor: s.cursor, playing: s.playing, speed: s.speed,
+      loading: s.loading, buffering: s.buffering, ended: s.ended, noData: s.noData, error: s.error,
+    })),
+  );
 
   // Черновик периода: применяется кнопкой, иначе каждый символ даты перезапрашивал бы ленту.
   const [draftFrom, setDraftFrom] = useState(() => toLocalInput(from));
@@ -64,6 +70,8 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
       <Button
         size="sm"
         disabled={!periodDirty}
+        // Неактивная кнопка без объяснения выглядела сломанной (#6 п. 7).
+        title={periodDirty ? undefined : "Период уже показан — измените даты"}
         onClick={() => controls.setPeriod(fromLocalInput(draftFrom), fromLocalInput(draftTo))}
       >
         Показать период
@@ -101,12 +109,15 @@ export function ArchivePlayerBar({controls}: {controls: ArchiveReplayControls}) 
         onKeyUp={commitScrub}
       />
 
-      <span className="font-mono tabular-nums">{formatCursor(shown)}</span>
+      {/* Шрифт интерфейса, цифры одной ширины — время не «пляшет» при проигрывании. */}
+      <span className="tabular-nums">{formatCursor(shown)}</span>
 
       {(loading || buffering) && (
         <Spinner size={12} label="Загрузка…" className="gap-1 text-xs text-warning" />
       )}
-      {ended && !loading && <span className="text-muted-foreground">Конец периода</span>}
+      {noData && !loading
+        ? <span className="text-warning">За выбранный период данных нет</span>
+        : ended && !loading && <span className="text-muted-foreground">Конец периода</span>}
       {error && <span className="text-destructive">{error}</span>}
 
       <span

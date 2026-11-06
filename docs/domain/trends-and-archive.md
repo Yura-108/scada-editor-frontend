@@ -64,6 +64,10 @@ scheme as usual.
 - **Seeking**: forward inside the loaded feed just applies up to the new point; backwards or past
   it re-requests with `from` = the seek point (`initial` exists only on the first page). The
   engine is reset only when the new first page has arrived, so the scheme never goes blank.
+- **An empty period is said out loud**: a first page requested from the start of the period with
+  no `initial` values, no `changes` and no `next` sets `noData`, and the player bar shows «За
+  выбранный период данных нет» instead of a silently grey scheme. A disabled «Показать период»
+  carries the reason in its tooltip («Период уже показан — измените даты»).
 - **The cursor never outruns the loaded feed** (`advanceCursor`): the backend pages by
   `(ts, tag)`, so the feed is complete only up to *before* the last loaded `ts`.
 - **Trends follow the cursor**: `useTrendStore.clockTs` replaces `Date.now()` as "now", and
