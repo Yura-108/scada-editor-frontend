@@ -1,5 +1,5 @@
 import React from "react";
-import {ClipboardList, Cpu, SearchCode} from "lucide-react";
+import {Cpu, SearchCode} from "lucide-react";
 import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
 import {Badge} from "@/shared/ui/Badge";
 import {Button} from "@/shared/ui/Button";
@@ -10,14 +10,15 @@ import {openObjectInspectorModal} from "./ObjectInspectorModal";
 interface Props {
   /** Живая сессия: кнопки только при ней — в архиве записи невозможны, а значения из прошлого. */
   live: boolean;
-  showProcedures: boolean;
-  onShowProcedures: () => void;
   showTasks: boolean;
   onToggleTasks: () => void;
 }
 
-/** Кнопки шапки монитора: «Процедуры», «Инспектор», «Задачи». */
-export function MonitorActions({live, showProcedures, onShowProcedures, showTasks, onToggleTasks}: Props) {
+/**
+ * Кнопки шапки монитора: «Инспектор», «Задачи». Кнопки «Процедуры» нет: она дублировала
+ * вкладку «Процедуры» и сбивала подсветку вкладок (#6 п. 3).
+ */
+export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
   // «Опции» и инспектор пишут теги/свойства напрямую: «управление» и уровень ≥ 9.
   const directWrite = canWriteDirectly(useCurrentProjectGrant());
   const taskProblems = useAutomationTasksStore(s => countTaskProblems(s.byId));
@@ -26,13 +27,6 @@ export function MonitorActions({live, showProcedures, onShowProcedures, showTask
 
   return (
     <>
-      {!showProcedures && (
-        <Button size="sm" onClick={onShowProcedures} title="Процедуры">
-          <ClipboardList size={14} />
-          <span className="hidden xl:inline">Процедуры</span>
-        </Button>
-      )}
-
       {/* Инспектор объектов: любой объект выпуска со всех схем, все его свойства с правкой.
           Только при живой сессии — в архиве записи невозможны, а значения из прошлого. */}
       {directWrite && (
