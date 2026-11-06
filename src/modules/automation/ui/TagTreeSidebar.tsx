@@ -125,7 +125,7 @@ export function TagTreeSidebar() {
         <IconButton icon={PanelRightClose} label="Свернуть дерево тегов" onClick={() => toggle(false)} />
       </div>
       <div className="flex-1 min-h-0">
-        <DeviceTreePanel fill />
+        <DeviceTreePanel fill compact />
       </div>
     </aside>
   );
