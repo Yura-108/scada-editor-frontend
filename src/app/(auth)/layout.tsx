@@ -20,7 +20,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <ThemeToggle />
       </div>
 
-      <main className="flex-1 flex items-center justify-center p-4">{children}</main>
+      {/* От верха, а не по центру: при центрировании любая строка ошибки («Введите логин»,
+          «Неверный логин или пароль») сдвигала всю карточку вверх (#5 п. 2). */}
+      <main className="flex-1 flex items-start justify-center p-4 sm:pt-[10vh]">{children}</main>
     </div>
   );
 }
