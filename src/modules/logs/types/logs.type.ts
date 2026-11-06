@@ -3,7 +3,12 @@ export interface LogEntry {
   userName: string;
   entityType: string;
   entityId: number;
-  commandType: 'CREATE' | 'UPDATE' | 'DELETE';
+  /**
+   * `CREATE_NODE`, `UPDATE_PARAM`, `DELETE_PARAM`…, у записи об отмене — с `UNDO_`. Разбирает
+   * `parseLogKind` (lib/describeLog): раньше здесь стояло `'CREATE' | 'UPDATE' | 'DELETE'`, и
+   * ни одна настоящая запись под это не подходила.
+   */
+  commandType: string;
   payload: unknown;
   undoPayload: unknown;
   createdAt: string;

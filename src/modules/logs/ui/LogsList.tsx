@@ -13,16 +13,12 @@ import {Badge} from "@/shared/ui/Badge";
 // Журнал базы каналов приходит без пояса — это UTC (см. shared/lib/serverTime).
 import {formatServerTime} from "@/shared/lib/serverTime";
 import type {Tone} from "@/shared/ui/tone";
+import {logActionLabel, logObjectTitle, parseLogKind, type LogAction} from "../lib/describeLog";
+import {useParamTypeName} from "../model/useParamTypeName";
 
 const COLUMNS = 7;
 
-const COMMAND_LABEL: Record<LogEntry['commandType'], string> = {
-  CREATE: 'Создание',
-  UPDATE: 'Изменение',
-  DELETE: 'Удаление',
-};
-
-const COMMAND_TONE: Record<LogEntry['commandType'], Tone> = {
+const ACTION_TONE: Record<LogAction, Tone> = {
   CREATE: 'success',
   UPDATE: 'warning',
   DELETE: 'destructive',
@@ -31,6 +27,7 @@ const COMMAND_TONE: Record<LogEntry['commandType'], Tone> = {
 /** Таблица логов — тот же вид, что у «Журнала действий». */
 export default function LogsList() {
   const { logs, filteredLogs, isLoading, hasSearched, searchQuery, refresh } = useLogsSearch();
+  const typeName = useParamTypeName();
 
   const handleCancel = async (log: LogEntry) => {
     try {
@@ -86,16 +83,22 @@ export default function LogsList() {
         <tbody className={journalTbody}>
           {empty ? (
             <JournalEmptyRow colSpan={COLUMNS}>{empty}</JournalEmptyRow>
-          ) : filteredLogs.map((log) => (
+          ) : filteredLogs.map((log) => {
+            const kind = parseLogKind(log);
+            const what = kind.target === 'node' ? 'Устройство' : 'Параметр';
+            // Путь и тип — из снимка в записи, номер — мелко в подсказке (#14 п. 1): по одному
+            // «Параметр №…» нельзя было понять, что поменяли.
+            const title = logObjectTitle(log, typeName);
+            return (
             <tr key={log.id} className={cn('align-top', log.undoneAt && 'opacity-60')}>
               <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{formatServerTime(log.createdAt)}</td>
               <td className={journalTd}>{log.userName || '—'}</td>
-              <td className={journalTd}>
-                {log.entityType === 'Node' ? 'Устройство' : 'Параметр'} №{log.entityId}
+              <td className={journalTd} title={`${what} №${log.entityId}`}>
+                {title ?? `${what} №${log.entityId}`}
               </td>
               <td className={`${journalTd} whitespace-nowrap`}>
-                <Badge tone={COMMAND_TONE[log.commandType] ?? 'neutral'}>
-                  {COMMAND_LABEL[log.commandType] ?? log.commandType}
+                <Badge tone={kind.action && !kind.undo ? ACTION_TONE[kind.action] : 'neutral'}>
+                  {logActionLabel(kind, log.commandType)}
                 </Badge>
               </td>
               <td className={`${journalTd} font-mono text-xs text-muted-foreground`}>#{log.id}</td>
@@ -124,7 +127,8 @@ export default function LogsList() {
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -5,7 +5,7 @@ export {useDeviceTreeStore} from "./model/deviceTreeStore";
 export {useDeviceSelection} from "./model/deviceSelectionStore";
 export {useDeviceLocksStore} from "./model/deviceLocksStore";
 export {paramDraftKey, useParamDrafts} from "./model/paramDraftsStore";
-export {loadParamTypes} from "./model/deviceDictionaries";
+export {loadParamTypes, useParamTypes} from "./model/deviceDictionaries";
 export * from "./model/deviceActions";
 export {useEditingDevices} from "./model/useIsEditingDevice";
 export {useUnlockEditingOnUnload} from "./model/useUnlockEditingOnUnload";
