@@ -6,12 +6,14 @@ import {Badge} from "@/shared/ui/Badge";
 import {Button} from "@/shared/ui/Button";
 import {EmptyState} from "@/shared/ui/EmptyState";
 import {IconButton} from "@/shared/ui/IconButton";
+import {Spinner} from "@/shared/ui/Spinner";
 import type {Tone} from "@/shared/ui/tone";
 import type {VersionSummary} from "../types/editorVersion.types";
 import {formatServerTime} from "@/shared/lib/serverTime";
 
 interface Props {
-  versions: VersionSummary[];
+  /** `null` — список ещё грузится: спиннер, а не «Сохранений ещё не было» (#7 п. 3). */
+  versions: VersionSummary[] | null;
   /** Версия, на которой сейчас основан черновик: её восстанавливать незачем. */
   currentVersion: number | null;
   /** Несохранённые правки блокируют восстановление — иначе они молча пропадут. */
@@ -51,6 +53,8 @@ const KIND_TONE: Record<string, Tone> = {
 /** История версий документа проекта (набор automation, таблицы данных): список и «Восстановить». */
 export function VersionHistoryList({versions, currentVersion, dirty, onRestore, renderDetails}: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
+
+  if (!versions) return <Spinner label="Загрузка истории…" className="p-4" />;
 
   return (
     <div className="p-4 space-y-2 max-w-3xl">

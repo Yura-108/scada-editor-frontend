@@ -20,7 +20,8 @@ export function useTablesDocument(projectId: number | null, historyOpen: boolean
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<ProjectDataValidationError[]>([]);
   const [invalidCells, setInvalidCells] = useState(0);
-  const [versions, setVersions] = useState<VersionSummary[]>([]);
+  // `null` — ещё не загружены: «Сохранений ещё не было» только на пустой ответ сервера.
+  const [versions, setVersions] = useState<VersionSummary[] | null>(null);
   const [selectedTable, setSelectedTable] = useState(0);
 
   // Документ прежнего проекта сбрасывается при смене проекта во время рендера, а не в эффекте
@@ -29,6 +30,7 @@ export function useTablesDocument(projectId: number | null, historyOpen: boolean
   if (loadedFor !== projectId) {
     setLoadedFor(projectId);
     setData(null);
+    setVersions(null);
   }
 
   const load = useCallback(
