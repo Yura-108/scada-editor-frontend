@@ -1,9 +1,10 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {cn} from "@/shared/lib/cn";
 import {Badge} from "@/shared/ui/Badge";
 import {Spinner} from "@/shared/ui/Spinner";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {useSessionUserStore} from "@/core/access";
 import {listUsers, type AdminUser} from "../api/adminApi";
 import {CreateUserForm} from "./CreateUserForm";
@@ -23,6 +24,16 @@ export function UsersTab() {
     return () => { cancelled = true; };
   }, []);
 
+  // Админы сверху, внутри — по логину; поиск по части логина (#19 п. 3). Раньше — в порядке,
+  // в котором прислал сервер.
+  const [query, setQuery] = useState("");
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (users ?? [])
+      .filter(u => !needle || u.login.toLowerCase().includes(needle))
+      .sort((a, b) => Number(b.admin) - Number(a.admin) || a.login.localeCompare(b.login, "ru"));
+  }, [users, query]);
+
   const selected = users?.find(u => u.id === selectedId) ?? null;
   const replaceUser = (user: AdminUser) => setUsers(list => list?.map(u => (u.id === user.id ? user : u)) ?? list);
 
@@ -33,8 +44,16 @@ export function UsersTab() {
         <div className="flex-1 min-h-0 overflow-y-auto">
           {error && <p className="m-3 text-sm text-destructive">{error}</p>}
           {!users && !error && <Spinner label="Загрузка…" className="m-3" />}
+          {users && users.length > 0 && (
+            <div className="p-3 pb-2">
+              <SearchInput size="sm" value={query} onChange={e => setQuery(e.target.value)} placeholder="Найти пользователя" />
+            </div>
+          )}
+          {users && query.trim() && shown.length === 0 && (
+            <p className="px-3 py-2 text-sm text-muted-foreground">Никого не найдено</p>
+          )}
           <ul className="divide-y">
-            {users?.map(u => (
+            {shown.map(u => (
               <li key={u.id}>
                 <button
                   onClick={() => setSelectedId(u.id)}
