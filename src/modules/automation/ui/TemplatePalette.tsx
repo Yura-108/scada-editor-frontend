@@ -14,6 +14,9 @@ import {groupTemplates} from "../lib/automationTemplates";
 import {openTemplateModal} from "./OpenTemplateModal";
 import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
 import {SearchInput} from "@/shared/ui/field/SearchInput";
+import {SidePanel} from "./SidePanel";
+
+const SIZE = {min: 220, max: 520, initial: 288};
 
 /** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */
 const NO_TEMPLATES: AutomationTaskTemplate[] = [];
@@ -22,13 +25,15 @@ interface Props {
   /** Вставка кладёт в набор черновик задачи; сохраняет его обычное сохранение набора. */
   /** Нет — нет права правки в проекте: шаблоны видны, но вставить их некуда. */
   onInsert?: (template: AutomationTaskTemplate) => void;
+  /** Узкое окно: полоса у края, открытая — поверх формы (#7 п. 1). */
+  overlay: boolean;
 }
 
 /**
  * Палитра заготовок задач — общая для всех проектов, фильтра по проекту нет.
  * Порядок внутри группы задаёт сервер (по имени), группировка по категории — здесь.
  */
-export function TemplatePalette({onInsert}: Props) {
+export function TemplatePalette({onInsert, overlay}: Props) {
   const templates = useTemplates();
   const items = templates.data ?? NO_TEMPLATES;
   // Пока есть список, перечитка (после сохранения) идёт фоном и список не прячется.
@@ -68,11 +73,9 @@ export function TemplatePalette({onInsert}: Props) {
   };
 
   return (
-    <aside className="w-72 shrink-0 border-l border-border flex flex-col min-h-0">
-      <div className="p-3 border-b border-border shrink-0">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          Шаблоны задач
-        </div>
+    // Сворачивается и меняет ширину, как дерево тегов: раньше стояла колонкой 288 px без кнопки.
+    <SidePanel storageKey="automation.templates" title="Шаблоны задач" size={SIZE} overlay={overlay}>
+      <div className="p-3 pl-4 pt-2 border-b border-border shrink-0">
         <div className="relative">
           <SearchInput
             size="sm"
@@ -170,6 +173,6 @@ export function TemplatePalette({onInsert}: Props) {
           </div>
         ))}
       </div>
-    </aside>
+    </SidePanel>
   );
 }

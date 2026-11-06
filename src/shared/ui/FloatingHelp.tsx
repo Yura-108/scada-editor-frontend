@@ -1,14 +1,17 @@
 "use client";
 
 import React, {useState} from "react";
-import {CircleHelp, X} from "lucide-react";
+import {ChevronDown, CircleHelp, X} from "lucide-react";
 import {IconButton} from "./IconButton";
 
 interface Props {
   /** Ключ запоминания «свёрнуто/развёрнуто» в браузере, например `help.data`. */
   storageKey: string;
   title: string;
+  /** Главное — 2–3 строки: открытая справка не должна закрывать треть экрана. */
   children: React.ReactNode;
+  /** Остальное — под кнопкой «Подробнее», свёрнуто при каждом открытии и смене раздела. */
+  more?: React.ReactNode;
 }
 
 const readOpen = (key: string): boolean => {
@@ -27,11 +30,19 @@ const readOpen = (key: string): boolean => {
  * Читает localStorage в начальном состоянии, поэтому монтировать её нужно только на клиенте
  * (после загрузки данных страницы), иначе разметка сервера и клиента разойдётся.
  */
-export function FloatingHelp({storageKey, title, children}: Props) {
+export function FloatingHelp({storageKey, title, children, more}: Props) {
   const [open, setOpen] = useState(() => readOpen(storageKey));
+  const [expanded, setExpanded] = useState(false);
+  // Другая вкладка — другая справка: начинаем снова с краткой (подстройка во время рендера).
+  const [shownTitle, setShownTitle] = useState(title);
+  if (shownTitle !== title) {
+    setShownTitle(title);
+    setExpanded(false);
+  }
 
   const toggle = (next: boolean) => {
     setOpen(next);
+    setExpanded(false);
     try {
       localStorage.setItem(storageKey, next ? "1" : "0");
     } catch {
@@ -65,6 +76,18 @@ export function FloatingHelp({storageKey, title, children}: Props) {
       </div>
       <div className="overflow-y-auto px-4 py-3 text-sm text-foreground space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_b]:text-foreground [&_code]:text-xs [&_code]:px-1 [&_code]:rounded [&_code]:bg-muted">
         {children}
+        {more && expanded && more}
+        {more && (
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            aria-expanded={expanded}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-4"
+          >
+            {expanded ? "Короче" : "Подробнее"}
+            <ChevronDown size={14} className={expanded ? "rotate-180" : undefined} />
+          </button>
+        )}
       </div>
     </aside>
   );

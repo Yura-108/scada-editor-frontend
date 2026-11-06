@@ -127,7 +127,7 @@ export function AutomationPage({projectList, project, unavailable, listLoaded, o
         />
       )}
 
-      {draft && <FloatingHelp storageKey="help.automation" title={AUTOMATION_HELP[tab].title}>{AUTOMATION_HELP[tab].body}</FloatingHelp>}
+      {draft && <FloatingHelp storageKey="help.automation" title={AUTOMATION_HELP[tab].title} more={AUTOMATION_HELP[tab].more}>{AUTOMATION_HELP[tab].body}</FloatingHelp>}
     </PageFrame>
   );
 }

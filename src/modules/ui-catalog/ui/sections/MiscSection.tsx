@@ -40,8 +40,12 @@ function Misc() {
           <UnsavedNotice details="таблицы: 2" onSave={() => setUnsaved(false)} onDiscard={() => setUnsaved(false)} />
         )}
         {help && (
-          <FloatingHelp storageKey="help.ui-catalog" title="Справка раздела">
-            <p className="text-sm">Инструкция к разделу. Свёрнута или развёрнута — помнит браузер.</p>
+          <FloatingHelp
+            storageKey="help.ui-catalog"
+            title="Справка раздела"
+            more={<p className="text-sm">Остальное — по «Подробнее»: свёрнуто при каждом открытии и смене раздела.</p>}
+          >
+            <p className="text-sm">Главное в 2–3 строки. Свёрнута справка или развёрнута — помнит браузер.</p>
           </FloatingHelp>
         )}
       </Demo>
