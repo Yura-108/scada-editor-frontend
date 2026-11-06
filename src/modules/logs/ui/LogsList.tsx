@@ -1,65 +1,28 @@
 'use client';
 
+import {useMemo} from 'react';
 import { useLogsSearch } from '../model/useLogsSearch';
-import { LogEntry } from '../types/logs.type';
-import LogDetailsModal from './LogDetailsModal';
-import { cn } from '@/shared/lib/cn';
-import { toast } from "sonner";
+import { useLogUndo } from '../model/useLogUndo';
+import {useParamTypeName} from "../model/useParamTypeName";
+import {groupLogs} from "../lib/groupLogs";
 import {
-  journalTableBox, journalTbody, journalTd, journalTh, journalThead, JournalEmptyRow,
+  journalTableBox, journalTbody, journalTh, journalThead, JournalEmptyRow,
 } from './journalUi';
-import {useDeviceTreeStore} from "@/core/devices";
-import {Badge} from "@/shared/ui/Badge";
-// Журнал базы каналов приходит без пояса — это UTC (см. shared/lib/serverTime).
-import {formatServerTime} from "@/shared/lib/serverTime";
-import type {Tone} from "@/shared/ui/tone";
+import {LogRow} from "./LogRow";
+import {LogBatchRows} from "./LogBatchRows";
 
 const COLUMNS = 7;
 
-const COMMAND_LABEL: Record<LogEntry['commandType'], string> = {
-  CREATE: 'Создание',
-  UPDATE: 'Изменение',
-  DELETE: 'Удаление',
-};
-
-const COMMAND_TONE: Record<LogEntry['commandType'], Tone> = {
-  CREATE: 'success',
-  UPDATE: 'warning',
-  DELETE: 'destructive',
-};
-
-/** Таблица логов — тот же вид, что у «Журнала действий». */
+/**
+ * Таблица логов — тот же вид, что у «Журнала действий». Записи одной операции (`batchId`)
+ * собраны под строкой «Операция: N изменений» (#14 п. 4), одиночные — как были.
+ */
 export default function LogsList() {
   const { logs, filteredLogs, isLoading, hasSearched, searchQuery, refresh } = useLogsSearch();
-
-  const handleCancel = async (log: LogEntry) => {
-    try {
-      const res = log.batchId != null
-        ? await fetch(`/api/logs/batch/${encodeURIComponent(log.batchId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        : await fetch('/api/logs/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(log.id),
-        });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Ошибка при попытке отката');
-      }
-
-      toast.success(`Действие #${log.id} успешно отменено!`);
-      await refresh();
-      // Помечаем базу каналов устаревшей — при следующем входе в /channels она пере-синхронизируется.
-      useDeviceTreeStore.getState().markStale();
-
-    } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Не удалось выполнить отмену');
-      console.error('Ошибка при отмене:', err);
-    }
-  };
+  const typeName = useParamTypeName();
+  const handleUndo = useLogUndo(logs, typeName, refresh);
+  const onUndo = (log: Parameters<typeof handleUndo>[0]) => void handleUndo(log);
+  const items = useMemo(() => groupLogs(filteredLogs), [filteredLogs]);
 
   // Три разных пустых состояния вместо одного: до первого запроса, «за период пусто» и
   // «фильтр ничего не нашёл» — раньше все три выглядели одинаково.
@@ -86,44 +49,10 @@ export default function LogsList() {
         <tbody className={journalTbody}>
           {empty ? (
             <JournalEmptyRow colSpan={COLUMNS}>{empty}</JournalEmptyRow>
-          ) : filteredLogs.map((log) => (
-            <tr key={log.id} className={cn('align-top', log.undoneAt && 'opacity-60')}>
-              <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{formatServerTime(log.createdAt)}</td>
-              <td className={journalTd}>{log.userName || '—'}</td>
-              <td className={journalTd}>
-                {log.entityType === 'Node' ? 'Устройство' : 'Параметр'} №{log.entityId}
-              </td>
-              <td className={`${journalTd} whitespace-nowrap`}>
-                <Badge tone={COMMAND_TONE[log.commandType] ?? 'neutral'}>
-                  {COMMAND_LABEL[log.commandType] ?? log.commandType}
-                </Badge>
-              </td>
-              <td className={`${journalTd} font-mono text-xs text-muted-foreground`}>#{log.id}</td>
-              <td className={journalTd}>
-                <LogDetailsModal
-                  log={log}
-                  trigger={
-                    <button type="button" className="text-xs text-primary hover:underline underline-offset-4">
-                      подробнее
-                    </button>
-                  }
-                />
-              </td>
-              <td className={`${journalTd} text-right`}>
-                {log.undoneAt ? (
-                  <Badge title={`Отменено ${formatServerTime(log.undoneAt)}`}>отменено</Badge>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void handleCancel(log)}
-                    className="rounded-lg px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
-                    title={log.batchId ? 'Отменить всю операцию (все её записи)' : 'Отменить это изменение'}
-                  >
-                    Отменить
-                  </button>
-                )}
-              </td>
-            </tr>
+          ) : items.map(item => item.kind === 'batch' ? (
+            <LogBatchRows key={`batch:${item.batchId}`} logs={item.logs} typeName={typeName} onUndo={onUndo} />
+          ) : (
+            <LogRow key={item.log.id} log={item.log} typeName={typeName} onUndo={onUndo} />
           ))}
         </tbody>
       </table>

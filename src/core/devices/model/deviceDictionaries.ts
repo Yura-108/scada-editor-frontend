@@ -1,4 +1,5 @@
 import {toast} from "sonner";
+import {useQuery} from "@tanstack/react-query";
 import {getQueryClient} from "@/shared/api/queryClient";
 import type {DeviceParamsLayoutType} from '../types/nodeTypes';
 import {errorMessage, fetchDeviceTemplates, fetchParamLayout, type DeviceTemplateList} from "../api/devicesApi";
@@ -24,6 +25,18 @@ export async function loadParamTypes(): Promise<void> {
 /** Типы параметров, загруженные последними (пустой список — ещё не загружены). */
 export const getParamTypes = (): DeviceParamsLayoutType[] =>
   getQueryClient().getQueryData<DeviceParamsLayoutType[]>(paramTypesKey) ?? [];
+
+const NO_PARAM_TYPES: DeviceParamsLayoutType[] = [];
+
+/**
+ * Типы параметров для экрана, которому они нужны реактивно («Логирование» показывает название
+ * типа вместо номера). Тот же кэш, что у `loadParamTypes`: загруженное «Каналами» не
+ * перезапрашивается. Ошибка — пустой список: читатель покажет номер типа.
+ */
+export function useParamTypes(): DeviceParamsLayoutType[] {
+  return useQuery({queryKey: paramTypesKey, queryFn: fetchParamLayout, staleTime: Infinity}).data
+    ?? NO_PARAM_TYPES;
+}
 
 /** Перечитать шаблоны устройств. Ошибка — тост и пустой список, окно создания всё равно откроется. */
 export async function loadDeviceTemplates(): Promise<void> {
