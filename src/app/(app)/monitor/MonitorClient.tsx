@@ -165,7 +165,10 @@ export default function MonitorClient() {
       {/* `relative` — точка отсчёта для HUD процедуры: он absolute внутри этого блока.
           Не `fixed`, как у баннеров редактора: там опорой служат --ws-*-m, которых
           в мониторе нет, и пришлось бы вручную вычитать тулбар и полосу вкладок. */}
-      <div id="monitor-canvas" className="relative flex-1 min-h-0 overflow-hidden bg-card">
+      {/* «Фоновые задачи» — колонкой справа: висела поверх схемы и кнопок «Запустить» /
+          «Повторить» без затемнения, и под ней было не видно содержимого (#6 п. 8). */}
+      <div className="flex flex-1 min-h-0">
+      <div id="monitor-canvas" className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-card">
         {showProcedures ? (
           <ProcedurePanel />
         ) : releaseError && !scene ? (
@@ -182,7 +185,8 @@ export default function MonitorClient() {
         {!showProcedures && !isArchive && <ProcedureHud />}
         {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
         {!showProcedures && !isArchive && <FloatingWindowsLayer />}
-        {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
+      </div>
+      {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
     </PageFrame>
   );

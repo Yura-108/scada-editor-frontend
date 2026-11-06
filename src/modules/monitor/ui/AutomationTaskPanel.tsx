@@ -26,8 +26,10 @@ const formatAge = (lastRunAt: number | null, now: number): string => {
  */
 export function AutomationTaskPanel({onClose}: {onClose: () => void}) {
   const byId = useAutomationTasksStore(s => s.byId);
+  // Порядок — как в «Автоматизации» (по созданию, т. е. по id), а не по имени: по-русски
+  // «Петя 22» встаёт раньше «Петя1», и списки расходились (#6 п. 8).
   const tasks = useMemo(
-    () => Object.values(byId).sort((a, b) => a.name.localeCompare(b.name, "ru")),
+    () => Object.values(byId).sort((a, b) => a.taskId - b.taskId),
     [byId],
   );
 
@@ -39,7 +41,9 @@ export function AutomationTaskPanel({onClose}: {onClose: () => void}) {
   }, []);
 
   return (
-    <aside className="absolute right-3 top-3 bottom-3 z-20 w-[380px] max-w-[calc(100%-1.5rem)] flex flex-col rounded-2xl border bg-card/95 backdrop-blur-md shadow-xl">
+    // Колонка рядом со схемой, а не слой поверх: сдвигает содержимое, ничего не закрывая.
+    <aside className="w-[360px] max-w-[45%] shrink-0 flex flex-col border-l bg-card">
+
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <span className="text-sm font-semibold">Фоновые задачи</span>
         <IconButton icon={X} label="Закрыть" onClick={onClose} />

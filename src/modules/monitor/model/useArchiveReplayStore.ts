@@ -22,6 +22,8 @@ export interface ArchiveReplayState {
   buffering: boolean;
   /** Дошли до конца периода. */
   ended: boolean;
+  /** С начала периода архив не прислал ничего: ни состояния тегов, ни изменений. */
+  noData: boolean;
   error: string | null;
 }
 
@@ -36,6 +38,7 @@ export const initialReplayState = (now = Date.now()): ArchiveReplayState => ({
   loading: false,
   buffering: false,
   ended: false,
+  noData: false,
   error: null,
 });
 

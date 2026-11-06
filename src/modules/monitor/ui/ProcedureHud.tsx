@@ -77,13 +77,13 @@ export function ProcedureHud() {
           recipes={recipes}
           recipeId={recipeId}
           onWatch={watch}
-          placeholder="Процедура…"
+          placeholder="Рецепт…"
         />
 
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} />
 
         <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-          {!recipeId ? "процедура не выбрана"
+          {!recipeId ? "рецепт не выбран"
             : !status ? "не запущена"
             : status.completed ? "завершена"
             : `Шаг ${status.stepIndex + 1}/${steps.length || "?"}`

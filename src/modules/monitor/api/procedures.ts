@@ -76,6 +76,12 @@ export function useMonitorRecipes(projectId: number | null, releaseVersionNo: nu
         console.warn("[procedures] рецепты выпуска не загружены:", err);
         throw new Error("Не удалось загрузить рецепты");
       }
+      if (res.status === 404) {
+        // Сервер без этого маршрута (старый бэкенд на стенде): оператору — что это значит,
+        // а технический текст «Нет такого эндпоинта: …» — в консоль (#6 п. 5).
+        console.warn("[procedures] рецепты выпуска:", await readBackendError(res));
+        throw new Error("процедуры для этого проекта пока недоступны на сервере");
+      }
       if (!res.ok) throw new Error(await readBackendError(res));
       const data: unknown = await res.json().catch(() => null);
       return Array.isArray(data) ? (data as Recipe[]) : [];
