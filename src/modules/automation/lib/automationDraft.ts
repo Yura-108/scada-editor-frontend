@@ -193,6 +193,16 @@ export const taskSummary = (task: AutomationTask): string =>
     task.writes_variables.length ? `пишет ${task.writes_variables.join(", ")}` : null,
   ].filter(Boolean).join(" · ");
 
+/**
+ * Номер для «+ Задача»: следующий после самого большого «Задача N», а не по количеству —
+ * при одной «Задача 3» количество давало «Задача 2» (#19 п. 5).
+ */
+export const nextTaskNumber = (tasks: {name: string}[]): number =>
+  tasks.reduce((max, t) => {
+    const m = /^Задача (\d+)$/.exec(t.name.trim());
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0) + 1;
+
 /** Заготовка новой задачи для «+ Задача»: `index` — её номер в имени. */
 export const newTask = (index: number): AutomationTask => ({
   id: null,

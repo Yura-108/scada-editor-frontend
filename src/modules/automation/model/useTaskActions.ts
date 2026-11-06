@@ -1,7 +1,7 @@
 import {toast} from "sonner";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
 import type {AutomationTask} from "@/core/automation";
-import {findSavedTask, freeTaskName, newTask, taskDraftState, tasksWith} from "../lib/automationDraft";
+import {findSavedTask, freeTaskName, newTask, nextTaskNumber, taskDraftState, tasksWith} from "../lib/automationDraft";
 import {missingVariables, taskToTemplate, templateToDraftTask} from "../lib/automationTemplates";
 import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
 import type {AutomationTab} from "../ui/automationHelp";
@@ -28,7 +28,7 @@ export function useTaskActions(doc: AutomationDocument, setTab: (tab: Automation
 
   const addTask = () => {
     if (!draft) return;
-    update({tasks: [...draft.tasks, newTask(draft.tasks.length + 1)]});
+    update({tasks: [...draft.tasks, newTask(nextTaskNumber(draft.tasks))]});
     setSelected(draft.tasks.length);
   };
 

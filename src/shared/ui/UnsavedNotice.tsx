@@ -14,6 +14,11 @@ interface Props {
   saving?: boolean;
   /** Почему сохранить сейчас нельзя (неверные ячейки и т. п.). */
   saveBlockedReason?: string | null;
+  /**
+   * `floating` — плашка в левом нижнем углу; `bar` — полоса под шапкой страницы, для
+   * разделов, где угол занят рабочим полем (редактор скрипта задачи, #19 п. 5).
+   */
+  layout?: "floating" | "bar";
 }
 
 /**
@@ -21,7 +26,29 @@ interface Props {
  * несохранённые правки» в шапке: там её не замечали, а уход со страницы молча терял работу.
  * Показывает её владелец — только когда правки действительно есть.
  */
-export function UnsavedNotice({details, onSave, onDiscard, saving = false, saveBlockedReason}: Props) {
+export function UnsavedNotice({details, onSave, onDiscard, saving = false, saveBlockedReason, layout = "floating"}: Props) {
+  const buttons = (onSave || onDiscard) && <>
+    {onSave && (
+      <Button variant="primary" size="sm" onClick={onSave} disabled={saving || !!saveBlockedReason}>
+        <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
+      </Button>
+    )}
+    {onDiscard && (
+      <Button size="sm" onClick={onDiscard} disabled={saving} title="Отказаться от правок и перечитать с сервера">
+        <RotateCcw size={14} />Отменить
+      </Button>
+    )}
+  </>;
+
+  if (layout === "bar") {
+    return (
+      <Banner layout="bar" tone="warning" icon={AlertTriangle} title="Есть несохранённые изменения." actions={buttons}>
+        {details && <span className="text-xs text-muted-foreground">{details}</span>}
+        {saveBlockedReason && <span className="ml-2 text-xs text-destructive">{saveBlockedReason}</span>}
+      </Banner>
+    );
+  }
+
   return (
     <Banner
       layout="floating"
@@ -32,20 +59,7 @@ export function UnsavedNotice({details, onSave, onDiscard, saving = false, saveB
     >
       {details && <div className="text-xs text-muted-foreground">{details}</div>}
       {saveBlockedReason && <div className="text-xs text-destructive">{saveBlockedReason}</div>}
-      {(onSave || onDiscard) && (
-        <div className="flex gap-2 mt-2">
-          {onSave && (
-            <Button variant="primary" size="sm" onClick={onSave} disabled={saving || !!saveBlockedReason}>
-              <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
-            </Button>
-          )}
-          {onDiscard && (
-            <Button size="sm" onClick={onDiscard} disabled={saving} title="Отказаться от правок и перечитать с сервера">
-              <RotateCcw size={14} />Отменить
-            </Button>
-          )}
-        </div>
-      )}
+      {buttons && <div className="flex gap-2 mt-2">{buttons}</div>}
     </Banner>
   );
 }

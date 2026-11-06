@@ -87,6 +87,18 @@ export function AutomationPage({projectList, project, unavailable, listLoaded, o
 
       {project && draft && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
+      {/* Полосой под шапкой, а не в левом нижнем углу: там она закрывала начало редактора
+          скрипта задачи (#19 п. 5). */}
+      {canWrite && dirty && (
+        <UnsavedNotice
+          layout="bar"
+          details={unsavedCount > 0 ? `Не сохранено изменений: ${unsavedCount}. Задачу можно сохранить отдельно — кнопкой в её редакторе.` : undefined}
+          onSave={() => void doc.saveAll()}
+          onDiscard={() => void doc.reload()}
+          saving={saving}
+        />
+      )}
+
       {projectErrors.length > 0 && (
         <Banner layout="bar" tone="destructive" icon={CircleAlert}>
           {projectErrors.map((e, i) => <div key={i}>{e.field}: {e.message}</div>)}
@@ -115,14 +127,6 @@ export function AutomationPage({projectList, project, unavailable, listLoaded, o
         />
       )}
 
-      {canWrite && dirty && (
-        <UnsavedNotice
-          details={unsavedCount > 0 ? `Не сохранено изменений: ${unsavedCount}. Задачу можно сохранить отдельно — кнопкой в её редакторе.` : undefined}
-          onSave={() => void doc.saveAll()}
-          onDiscard={() => void doc.reload()}
-          saving={saving}
-        />
-      )}
       {draft && <FloatingHelp storageKey="help.automation" title={AUTOMATION_HELP[tab].title}>{AUTOMATION_HELP[tab].body}</FloatingHelp>}
     </PageFrame>
   );

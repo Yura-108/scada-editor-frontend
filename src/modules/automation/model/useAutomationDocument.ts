@@ -27,7 +27,8 @@ export function useAutomationDocument(projectId: number | null, tab: AutomationT
   const [errors, setErrors] = useState<AutomationValidationError[]>([]);
   const [selected, setSelected] = useState(0);
   const [statuses, setStatuses] = useState<AutomationTaskStatusRow[]>([]);
-  const [versions, setVersions] = useState<VersionSummary[]>([]);
+  // `null` — ещё не загружены: «Сохранений ещё не было» только на пустой ответ сервера.
+  const [versions, setVersions] = useState<VersionSummary[] | null>(null);
 
   const dirty = useMemo(() => isSetDirty(draft, saved), [draft, saved]);
   // «Вернуть» в уведомлении срабатывает позже — ему нужно текущее состояние, а не то, что
@@ -47,6 +48,7 @@ export function useAutomationDocument(projectId: number | null, tab: AutomationT
     setLoadedFor(projectId);
     setDraft(null);
     setSaved(null);
+    setVersions(null);
   }
 
   const fetchSet = useCallback(

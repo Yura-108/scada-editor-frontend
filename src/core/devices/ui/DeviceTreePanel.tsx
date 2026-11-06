@@ -25,9 +25,14 @@ const SEARCH_DEBOUNCE_MS = 250;
 interface DeviceTreePanelProps {
   /** Занять всю высоту родителя вместо собственной (встроенная панель, а не отдельная страница). */
   fill?: boolean;
+  /**
+   * Без крупного заголовка «Дерево устройств» — у колонки уже есть свой («Дерево тегов» в
+   * «Автоматизации»): два заголовка подряд отнимали место в узкой колонке (#7 п. 4).
+   */
+  compact?: boolean;
 }
 
-const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
+const DeviceTreePanel = ({fill = false, compact = false}: DeviceTreePanelProps) => {
   const [contextMenu, setContextMenu] = useState<ContextMenuType | null>(null);
   const {
     nodes,
@@ -163,11 +168,13 @@ const DeviceTreePanel = ({fill = false}: DeviceTreePanelProps) => {
   return (
     <div className={`${fill ? 'h-full' : 'h-[60vh] md:h-app'} bg-card border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden`}>
       <div className="px-4 py-3 border-b border-border">
-        <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-          <Router className={'w-5 h-5 text-primary'}/>
-          Дерево устройств
-        </h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        {!compact && (
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Router className={'w-5 h-5 text-primary'}/>
+            Дерево устройств
+          </h2>
+        )}
+        <p className={`text-xs text-muted-foreground ${compact ? '' : 'mt-0.5'}`}>
           {isLoadingNodes ? 'Загрузка…' : `${countOf(deviceCount, 'устройство', 'устройства', 'устройств')} • ${countOf(channelCount, 'канал', 'канала', 'каналов')}`}
         </p>
 
