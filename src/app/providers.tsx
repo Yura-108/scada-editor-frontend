@@ -27,7 +27,10 @@ export default function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       <Toaster
-        position="top-right"
+        // Снизу: сверху справа тосты закрывали меню пользователя и вкладки схем в шапке (#12 п. 2).
+        // Отступ — над кнопкой «?» (FloatingHelp, fixed bottom-4 right-4), чтобы не закрывать её.
+        position="bottom-right"
+        offset={{bottom: 72, right: 16}}
         richColors
         theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
         // Слой берём из общей шкалы (globals.css), а не из умолчания sonner.
