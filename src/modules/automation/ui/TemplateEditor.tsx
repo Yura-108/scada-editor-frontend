@@ -8,7 +8,7 @@ import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
-import {useCreateTemplate, useUpdateTemplate} from "../api/templates";
+import {useCreateTemplate, useTemplates, useUpdateTemplate} from "../api/templates";
 import {AutomationSaveError} from "@/core/automation";
 import {templateBody} from "../lib/automationTemplates";
 import {Checkbox} from "@/shared/ui/field/Checkbox";
@@ -54,9 +54,15 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
   const [saving, setSaving] = useState(false);
   const [variableDraft, setVariableDraft] = useState("");
 
+  // Занятое имя видно сразу, по уже загруженному списку, а не только после 400 от сервера
+  // (#19 п. 6). Сервер остаётся последним словом — на случай чужого шаблона, созданного только что.
+  const {data: templates} = useTemplates();
+  const nameTaken = templates?.some(t => t.id !== draft.id && t.name.trim() === draft.name.trim()) ?? false;
+
   const set = (patch: Partial<AutomationTaskTemplate>) => setDraft(d => ({...d, ...patch}));
   const errorOf = (field: string) =>
-    errors.filter(e => e.field === field).map(e => e.message).join("; ");
+    errors.filter(e => e.field === field).map(e => e.message).join("; ")
+    || (field === "name" && nameTaken ? "Шаблон с таким именем уже есть" : "");
 
   const setNumber = (field: NumberField, raw: string) => {
     // Пустой таймаут — «по умолчанию» (100 мс), а не 0: ноль заведомо невалиден.
@@ -222,7 +228,7 @@ export function TemplateEditor({mode, initial, onSaved}: Props) {
 
       <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
-        <Button variant="primary" onClick={handleSave} disabled={saving || !draft.name.trim()}>
+        <Button variant="primary" onClick={handleSave} disabled={saving || !draft.name.trim() || nameTaken}>
           {saving ? "Сохранение…" : "Сохранить"}
         </Button>
       </DialogFooter>
