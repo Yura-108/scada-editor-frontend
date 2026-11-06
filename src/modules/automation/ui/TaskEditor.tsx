@@ -32,6 +32,8 @@ interface Props {
   onSaveAsTemplate?: () => void;
   /** Нет права правки: поля заблокированы, а не просто «не сохранятся». */
   readOnly?: boolean;
+  /** Узкое окно: дерево тегов — полосой, открытое ложится поверх формы (#7 п. 1). */
+  narrow?: boolean;
 }
 
 type NumberField = "period_ms" | "timeout_ms" | "stale_after_ms";
@@ -48,7 +50,7 @@ const DRAFT_STATE_LABEL: Record<TaskDraftState, string> = {
  * Удаление живёт в списке задач (крестик с подтверждением), а не здесь: большая красная кнопка
  * рядом с полями ловила промахи.
  */
-export function TaskEditor({task, variables, errors, onChange, draftState, onSave, onRevert, saving, onSaveAsTemplate, readOnly = false}: Props) {
+export function TaskEditor({task, variables, errors, onChange, draftState, onSave, onRevert, saving, onSaveAsTemplate, readOnly = false, narrow = false}: Props) {
   const set = (patch: Partial<AutomationTask>) => onChange({...task, ...patch});
   const errorOf = (field: string) => errors.filter(e => e.field === field).map(e => e.message).join("; ");
 
@@ -72,7 +74,7 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
     <div className="h-full flex">
       {/* fieldset disabled блокирует разом все поля и кнопки формы; дерево тегов справа — вне
           него, по нему можно искать и в режиме просмотра. */}
-      <fieldset disabled={readOnly} className="flex-1 min-w-0 m-0 border-0 overflow-y-auto p-4 pb-28 space-y-4">
+      <fieldset disabled={readOnly} className="flex-1 min-w-80 m-0 border-0 overflow-y-auto p-4 pb-28 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <Field size="sm" label="Название" error={errorOf("name")} className="flex-1 min-w-56">
             <Input size="sm" value={task.name} onChange={e => set({name: e.target.value})} />
@@ -155,7 +157,7 @@ export function TaskEditor({task, variables, errors, onChange, draftState, onSav
         </div>
       </fieldset>
 
-      <TagTreeSidebar />
+      <TagTreeSidebar overlay={narrow} />
     </div>
   );
 }

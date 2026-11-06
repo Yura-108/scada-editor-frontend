@@ -12,6 +12,14 @@ import {TaskEditor} from "./TaskEditor";
 import {TaskList} from "./TaskList";
 import {TemplatePalette} from "./TemplatePalette";
 import {WatchdogEditor} from "./WatchdogEditor";
+import {useIsNarrow} from "../model/useIsNarrow";
+
+/**
+ * Уже этого ряд «Задач» не вмещает список (256), форму (не меньше 440) и обе боковые панели
+ * в наименьшей ширине (по 220): тогда панели — полосами, открытые ложатся поверх формы, а не
+ * сжимают её до 60 px (#7 п. 1).
+ */
+const NARROW_ROW_PX = 1180;
 
 /** Содержимое вкладки «Автоматизации», когда набор загружен. */
 export function AutomationTabContent({tab, projectId, canWrite, doc, actions, taskErrors, projectErrors}: {
@@ -27,11 +35,12 @@ export function AutomationTabContent({tab, projectId, canWrite, doc, actions, ta
   const saved = doc.saved!;
   const {selected, saving} = doc;
   const task = draft.tasks[selected];
+  const [rowRef, narrow] = useIsNarrow(NARROW_ROW_PX);
 
   if (tab === "tasks") {
     return (
       <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0 flex">
+        <div ref={rowRef} className="flex-1 min-h-0 flex overflow-x-auto">
           <TaskList
             doc={doc}
             canWrite={canWrite}
@@ -52,12 +61,13 @@ export function AutomationTabContent({tab, projectId, canWrite, doc, actions, ta
                 saving={saving}
                 onSaveAsTemplate={() => actions.saveAsTemplate(task)}
                 readOnly={!canWrite}
+                narrow={narrow}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Задач нет</div>
             )}
           </div>
-          <TemplatePalette onInsert={canWrite ? actions.insertTemplate : undefined} />
+          <TemplatePalette onInsert={canWrite ? actions.insertTemplate : undefined} overlay={narrow} />
         </div>
       </div>
     );
