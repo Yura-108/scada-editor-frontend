@@ -71,13 +71,15 @@ export const cascadeStateByName = (
 ): Record<string, string> => {
   nextMap[rootKey] = stateId;
 
-  const root = elements.find(el => el.key === rootKey);
+  // По индексу, а не `elements.find`: рантайм-батч монитора зовёт каскад на каждое
+  // переключение состояния, и линейный поиск корня умножался на число переключений в такте.
+  const {byKey} = getElementIndex(elements);
+  const root = byKey[rootKey];
   if (!root) return nextMap;
 
   const rootStateName = root.states.find(s => s.id === stateId)?.name;
   if (!rootStateName) return nextMap;
 
-  const {byKey} = getElementIndex(elements);
   for (const childKey of getDescendantKeys(rootKey, elements)) {
     const child = byKey[childKey];
     if (!child) continue;

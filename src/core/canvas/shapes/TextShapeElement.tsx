@@ -17,14 +17,16 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
   // раньше здесь дублировалась палитра, а синий выделения был захардкожен.
   const { themeColors } = useThemeColors();
   const textDefaultColor = themeColors.textDefault;
-  // Мелкий текст не рисуем вовсе: ниже ~5 px на экране строки сливаются в кашу, а стоят
-  // полной отрисовки глифов. Рамкой выделения элемент при этом ловится по-прежнему —
-  // она считает по габаритам из стора. Подписка на зум локальная, как у ручек (`Anchor`).
-  const zoom = useSceneView(s => s.camera.zoom);
 
   const pad = 4;
 
   const fontSize = rendered.fontSize ?? 16;
+  // Мелкий текст не рисуем вовсе: ниже ~5 px на экране строки сливаются в кашу, а стоят
+  // полной отрисовки глифов. Рамкой выделения элемент при этом ловится по-прежнему —
+  // она считает по габаритам из стора. Подписка локальная, как у ручек (`Anchor`), и
+  // отдаёт булево, а не сам зум: текст перерисовывается только при переходе через порог,
+  // а не на каждый тик колеса (иначе зум перерисовывал бы все подписи схемы разом).
+  const glyphsVisible = useSceneView(s => isTextVisibleAtZoom(fontSize, s.camera.zoom));
   const text = rendered.text ?? "Текст";
   const fontFamily = rendered.fontFamily || "Arial";
   const fontStyle = rendered.bold ? "bold" : "normal";
@@ -85,7 +87,7 @@ export function TextShapeElement({ el, isSelected, isEditing, snap, onElementCli
         fill={rendered.color || rendered.textColor || textDefaultColor}
         align={rendered.align || "left"}
         width={width}
-        visible={!isEditing && isTextVisibleAtZoom(fontSize, zoom)}
+        visible={!isEditing && glyphsVisible}
         listening={true}
       />
 

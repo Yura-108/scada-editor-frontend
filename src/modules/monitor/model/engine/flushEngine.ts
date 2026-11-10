@@ -1,4 +1,4 @@
-import {cellRuntimeKey, getRenderedElement, getSceneView} from "@/core/scene";
+import {cellRuntimeKey, getElementIndex, getRenderedElement, getSceneView} from "@/core/scene";
 import type {BindingEntry, ScriptSandbox} from "@/core/runtime";
 import {devLog, isDev} from "@/shared/lib/devLog";
 import type {BindingIndex} from "./bindingIndex";
@@ -100,9 +100,11 @@ export function flushEngine(
 
   if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
-  const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
+  // Общий индекс (кэш по ссылке на массив), а не своя карта: её сборка на каждый такт —
+  // проход по всей схеме ради нескольких затронутых привязок.
+  const {byKey} = getElementIndex(getSceneView().elements);
   const selfOf = (key: string) => {
-    const el = byKey.get(key);
+    const el = byKey[key];
     return el ? getRenderedElement(el) : null;
   };
   const generation = idx.generation;
