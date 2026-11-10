@@ -4,9 +4,13 @@ import React, {useEffect, useMemo, useRef} from "react";
 import {ChevronsDownUp, ChevronsUpDown} from "lucide-react";
 import {useEditorStore} from "../../model/editorStore";
 import {IconButton} from "@/shared/ui/IconButton";
-import {LayerRow, type LayerRowActions} from "./LayerRow";
+import {useVirtualizer} from "@tanstack/react-virtual";
+import {LAYER_ROW_GAP, LAYER_ROW_HEIGHT, LayerRow, type LayerRowActions} from "./LayerRow";
 import {useLayerKeyboard} from "./useLayerKeyboard";
 import {useLayerTree} from "./useLayerTree";
+
+/** Отступ сверху и снизу списка, px (прежний `py-2`). */
+const LIST_PADDING = 8;
 
 /**
  * Панель слоёв: дерево объектов сцены (группы/компоненты + члены children и composition).
@@ -35,9 +39,40 @@ export function LayersPanel() {
     ensureElementVisible(key);
   };
 
-  const {treeRef, currentKey, setActiveKey, handleKeyDown} = useLayerKeyboard({
+  // Виртуальный список: в разметке только строки у видимой области. Дерево и так плоское
+  // (вложенность — отступом), высота строки постоянная, поэтому положение считается без
+  // измерения разметки. На схеме в тысячи элементов панель иначе держала в DOM тысячи строк
+  // и строила их все при каждом открытии и «развернуть всё».
+  const treeRef = useRef<HTMLDivElement>(null);
+  // Правило предупреждает, что функции виртуализатора нельзя мемоизировать (React Compiler в
+  // проекте не включён). В мемоизированные строки уходят только числа — смещение `top`.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => treeRef.current,
+    estimateSize: () => LAYER_ROW_HEIGHT,
+    gap: LAYER_ROW_GAP,
+    paddingStart: LIST_PADDING,
+    paddingEnd: LIST_PADDING,
+    overscan: 12,
+    getItemKey: (index) => visibleRows[index].el.key,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+  const renderedRange = virtualRows.length
+    ? `${virtualRows[0].index}-${virtualRows[virtualRows.length - 1].index}`
+    : "";
+
+  const {currentKey, setActiveKey, handleKeyDown} = useLayerKeyboard({
+    treeRef, renderedRange,
+    scrollToRow: (index) => virtualizer.scrollToIndex(index, {align: "auto"}),
     visibleRows, selectedIds, toggleCollapsed, handleSelect, enterGroup,
   });
+
+  // Точка входа в дерево по Tab — текущая строка; если она прокручена за край и в разметке
+  // её нет, входом становится первая из отрисованных, иначе Tab проскакивал бы панель.
+  const tabStopKey = virtualRows.some(v => visibleRows[v.index]?.el.key === currentKey)
+    ? currentKey
+    : (visibleRows[virtualRows[0]?.index]?.el.key ?? null);
 
   // Обработчики строк — один объект на всю жизнь панели. Сами функции выше пересоздаются на
   // каждый рендер (в них замкнуты выделение и список строк), поэтому строки зовут их через
@@ -53,6 +88,7 @@ export function LayersPanel() {
     },
     doubleClick: (el) => { if (el.type === "group") latest.current.enterGroup(el.key); },
     keyDown: (e, el, hasMembers, isCollapsed) => latest.current.handleKeyDown(e, el, hasMembers, isCollapsed),
+    focus: (el) => latest.current.setActiveKey(el.key),
     toggleCollapsed: (key) => latest.current.toggleCollapsed(key),
   }), []);
 
@@ -83,23 +119,32 @@ export function LayersPanel() {
         role="tree"
         aria-labelledby="layers-panel-heading"
         aria-multiselectable
-        className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-0.5"
+        className="flex-1 overflow-y-auto custom-scrollbar px-2"
       >
         {visibleRows.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-8">Схема пуста</div>
         ) : (
-          visibleRows.map(({el, depth, isComposition}) => (
-            <LayerRow
-              key={el.key}
-              el={el}
-              depth={depth}
-              isComposition={isComposition}
-              isCollapsed={collapsed.has(el.key)}
-              isSelected={selectedSet.has(el.key)}
-              isCurrent={el.key === currentKey}
-              actions={rowActions}
-            />
-          ))
+          <div role="presentation" className="relative" style={{height: virtualizer.getTotalSize()}}>
+            {virtualRows.map(({index, start}) => {
+              const row = visibleRows[index];
+              // Список строк мог сократиться раньше, чем виртуализатор пересчитал диапазон.
+              if (!row) return null;
+              const {el, depth, isComposition} = row;
+              return (
+                <LayerRow
+                  key={el.key}
+                  el={el}
+                  depth={depth}
+                  isComposition={isComposition}
+                  isCollapsed={collapsed.has(el.key)}
+                  isSelected={selectedSet.has(el.key)}
+                  isCurrent={el.key === tabStopKey}
+                  top={start}
+                  actions={rowActions}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

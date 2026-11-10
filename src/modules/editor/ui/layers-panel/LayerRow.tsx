@@ -15,8 +15,17 @@ export interface LayerRowActions {
   click: (el: DiagramElement, e: React.MouseEvent) => void;
   doubleClick: (el: DiagramElement) => void;
   keyDown: (e: React.KeyboardEvent, el: DiagramElement, hasMembers: boolean, isCollapsed: boolean) => void;
+  /** Строка получила фокус — стрелки дальше считаются от неё. */
+  focus: (el: DiagramElement) => void;
   toggleCollapsed: (key: string) => void;
 }
+
+/**
+ * Высота строки и зазор между строками, px. Виртуальный список считает положение строк по
+ * этим числам, не измеряя разметку, поэтому высота задана строке явно (`h-7` = 28 px).
+ */
+export const LAYER_ROW_HEIGHT = 28;
+export const LAYER_ROW_GAP = 2;
 
 interface LayerRowProps {
   el: DiagramElement;
@@ -26,6 +35,8 @@ interface LayerRowProps {
   isSelected: boolean;
   /** Строка — точка входа в дерево по Tab (roving tabindex). */
   isCurrent: boolean;
+  /** Смещение строки от начала списка, px: в разметке только видимые строки (см. `LayersPanel`). */
+  top: number;
   actions: LayerRowActions;
 }
 
@@ -38,7 +49,7 @@ interface LayerRowProps {
  * каждое действие. Теперь перерисовываются только строки, у которых что-то изменилось.
  */
 export const LayerRow = React.memo(function LayerRow({
-  el, depth, isComposition, isCollapsed, isSelected, isCurrent, actions,
+  el, depth, isComposition, isCollapsed, isSelected, isCurrent, top, actions,
 }: LayerRowProps) {
   const isContainer = el.type === "group";
   const hasMembers = isContainer && (el.composition?.length ?? 0) + el.children.length > 0;
@@ -55,14 +66,15 @@ export const LayerRow = React.memo(function LayerRow({
       aria-expanded={hasMembers ? !isCollapsed : undefined}
       tabIndex={isCurrent ? 0 : -1}
       className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer select-none text-sm transition-colors",
+        "absolute inset-x-0 top-0 h-7 flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer select-none text-sm transition-colors",
         isSelected
           ? "bg-primary/20 text-primary"
           : "text-foreground hover:bg-accent",
         isComposition && "opacity-60",
       )}
-      style={{paddingLeft: `${8 + depth * 14}px`}}
+      style={{paddingLeft: `${8 + depth * 14}px`, transform: `translateY(${top}px)`}}
       onClick={(e) => actions.click(el, e)}
+      onFocus={() => actions.focus(el)}
       onDoubleClick={() => actions.doubleClick(el)}
       onKeyDown={(e) => actions.keyDown(e, el, hasMembers, isCollapsed)}
       title={el.isComponent ? `${title} (компонент)` : isComposition ? `${title} (примитив компонента)` : title}
