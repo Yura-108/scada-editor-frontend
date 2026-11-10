@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, {useEffect, useMemo, useRef} from "react";
 import {ChevronsDownUp, ChevronsUpDown} from "lucide-react";
 import {useEditorStore} from "../../model/editorStore";
 import {IconButton} from "@/shared/ui/IconButton";
-import {LayerRow} from "./LayerRow";
+import {LayerRow, type LayerRowActions} from "./LayerRow";
 import {useLayerKeyboard} from "./useLayerKeyboard";
 import {useLayerTree} from "./useLayerTree";
 
@@ -38,6 +38,27 @@ export function LayersPanel() {
   const {treeRef, currentKey, setActiveKey, handleKeyDown} = useLayerKeyboard({
     visibleRows, selectedIds, toggleCollapsed, handleSelect, enterGroup,
   });
+
+  // Обработчики строк — один объект на всю жизнь панели. Сами функции выше пересоздаются на
+  // каждый рендер (в них замкнуты выделение и список строк), поэтому строки зовут их через
+  // ссылку на свежие: стабильные пропы — условие мемоизации `LayerRow`.
+  const latest = useRef({handleSelect, handleKeyDown, setActiveKey, enterGroup, toggleCollapsed});
+  useEffect(() => {
+    latest.current = {handleSelect, handleKeyDown, setActiveKey, enterGroup, toggleCollapsed};
+  });
+  const rowActions = useMemo<LayerRowActions>(() => ({
+    click: (el, e) => {
+      latest.current.setActiveKey(el.key);
+      latest.current.handleSelect(el.key, e.ctrlKey || e.metaKey || e.shiftKey);
+    },
+    doubleClick: (el) => { if (el.type === "group") latest.current.enterGroup(el.key); },
+    keyDown: (e, el, hasMembers, isCollapsed) => latest.current.handleKeyDown(e, el, hasMembers, isCollapsed),
+    toggleCollapsed: (key) => latest.current.toggleCollapsed(key),
+  }), []);
+
+  // Множество вместо `selectedIds.includes` в каждой строке: после «Выделить всё» это был
+  // квадрат от числа строк на каждый рендер панели.
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
     <div className="h-full flex flex-col">
@@ -73,16 +94,10 @@ export function LayersPanel() {
               el={el}
               depth={depth}
               isComposition={isComposition}
-              collapsed={collapsed}
-              selectedIds={selectedIds}
-              currentKey={currentKey}
-              onClick={(e) => {
-                setActiveKey(el.key);
-                handleSelect(el.key, e.ctrlKey || e.metaKey || e.shiftKey);
-              }}
-              onDoubleClick={() => { if (el.type === "group") enterGroup(el.key); }}
-              onKeyDown={handleKeyDown}
-              toggleCollapsed={toggleCollapsed}
+              isCollapsed={collapsed.has(el.key)}
+              isSelected={selectedSet.has(el.key)}
+              isCurrent={el.key === currentKey}
+              actions={rowActions}
             />
           ))
         )}
