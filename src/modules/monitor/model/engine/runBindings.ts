@@ -56,7 +56,7 @@ const scopeValuesOf = (entries: Iterable<BindingEntry>, buf: EngineBuffers): San
  * перезапущенный из-за чужого запроса (клик), — повторяем один раз. `null` — ответ не для
  * этой схемы (или песочница закрыта): такт не применяется.
  */
-const runInSandbox = async (
+const runBatch = async (
   sandbox: ScriptSandbox,
   generation: number,
   items: {id: string; self: unknown}[],
@@ -66,7 +66,7 @@ const runInSandbox = async (
     const results = await sandbox.runBindings(generation, items);
     return results && {results, hung: []};
   } catch (err) {
-    if (err instanceof SandboxRestartedError && !retried) return runInSandbox(sandbox, generation, items, true);
+    if (err instanceof SandboxRestartedError && !retried) return runBatch(sandbox, generation, items, true);
     if (!(err instanceof SandboxTimeoutError)) {
       console.warn("[monitor:engine] привязки не выполнены:", err instanceof Error ? err.message : err);
       return null;
@@ -74,13 +74,42 @@ const runInSandbox = async (
     if (items.length === 1) return {results: [], hung: [items[0].id]};
     const out = {results: [] as BindingRunResult[], hung: [] as string[]};
     for (const item of items) {
-      const r = await runInSandbox(sandbox, generation, [item]);
+      const r = await runBatch(sandbox, generation, [item]);
       if (!r) return null;
       out.results.push(...r.results);
       out.hung.push(...r.hung);
     }
     return out;
   }
+};
+
+/** Столько привязок уходит в песочницу одним запросом. */
+const BATCH_SIZE = 100;
+
+/**
+ * Набор привязок такта — пакетами по `BATCH_SIZE`, по очереди.
+ *
+ * Срок песочницы даётся на запрос, а не на привязку: все привязки большой схемы одним
+ * запросом (открытие схемы, снимок по всем тегам) могли честно не уложиться в него, и тогда
+ * воркер убивался, а набор шёл по одной привязке — тысячи запросов вместо одного. Пакет
+ * ограничивает и срок, и цену поиска зависшей: по одной перебираются только его привязки.
+ *
+ * Результат такта по-прежнему один: вызывающий получает склеенный ответ и применяет его одним
+ * `applyRuntimeBatch`. Схема сменилась между пакетами — `null`, такт не применяется.
+ */
+const runInSandbox = async (
+  sandbox: ScriptSandbox,
+  generation: number,
+  items: {id: string; self: unknown}[],
+): Promise<{results: BindingRunResult[]; hung: string[]} | null> => {
+  const out = {results: [] as BindingRunResult[], hung: [] as string[]};
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const r = await runBatch(sandbox, generation, items.slice(i, i + BATCH_SIZE));
+    if (!r) return null;
+    out.results.push(...r.results);
+    out.hung.push(...r.hung);
+  }
+  return out;
 };
 
 /**
