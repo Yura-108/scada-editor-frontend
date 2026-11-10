@@ -54,7 +54,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   const {
     elements, selectedIds, selectMultiple, setCanvasRect,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
-    camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
+    camera, scene, setCameraPan, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
     canvasRect,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
@@ -66,7 +66,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     setCanvasRect: s.setCanvasRect,
     deleteSelectedElement: s.deleteSelectedElement, copySelectedElement: s.copySelectedElement,
     pasteSelectedElement: s.pasteSelectedElement,
-    camera: s.camera, scene: s.scene, setCameraPan: s.setCameraPan, setCameraZoom: s.setCameraZoom,
+    camera: s.camera, scene: s.scene, setCameraPan: s.setCameraPan,
     updateElementVisual: s.updateElementVisual,
     activeGroupKey: s.activeGroupKey, enterGroup: s.enterGroup, exitGroup: s.exitGroup,
     clearSelection: s.clearSelection,
@@ -122,7 +122,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   const { handleStagePlacementClick, placementDropProps } = usePendingPlacement({ stageRef, pendingPlacement });
 
   const { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp } = useStageInteractions({
-    stageRef, camera, setCameraPan, setCameraZoom,
+    stageRef, setCameraPan,
     elements, elementsMap, selectedIds, selectMultiple,
     activeGroupKey, exitGroup, closeMenu, resolveClickTarget,
     readOnly,

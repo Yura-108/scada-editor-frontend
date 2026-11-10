@@ -33,9 +33,7 @@ const lockedMonitorView = (readOnly: boolean) =>
 
 interface StageInteractionsDeps {
   stageRef: RefObject<Konva.Stage | null>;
-  camera: { x: number; y: number; zoom: number };
   setCameraPan: (dx: number, dy: number) => void;
-  setCameraZoom: (zoom: number) => void;
   elements: DiagramElement[];
   elementsMap: Record<string, DiagramElement>;
   selectedIds: string[];
@@ -55,9 +53,7 @@ interface StageInteractionsDeps {
  */
 export function useStageInteractions({
   stageRef,
-  camera,
   setCameraPan,
-  setCameraZoom,
   elements,
   elementsMap,
   selectedIds,
@@ -128,24 +124,29 @@ export function useStageInteractions({
 
     if (e.evt.ctrlKey) {
       // Ctrl + Wheel → zoom to cursor point
-      const oldScale = stage.scaleX();
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
 
+      // Камеру берём из стора, а не со Stage и не из замыкания: Stage получает её только
+      // после рендера, и второе событие колеса до него считало бы зум от устаревшего
+      // масштаба.
+      const { camera: cam, setCamera } = useEditorStore.getState();
       const mousePointTo = {
-        x: (pointer.x - stage.x()) / oldScale,
-        y: (pointer.y - stage.y()) / oldScale,
+        x: (pointer.x - cam.x) / cam.zoom,
+        y: (pointer.y - cam.y) / cam.zoom,
       };
 
       // Мультипликативный шаг (как у кнопок ZoomControls): аддитивный давал
       // огромный относительный скачок на zoom 0.2 и почти нулевой на 3.0.
       const factor = Math.exp(-deltaY * 0.002);
-      const newZoom = Math.min(Math.max(oldScale * factor, ZOOM_MIN), ZOOM_MAX);
+      const newZoom = Math.min(Math.max(cam.zoom * factor, ZOOM_MIN), ZOOM_MAX);
 
-      setCameraZoom(newZoom);
-      setCameraPan(
-        pointer.x - mousePointTo.x * newZoom - camera.x,
-        pointer.y - mousePointTo.y * newZoom - camera.y,
+      // Зум и сдвиг — одной записью. Раньше это были два `set()` подряд, и на каждый
+      // отрабатывали селекторы всех узлов холста: тик зума стоил вдвое дороже тика пана.
+      setCamera(
+        pointer.x - mousePointTo.x * newZoom,
+        pointer.y - mousePointTo.y * newZoom,
+        newZoom,
       );
     } else if (e.evt.shiftKey) {
       setCameraPan(-deltaY, 0);
