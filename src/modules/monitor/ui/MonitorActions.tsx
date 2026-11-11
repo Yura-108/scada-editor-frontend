@@ -15,7 +15,8 @@ interface Props {
 }
 
 /**
- * Кнопки шапки монитора: «Инспектор», «Задачи». Кнопки «Процедуры» нет: она дублировала
+ * Кнопки шапки монитора: «Инспектор», «Задачи». Подписи — с 1024 px: раньше они появлялись
+ * только с 1280, и на ноутбуке оставались значки без слов (#18 п. 14). Кнопки «Процедуры» нет: она дублировала
  * вкладку «Процедуры» и сбивала подсветку вкладок (#6 п. 3).
  */
 export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
@@ -32,7 +33,7 @@ export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
       {directWrite && (
         <Button size="sm" onClick={() => openObjectInspectorModal()} title="Инспектор объектов: свойства любого объекта проекта">
           <SearchCode size={14} />
-          <span className="hidden xl:inline">Инспектор</span>
+          <span className="hidden lg:inline">Инспектор</span>
         </Button>
       )}
 
@@ -44,7 +45,7 @@ export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
         title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : "Фоновые задачи проекта"}
       >
         <Cpu size={14} />
-        <span className="hidden xl:inline">Задачи</span>
+        <span className="hidden lg:inline">Задачи</span>
         {taskProblems > 0 && <Badge tone="destructive">{taskProblems}</Badge>}
       </Button>
     </>
