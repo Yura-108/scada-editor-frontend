@@ -84,19 +84,25 @@ const DeviceParams = () => {
         onDiscard={() => void confirmDiscard()}
       />
 
-      <div
-        className={clsx(
-          "relative transition-all",
-          !isEditingSelected && "pointer-events-none select-none opacity-50",
-        )}
+      {!isEditingSelected && (
+        <p className="px-6 pt-4 text-sm text-muted-foreground">
+          Только просмотр — чтобы изменить значения, нажмите «Начать редактирование».
+        </p>
+      )}
+
+      {/* Вне правки поля по-настоящему недоступны (`fieldset disabled`), а не только
+          «прозрачны для мыши»: раньше с клавиатуры в них можно было печатать, ввод молча
+          пропадал, а крестики «Удалить параметр» были видны и не нажимались (#16 п. 4). */}
+      <fieldset
+        disabled={!isEditingSelected}
+        className={clsx("relative m-0 min-w-0 border-0 p-0 transition-all", !isEditingSelected && "opacity-70")}
       >
         {/* Форма */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
-          <ParamGrid normalParams={normalParams} editedParams={editedParams} errors={errors} handleChange={handleChange} />
+          <ParamGrid normalParams={normalParams} editedParams={editedParams} errors={errors} handleChange={handleChange} readOnly={!isEditingSelected} />
         </div>
-
         <OptionParamsList optionItems={optionItems} />
-      </div>
+      </fieldset>
     </div>
   );
 };
