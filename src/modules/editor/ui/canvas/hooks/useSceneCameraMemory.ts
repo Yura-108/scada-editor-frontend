@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import {useEditorStore} from "../../../model/editorStore";
 import {resolveSheet, cameraForMonitorView, resolveMonitorView} from "@/core/scene";
 import { cameraForSheet } from "../../../lib/fitCamera";
+import { visibleCanvasArea } from "../lib/visibleArea";
 import { CameraScope, readSceneCamera, writeSceneCamera } from "../../../lib/sceneCamera";
 
 /** Задержка отложенной записи — как у раскладки редактора (WorkSpace). */
@@ -71,7 +72,8 @@ export function useSceneCameraMemory(scope: CameraScope) {
     if (!canvasRect) return;
 
     restoredKeyRef.current = key;
-    const cam = cameraForSheet(resolveSheet(elements), canvasRect);
+    // Лист — в видимую часть холста, не под боковые панели и инструменты (#10 п. 2).
+    const cam = cameraForSheet(resolveSheet(elements), visibleCanvasArea(canvasRect));
     setCamera(cam.x, cam.y, cam.zoom);
   }, [scope, projectId, sceneId, canvasRect, elements, setCamera, lockedView]);
 

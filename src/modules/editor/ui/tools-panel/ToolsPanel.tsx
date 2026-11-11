@@ -47,7 +47,8 @@ export function ToolsPanel() {
       className="fixed top-[calc(var(--app-header-h)+var(--page-header-h)+2.5rem)] z-toolbar flex justify-center px-4 py-2
                  transition-all duration-300 ease-in-out pointer-events-none"
     >
-      <div className="flex min-w-0 max-w-full flex-wrap justify-center gap-x-1.5 gap-y-1 p-1.5 bg-card dark:bg-card/50 backdrop-blur-xl border border-border rounded-2xl shadow-2xl pointer-events-auto">
+      {/* Сама панель (не обёртка во всю ширину) лежит поверх холста — «вписать» её обходит. */}
+      <div data-canvas-overlay="top" className="flex min-w-0 max-w-full flex-wrap justify-center gap-x-1.5 gap-y-1 p-1.5 bg-card dark:bg-card/50 backdrop-blur-xl border border-border rounded-2xl shadow-2xl pointer-events-auto">
 
         <div className={group}>
           <SceneButtons canEdit={canEdit} onImport={handleImport} />

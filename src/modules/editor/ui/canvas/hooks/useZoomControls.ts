@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import {getElementBoundsRendered, clampZoom, resolveSheet} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import { cameraForSheet } from "../../../lib/fitCamera";
+import { visibleCanvasArea } from "../lib/visibleArea";
 
 interface ZoomControlsDeps {
   canvasRect: { width: number; height: number } | null;
@@ -68,13 +69,16 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     if (!isFinite(minX)) return;
 
     const pad = 60;
+    // Вписываем в видимую часть, а не во весь холст: он лежит и под боковыми панелями, и под
+    // панелью инструментов (#10 п. 2).
+    const area = visibleCanvasArea(canvasRect);
     const nz = clampZoom(Math.min(
-      canvasRect.width / (maxX - minX + pad * 2),
-      canvasRect.height / (maxY - minY + pad * 2),
+      area.width / (maxX - minX + pad * 2),
+      area.height / (maxY - minY + pad * 2),
     ));
     setCamera(
-      (canvasRect.width - (maxX - minX) * nz) / 2 - minX * nz,
-      (canvasRect.height - (maxY - minY) * nz) / 2 - minY * nz,
+      area.x + (area.width - (maxX - minX) * nz) / 2 - minX * nz,
+      area.y + (area.height - (maxY - minY) * nz) / 2 - minY * nz,
       nz,
     );
   }, [canvasRect, setCamera]);
@@ -91,7 +95,7 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     if (!canvasRect) return;
     // Формула — в общем хелпере: той же камерой открывается сцена, у которой ещё нет
     // запомненного положения (см. useSceneCameraMemory).
-    const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), canvasRect);
+    const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), visibleCanvasArea(canvasRect));
     setCamera(cam.x, cam.y, cam.zoom);
   }, [canvasRect, setCamera]);
 

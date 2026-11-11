@@ -192,6 +192,8 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   return (
     <div
       ref={containerRef}
+      // По этой метке видимая часть холста ищется под боковыми панелями (lib/visibleArea).
+      data-canvas-root
       id="canvas-viewport"
       {...placementDropProps}
       className="relative w-full h-full overflow-hidden bg-card context-menu-container"
