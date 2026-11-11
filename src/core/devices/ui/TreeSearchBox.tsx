@@ -48,7 +48,7 @@ export function TreeSearchBox({query, onQueryChange, onEnter, onEscape, status, 
         }}
         placeholder="Название или путь узла"
         aria-label="Поиск по дереву устройств"
-        title="Полное название узла или хвост пути через точку. Enter — следующее совпадение, Shift+Enter — предыдущее, Esc — очистить"
+        title="Полное название узла или хвост пути через точку. Enter — открыть найденный узел, ещё Enter — следующее совпадение, Shift+Enter — предыдущее, Esc — очистить"
         className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
       />
       {status !== null && (

@@ -374,6 +374,13 @@
   display: none !important;
 }
 
+/* Курсор клавиатуры в дереве устройств: стрелки водят его, Enter открывает узел (#16 п. 10).
+   Виден только пока дерево в фокусе — мышью работают как раньше. */
+.custom-tree.rc-tree-focused .rc-tree-treenode-active [data-tree-key] {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 .rc-tree .rc-tree-indent-unit {
   width: 16px; /* ширина одного уровня вложенности */
   display: inline-block;
