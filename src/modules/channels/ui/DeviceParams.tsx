@@ -11,6 +11,7 @@ import {useParamDraftGuard} from "../model/useParamDraftGuard";
 import {DeviceParamsHeader} from "./DeviceParamsHeader";
 import {OptionParamsList} from "./OptionParamsList";
 import {ParamGrid} from "./ParamGrid";
+import {DeviceCard} from "./DeviceCard";
 
 /** Числовые ключи — по числу (иначе «10» шёл бы раньше «9»), прочие — как строки. */
 const byParamKey = (a: {key: string}, b: {key: string}) => {
@@ -62,9 +63,11 @@ const DeviceParams = () => {
   }
 
   if (rawParams.length === 0) {
-    return (
-      <EmptyState icon={Inbox} title="Нет параметров для отображения" className="h-full" />
-    );
+    // Узел без своих параметров (площадка, проект, устройство) — карточка с путём и
+    // вложенными узлами, а не пустое «Нет параметров для отображения» (#16 п. 6).
+    return currentDevice
+      ? <DeviceCard node={currentDevice} nodes={nodes} />
+      : <EmptyState icon={Inbox} title="Нет параметров для отображения" className="h-full" />;
   }
   return (
     <div className="min-h-full flex flex-col bg-card border border-border rounded-2xl shadow-sm">
