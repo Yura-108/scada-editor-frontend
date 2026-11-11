@@ -119,8 +119,12 @@ function PromptDialog({ entry, depth }: DialogProps<"prompt">) {
       <DialogHeader separated={false} title={title} description={description} />
       <DialogBody>
         <Field label={label}>
+          {/* Подставленное значение выделено: набор заменяет его, а не дописывается в конец.
+              Иначе «Создать компонент» с подставленным «Group (7)» давало имя
+              «Group (7)Проверка компонента» (#21 п. 5). */}
           <Input
             autoFocus
+            onFocus={(e) => e.currentTarget.select()}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
