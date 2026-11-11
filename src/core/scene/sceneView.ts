@@ -17,7 +17,7 @@ export interface SceneViewState {
   editingTextKey: string | null;
   currentComponentStateByElementKey: Record<string, string>;
   camera: {x: number; y: number; zoom: number};
-  pendingPlacement: {id: number; type: ElementType; template?: DiagramElement[]} | null;
+  pendingPlacement: {id: number; type: ElementType; template?: DiagramElement[]; name?: string} | null;
   /**
    * Запись монитора: активные состояния и рантайм-свойства элементов одним пакетом (одна
    * перерисовка); без фактических изменений стор не трогается.

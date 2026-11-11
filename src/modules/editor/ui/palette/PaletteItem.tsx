@@ -21,13 +21,10 @@ export default function PaletteItem({item}: PaletteItemProps) {
   // следующий клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick).
   const armed = useEditorStore((s) => s.pendingPlacement?.id === item.id);
 
+  const placement = {id: item.id, type: item.type as ElementType, template: item.template, name: item.name};
   const toggleArm = () => {
     const {pendingPlacement, setPendingPlacement} = useEditorStore.getState();
-    setPendingPlacement(
-      pendingPlacement?.id === item.id
-        ? null
-        : {id: item.id, type: item.type as ElementType, template: item.template},
-    );
+    setPendingPlacement(pendingPlacement?.id === item.id ? null : placement);
   };
 
   return (
@@ -35,11 +32,19 @@ export default function PaletteItem({item}: PaletteItemProps) {
       {/* Настоящая кнопка, а не div: элемент палитры «вооружается» кликом, и это
           состояние (aria-pressed) должно быть слышно скринридеру, а сам элемент —
           достижим с клавиатуры. */}
+      {/* Элемент можно и перетащить на холст (#10 п. 7): начало перетаскивания «вооружает»
+          его, а бросок на холст ставит так же, как клик (usePendingPlacement). */}
       <button
         type="button"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", item.name);
+          e.dataTransfer.effectAllowed = "copy";
+          useEditorStore.getState().setPendingPlacement(placement);
+        }}
         onClick={toggleArm}
         aria-pressed={armed}
-        title={armed ? `${item.name} — выбран, кликните по холсту` : item.name}
+        title={armed ? `${item.name} — выбран, щёлкните по холсту` : `${item.name} — щёлкните, затем по холсту, или перетащите на холст`}
         className={`flex-1 min-w-0 text-left bg-muted hover:bg-muted-foreground/15
                  text-foreground px-3 py-2 rounded cursor-pointer
                  flex items-center transition-colors${

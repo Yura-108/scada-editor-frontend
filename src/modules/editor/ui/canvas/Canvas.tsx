@@ -119,7 +119,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
 
   const { resolveClickTarget, handleElementClick, onTableCellClick } = useElementClick();
 
-  const { handleStagePlacementClick } = usePendingPlacement({ stageRef, pendingPlacement });
+  const { handleStagePlacementClick, placementDropProps } = usePendingPlacement({ stageRef, pendingPlacement });
 
   const { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp } = useStageInteractions({
     stageRef, camera, setCameraPan, setCameraZoom,
@@ -193,6 +193,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     <div
       ref={containerRef}
       id="canvas-viewport"
+      {...placementDropProps}
       className="relative w-full h-full overflow-hidden bg-card context-menu-container"
     >
       <div style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>

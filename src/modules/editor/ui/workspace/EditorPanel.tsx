@@ -1,4 +1,5 @@
 import {Canvas} from "../canvas";
+import {PlacementHint} from "../canvas/PlacementHint";
 import {useEditorStore} from "../../model/editorStore";
 import {useSceneCameraMemory} from "../canvas/hooks/useSceneCameraMemory";
 
@@ -19,8 +20,9 @@ export function EditorPanel() {
   useSceneCameraMemory("editor");
 
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <Canvas readOnly={isVersionPreview} />
+      <PlacementHint />
     </div>
   );
 }
