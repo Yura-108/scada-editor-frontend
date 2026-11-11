@@ -28,13 +28,15 @@ export const nodeMenuItems: ContextMenuItem<DeviceAction>[] = [
   },
   {
     key: 'edit',
-    label: 'Редактировать',
+    // Те же слова, что у кнопки панели параметров: раньше меню звало «Редактировать» /
+    // «Завершить редактирование», а панель — «Начать» / «Закончить» (#16 п. 5).
+    label: 'Начать редактирование',
     icon: <Edit3 className="w-4 h-4" />,
     action: 'edit',
   },
   {
     key: 'exit_edit',
-    label: 'Завершить редактирование',
+    label: 'Закончить редактирование',
     icon: <Edit3 className="w-4 h-4" />,
     action: 'edit',
   },
