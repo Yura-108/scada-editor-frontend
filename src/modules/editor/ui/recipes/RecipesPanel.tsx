@@ -7,6 +7,7 @@ import {Spinner} from "@/shared/ui/Spinner";
 import {Banner} from "@/shared/ui/Banner";
 import {Button} from "@/shared/ui/Button";
 import {EmptyState} from "@/shared/ui/EmptyState";
+import {FloatingHelp} from "@/shared/ui/FloatingHelp";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipes} from "../../api/recipes";
 import {Recipe} from "@/core/project";
@@ -29,6 +30,15 @@ import {useRecipeDrafts} from "./useRecipeDrafts";
  */
 const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []` давал бы новый массив на каждый рендер
 
+/** «Подробнее» справки вкладки. */
+const RECIPES_HELP_MORE = (
+  <ul>
+    <li>Теги рецепта выбираются из базы каналов: «Создать рецепт» → «Выбрать из базы каналов».</li>
+    <li>Значения уставок правятся прямо в таблице: раскройте рецепт и выберите шаг.</li>
+    <li>После сохранения выпустите проект («Выпуски проекта») и назначьте выпуск prod — иначе монитор рецепт не увидит.</li>
+  </ul>
+);
+
 export function RecipesPanel() {
   const projectId = useEditorStore(s => s.currentProject?.id ?? null);
   const recipesQuery = useRecipes(projectId);
@@ -50,7 +60,8 @@ export function RecipesPanel() {
   };
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl">
+    // На всю ширину вкладки: узкая таблица, прижатая влево, оставляла пустой половину экрана (#11 п. 12).
+    <div className="p-6 space-y-5">
       <div className="flex items-center justify-between gap-4">
         {/* Единый вид заголовка панели (как в «Слоях» и «Свойствах»). */}
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -84,7 +95,16 @@ export function RecipesPanel() {
         <EmptyState size="sm" icon={ListOrdered} title="Рецептов пока нет" className="min-h-[180px] justify-center" />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card dark:bg-card/70 backdrop-blur-sm">
-          <table className="w-full text-left border-collapse">
+          {/* Ширины колонок заданы: метка «не сохранено» раньше раздвигала таблицу, и под
+              курсором на месте «Редактировать» оказывалось «Удалить» (#11 п. 9). */}
+          <table className="w-full table-fixed text-left border-collapse">
+            <colgroup>
+              <col className="w-10" />
+              <col />
+              <col className="w-24" />
+              <col className="w-24" />
+              <col className="w-44" />
+            </colgroup>
             <thead>
               <tr className="border-b border-border bg-muted dark:bg-muted/80 text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="w-10" />
@@ -137,10 +157,13 @@ export function RecipesPanel() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Выполняется процедура в мониторе — вкладка «Процедуры». До мойки рецепт доходит только
-        с выпуском: после сохранения выпустите проект и назначьте выпуск prod.
-      </p>
+      {/* Справка — в «?» справа внизу, как в «Автоматизации» и «Данных проекта» (#11 п. 12). */}
+      {projectId != null && (
+        <FloatingHelp storageKey="help.recipes" title="Рецепты" more={RECIPES_HELP_MORE}>
+          <p>Рецепт — процедура над тегами ПЛК: шаги по порядку, на каждом записываются значения тегов, потом рецепт ждёт перехода к следующему шагу.</p>
+          <p>Выполняется в мониторе, вкладка «Процедуры». До мойки рецепт доходит только с выпуском проекта.</p>
+        </FloatingHelp>
+      )}
     </div>
   );
 }

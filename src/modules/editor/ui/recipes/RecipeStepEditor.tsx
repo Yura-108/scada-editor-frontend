@@ -54,7 +54,7 @@ export function RecipeStepEditor({recipe, steps, index, step, dirty, canEditReci
               ))}
             </div>
 
-            {/* ─── Манифест со значениями выбранного шага ─── */}
+            {/* ─── Теги рецепта со значениями выбранного шага ─── */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -88,7 +88,7 @@ export function RecipeStepEditor({recipe, steps, index, step, dirty, canEditReci
 
               {tags.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  Манифест пуст — шагам нечего записывать.
+                  У рецепта нет тегов — шагам нечего записывать.
                 </p>
               ) : (
                 <RecipeTagValuesTable tags={tags} step={step} onChange={(name, v) => onEditValue(index, name, v)} />

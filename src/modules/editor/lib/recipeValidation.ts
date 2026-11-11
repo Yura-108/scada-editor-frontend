@@ -1,5 +1,5 @@
-import type {
-  Recipe, RecipeCreatePayload, RecipeStepAction, RecipeTag, RecipeValueType,
+import {
+  RECIPE_VALUE_TYPES, type Recipe, type RecipeCreatePayload, type RecipeStepAction, type RecipeTag, type RecipeValueType,
 } from "@/core/project";
 
 /**
@@ -34,6 +34,20 @@ export function coerceActionValue(raw: string, valueType: RecipeValueType | unde
 export const actionValueText = (value: unknown): string =>
   value === null || value === undefined ? "" : String(value);
 
+/**
+ * Что не так с введённым текстом значения — для подсказки у самого поля (#11 п. 8), до
+ * сохранения. `null` — годится; пустое поле тоже годится: тег на этом шаге не пишется.
+ */
+export function valueTextProblem(raw: string, valueType: RecipeValueType | undefined): string | null {
+  if (raw.trim() === "") return null;
+  if (valueMatchesType(coerceActionValue(raw, valueType), valueType)) return null;
+  return valueType === "bool" ? "Должно быть true или false" : "Должно быть число";
+}
+
+/** Тип значения словом, как в списке типов: «Число», а не `number`. */
+const typeLabel = (valueType: RecipeValueType | undefined): string =>
+  RECIPE_VALUE_TYPES.find(t => t.value === valueType)?.label.toLowerCase() ?? String(valueType);
+
 /** Совпадает ли значение с объявленным типом — та же таблица, что у `requireTypeMatch`. */
 export function valueMatchesType(value: unknown, valueType: RecipeValueType | undefined): boolean {
   switch (valueType) {
@@ -56,12 +70,12 @@ export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] 
   for (const tag of tags) {
     const name = tag.name?.trim();
     if (!name) {
-      problems.push("У тега манифеста пустое имя");
+      problems.push("У тега рецепта пустое имя");
       continue;
     }
     if (byName.has(name)) {
       // Имя — ключ, по которому на тег ссылается шаг; дубль сделал бы ссылку неоднозначной.
-      problems.push(`Имя тега «${name}» встречается в манифесте дважды`);
+      problems.push(`Имя тега «${name}» встречается в тегах рецепта дважды`);
       continue;
     }
     if (!tag.tag?.trim()) problems.push(`У тега «${name}» не указан путь`);
@@ -76,13 +90,13 @@ export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] 
     for (const action of actions ?? []) {
       const tag = byName.get(action.tag?.trim() ?? "");
       if (!tag) {
-        problems.push(`${label}: тег «${action.tag}» не объявлен в манифесте`);
+        problems.push(`${label}: тег «${action.tag}» не добавлен в теги рецепта`);
         continue;
       }
       if (!valueMatchesType(action.value, tag.value_type)) {
         problems.push(
           `${label}: значение «${actionValueText(action.value)}» не подходит тегу «${tag.name}»`
-          + ` с типом «${tag.value_type}»`,
+          + ` — нужно значение типа «${typeLabel(tag.value_type)}»`,
         );
       }
     }
@@ -99,6 +113,10 @@ export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] 
 
   payload.steps.forEach((step, index) => {
     const label = step.name?.trim() || `Шаг ${index + 1}`;
+
+    // Шаг без записей допустим (ожидание подтверждения), но без названия — нет: в мониторе
+    // оператор видит шаги по названиям, «без названия» ему ни о чём не говорит (#11 п. 5).
+    if (!step.name?.trim()) problems.push(`Шаг ${index + 1}: укажите название`);
 
     checkActions(step.action, label);
 

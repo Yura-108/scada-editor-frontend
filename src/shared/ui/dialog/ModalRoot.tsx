@@ -4,6 +4,7 @@ import {Fragment} from "react";
 import {DialogFrame} from "./DialogFrame";
 import {useModalStore} from "./modalStore";
 import {ModalEntryContext} from "./useCloseModal";
+import {requestCloseModal} from "./closeGuard";
 
 /**
  * Стек окон приложения (содержимое кладут `openModal` / `pushModal` из `modalStore`).
@@ -18,12 +19,12 @@ import {ModalEntryContext} from "./useCloseModal";
  */
 export function ModalRoot() {
   const stack = useModalStore((s) => s.stack);
-  const closeModalById = useModalStore((s) => s.closeModalById);
 
   return stack.map((entry, depth) => (
     <ModalEntryContext.Provider key={entry.id} value={entry.id}>
       <DialogFrame
-        onClose={() => closeModalById(entry.id)}
+        // Крестик, Esc и щелчок мимо — через охрану окна: форма с правками может спросить.
+        onClose={() => void requestCloseModal(entry.id)}
         size={entry.size}
         depth={depth}
         closeOnOverlay={entry.closeOnOverlay}
