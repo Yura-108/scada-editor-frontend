@@ -21,6 +21,11 @@ interface PickOptions {
 interface PickManyOptions extends PickOptions {
   /** Пояснение над кнопками — например, что дальше сделать с выбранными тегами. */
   note?: ReactNode;
+  /**
+   * Уже выбранные теги — окно открывается с их галочками, а снятая галочка убирает тег из
+   * ответа (#11 п. 2). Ответ — весь итоговый набор, а не только добавленное.
+   */
+  initial?: string[];
 }
 
 const DEFAULT_DESCRIPTION = "Раскройте площадку, проект и устройство и выберите канал. Можно искать по имени или пути.";
@@ -111,12 +116,14 @@ function SelectedTags({tags, onChange}: {tags: string[]; onChange: (tags: string
   );
 }
 
-function PickTagsContent({title = "Выбор тегов ПЛК", description = DEFAULT_DESCRIPTION, note, confirmLabel = "Добавить", resolve}: PickManyOptions & {
+function PickTagsContent({title = "Выбор тегов ПЛК", description = DEFAULT_DESCRIPTION, note, confirmLabel, initial, resolve}: PickManyOptions & {
   resolve: (tags: string[] | null) => void;
 }) {
   const closeModal = useCloseModal();
   const settle = useSettleOnce(resolve);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(() => [...new Set(initial ?? [])]);
+  // С начальным набором снять все галочки — тоже ответ («убрать все теги»), без него — нечего добавлять.
+  const editing = initial !== undefined;
 
   const done = (value: string[] | null) => {
     settle(value);
@@ -135,7 +142,9 @@ function PickTagsContent({title = "Выбор тегов ПЛК", description = 
       </DialogBody>
       <DialogFooter>
         <Button onClick={() => done(null)}>Отмена</Button>
-        <Button variant="primary" onClick={() => done(tags)} disabled={!tags.length}>{confirmLabel}</Button>
+        <Button variant="primary" onClick={() => done(tags)} disabled={!editing && !tags.length}>
+          {confirmLabel ?? (editing ? "Применить" : "Добавить")}
+        </Button>
       </DialogFooter>
     </>
   );

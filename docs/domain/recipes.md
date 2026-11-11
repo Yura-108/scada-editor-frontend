@@ -27,6 +27,12 @@ gone from both sides.
 - **`action[].tag` is the short `tags[].name`, not the tag path.** The path lives in
   `RecipeTag.tag`. Getting this wrong is a 400 listing the undeclared names, so the steps editor
   offers a dropdown over the manifest rather than free text.
+- **The manifest picker is the whole manifest, not an "add more" box (#11 p. 2).** «Выбрать из базы
+  каналов» opens `pickTags({initial})` with the manifest's paths already ticked; the answer is the
+  full set, merged by `mergeManifestTags` (`lib/tagMeta`): an unticked path drops its row, a path
+  already present is never added twice (it used to come back as `CLEVEL_2` with the same path),
+  rows without a path and the user's edits to name/type/description are kept. Dropping a row
+  that steps still reference is caught by `validateRecipe`, same as the row's ✕ button.
 - **`value_type` must be one of `number` / `bool` / `string`.** `RecipeServiceImpl.requireTypeMatch`
   switches on exactly those and falls through to `default -> true`, so an out-of-vocabulary value
   (e.g. `"float"`, the channel base's own term) does not error — it **silently disables**

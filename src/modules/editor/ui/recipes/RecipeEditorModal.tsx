@@ -6,7 +6,7 @@ import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
 import {useRecipeMutations} from "../../api/recipes";
 import {pickTags, useDeviceTreeStore} from "@/core/devices";
-import {buildManifestTags} from "../../lib/tagMeta";
+import {manifestTagPaths, mergeManifestTags} from "../../lib/tagMeta";
 import {validateRecipe} from "../../lib/recipeValidation";
 import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
@@ -50,10 +50,13 @@ function RecipeEditorContent({recipe}: Props) {
 
   // Выбор тегов открывается ПОВЕРХ этой формы (pickTags → pushModal): форма остаётся со всем
   // набранным. Строки манифеста — короткое имя, путь, тип и описание из базы каналов.
+  // Окно открывается с уже добавленными тегами: снятая галочка убирает тег, дубль по пути
+  // не добавляется (#11 п. 2).
   const addManifestTags = async () => {
     const picked = await pickTags({
       title: "Теги рецепта",
-      description: "Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия шагов — по короткому имени, а не по пути.",
+      description: "Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия шагов — по короткому имени, а не по пути. Снятая галочка уберёт тег из рецепта.",
+      initial: manifestTagPaths(tags),
       note: <>
         Тип значения подставляется из базы каналов, но <b>логический тег она отличить не
         умеет</b> — там есть только признак «строковый». Дискретные теги пометьте вручную
@@ -62,7 +65,7 @@ function RecipeEditorContent({recipe}: Props) {
     });
     if (!picked) return;
     const params = useDeviceTreeStore.getState().params;
-    setTags(prev => [...prev, ...buildManifestTags(picked, params, prev.map(t => t.name))]);
+    setTags(prev => mergeManifestTags(prev, picked, params));
   };
 
   const patchTag = (index: number, patch: Partial<RecipeTag>) =>
