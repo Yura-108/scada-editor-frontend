@@ -1,7 +1,7 @@
 "use client";
 
-import React, {useEffect, useMemo} from "react";
-import {PinOff} from "lucide-react";
+import React, {useEffect, useMemo, useRef} from "react";
+import {PinOff, type LucideIcon} from "lucide-react";
 import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
 import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
@@ -47,6 +47,11 @@ function SortableTabShell({id, children}: {
 export interface SceneTabDescriptor {
   key: string;
   label: string;
+  /**
+   * Значок перед подписью. «Рецепты» без него не отличить от закреплённой схемы с тем же
+   * названием (#10 п. 5).
+   */
+  icon?: LucideIcon;
 }
 
 interface SceneTabsProps {
@@ -127,7 +132,7 @@ export function SceneTabs({
     const nameOf = (id: number, fallback: string) =>
       sceneList.find(s => s.id === id)?.name ?? fallback;
 
-    type Tab = {key: string; label: string; sceneId: number | null; draggable: boolean};
+    type Tab = {key: string; label: string; sceneId: number | null; draggable: boolean; icon?: LucideIcon};
 
     // Закреплённая схема, которой нет в списке, не показывается: её удалили, а в мониторе — её
     // нет в prod-выпуске. Пока список не пришёл, показываем все (имена — из закрепления).
@@ -226,6 +231,7 @@ export function SceneTabs({
         )}
         {...dragListeners}
       >
+        {tab.icon && <tab.icon size={14} className="mr-1.5 shrink-0" aria-hidden />}
         {/* Обрезается подпись, а не кнопка: иначе у длинного имени пропала бы и точка. */}
         <span className="truncate">{tab.label}</span>
         {/* Как у вкладок разделов (`shared/ui/Tabs`): точка цветом предупреждения. */}
@@ -270,17 +276,31 @@ export function SceneTabs({
     );
   };
 
+  // Активная вкладка всегда в видимой части полосы: новая схема встаёт в конец ряда, и раньше
+  // её вкладка оставалась за краем, а полоса не прокручивалась (#10 п. 5).
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = stripRef.current;
+    const tab = strip?.querySelector<HTMLElement>(`[id="scene-tab-${globalThis.CSS.escape(activeKey)}"]`);
+    if (!strip || !tab) return;
+    const s = strip.getBoundingClientRect(), t = tab.getBoundingClientRect();
+    if (t.left < s.left) strip.scrollBy({left: t.left - s.left - 16});
+    else if (t.right > s.right) strip.scrollBy({left: t.right - s.right + 16});
+  }, [activeKey, tabs.length]);
+
   // Показывать нечего — не занимаем 44px пустой полосой. Так бывает только там, где нет
   // ни `extraTab`, ни `fallbackTab`: у монитора до выбора схемы.
   if (!tabs.length) return null;
 
   return (
     <div
+      ref={stripRef}
       style={style}
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "h-11 shrink-0 border-b border-border bg-card dark:bg-card/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar",
+        // Тонкая полоса прокрутки: толстая под 13 вкладками съедала строку (#10 п. 5).
+        "h-11 shrink-0 border-b border-border bg-card dark:bg-card/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto [scrollbar-width:thin]",
         className,
       )}
     >
