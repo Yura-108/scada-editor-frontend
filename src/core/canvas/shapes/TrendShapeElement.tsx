@@ -159,11 +159,15 @@ export function TrendShapeElement({ el, isSelected, onElementClick, updateElemen
         </Group>
       ))}
 
+      {/* Одна короткая строка, обрезанная многоточием по ширине графика: длинная подсказка
+          рвалась по слогам и вылезала ниже рамки элемента (#18 п. 8). Как добавить перья —
+          видно в панели свойств. */}
       {!pens.length && (
         <Text
-          x={plot.x} y={plot.y + plot.h / 2 - 6} width={plot.w}
-          text="Нет перьев — добавьте их на вкладке «Свойства»"
-          fontSize={10} fill={textCol} align="center" listening={false}
+          x={plot.x + 4} y={plot.y} width={Math.max(0, plot.w - 8)} height={plot.h}
+          text="Нет перьев"
+          fontSize={10} fill={textCol} align="center" verticalAlign="middle"
+          wrap="none" ellipsis listening={false}
         />
       )}
 
