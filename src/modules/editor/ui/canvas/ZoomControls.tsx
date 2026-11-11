@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Minus, Plus, Maximize, RotateCcw, FileText, Lock, Unlock } from "lucide-react";
+import { Minus, Plus, Maximize, RotateCcw, FileText, Lock, Monitor } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import {IconButton} from "@/shared/ui/IconButton";
 import {ZoomPercentField} from "./ZoomPercentField";
@@ -64,15 +64,23 @@ export function ZoomControls({
       {!readOnly && (
         <>
           <div className="mx-0.5 h-4 w-px bg-border" />
-          <IconButton
-            icon={viewLocked ? Lock : Unlock}
-            label="Зафиксировать вид для монитора"
-            pressed={viewLocked}
+          {/* Значок монитора с подписью, а не замок: замок читался как «редактирование
+              заблокировано» (#18 п. 4). Нажатая кнопка — вид зафиксирован. */}
+          <button
+            type="button"
+            aria-pressed={viewLocked}
             onClick={onToggleViewLock}
             title={viewLocked
               ? "Вид для монитора зафиксирован (рамка на холсте) — нажмите, чтобы снять"
               : "Зафиксировать этот вид для монитора: оператор увидит схему так и не сможет её зумить и двигать"}
-          />
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors",
+              viewLocked ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <Monitor size={14} />
+            {viewLocked ? "Вид монитора задан" : "Вид монитора"}
+          </button>
         </>
       )}
     </div>
