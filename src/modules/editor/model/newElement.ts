@@ -1,6 +1,7 @@
 import {DiagramElement, ElementType} from "@/core/scene";
 import {createUuid} from "@/shared/lib/createUuid";
 import {DEFAULT_CURVE_POINTS, curvePointsBounds} from "@/core/scene";
+import {nextElementLabel} from "../lib/elementNames";
 
 /**
  * Заготовки новых элементов для `addElementAt`: что лежит в элементе, только что
@@ -75,7 +76,7 @@ const TYPE_PROPS: Partial<Record<string, (x: number, y: number, extra: Extra) =>
 
   checkbox: () => ({
     w: 160, h: 20,
-    checked: false, label: "Checkbox",
+    checked: false, label: "Флажок",
     color: "#3b82f6", strokeColor: "#3b82f6",
     bg: "transparent",
   }),
@@ -153,6 +154,9 @@ const defaultProps = (type: ElementType) => ({
  *
  * Картинка: дроп создаёт элемент СРАЗУ (плейсхолдер), src заполняется обработчиком
  * после выбора файла в проводнике — по этому же key (`extraProps.key`).
+ *
+ * Имя — «Круг 1», «Дуга 2»… по элементам схемы `existing` (`nextElementLabel`), а не
+ * английское «Element» (#18 п. 9). У типов, где `label` — надпись на холсте, остаётся своё.
  */
 export function buildNewElement(
   type: ElementType,
@@ -160,9 +164,11 @@ export function buildNewElement(
   y: number,
   sceneId: number | undefined,
   extraProps?: Record<string, unknown>,
+  existing: Pick<DiagramElement, "label">[] = [],
 ): DiagramElement {
   const key = type === 'image' && typeof extraProps?.key === 'string' ? extraProps.key : createUuid();
   const base = baseElement(type, x, y, sceneId, key);
   const own = TYPE_PROPS[type]?.(x, y, extraProps) ?? defaultProps(type);
-  return {...base, ...own} as DiagramElement;
+  const label = nextElementLabel(type, existing);
+  return {...base, ...own, ...(label ? {label} : {})} as DiagramElement;
 }

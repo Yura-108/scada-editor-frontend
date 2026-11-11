@@ -20,6 +20,12 @@ Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===tru
 - Lifecycle / state-propagation / copy (`getDescendantKeys`, cascade delete, `recomputeAncestorBounds`, paste/import/template key-remap) must use **`[...children, ...composition]`**.
 - Logical tree + serialization children walk **`children` only**.
 
+**Names of new elements.** New elements are named «Круг 1», «Дуга 2»… (`nextElementLabel`, `modules/editor/lib/elementNames.ts`,
+  #18 п. 9): next free number per type across the scene. Types whose `label` is drawn on the canvas
+  (button text, checkbox/toggle caption, progress bar, rectangle fallback) keep their own default —
+  a number there would show on the scheme; the checkbox caption is «Флажок». «Слои» show the label,
+  or the Russian type name when it is empty or the legacy «Element» (`elementDisplayName`).
+
 ## Coordinates, states, and rendering
 
 - Child coordinates are **local to the parent container**. Absolute position = sum of rendered `x/y` up the `parentKey` chain (`getAbsoluteRenderedPosition`).

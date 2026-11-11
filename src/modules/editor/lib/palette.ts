@@ -68,9 +68,9 @@ export const paletteItems: PaletteItemType[] = [
   {
     id: 10 ** 5 + 8,
     type: "checkbox",
-    name: "Чекбокс",
+    name: "Флажок",
     category: "Базовые",
-    defaultProps: {checked: false, label: "Checkbox", w: 160, h: 20, color: "#3b82f6"},
+    defaultProps: {checked: false, label: "Флажок", w: 160, h: 20, color: "#3b82f6"},
   },
 
   // УПРАВЛЕНИЕ

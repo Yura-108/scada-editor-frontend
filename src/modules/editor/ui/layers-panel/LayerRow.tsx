@@ -5,6 +5,7 @@ import {ChevronDown, ChevronRight} from "lucide-react";
 import {DiagramElement} from "@/core/scene";
 import {cn} from "@/shared/lib/cn";
 import {layerIcon} from "./layerIcons";
+import {elementDisplayName} from "../../lib/elementNames";
 
 /** Строка дерева слоёв: treeitem с уровнем и состоянием, стрелка свёртки, иконка, подпись. */
 export function LayerRow({el, depth, isComposition, collapsed, selectedIds, currentKey, onClick, onDoubleClick, onKeyDown, toggleCollapsed}: {
@@ -25,7 +26,7 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
   const isCollapsed = collapsed.has(el.key);
   const isSelected = selectedIds.includes(el.key);
 
-  const title = el.label || el.type;
+  const title = elementDisplayName(el);
   const icon = layerIcon(el);
 
   return (
