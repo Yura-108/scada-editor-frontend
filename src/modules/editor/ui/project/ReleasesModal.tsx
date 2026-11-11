@@ -49,6 +49,9 @@ function ReleasesContent({projectId, projectName}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
+  // Комментарий обязателен: выпуски без описания в списке ничем не отличаются, а по ним
+  // выбирают, что сделать prod (#18 п. 5).
+  const canRelease = !busy && comment.trim() !== "";
 
   const load = useCallback(async (to?: string) => {
     try {
@@ -69,6 +72,7 @@ function ReleasesContent({projectId, projectName}: Props) {
   }, [load, loadProjectRuntimeFlag, projectId]);
 
   const handleRelease = async () => {
+    if (!comment.trim()) return;
     setBusy(true);
     try {
       const release = await releaseProject(projectId, comment.trim());
@@ -107,11 +111,17 @@ function ReleasesContent({projectId, projectName}: Props) {
           <Input
             value={comment}
             onChange={e => setComment(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !busy) void handleRelease(); }}
-            placeholder="Комментарий к выпуску (что изменилось)"
+            onKeyDown={e => { if (e.key === "Enter" && canRelease) void handleRelease(); }}
+            placeholder="Что изменилось в этом выпуске — обязательно"
+            aria-label="Комментарий к выпуску"
             className="flex-1"
           />
-          <Button variant="primary" onClick={() => void handleRelease()} disabled={busy}>
+          <Button
+            variant="primary"
+            onClick={() => void handleRelease()}
+            disabled={!canRelease}
+            title={comment.trim() ? undefined : "Сначала напишите, что изменилось"}
+          >
             {busy ? <Spinner size={16} /> : <Rocket size={16} />}
             Выпустить
           </Button>

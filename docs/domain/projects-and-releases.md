@@ -9,6 +9,9 @@ Contract: `docs/contract/2026-09-29-project-release-contract.md` (backend: `Proj
 immutable snapshot of the whole project; runtime executes the **prod** release and the monitor must
 draw exactly it, not the editor's draft.
 
+- **«Выпустить» needs a comment** (`ReleasesModal`, #18 п. 5): the button and Enter stay disabled
+  while the comment is empty. Releases are told apart and picked for prod by it.
+
 - **`sceneSource` in the store** (`"draft" | "release"`) decides where `loadSceneList`/`loadScene`
   read from. `MonitorClient` sets `release` on mount and `draft` on unmount. It is a flag rather than
   separate monitor actions because the monitor also opens scenes from scripts
