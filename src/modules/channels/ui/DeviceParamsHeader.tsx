@@ -51,113 +51,31 @@ export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, 
 
     </div>
 
-    {/* Футер с кнопкой */}
-
-    <div className="px-6 border-b-2 py-2 border-t border-border bg-card">
-
-      <div className="flex items-center gap-2">
-
-        <button
-
-          className={clsx(
-
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform bg-primary hover:bg-primary/90 hover:scale-105 shadow-xl',
-
-          )}
-
-          onClick={onToggleEditing}
-
-        >
-
-          <Edit3 className="w-5 h-5"/>
-
+    {/* Кнопки — общие `Button` в одну строку каждая, с переносом ряда: раньше это были свои
+        кнопки высотой 64 px в две строки текста, и на 800 px «Сохранить изменения» уходила
+        за правый край панели (#16 п. 12). */}
+    <div className="px-6 py-2 border-y border-border bg-card">
+      <div className="flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
+        <Button variant="primary" onClick={onToggleEditing}>
+          <Edit3 size={16} />
           {isEditingSelected ? 'Закончить редактирование' : 'Начать редактирование'}
+        </Button>
 
-        </button>
+        <Button variant="primary" disabled={!isEditingSelected} onClick={() => void handleLoadParamsTypes()}>
+          <Plus size={16} />
+          Добавить параметр
+        </Button>
 
-
-
-        <button
-
-          disabled={!isEditingSelected}
-
-          className={clsx(
-
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform shadow-xl',
-
-
-
-            // активная кнопка
-
-            'bg-primary hover:bg-primary/90 hover:scale-105',
-
-
-
-            // disabled стили
-
-            'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-primary'
-
-          )}
-
-          onClick={handleLoadParamsTypes}
-
-        >
-
-          <Plus size={20} />
-
-          {isSaving ? 'Сохранение...' : 'Добавить параметр'}
-
-        </button>
-
-
-
-
-
-        <button
-
+        <Button
+          variant="primary"
           onClick={handleSave}
-
           disabled={!hasChanges || isSaving || errorCount > 0}
-
           title={errorCount > 0 ? `Исправьте значения с ошибкой: ${errorCount}` : undefined}
-
-          className={clsx(
-
-            'flex items-center gap-3 px-4 py-2 rounded-xl font-bold text-primary-foreground transition-all transform',
-
-
-
-            // базовый стиль (как у первой кнопки)
-
-            'bg-primary shadow-xl',
-
-
-
-            // hover только когда не disabled
-
-            'hover:bg-primary/90 hover:scale-105',
-
-
-
-            // disabled состояние
-
-            'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none',
-
-
-
-            // состояние сохранения
-
-            isSaving && 'cursor-wait'
-
-          )}
-
+          className={clsx(isSaving && 'cursor-wait')}
         >
-
-          <Save className="w-5 h-5"/>
-
-          {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
-
-        </button>
+          <Save size={16} />
+          {isSaving ? 'Сохранение…' : 'Сохранить изменения'}
+        </Button>
 
         {hasChanges && (
           <Button onClick={onDiscard} disabled={isSaving} title="Вернуть в полях значения с сервера">
@@ -165,40 +83,19 @@ export function DeviceParamsHeader({deviceTitle, paramCount, isEditingSelected, 
           </Button>
         )}
 
-
-
-
-
-        <div className="flex items-center gap-3">
-
-          {saveStatus === 'success' && (
-
-            <div className="flex items-center gap-2 text-success font-medium">
-
-              <CheckCircle2 className="w-5 h-5"/>
-
-              Сохранено!
-
-            </div>
-
-          )}
-
-          {saveStatus === 'error' && (
-
-            <div className="flex items-center gap-2 text-destructive font-medium">
-
-              <AlertCircle className="w-5 h-5"/>
-
-              Ошибка сохранения
-
-            </div>
-
-          )}
-
-        </div>
-
+        {saveStatus === 'success' && (
+          <span className="flex items-center gap-2 text-sm text-success font-medium">
+            <CheckCircle2 size={16} />
+            Сохранено!
+          </span>
+        )}
+        {saveStatus === 'error' && (
+          <span className="flex items-center gap-2 text-sm text-destructive font-medium">
+            <AlertCircle size={16} />
+            Ошибка сохранения
+          </span>
+        )}
       </div>
-
     </div>
   </>;
 }
