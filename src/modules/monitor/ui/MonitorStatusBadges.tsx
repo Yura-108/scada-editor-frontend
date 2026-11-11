@@ -1,5 +1,6 @@
 import React, {useMemo} from "react";
-import {AlertTriangle, Clock, Package, Radio} from "lucide-react";
+import {AlertTriangle, CircleHelp, Clock, Package, Radio} from "lucide-react";
+import {useRuntimeOverlayStore} from "@/core/scene";
 import {Badge} from "@/shared/ui/Badge";
 import type {RuntimeStatus} from "../model/engine/runtimeConnection";
 import {STATUS_VIEW} from "../lib/runtimeStatusView";
@@ -25,6 +26,9 @@ export function MonitorStatusBadges({
   );
 
   const statusView = STATUS_VIEW[hasScene ? status : "closed"];
+  // Сколько элементов схемы серые с «?»: раньше объяснения не было нигде — ни подсказки у
+  // бейджа (он вне hit-графа), ни сводки, а рядом горело «Подключено» (#18 п. 12).
+  const noDataCount = useRuntimeOverlayStore(s => s.noDataKeys.size);
 
   return (
     <>
@@ -60,9 +64,20 @@ export function MonitorStatusBadges({
         </Badge>
       )}
 
+      {hasScene && noDataCount > 0 && (
+        <Badge
+          icon={<CircleHelp size={12} />}
+          title={`Нет достоверных данных у элементов схемы: ${noDataCount}. Такие элементы серые со значком «?»: `
+            + "их тег ещё не прислал значения или прислал значение с качеством не GOOD (нет связи с ПЛК, "
+            + "прибор неисправен). Соединение с сервером при этом может быть в порядке."}
+        >
+          <span className="hidden lg:inline">Нет данных: </span>{noDataCount}
+        </Badge>
+      )}
       {!isArchive && (
         <Badge tone={statusView.tone} icon={<Radio size={12} />} title={statusDetail || statusView.label}>
-          <span className="hidden xl:inline">{statusView.label}</span>
+          {/* С 1024 px: на ноутбуке от «Подключено» оставалась одна зелёная иконка (#18 п. 14). */}
+          <span className="hidden lg:inline">{statusView.label}</span>
         </Badge>
       )}
 

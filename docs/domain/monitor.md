@@ -227,6 +227,12 @@ There is deliberately no sticky-override map any more (`manualTagValues` and its
 an override that outlives telemetry is a mimic that confidently shows what the hardware no longer
 holds.
 
+**The "no data" overlay is explained in the header** (#18 п. 12). `NoDataOverlay` greys an element
+and draws a «?» badge, but the badge is out of Konva's hit graph (the whole monitor layer is), so it
+cannot have a tooltip. `MonitorStatusBadges` therefore shows «Нет данных: N» from
+`useRuntimeOverlayStore.noDataKeys` with the explanation in its title. Header labels («Инспектор»,
+«Задачи», the connection status, the no-data badge) show from `lg` (1024 px), not `xl` (#18 п. 14).
+
 ## Direct tag bindings (element value ← tag)
 
 Besides JS bindings and `propertyRefs`, an element can follow a **tag** directly: a binding
