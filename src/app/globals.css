@@ -381,6 +381,57 @@
   outline-offset: -2px;
 }
 
+/* Галочки дерева выбора тегов (#24 п. 2). Стили `rc-tree/assets` не подключены, без этих
+   правил элемент галочки 0×0 и отметка в дереве не видна вовсе. Три состояния: пусто,
+   отмечено, частично (у ветки отмечена часть каналов). */
+.custom-tree .rc-tree-checkbox {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border: 1px solid var(--input);
+  border-radius: 4px;
+  background: var(--background);
+  cursor: pointer;
+}
+.custom-tree .rc-tree-checkbox:hover {
+  border-color: var(--primary);
+}
+.custom-tree .rc-tree-checkbox-checked,
+.custom-tree .rc-tree-checkbox-indeterminate {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.custom-tree .rc-tree-checkbox-checked::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--primary-foreground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.custom-tree .rc-tree-checkbox-indeterminate::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 6.5px;
+  width: 8px;
+  height: 2px;
+  background: var(--primary-foreground);
+}
+.custom-tree .rc-tree-checkbox-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Строка дерева выбора тегов: название кликабельно (раскрыть ветку / отметить канал). */
+.tag-tree-checkable .rc-tree-node-content-wrapper {
+  cursor: pointer;
+}
+
 .rc-tree .rc-tree-indent-unit {
   width: 16px; /* ширина одного уровня вложенности */
   display: inline-block;
