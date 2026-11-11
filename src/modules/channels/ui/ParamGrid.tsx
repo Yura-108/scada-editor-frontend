@@ -3,7 +3,7 @@
 import React from 'react';
 import {toast} from "sonner";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {isParamChecked, removeParam, resolveParamWidget} from "@/core/devices";
+import {isParamChecked, paramChoices, removeParam, resolveParamWidget} from "@/core/devices";
 import type {DeviceParamsType} from "@/core/devices";
 import ParamWrapper from "./ParamWrapper";
 import {ParamValueField} from "./ParamValueField";
@@ -53,8 +53,10 @@ export function ParamGrid({normalParams, editedParams, errors, handleChange}: {
           >
             <ParamValueField
               widget={widget}
+              name={param.name}
               value={value}
               checked={checked}
+              choices={widget === 'input' ? paramChoices(param.name, value) : null}
               error={errors.get(keyStr)}
               onChange={(next) => handleChange(keyStr, next)}
             />

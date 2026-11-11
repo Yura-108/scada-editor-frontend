@@ -68,3 +68,48 @@ const TRUTHY = ['1', 'true', 'on', 'yes'];
 export function isParamChecked(value: unknown): boolean {
   return TRUTHY.includes(String(value ?? '').trim().toLowerCase());
 }
+
+/** Пункт выпадающего списка значения параметра. */
+export type ParamChoice = {value: string; label: string};
+
+/**
+ * Параметры, у которых значение — код, а не число: в поле стояло «Протокол = -1», «Тип опроса = 0»
+ * без расшифровки (#16 п. 7). Значения — как их читает бэкенд (`channel` `TagSettings`,
+ * `DataTypeResolver`), подписи — что они значат. Ключ — имя параметра в базе каналов.
+ */
+const PARAM_CHOICES: Record<string, {options: ParamChoice[]; normalize?: (raw: string) => string}> = {
+  // Писать ли тег в архив. -1 — TRUE старой базы на Delphi; руками вводили и 1, и true.
+  "протокол": {
+    options: [{value: "-1", label: "Пишется в архив"}, {value: "0", label: "Не пишется в архив"}],
+    normalize: (raw) => (/^(-1|1|true)$/i.test(raw.trim()) ? "-1" : raw.trim() === "" ? "" : "0"),
+  },
+  // 1 — каждый цикл («Период» тогда не важен), 0 — по «Периоду» в мс.
+  "тип опроса": {
+    options: [{value: "1", label: "Каждый цикл"}, {value: "0", label: "По периоду"}],
+  },
+  // Тип тега в реестре шлюза.
+  "тип данных": {
+    options: [
+      {value: "FLOAT", label: "Дробное (FLOAT)"},
+      {value: "INT32", label: "Целое (INT32)"},
+      {value: "STRING", label: "Строка (STRING)"},
+    ],
+    normalize: (raw) => raw.trim().toUpperCase(),
+  },
+};
+
+/**
+ * Список значений для параметра `name` или `null`, если это обычное поле. Текущее значение,
+ * которого нет в списке, добавляется как есть — список не должен молча подменять то, что лежит
+ * в базе. `value` — то, что показывать выбранным.
+ */
+export function paramChoices(name: string | null | undefined, raw: string): {options: ParamChoice[]; value: string} | null {
+  const spec = PARAM_CHOICES[(name ?? "").trim().toLowerCase()];
+  if (!spec) return null;
+  const value = spec.normalize ? spec.normalize(raw) : raw.trim();
+  const known = spec.options.some((o) => o.value === value);
+  return {
+    value,
+    options: known || value === "" ? spec.options : [...spec.options, {value, label: value}],
+  };
+}
