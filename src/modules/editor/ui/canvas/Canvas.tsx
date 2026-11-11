@@ -158,7 +158,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     [rootElements, elementIndex, camera, canvasRect, selectedIds, activeGroupKey],
   );
 
-  const { zoomStep, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
+  const { zoomStep, zoomTo, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
 
   const { handleMonitorContextMenu, handleMonitorClick, handleMonitorDblClick } = useMonitorClicks({
     stageRef, readOnly, archive, closeMenu, setContextMenu, enterGroup,
@@ -272,6 +272,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
       <ZoomControls
         zoom={camera.zoom}
         onZoomStep={zoomStep}
+        onZoomTo={zoomTo}
         onFit={zoomFit}
         onFitSheet={zoomFitSheet}
         onReset={() => setCamera(0, 0, 1)}
