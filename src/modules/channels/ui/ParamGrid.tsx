@@ -3,17 +3,19 @@
 import React from 'react';
 import {toast} from "sonner";
 import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {isParamChecked, removeParam, resolveParamWidget} from "@/core/devices";
+import {isParamChecked, paramChoices, removeParam, resolveParamWidget} from "@/core/devices";
 import type {DeviceParamsType} from "@/core/devices";
 import ParamWrapper from "./ParamWrapper";
 import {ParamValueField} from "./ParamValueField";
 
 /** Сетка обычных параметров устройства: значение с учётом черновика, удаление с подтверждением. */
-export function ParamGrid({normalParams, editedParams, errors, handleChange}: {
+export function ParamGrid({normalParams, editedParams, errors, handleChange, readOnly = false}: {
   normalParams: DeviceParamsType[];
   editedParams: Map<string, string>;
   errors: Map<string, string>;
   handleChange: (key: string, value: string) => void;
+  /** Вне режима правки: без крестиков «Удалить параметр» — они всё равно не работали. */
+  readOnly?: boolean;
 }) {
   const handleRemoveParam = async (key: string) => {
     const confirmed = await confirmModal({
@@ -49,12 +51,14 @@ export function ParamGrid({normalParams, editedParams, errors, handleChange}: {
             key={param.key}
             param={param}
             hasChanged={hasChanged}
-            onRemove={handleRemoveParam}
+            onRemove={readOnly ? undefined : handleRemoveParam}
           >
             <ParamValueField
               widget={widget}
+              name={param.name}
               value={value}
               checked={checked}
+              choices={widget === 'input' ? paramChoices(param.name, value) : null}
               error={errors.get(keyStr)}
               onChange={(next) => handleChange(keyStr, next)}
             />

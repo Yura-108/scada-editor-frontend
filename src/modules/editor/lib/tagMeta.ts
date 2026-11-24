@@ -87,3 +87,29 @@ export function buildManifestTags(
     };
   });
 }
+
+/**
+ * Манифест после окна выбора тегов, которое открылось с уже добавленными тегами (#11 п. 2).
+ *
+ * `picked` — весь итоговый набор путей из окна. Строки, чья галочка снята, уходят; строки без
+ * пути (набираются руками) окно не видит и не трогает; новые пути добавляются в конец. Путь,
+ * который уже есть в манифесте, второй раз не добавляется — раньше повторный выбор CLEVEL
+ * давал вторую строку CLEVEL_2 с тем же путём. Имена, тип и описание оставшихся строк — как
+ * их поправил пользователь, а не заново из базы каналов.
+ */
+export function mergeManifestTags(
+  prev: RecipeTag[],
+  picked: string[],
+  params: NodeParamType[],
+): RecipeTag[] {
+  const pickedSet = new Set(picked);
+  const kept = prev.filter(t => !t.tag.trim() || pickedSet.has(t.tag.trim()));
+  const have = new Set(kept.map(t => t.tag.trim()));
+  const added = [...pickedSet].filter(tag => !have.has(tag));
+  return [...kept, ...buildManifestTags(added, params, kept.map(t => t.name))];
+}
+
+/** Пути манифеста, которые окно выбора должно показать отмеченными. */
+export function manifestTagPaths(tags: RecipeTag[]): string[] {
+  return [...new Set(tags.map(t => t.tag.trim()).filter(Boolean))];
+}

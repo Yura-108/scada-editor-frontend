@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useEffect, useId, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {FileUp, FolderPlus} from "lucide-react";
 import {toast} from "sonner";
 import {cn} from "@/shared/lib/cn";
@@ -8,6 +8,7 @@ import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {Button} from "@/shared/ui/Button";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
 import {fieldBase, fieldLabelClass, fieldSizes} from "@/shared/ui/field/fieldStyles";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
@@ -19,6 +20,9 @@ import {useDeviceTreeStore} from "@/core/devices";
 
 /** Кнопка выбора файла выглядит как поле. */
 const pickerClass = cn(fieldBase, "flex items-center gap-3 text-left");
+
+/** Пункт «Новая площадка…» в списке площадок. */
+const NEW_SITE = "__new__";
 
 /** Площадка и проект — имена узлов базы, точка в них разделяет уровни пути. */
 const badSegment = (value: string) => !value.trim() || value.includes(".");
@@ -62,17 +66,25 @@ function ImportCdbxContent() {
   const [site, setSite] = useState("");
   const [project, setProject] = useState("");
   const [sites, setSites] = useState<string[]>([]);
+  // Новая площадка вводится руками; по умолчанию — выбор из существующих. Раньше площадка
+  // всегда была свободным полем с примером «Барановичи-1», и опечатка в «BN1» молча
+  // создала бы вторую площадку (#16 п. 11).
+  const [newSite, setNewSite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sitesListId = useId();
-
-  // Площадки — подсказкой, а не жёстким выбором: импорт вправе создать и новую.
   useEffect(() => {
     fetch("/api/device/site/")
       .then(res => (res.ok ? res.json() : []))
-      .then((data: unknown) => setSites(Array.isArray(data) ? data.filter(s => typeof s === "string") : []))
-      .catch(() => setSites([]));
+      .then((data: unknown) => {
+        const list = Array.isArray(data) ? data.filter((s): s is string => typeof s === "string") : [];
+        setSites(list);
+        if (list.length) setSite(prev => prev || list[0]);
+        else setNewSite(true);
+      })
+      .catch(() => { setSites([]); setNewSite(true); });
   }, []);
+
+  const siteTaken = newSite && sites.some(s => s.trim().toLowerCase() === site.trim().toLowerCase());
 
   const handlePick = async () => {
     const picked = await pickFile(".cdbx");
@@ -86,7 +98,7 @@ function ImportCdbxContent() {
     }
   };
 
-  const canSubmit = Boolean(file) && !badSegment(site) && !badSegment(project) && !isLoading;
+  const canSubmit = Boolean(file) && !badSegment(site) && !badSegment(project) && !siteTaken && !isLoading;
 
   const handleSubmit = async () => {
     if (!file || !canSubmit) return;
@@ -157,11 +169,25 @@ function ImportCdbxContent() {
         </div>
 
         <Field label="Площадка">
-          <Input list={sitesListId} value={site} onChange={(e) => setSite(e.target.value)} placeholder="Барановичи-1" />
-          <datalist id={sitesListId}>
-            {sites.map(s => <option key={s} value={s} />)}
-          </datalist>
+          <Select
+            value={newSite ? NEW_SITE : site}
+            onValueChange={(v) => {
+              if (v === NEW_SITE) { setNewSite(true); setSite(""); }
+              else { setNewSite(false); setSite(v); }
+            }}
+            placeholder="Выберите площадку"
+            options={[...sites.map(s => ({value: s, label: s})), {value: NEW_SITE, label: "Новая площадка…"}]}
+          />
         </Field>
+        {newSite && (
+          <Field
+            label="Имя новой площадки"
+            hint={sites.length ? "Будет создана новая площадка. Если площадка уже есть — выберите её в списке выше." : "Площадок ещё нет — импорт создаст первую."}
+            error={siteTaken ? "Такая площадка уже есть — выберите её в списке выше" : undefined}
+          >
+            <Input autoFocus value={site} onChange={(e) => setSite(e.target.value)} placeholder="Например, BN2" />
+          </Field>
+        )}
 
         <Field label="Проект">
           <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="BN1_MCA2" />

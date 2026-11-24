@@ -11,6 +11,9 @@ import {SearchInput} from "@/shared/ui/field/SearchInput";
 import {allTreeKeys, buildDeviceTreeData, leafKeysOf, searchExpandKeys, type DeviceTreeNodeInfo} from "../../lib/deviceTreeData";
 import {useDeviceTreeStore} from "../../model/deviceTreeStore";
 import ChannelsProjectPicker from "../ChannelsProjectPicker";
+import {useTagTreeCheck} from "./useTagTreeCheck";
+
+const NO_KEYS: Key[] = [];
 
 /** Иконка узла по глубине пути: площадка, проект, устройство, канал. */
 function NodeIcon({depth, isLeaf}: {depth: number; isLeaf: boolean}) {
@@ -68,10 +71,12 @@ export function TagTree(props: TagTreeProps) {
   );
 
   const leafKeys = useMemo(() => leafKeysOf(nodes), [nodes]);
-  // `rc-tree` пересчитывает отметки по ВИДИМОМУ дереву, поэтому отметки, сделанные до
-  // фильтра, сохраняем руками: иначе «нашёл — отметил — очистил поиск — отметил ещё» тихо
-  // теряло бы первую половину выбора.
   const visibleKeys = useMemo(() => allTreeKeys(visibleNodes), [visibleNodes]);
+  const {check, clickRow} = useTagTreeCheck({
+    value: props.multiple ? props.value : [],
+    onChange: (tags) => { if (props.multiple) props.onChange(tags); },
+    leafKeys, visibleKeys, expandedKeys, setExpandedKeys,
+  });
 
   if (nodes.length === 0) {
     return (
@@ -83,13 +88,6 @@ export function TagTree(props: TagTreeProps) {
       </div>
     );
   }
-
-  // Отмечены только каналы; галочки папок `rc-tree` выводит из них сам (`checkStrictly` выключен).
-  const check = (keys: Key[]) => {
-    if (!props.multiple) return;
-    const hidden = props.value.filter((k) => !visibleKeys.has(k));
-    props.onChange([...hidden, ...(keys as string[]).filter((key) => leafKeys.has(key))]);
-  };
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-3", props.className)}>
@@ -107,7 +105,12 @@ export function TagTree(props: TagTreeProps) {
           <Tree
             treeData={treeData}
             checkable
-            selectable={false}
+            // Строка «выбирается», но выделения нет: клик по названию раскрывает ветку или
+            // отмечает канал (useTagTreeCheck). С `selectable={false}` rc-tree превращал клик
+            // по строке в клик по галочке — и отмечал всё поддерево (#24 п. 1).
+            selectable
+            selectedKeys={NO_KEYS}
+            onSelect={(_, {node}) => clickRow(String(node.key))}
             showLine={false}
             showIcon={false}
             switcherIcon={SwitcherIcon}
@@ -115,8 +118,8 @@ export function TagTree(props: TagTreeProps) {
             onExpand={setExpandedKeys}
             autoExpandParent={false}
             checkedKeys={props.value}
-            onCheck={(keys) => check(Array.isArray(keys) ? keys : keys.checked)}
-            className="custom-tree"
+            onCheck={(keys) => void check(Array.isArray(keys) ? keys : keys.checked)}
+            className="custom-tree tag-tree-checkable"
           />
         ) : (
           <Tree

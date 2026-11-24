@@ -6,7 +6,7 @@ import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
 import {sectionTitle} from "./styles";
 
-/** Манифест рецепта — теги, которые рецепт вправе записывать. */
+/** Теги рецепта («манифест» в контракте) — теги, которые рецепт вправе записывать. */
 export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
   tags: RecipeTag[];
   patchTag: (index: number, patch: Partial<RecipeTag>) => void;
@@ -29,14 +29,19 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
 
       {tags.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">
-          Манифест пуст — шагам будет нечего записывать.
+          Тегов пока нет — шагам нечего будет записывать. Нажмите «Выбрать из базы каналов».
         </p>
       ) : (
         <div className="space-y-2">
+          {/* Подписи колонок над карточками: подсказки в полях пропадают, как только поле
+              заполнено, и по заполненной строке было не понять, где имя, а где путь (#11 п. 10). */}
+          <div className="grid grid-cols-[1fr_1.4fr_9rem_1.75rem] gap-2 px-2 text-xs text-muted-foreground">
+            <span>Имя — так на тег ссылаются шаги</span><span>Путь тега в базе каналов</span><span>Тип значения</span><span />
+          </div>
           {tags.map((tag, index) => (
             <div
               key={`${tag.tag}-${index}`}
-              className="grid grid-cols-[1fr_1.4fr_auto_auto] gap-2 items-center rounded-lg border border-border p-2"
+              className="grid grid-cols-[1fr_1.4fr_9rem_1.75rem] gap-2 items-center rounded-lg border border-border p-2"
             >
               <Input
                 size="sm"
@@ -53,7 +58,6 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
               />
               <Select
                 size="sm"
-                className="w-36"
                 value={tag.value_type ?? ""}
                 onValueChange={(v) => patchTag(index, {value_type: (v || undefined) as RecipeValueType | undefined})}
                 options={[
@@ -62,13 +66,15 @@ export function RecipeManifestSection({tags, patchTag, removeTag, onPickTags}: {
                 ]}
               />
               <IconButton icon={Trash2} label="Убрать тег" size="xs" variant="danger" onClick={() => removeTag(index)} />
-              <Input
-                size="sm"
-                className="col-span-4"
-                value={tag.description ?? ""}
-                placeholder="Описание (для интерфейса)"
-                onChange={(e) => patchTag(index, {description: e.target.value})}
-              />
+              <label className="col-span-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0">Описание</span>
+                <Input
+                  size="sm"
+                  value={tag.description ?? ""}
+                  placeholder="для оператора, необязательно"
+                  onChange={(e) => patchTag(index, {description: e.target.value})}
+                />
+              </label>
             </div>
           ))}
         </div>

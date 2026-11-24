@@ -72,7 +72,7 @@ export function useRecipeDrafts(projectId: number | null, onProjectChange: () =>
   const handleDelete = async (recipe: Recipe) => {
     const confirmed = await confirmModal({
       title: `Удалить рецепт «${recipe.name}»?`,
-      description: "Процедура и все её шаги будут удалены безвозвратно.",
+      description: "Рецепт и все его шаги будут удалены безвозвратно.",
       confirmLabel: "Удалить",
       danger: true,
     });

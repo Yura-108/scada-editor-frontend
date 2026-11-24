@@ -57,6 +57,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
                 size="sm"
                 value={step.name}
                 placeholder="Название шага"
+                aria-invalid={step.name.trim() ? undefined : true}
                 onChange={(e) => patchStep(index, {name: e.target.value})}
               />
               <IconButton icon={ChevronUp} label="Выше" size="xs" disabled={index === 0} onClick={() => moveStep(index, -1)} />
@@ -75,7 +76,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
                   type="button"
                   className="text-xs text-primary hover:underline disabled:opacity-40"
                   disabled={tags.length === 0}
-                  title={tags.length === 0 ? "Сначала добавьте теги в манифест" : undefined}
+                  title={tags.length === 0 ? "Сначала добавьте теги рецепта" : undefined}
                   onClick={() => patchStep(index, {
                     action: [...step.action, {tag: tags[0].name, value: coerceActionValue("", tags[0].value_type)}],
                   })}
@@ -102,7 +103,7 @@ export function RecipeStepsSection({tags, steps, setSteps}: {
             {/* Условие перехода */}
             <div className="space-y-1.5">
               <span className="text-xs text-muted-foreground">
-                Условие перехода (JavaScript; пусто — сразу после действия)
+                Когда переходить к следующему шагу — скрипт; пусто — сразу после записи
               </span>
               <Textarea
                 className="font-mono text-xs"

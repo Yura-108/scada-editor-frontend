@@ -157,7 +157,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
       <span id={projectsLabelId} className="sr-only">Проекты</span>
       <MultiSelect
         labelId={projectsLabelId}
-        className={stacked ? "w-full" : "w-64"}
+        className={stacked ? "w-full" : "w-64 xl:w-80"} // шире там, где есть место: «Танки-нормализации-молока» обрезался и на 1366 px (#16 п. 12)
         options={availableProjects}
         selected={selectedProjects}
         onChange={setSelectedProjects}

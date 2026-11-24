@@ -11,6 +11,7 @@ import {useParamDraftGuard} from "../model/useParamDraftGuard";
 import {DeviceParamsHeader} from "./DeviceParamsHeader";
 import {OptionParamsList} from "./OptionParamsList";
 import {ParamGrid} from "./ParamGrid";
+import {DeviceCard} from "./DeviceCard";
 
 /** Числовые ключи — по числу (иначе «10» шёл бы раньше «9»), прочие — как строки. */
 const byParamKey = (a: {key: string}, b: {key: string}) => {
@@ -62,9 +63,11 @@ const DeviceParams = () => {
   }
 
   if (rawParams.length === 0) {
-    return (
-      <EmptyState icon={Inbox} title="Нет параметров для отображения" className="h-full" />
-    );
+    // Узел без своих параметров (площадка, проект, устройство) — карточка с путём и
+    // вложенными узлами, а не пустое «Нет параметров для отображения» (#16 п. 6).
+    return currentDevice
+      ? <DeviceCard node={currentDevice} nodes={nodes} />
+      : <EmptyState icon={Inbox} title="Нет параметров для отображения" className="h-full" />;
   }
   return (
     <div className="min-h-full flex flex-col bg-card border border-border rounded-2xl shadow-sm">
@@ -81,19 +84,25 @@ const DeviceParams = () => {
         onDiscard={() => void confirmDiscard()}
       />
 
-      <div
-        className={clsx(
-          "relative transition-all",
-          !isEditingSelected && "pointer-events-none select-none opacity-50",
-        )}
+      {!isEditingSelected && (
+        <p className="px-6 pt-4 text-sm text-muted-foreground">
+          Только просмотр — чтобы изменить значения, нажмите «Начать редактирование».
+        </p>
+      )}
+
+      {/* Вне правки поля по-настоящему недоступны (`fieldset disabled`), а не только
+          «прозрачны для мыши»: раньше с клавиатуры в них можно было печатать, ввод молча
+          пропадал, а крестики «Удалить параметр» были видны и не нажимались (#16 п. 4). */}
+      <fieldset
+        disabled={!isEditingSelected}
+        className={clsx("relative m-0 min-w-0 border-0 p-0 transition-all", !isEditingSelected && "opacity-70")}
       >
         {/* Форма */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-6">
-          <ParamGrid normalParams={normalParams} editedParams={editedParams} errors={errors} handleChange={handleChange} />
+          <ParamGrid normalParams={normalParams} editedParams={editedParams} errors={errors} handleChange={handleChange} readOnly={!isEditingSelected} />
         </div>
-
         <OptionParamsList optionItems={optionItems} />
-      </div>
+      </fieldset>
     </div>
   );
 };

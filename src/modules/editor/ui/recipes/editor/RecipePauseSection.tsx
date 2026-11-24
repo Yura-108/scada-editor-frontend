@@ -21,7 +21,7 @@ export function RecipePauseSection({tags, pauseAction, setPauseAction}: {
           type="button"
           className="text-xs text-primary hover:underline disabled:opacity-40"
           disabled={tags.length === 0}
-          title={tags.length === 0 ? "Сначала добавьте теги в манифест" : undefined}
+          title={tags.length === 0 ? "Сначала добавьте теги рецепта" : undefined}
           onClick={() => setPauseAction(prev => [
             ...prev,
             {tag: tags[0].name, value: coerceActionValue("", tags[0].value_type)},

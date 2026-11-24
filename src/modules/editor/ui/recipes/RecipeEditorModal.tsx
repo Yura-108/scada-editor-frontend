@@ -4,14 +4,16 @@ import React, {useState} from "react";
 import {AlertTriangle} from "lucide-react";
 import {useModalStore} from "@/shared/ui/dialog/modalStore";
 import {useEditorStore} from "../../model/editorStore";
-import {useRecipeMutations} from "../../api/recipes";
+import {useRecipeMutations, useRecipes} from "../../api/recipes";
 import {pickTags, useDeviceTreeStore} from "@/core/devices";
-import {buildManifestTags} from "../../lib/tagMeta";
+import {manifestTagPaths, mergeManifestTags} from "../../lib/tagMeta";
 import {validateRecipe} from "../../lib/recipeValidation";
 import {Button} from "@/shared/ui/Button";
 import {Banner} from "@/shared/ui/Banner";
 import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
 import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {useRequestClose} from "@/shared/ui/dialog/closeGuard";
+import {useRecipeCloseGuard} from "./useRecipeCloseGuard";
 import type {Recipe, RecipeStep, RecipeTag} from "@/core/project";
 import {Field} from "@/shared/ui/field/Field";
 import {Input} from "@/shared/ui/field/Input";
@@ -31,7 +33,10 @@ interface Props {
 
 function RecipeEditorContent({recipe}: Props) {
   const closeModal = useCloseModal();
-  const {createRecipe, updateRecipe} = useRecipeMutations(useEditorStore((s) => s.currentProject?.id ?? null));
+  const requestClose = useRequestClose();
+  const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
+  const {createRecipe, updateRecipe} = useRecipeMutations(projectId);
+  const otherRecipes = useRecipes(projectId).data;
 
   // Модалка пересоздаётся при каждом открытии (ModalRoot держит содержимое под key={contentKey}),
   // поэтому начальные значения всегда актуальны — сбрасывать их эффектом не нужно.
@@ -46,23 +51,35 @@ function RecipeEditorContent({recipe}: Props) {
   const [pauseAction, setPauseAction] = useState(recipe?.pause_action ?? []);
   const [isSaving, setIsSaving] = useState(false);
 
-  const problems = validateRecipe({name, tags, steps, pause_action: pauseAction});
+  // Два рецепта с одним названием в списке не отличить (#11 п. 6): служебные id у них разные
+  // («тест», «тест-2»), а оператор видит только название.
+  const trimmedName = name.trim().toLowerCase();
+  const nameTaken = trimmedName !== "" && (otherRecipes ?? []).some(r => r.id !== recipe?.id && r.name.trim().toLowerCase() === trimmedName);
+  const problems = [
+    ...(nameTaken ? [`Рецепт «${name.trim()}» уже есть — выберите другое название`] : []),
+    ...validateRecipe({name, tags, steps, pause_action: pauseAction}),
+  ];
+  // Крестик, Esc и «Отмена» с правками спрашивают, а не выбрасывают черновик (#11 п. 7).
+  useRecipeCloseGuard(recipe, {name, tags, steps, pause_action: pauseAction});
 
   // Выбор тегов открывается ПОВЕРХ этой формы (pickTags → pushModal): форма остаётся со всем
   // набранным. Строки манифеста — короткое имя, путь, тип и описание из базы каналов.
+  // Окно открывается с уже добавленными тегами: снятая галочка убирает тег, дубль по пути
+  // не добавляется (#11 п. 2).
   const addManifestTags = async () => {
     const picked = await pickTags({
       title: "Теги рецепта",
-      description: "Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия шагов — по короткому имени, а не по пути.",
+      description: "Отметьте теги, которые рецепт вправе записывать. На них будут ссылаться действия шагов — по короткому имени, а не по пути. Снятая галочка уберёт тег из рецепта.",
+      initial: manifestTagPaths(tags),
       note: <>
-        Тип значения подставляется из базы каналов, но <b>логический тег она отличить не
-        умеет</b> — там есть только признак «строковый». Дискретные теги пометьте вручную
-        в списке манифеста, иначе запись <code>true</code> не пройдёт проверку.
+        Тип значения берётся из базы каналов. <b>Логические (дискретные) теги база каналов не
+        различает</b> — у них есть только признак «строковый». Таким тегам поставьте тип
+        «Логический» вручную в списке тегов рецепта, иначе запись <code>true</code> не пройдёт проверку.
       </>,
     });
     if (!picked) return;
     const params = useDeviceTreeStore.getState().params;
-    setTags(prev => [...prev, ...buildManifestTags(picked, params, prev.map(t => t.name))]);
+    setTags(prev => mergeManifestTags(prev, picked, params));
   };
 
   const patchTag = (index: number, patch: Partial<RecipeTag>) =>
@@ -106,13 +123,14 @@ function RecipeEditorContent({recipe}: Props) {
     <>
       <DialogHeader
         title={recipe ? "Редактирование рецепта" : "Новый рецепт"}
-        description="Манифест перечисляет теги, которые рецепт вправе записывать; шаги выполняются по порядку — действие при входе, затем условие перехода к следующему."
+        description="Теги — то, что рецепт может менять. Шаги выполняются по порядку: при входе в шаг записываются значения тегов, потом рецепт ждёт условия перехода к следующему шагу."
       />
 
       <DialogBody className="space-y-6">
         <Field
           label="Название"
           hint={recipe && <>Идентификатор <code>{recipe.id}</code> при переименовании не меняется.</>}
+          error={nameTaken ? "Рецепт с таким названием уже есть" : undefined}
         >
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Мойка щёлочью, линия 1" />
         </Field>
@@ -139,7 +157,7 @@ function RecipeEditorContent({recipe}: Props) {
       )}
 
       <DialogFooter>
-        <Button onClick={closeModal} disabled={isSaving}>Отмена</Button>
+        <Button onClick={requestClose} disabled={isSaving}>Отмена</Button>
         <Button variant="primary" onClick={handleSave} disabled={isSaving || problems.length > 0}>
           {isSaving ? "Сохранение..." : recipe ? "Сохранить" : "Создать"}
         </Button>

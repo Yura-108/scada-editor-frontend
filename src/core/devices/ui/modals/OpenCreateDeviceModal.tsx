@@ -10,6 +10,20 @@ import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogP
 import {addDevice} from "../../model/deviceActions";
 import {getDeviceTemplates} from "../../model/deviceDictionaries";
 
+/**
+ * Шаблоны узлов приходят кодами (`dev`, `sub`, `cha`…). В списке — словом, код в скобках:
+ * по нему шаблон узнаёт тот, кто привык к старой системе (#16 п. 8). Незнакомый код — как есть.
+ */
+const TEMPLATE_NAMES: Record<string, string> = {
+  dev: "Устройство",
+  sub: "Подустройство",
+  cha: "Канал",
+};
+const templateLabel = (code: string) => {
+  const name = TEMPLATE_NAMES[code.trim().toLowerCase()];
+  return name ? `${name} (${code})` : code;
+};
+
 interface Props {
   onLoadAction: (node: {
     type: number;
@@ -42,21 +56,22 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
   return (
     <>
       <DialogHeader
-        title="Создание устройства"
-        description="Выберите тип устройства и введите его имя."
+        // То же название, что у пункта меню, — раньше меню звало «Добавить узел», а окно «Создание устройства».
+        title="Добавить узел"
+        description="Выберите тип узла и введите его имя — оно станет последней частью пути."
       />
 
       <DialogBody className="space-y-5">
-        <Field label="Тип устройства">
+        <Field label="Тип узла">
           <Select
             defaultValue={String(templateList[0].key)}
             onValueChange={setSelectedValue}
-            placeholder="Выберите тип..."
-            options={templateList.map((template) => ({value: String(template.key), label: template.value}))}
+            placeholder="Выберите тип…"
+            options={templateList.map((template) => ({value: String(template.key), label: templateLabel(template.value)}))}
           />
         </Field>
-        <Field label="Название устройства">
-          <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Введите текст..." />
+        <Field label="Имя узла">
+          <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Например, TANK5" />
         </Field>
       </DialogBody>
 
@@ -64,7 +79,7 @@ export function CreateDeviceContent({ onLoadAction, templateList, nodeKey }: Pro
       <DialogFooter>
         <Button onClick={closeModal}>Отмена</Button>
         <Button variant="primary" onClick={handleConfirm} disabled={!inputValue.trim()}>
-          Создать
+          Добавить
         </Button>
       </DialogFooter>
     </>
