@@ -12,7 +12,8 @@
     "lint": "eslint",
     "check:store-cycles": "node scripts/check-store-cycles.mjs",
     "check:ui-colors": "node scripts/check-ui-colors.mjs",
-    "prepare": "husky install"
+    "check:pr": "npm run lint -- --max-warnings=0 && tsc --noEmit && npm run check:store-cycles && npm run check:ui-colors && npm run build",
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [
