@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import {getElementBoundsRendered, clampZoom, resolveSheet} from "@/core/scene";
 import {useEditorStore} from "../../../model/editorStore";
 import { cameraForSheet } from "../../../lib/fitCamera";
+import { visibleCanvasArea } from "../lib/visibleArea";
 
 interface ZoomControlsDeps {
   canvasRect: { width: number; height: number } | null;
@@ -9,17 +10,24 @@ interface ZoomControlsDeps {
 }
 
 /**
- * Следующий масштаб при шаге кнопкой: ровно ±1 процентный пункт, с выравниванием на целый
- * процент. Масштаб с дробным процентом (после колеса или «вписать», например 37.4%) первым
- * нажатием встаёт на ближайший целый в сторону шага — 38% или 37%, — а дальше идёт по
- * единице, чтобы нужный зум можно было выставить точно.
+ * Ряд масштабов кнопок «−»/«+», в процентах. Раньше шаг был ровно 1%: от 8% новой схемы до
+ * 100% — 92 нажатия (#18 п. 2). Точный процент теперь вводится в поле масштаба.
+ */
+const ZOOM_LADDER = [3, 5, 8, 10, 15, 20, 25, 33, 50, 67, 75, 100, 125, 150, 200, 250, 300];
+
+/**
+ * Следующий масштаб при шаге кнопкой: ближайшее значение ряда строго больше (меньше)
+ * текущего. С любого масштаба (после колеса или «вписать», например 37.4%) первое нажатие
+ * встаёт на значение ряда — 50% или 33%.
  */
 export function stepZoomPercent(zoom: number, direction: 1 | -1): number {
   const pct = zoom * 100;
   // Допуск: 0.29 * 100 = 28.999999999999996 — это 29%, а не «чуть меньше 29».
   const eps = 1e-6;
-  const next = direction > 0 ? Math.floor(pct + eps) + 1 : Math.ceil(pct - eps) - 1;
-  return clampZoom(next / 100);
+  const next = direction > 0
+    ? ZOOM_LADDER.find(p => p > pct + eps)
+    : [...ZOOM_LADDER].reverse().find(p => p < pct - eps);
+  return clampZoom((next ?? pct) / 100);
 }
 
 /**
@@ -29,16 +37,20 @@ export function stepZoomPercent(zoom: number, direction: 1 | -1): number {
  * свободен всегда, а в мониторе с зафиксированным видом панели с этими кнопками нет.
  */
 export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
-  /** Кнопки «−»/«+»: шаг ровно в 1% (см. stepZoomPercent). */
-  const zoomStep = useCallback((direction: 1 | -1) => {
-    // Зумируем вокруг центра видимой области, чтобы картинка не «уезжала».
+  /** Масштаб `zoom` вокруг центра видимой области, чтобы картинка не «уезжала». */
+  const zoomTo = useCallback((zoom: number) => {
     const cx = (canvasRect?.width ?? 800) / 2;
     const cy = (canvasRect?.height ?? 600) / 2;
     const cam = useEditorStore.getState().camera;
-    const nz = stepZoomPercent(cam.zoom, direction);
+    const nz = clampZoom(zoom);
     if (nz === cam.zoom) return;
     setCamera(cx - ((cx - cam.x) * nz) / cam.zoom, cy - ((cy - cam.y) * nz) / cam.zoom, nz);
   }, [canvasRect, setCamera]);
+
+  /** Кнопки «−»/«+»: по ряду масштабов (см. stepZoomPercent). */
+  const zoomStep = useCallback((direction: 1 | -1) => {
+    zoomTo(stepZoomPercent(useEditorStore.getState().camera.zoom, direction));
+  }, [zoomTo]);
 
   const zoomFit = useCallback(() => {
     if (!canvasRect) return;
@@ -57,13 +69,16 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     if (!isFinite(minX)) return;
 
     const pad = 60;
+    // Вписываем в видимую часть, а не во весь холст: он лежит и под боковыми панелями, и под
+    // панелью инструментов (#10 п. 2).
+    const area = visibleCanvasArea(canvasRect);
     const nz = clampZoom(Math.min(
-      canvasRect.width / (maxX - minX + pad * 2),
-      canvasRect.height / (maxY - minY + pad * 2),
+      area.width / (maxX - minX + pad * 2),
+      area.height / (maxY - minY + pad * 2),
     ));
     setCamera(
-      (canvasRect.width - (maxX - minX) * nz) / 2 - minX * nz,
-      (canvasRect.height - (maxY - minY) * nz) / 2 - minY * nz,
+      area.x + (area.width - (maxX - minX) * nz) / 2 - minX * nz,
+      area.y + (area.height - (maxY - minY) * nz) / 2 - minY * nz,
       nz,
     );
   }, [canvasRect, setCamera]);
@@ -80,9 +95,9 @@ export function useZoomControls({ canvasRect, setCamera }: ZoomControlsDeps) {
     if (!canvasRect) return;
     // Формула — в общем хелпере: той же камерой открывается сцена, у которой ещё нет
     // запомненного положения (см. useSceneCameraMemory).
-    const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), canvasRect);
+    const cam = cameraForSheet(resolveSheet(useEditorStore.getState().elements), visibleCanvasArea(canvasRect));
     setCamera(cam.x, cam.y, cam.zoom);
   }, [canvasRect, setCamera]);
 
-  return { zoomStep, zoomFit, zoomFitSheet };
+  return { zoomStep, zoomTo, zoomFit, zoomFitSheet };
 }

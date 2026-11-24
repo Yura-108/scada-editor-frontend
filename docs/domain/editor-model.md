@@ -20,6 +20,22 @@ Classifiers (in the store): `isComponentEl` (a promoted group `isComponent===tru
 - Lifecycle / state-propagation / copy (`getDescendantKeys`, cascade delete, `recomputeAncestorBounds`, paste/import/template key-remap) must use **`[...children, ...composition]`**.
 - Logical tree + serialization children walk **`children` only**.
 
+**Names of new elements.** New elements are named «Круг 1», «Дуга 2»… (`nextElementLabel`, `modules/editor/lib/elementNames.ts`,
+  #18 п. 9): next free number per type across the scene. Types whose `label` is drawn on the canvas
+  (button text, checkbox/toggle caption, progress bar, rectangle fallback) keep their own default —
+  a number there would show on the scheme; the checkbox caption is «Флажок». «Слои» show the label,
+  or the Russian type name when it is empty or the legacy «Element» (`elementDisplayName`).
+
+## The canvas lies under the panels
+
+The Stage spans the whole workspace; the side panels and the tools panel float above it (a panel
+collapses by animation, and the Stage is not resized per pixel of dragging its edge). So anything
+that *fits* — «Вписать схему», «Вписать лист», the first camera of a scene without a saved one —
+fits into `visibleCanvasArea(canvasRect)` (`ui/canvas/lib/visibleArea.ts`), not into the whole
+`canvasRect` (#10 п. 2). Overlays are found by `data-canvas-overlay="left|right|top"`, the canvas
+by `data-canvas-root`; a collapsed panel (translated off the canvas) does not count. A new overlay
+over the canvas must carry the attribute too.
+
 ## Coordinates, states, and rendering
 
 - Child coordinates are **local to the parent container**. Absolute position = sum of rendered `x/y` up the `parentKey` chain (`getAbsoluteRenderedPosition`).

@@ -54,7 +54,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   const {
     elements, selectedIds, selectMultiple, setCanvasRect,
     deleteSelectedElement, copySelectedElement, pasteSelectedElement,
-    camera, scene, setCameraPan, setCameraZoom, updateElementVisual,
+    camera, scene, setCameraPan, updateElementVisual,
     activeGroupKey, enterGroup, exitGroup, clearSelection,
     canvasRect,
     moveSelectedBy, duplicateSelected, selectAllInScope, setCamera,
@@ -66,7 +66,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     setCanvasRect: s.setCanvasRect,
     deleteSelectedElement: s.deleteSelectedElement, copySelectedElement: s.copySelectedElement,
     pasteSelectedElement: s.pasteSelectedElement,
-    camera: s.camera, scene: s.scene, setCameraPan: s.setCameraPan, setCameraZoom: s.setCameraZoom,
+    camera: s.camera, scene: s.scene, setCameraPan: s.setCameraPan,
     updateElementVisual: s.updateElementVisual,
     activeGroupKey: s.activeGroupKey, enterGroup: s.enterGroup, exitGroup: s.exitGroup,
     clearSelection: s.clearSelection,
@@ -119,10 +119,10 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
 
   const { resolveClickTarget, handleElementClick, onTableCellClick } = useElementClick();
 
-  const { handleStagePlacementClick } = usePendingPlacement({ stageRef, pendingPlacement });
+  const { handleStagePlacementClick, placementDropProps } = usePendingPlacement({ stageRef, pendingPlacement });
 
   const { selectionRect, handleWheel, handleStageMouseDown, handleStageMouseMove, handleStageMouseUp } = useStageInteractions({
-    stageRef, camera, setCameraPan, setCameraZoom,
+    stageRef, setCameraPan,
     elements, elementsMap, selectedIds, selectMultiple,
     activeGroupKey, exitGroup, closeMenu, resolveClickTarget,
     readOnly,
@@ -158,7 +158,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
     [rootElements, elementIndex, camera, canvasRect, selectedIds, activeGroupKey],
   );
 
-  const { zoomStep, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
+  const { zoomStep, zoomTo, zoomFit, zoomFitSheet } = useZoomControls({ canvasRect, setCamera });
 
   const { handleMonitorContextMenu, handleMonitorClick, handleMonitorDblClick } = useMonitorClicks({
     stageRef, readOnly, archive, closeMenu, setContextMenu, enterGroup,
@@ -192,7 +192,10 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
   return (
     <div
       ref={containerRef}
+      // По этой метке видимая часть холста ищется под боковыми панелями (lib/visibleArea).
+      data-canvas-root
       id="canvas-viewport"
+      {...placementDropProps}
       className="relative w-full h-full overflow-hidden bg-card context-menu-container"
     >
       <div style={{ width: "100%", height: "100%" }} onContextMenu={(e) => e.preventDefault()}>
@@ -272,6 +275,7 @@ export function Canvas({ readOnly = false, archive = false }: CanvasProps) {
       <ZoomControls
         zoom={camera.zoom}
         onZoomStep={zoomStep}
+        onZoomTo={zoomTo}
         onFit={zoomFit}
         onFitSheet={zoomFitSheet}
         onReset={() => setCamera(0, 0, 1)}

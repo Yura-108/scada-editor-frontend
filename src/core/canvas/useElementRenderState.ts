@@ -11,6 +11,28 @@ import { DiagramElement, GroupElement } from "@/core/scene";
 // отпускания, и коммитит `rotate`, который рендер таблицы не применяет.
 export const NON_TRANSFORMABLE = new Set(["group", "text", "circle", "arc", "curve", "line", "polygon", "table"]);
 
+/** С какого размера выделения поиск идёт по множеству: до него `includes` дешевле кэша. */
+const SELECTION_SET_FROM = 8;
+const selectionSets = new WeakMap<string[], Set<string>>();
+
+/**
+ * Выделен ли элемент.
+ *
+ * Селектор узла вызывается для КАЖДОГО смонтированного узла на каждое изменение стора,
+ * и `selectedIds.includes` после «Выделить всё» давал N×N сравнений на любое движение
+ * камеры. Множество кэшируется по ссылке на массив — как индекс элементов: выделение
+ * меняется только новым массивом, поэтому ссылка — корректный ключ.
+ */
+const isKeySelected = (selectedIds: string[], key: string): boolean => {
+  if (selectedIds.length < SELECTION_SET_FROM) return selectedIds.includes(key);
+  let set = selectionSets.get(selectedIds);
+  if (!set) {
+    set = new Set(selectedIds);
+    selectionSets.set(selectedIds, set);
+  }
+  return set.has(key);
+};
+
 export interface ElementRenderState {
   /** Сам элемент (undefined — удалён из схемы). */
   el: DiagramElement | undefined;
@@ -58,7 +80,7 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
   const base = useSceneView(useShallow((s): Omit<ElementRenderState, "runtime"> => {
     // Индекс кэширован по ссылке на массив — это O(1) поиск, а не проход по нему.
     const el = getElementIndex(s.elements).byKey[elementKey];
-    const isSelected = s.selectedIds.includes(elementKey);
+    const isSelected = isKeySelected(s.selectedIds, elementKey);
     const cell = s.selectedTableCell;
 
     return {
@@ -89,14 +111,28 @@ export function useElementRenderState(elementKey: string): ElementRenderState {
  * composition и children сортируются ОДНИМ пулом: внутри контейнера это соседи, и z-index
  * должен работать между ними. Прежнее правило «примитивы под детьми» остаётся поведением
  * по умолчанию — при равных `zIndex` стабильная сортировка сохраняет порядок конкатенации.
+ *
+ * Результат кэшируется по паре «группа + массив элементов»: селектор вызывается на любое
+ * изменение стора (камера, выделение, такт монитора), а порядок зависит только от состава
+ * группы и `zIndex` её членов — то есть меняется лишь вместе с `elements`. Без кэша каждая
+ * группа схемы сортировала свой состав на каждое движение камеры.
  */
 export function useOrderedMemberKeys(group: GroupElement): string[] {
-  return useSceneView(useShallow(s =>
-    sortKeysByZIndex(
-      [...(group.composition ?? []), ...group.children],
-      getElementIndex(s.elements).byKey,
-    ),
-  ));
+  return useSceneView(useShallow(s => orderedMemberKeys(group, s.elements)));
+}
+
+const orderedKeysCache = new WeakMap<GroupElement, {elements: DiagramElement[]; keys: string[]}>();
+
+function orderedMemberKeys(group: GroupElement, elements: DiagramElement[]): string[] {
+  const hit = orderedKeysCache.get(group);
+  if (hit && hit.elements === elements) return hit.keys;
+
+  const keys = sortKeysByZIndex(
+    [...(group.composition ?? []), ...group.children],
+    getElementIndex(elements).byKey,
+  );
+  orderedKeysCache.set(group, {elements, keys});
+  return keys;
 }
 
 /**

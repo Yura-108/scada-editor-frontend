@@ -30,10 +30,11 @@ export interface CameraSlice {
    * «Вооружённый» инструмент палитры: клик по элементу палитры сохраняет сюда его
    * тип/шаблон, следующий клик по холсту ставит элемент в эту точку и сбрасывает
    * pendingPlacement в null (постановка по одному). id — id элемента палитры (для
-   * подсветки именно его и toggle). Не попадает в историю undo (не меняет elements).
+   * подсветки именно его и toggle), `name` — подпись для подсказки над холстом.
+   * Не попадает в историю undo (не меняет elements).
    */
-  pendingPlacement: { id: number; type: ElementType; template?: DiagramElement[] } | null;
-  setPendingPlacement: (p: { id: number; type: ElementType; template?: DiagramElement[] } | null) => void;
+  pendingPlacement: { id: number; type: ElementType; template?: DiagramElement[]; name?: string } | null;
+  setPendingPlacement: (p: { id: number; type: ElementType; template?: DiagramElement[]; name?: string } | null) => void;
 }
 
 /** Что слайсу нужно от остального стора. */

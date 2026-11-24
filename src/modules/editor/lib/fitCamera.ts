@@ -14,7 +14,8 @@ const DEFAULT_PAD = 40;
  */
 export function cameraForSheet(
   sheet: SheetSize,
-  canvasRect: { width: number; height: number },
+  /** Куда вписывать: видимая часть холста; `x`/`y` — её отступ от угла холста (под панелями). */
+  canvasRect: { width: number; height: number; x?: number; y?: number },
   pad: number = DEFAULT_PAD,
 ): Camera {
   const zoom = clampZoom(Math.min(
@@ -23,8 +24,8 @@ export function cameraForSheet(
   ));
 
   return {
-    x: (canvasRect.width - sheet.w * zoom) / 2,
-    y: (canvasRect.height - sheet.h * zoom) / 2,
+    x: (canvasRect.x ?? 0) + (canvasRect.width - sheet.w * zoom) / 2,
+    y: (canvasRect.y ?? 0) + (canvasRect.height - sheet.h * zoom) / 2,
     zoom,
   };
 }

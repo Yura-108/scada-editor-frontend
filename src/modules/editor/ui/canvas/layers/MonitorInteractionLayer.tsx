@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, {useMemo} from "react";
 import {Layer, Rect} from "react-konva";
 import type Konva from "konva";
 import {DiagramElement} from "@/core/scene";
@@ -77,43 +77,68 @@ interface Props {
  * сцена остаётся некликабельной. Координаты — мировые (Stage применяет камеру).
  */
 export function MonitorInteractionLayer({elements, elementsMap}: Props) {
-  const interactive = elements.filter(el => isInteractive(el.events));
+  // Слой рисуется вместе с Canvas — на каждое движение камеры. Отбор элементов со
+  // скриптами зависит только от схемы, поэтому считается один раз на массив, а не
+  // проходом по всем элементам на каждый кадр пана.
+  const interactive = useMemo(() => elements.filter(el => isInteractive(el.events)), [elements]);
   if (!interactive.length) return <Layer listening={false} />;
-
-  const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
-    const stage = e.target.getStage();
-    if (stage) stage.container().style.cursor = cursor;
-  };
 
   return (
     <Layer>
       {interactive.map(el => {
+        // Геометрия считается здесь, на каждый рендер слоя, а не внутри мемоизированной
+        // области: она зависит от активного состояния и рантайм-оверрайдов, которые
+        // `getRenderedElement` читает нереактивно.
         const r = getRenderedElement(el) as unknown as Record<string, unknown>;
         const {x, y} = getAbsoluteRenderedPos(el, elementsMap);
         const w = Number(r.w) || 0;
         const h = Number(r.h) || 0;
         if (w <= 0 || h <= 0) return null;
         const rotation = Number(r.rotate ?? r.rotation ?? 0) || 0;
-        const clickable = hasScript(findHandler(el.events, "onClick"));
-        const dblClickable = hasScript(findHandler(el.events, "onDoubleClick"));
-        return (
-          <Rect
-            key={el.key}
-            x={x}
-            y={y}
-            width={w}
-            height={h}
-            rotation={rotation}
-            fill="transparent"
-            onMouseEnter={e => setCursor(e, "pointer")}
-            onMouseLeave={e => setCursor(e, "default")}
-            onClick={clickable ? leftButtonOnly(p => void runConfirmed(el, "onClick", p)) : undefined}
-            onTap={clickable ? (e) => { void runConfirmed(el, "onClick", screenPoint(e)); consumed(e); } : undefined}
-            onDblClick={dblClickable ? leftButtonOnly(p => void runConfirmed(el, "onDoubleClick", p)) : undefined}
-            onDblTap={dblClickable ? (e) => void runConfirmed(el, "onDoubleClick", screenPoint(e)) : undefined}
-          />
-        );
+        return <HitArea key={el.key} el={el} x={x} y={y} w={w} h={h} rotation={rotation} />;
       })}
     </Layer>
   );
 }
+
+const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
+  const stage = e.target.getStage();
+  if (stage) stage.container().style.cursor = cursor;
+};
+
+interface HitAreaProps {
+  el: DiagramElement;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+}
+
+/**
+ * Прозрачная область кликов одного элемента.
+ *
+ * Мемоизирована по элементу и геометрии: пока они прежние, область не перерисовывается,
+ * и Konva не перевешивает ей обработчики на каждый кадр пана (новые замыкания при каждом
+ * рендере — это снять и повесить шесть слушателей на узел).
+ */
+const HitArea = React.memo(function HitArea({el, x, y, w, h, rotation}: HitAreaProps) {
+  const clickable = hasScript(findHandler(el.events, "onClick"));
+  const dblClickable = hasScript(findHandler(el.events, "onDoubleClick"));
+  return (
+    <Rect
+      x={x}
+      y={y}
+      width={w}
+      height={h}
+      rotation={rotation}
+      fill="transparent"
+      onMouseEnter={e => setCursor(e, "pointer")}
+      onMouseLeave={e => setCursor(e, "default")}
+      onClick={clickable ? leftButtonOnly(p => void runConfirmed(el, "onClick", p)) : undefined}
+      onTap={clickable ? (e) => { void runConfirmed(el, "onClick", screenPoint(e)); consumed(e); } : undefined}
+      onDblClick={dblClickable ? leftButtonOnly(p => void runConfirmed(el, "onDoubleClick", p)) : undefined}
+      onDblTap={dblClickable ? (e) => void runConfirmed(el, "onDoubleClick", screenPoint(e)) : undefined}
+    />
+  );
+});

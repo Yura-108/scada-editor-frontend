@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState, type RefObject} from "react";
 import {DiagramElement} from "@/core/scene";
 import type {LayerRowData} from "./useLayerTree";
 
@@ -7,7 +7,15 @@ import type {LayerRowData} from "./useLayerTree";
  * раскрытие и свёртка, Enter/пробел — выделить, F2 — войти в группу; перенос фокуса после
  * навигации и прокрутка к строке выделенного.
  */
-export function useLayerKeyboard({visibleRows, selectedIds, toggleCollapsed, handleSelect, enterGroup}: {
+export function useLayerKeyboard({treeRef, renderedRange, scrollToRow, visibleRows, selectedIds, toggleCollapsed, handleSelect, enterGroup}: {
+  treeRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Какие строки сейчас в разметке («первая-последняя»). Список виртуальный: строки вне
+   * видимой области в DOM нет, и фокус на неё можно перенести только после прокрутки.
+   */
+  renderedRange: string;
+  /** Прокрутить список так, чтобы строка с этим номером была видна. */
+  scrollToRow: (index: number) => void;
   visibleRows: LayerRowData[];
   selectedIds: string[];
   toggleCollapsed: (key: string) => void;
@@ -16,7 +24,6 @@ export function useLayerKeyboard({visibleRows, selectedIds, toggleCollapsed, han
 }) {
   // Roving tabindex: у дерева ровно одна точка входа по Tab, дальше — стрелками.
   const [activeKey, setActiveKey] = useState<string | null>(null);
-  const treeRef = useRef<HTMLDivElement>(null);
   const shouldFocusRef = useRef(false);
 
   // Активная строка могла исчезнуть (удаление, undo, свёртывание родителя).
@@ -27,33 +34,43 @@ export function useLayerKeyboard({visibleRows, selectedIds, toggleCollapsed, han
 
   // Фокус переносим только после навигации с клавиатуры — иначе панель воровала бы
   // фокус при любой перерисовке дерева.
+  // Строки может ещё не быть в разметке (список виртуальный): флаг снимается, только когда
+  // фокус действительно перенесён, а эффект повторяется на смену набора строк в разметке.
   useEffect(() => {
     if (!shouldFocusRef.current || !currentKey) return;
+    const row = treeRef.current?.querySelector<HTMLElement>(`[data-layer-key="${CSS.escape(currentKey)}"]`);
+    if (!row) return;
     shouldFocusRef.current = false;
-    treeRef.current
-      ?.querySelector<HTMLElement>(`[data-layer-key="${CSS.escape(currentKey)}"]`)
-      ?.focus();
-  }, [currentKey]);
+    row.focus();
+  }, [currentKey, renderedRange, treeRef]);
 
   // Элемент, за которым следует дерево: последний выделенный. `selectMultiple`
   // дописывает свежий ключ в конец, а выделение с холста кладёт единственный.
   const selectedKey = selectedIds.length ? selectedIds[selectedIds.length - 1] : null;
 
-  const selectedRowVisible = useMemo(
-    () => !!selectedKey && visibleRows.some(r => r.el.key === selectedKey),
+  // Номер строки выделенного в дереве; −1 — строки нет (свёрнут предок, служебный элемент).
+  const selectedRowIndex = useMemo(
+    () => (selectedKey ? visibleRows.findIndex(r => r.el.key === selectedKey) : -1),
     [selectedKey, visibleRows],
   );
+  const selectedRowVisible = selectedRowIndex >= 0;
+
+  // Свежие номер и прокрутка — через ссылку: эффект ниже не должен срабатывать на их смену.
+  const scrollTargetRef = useRef({selectedRowIndex, scrollToRow});
+  useEffect(() => {
+    scrollTargetRef.current = {selectedRowIndex, scrollToRow};
+  });
 
   // Прокрутка к строке выделенного. Зависимость — флаг «строка есть в дереве», а не сам
-  // `visibleRows`: тот пересоздаётся на каждую правку схемы, и список дёргался бы на
-  // каждом кадре перетаскивания фигуры по холсту.
-  // `block: "nearest"` обязателен: слева два вложенных скролл-контейнера (обёртка <aside>
-  // в WorkSpace тоже прокручиваемая), и "center" двигал бы заодно и внешний.
+  // `visibleRows` или номер строки: те меняются на каждую правку схемы, и список дёргался бы
+  // на каждом кадре перетаскивания фигуры по холсту.
+  // Прокручивает сам список, а не `scrollIntoView` у строки: в виртуальном списке строки вне
+  // видимой области в разметке нет. Внешний скролл-контейнер (обёртка <aside> в WorkSpace)
+  // при этом не двигается — как и раньше с `block: "nearest"`.
   useEffect(() => {
     if (!selectedKey || !selectedRowVisible) return;
-    treeRef.current
-      ?.querySelector<HTMLElement>(`[data-layer-key="${CSS.escape(selectedKey)}"]`)
-      ?.scrollIntoView({block: "nearest"});
+    const {selectedRowIndex: index, scrollToRow: scroll} = scrollTargetRef.current;
+    if (index >= 0) scroll(index);
   }, [selectedKey, selectedRowVisible]);
 
   const moveFocus = (delta: number) => {
@@ -63,6 +80,7 @@ export function useLayerKeyboard({visibleRows, selectedIds, toggleCollapsed, han
     // остался бы висеть и сработал бы на следующей перерисовке дерева.
     if (!next || next.el.key === currentKey) return;
     shouldFocusRef.current = true;
+    scrollToRow(Math.min(visibleRows.length - 1, Math.max(0, idx + delta)));
     setActiveKey(next.el.key);
   };
 
@@ -107,5 +125,5 @@ export function useLayerKeyboard({visibleRows, selectedIds, toggleCollapsed, han
     }
   };
 
-  return {treeRef, currentKey, setActiveKey, handleKeyDown};
+  return {currentKey, setActiveKey, handleKeyDown};
 }

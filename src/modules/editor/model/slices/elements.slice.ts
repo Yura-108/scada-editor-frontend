@@ -160,8 +160,8 @@ export const createElementsSlice = (set: EditorSet, get: () => EditorState): Ele
 
     // Элемент строится в мировых координатах в корне сцены; в открытый контейнер его
     // переносит placeNewElement.
-    const element = buildNewElement(type, x, y, scene?.id, extraProps);
     const {activeGroupKey, elements} = get();
+    const element = buildNewElement(type, x, y, scene?.id, extraProps, elements);
     set({elements: placeNewElement(elements, element, activeGroupKey, scene?.id)});
   },
   deleteSelectedElement: async () => {

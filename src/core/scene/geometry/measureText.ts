@@ -20,9 +20,25 @@ interface TextSize {
   h: number;
 }
 
-/** Потолок кэша: ключей ровно столько, сколько различных подписей на схеме. */
-const CACHE_LIMIT = 500;
+/**
+ * Потолок кэша: ключей ровно столько, сколько различных подписей на схеме.
+ *
+ * Запас — на большую схему целиком: при потолке в 500 чертёж с тысячей разных подписей
+ * не помещался, кэш сбрасывался раз за разом, и почти каждый расчёт границ (отсечение по
+ * видимой области, рамки групп) заново создавал узел Konva. Запись — строка-ключ и два
+ * числа, так что и полный кэш занимает единицы мегабайт.
+ */
+const CACHE_LIMIT = 20_000;
 const cache = new Map<string, TextSize>();
+
+/**
+ * Освобождает место под новую запись. Уходит одна — самая старая (`Map` хранит порядок
+ * вставки), а не весь кэш: полный сброс на переполнении означал бы перемер всей схемы.
+ */
+const evictOldest = () => {
+  const oldest = cache.keys().next();
+  if (!oldest.done) cache.delete(oldest.value);
+};
 
 /** Режим ширины — тот же, что в рендерере: фикс. ширина только после растягивания. */
 const fixedWidthOf = (el: Partial<LeafElement>): number | undefined =>
@@ -52,7 +68,7 @@ export function measureText(el: Partial<LeafElement>): TextSize {
     ? {w: width ?? text.length * fontSize * 0.6, h: fontSize * 1.2}
     : measureWithKonva(text, fontSize, fontFamily, fontStyle, width);
 
-  if (cache.size >= CACHE_LIMIT) cache.clear();
+  if (cache.size >= CACHE_LIMIT) evictOldest();
   cache.set(key, size);
   return size;
 }

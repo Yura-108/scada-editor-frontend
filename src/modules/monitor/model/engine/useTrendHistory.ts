@@ -4,6 +4,7 @@ import {mergeTrendHistory, setTrendWatch, useTrendStore} from "@/core/canvas";
 import {getOpenScene} from "@/core/project";
 import {fetchArchiveValues} from "../archive/archive";
 import type {BindingIndex} from "./bindingIndex";
+import {flushTrendPoints} from "./trendFeed";
 import type {RuntimeMode} from "./useRuntimeEngine";
 
 /** Загрузка истории трендов; `trendHistoryAbortRef` — текущий запрос (его обрывает выход из архива). */
@@ -23,7 +24,11 @@ export function useTrendHistoryLoader() {
     if (projectId == null) return controller;
     fetchArchiveValues([...watched], at - retentionMs, at, {projectId, signal: controller.signal})
       .then(series => {
-        if (!controller.signal.aborted) mergeTrendHistory(series, at);
+        if (controller.signal.aborted) return;
+        // Живые точки, ждущие такта, — в стор ДО слияния: история заменяет всё, что старше
+        // `at`, и точка, дописанная после неё, легла бы поверх архива второй раз.
+        flushTrendPoints();
+        mergeTrendHistory(series, at);
       })
       .catch(e => {
         if (controller.signal.aborted) return;

@@ -1,4 +1,6 @@
 import {toast} from "sonner";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
+import {formatServerTime} from "@/shared/lib/serverTime";
 import type {EditorState} from "../editorStore";
 import {
   type VersionKind,
@@ -290,6 +292,18 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         toast.info("Предыдущего ручного сохранения нет");
         return false;
       }
+
+      // Раньше кнопка срабатывала сразу, без вопроса, хотя у «Восстановить» в истории он есть,
+      // и не говорила, к какой версии вернёт (#21 п. 4).
+      const ok = await confirmModal({
+        title: `Вернуться к версии ${previous.version_no}?`,
+        description:
+          `Версия ${previous.version_no} сохранена ${formatServerTime(previous.created_at)}, ${previous.user_name}. ` +
+          "Будет создана новая версия с её содержимым, история не переписывается. " +
+          "Несохранённые изменения на холсте будут потеряны.",
+        confirmLabel: "Вернуться",
+      });
+      if (!ok) return false;
 
       return await get().restoreVersion(previous.version_no);
     } catch (err) {

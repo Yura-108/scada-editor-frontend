@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useEffect } from "react";
+import { DragEvent, RefObject, useCallback, useEffect, useMemo } from "react";
 import Konva from "konva";
 import {useEditorStore} from "../../../model/editorStore";
 import {pickImageFile, fitImageSize} from "@/core/scene";
@@ -50,11 +50,33 @@ export function usePendingPlacement({ stageRef, pendingPlacement }: PendingPlace
         updateElementVisual(key, { src, w, h });
       })();
     } else {
+      // Поставленный элемент сразу выделен — справа его свойства, а не листа (#10 п. 7).
+      // Новый ключ — тот, которого не было до постановки: `addElementAt` его не возвращает.
+      const before = new Set(useEditorStore.getState().elements.map(el => el.key));
       addElementAt(worldX, worldY, type);
+      const added = useEditorStore.getState().elements.find(el => !before.has(el.key));
+      if (added) useEditorStore.getState().select(added.key);
     }
-
     setPendingPlacement(null); // ставим по одному
   }, [stageRef]);
 
-  return { handleStagePlacementClick };
+  /**
+   * Перетаскивание из палитры (HTML5 drag-and-drop): элемент палитры при старте
+   * «вооружается», бросок на холст ставит его в точку броска тем же путём, что и клик.
+   */
+  const placementDropProps = useMemo(() => ({
+    onDragOver: (e: DragEvent<HTMLElement>) => {
+      if (!useEditorStore.getState().pendingPlacement) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    },
+    onDrop: (e: DragEvent<HTMLElement>) => {
+      if (!useEditorStore.getState().pendingPlacement) return;
+      e.preventDefault();
+      stageRef.current?.setPointersPositions(e.nativeEvent);
+      handleStagePlacementClick();
+    },
+  }), [stageRef, handleStagePlacementClick]);
+
+  return { handleStagePlacementClick, placementDropProps };
 }

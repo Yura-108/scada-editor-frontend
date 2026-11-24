@@ -1,4 +1,5 @@
 import React, {useRef} from "react";
+import {ListOrdered} from "lucide-react";
 import {SceneTabs} from "../scene-tabs/SceneTabs";
 import {EditorPanel} from "./EditorPanel";
 import {RecipesPanel} from "../recipes/RecipesPanel";
@@ -15,7 +16,7 @@ import {useEditorStore} from "../../model/editorStore";
 
 // Вкладки-не-схемы для SceneTabs. На уровне модуля, а не литералом в JSX: новый объект
 // на каждый рендер сбрасывал бы мемоизацию ряда вкладок внутри компонента.
-const RECIPES_TAB = {key: "recipes", label: "Рецепты"} as const;
+const RECIPES_TAB = {key: "recipes", label: "Рецепты", icon: ListOrdered} as const;
 const EDITOR_TAB = {key: "editor", label: "Редактор"} as const;
 
 export function WorkSpace() {

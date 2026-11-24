@@ -53,8 +53,6 @@ export function ShapeInscription({
   autoFit = true,
 }: ShapeInscriptionProps) {
   const available = Math.max(w - 2 * inset, 1);
-  // Подписка на зум локальная (как у `Anchor`): нужна только для порога отрисовки ниже.
-  const zoom = useSceneView(s => s.camera.zoom);
 
   // Кегль подбираем измерением: Konva умеет только переносить и обрезать, а нам нужно
   // сжать. Узел временный — в сцену не попадает.
@@ -67,10 +65,13 @@ export function ShapeInscription({
     return Math.max(MIN_FONT_SIZE, Math.floor((fontSize * available) / width));
   }, [autoFit, text, fontSize, fontFamily, bold, available]);
 
-  if (!text) return null;
   // Тот же порог, что у отдельного текстового элемента: надпись мельче ~5 px на экране
-  // читателю ничего не даёт, а рисуется наравне с остальными.
-  if (!isTextVisibleAtZoom(fitted, zoom)) return null;
+  // читателю ничего не даёт, а рисуется наравне с остальными. Подписка локальная (как у
+  // `Anchor`) и отдаёт булево, а не сам зум: надпись перерисовывается только при переходе
+  // через порог, а не на каждый тик колеса.
+  const glyphsVisible = useSceneView(s => isTextVisibleAtZoom(fitted, s.camera.zoom));
+
+  if (!text || !glyphsVisible) return null;
 
   return (
     <Text

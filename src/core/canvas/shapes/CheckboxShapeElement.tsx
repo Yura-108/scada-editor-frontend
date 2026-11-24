@@ -19,7 +19,7 @@ export function CheckboxShapeElement({ el, isSelected, snap, onElementClick, upd
   const h = Math.max(rendered.h || 20, BOX);
   const boxY = (h - BOX) / 2;
   const checked = !!rendered.checked;
-  const label = rendered.label ?? "Checkbox";
+  const label = rendered.label ?? "Флажок";
   const accent = rendered.color || "#3b82f6";            // Цвет при отметке (заливка + акцент)
   const boxStroke = rendered.strokeColor || accent;       // Цвет рамки (независимо от акцента)
   const boxBg = rendered.backgroundColor || (isDark ? "#0a0a0a" : "#ffffff"); // Фон квадрата (когда снят)

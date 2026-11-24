@@ -1,6 +1,6 @@
-import {cellRuntimeKey, getRenderedElement, getSceneView} from "@/core/scene";
+import {cellRuntimeKey, getElementIndex, getRenderedElement, getSceneView} from "@/core/scene";
 import type {BindingEntry, ScriptSandbox} from "@/core/runtime";
-import {devLog, isDev} from "@/shared/lib/devLog";
+import {devLog, isRuntimeTraceOn} from "@/shared/lib/devLog";
 import type {BindingIndex} from "./bindingIndex";
 import {collectResults, EMPTY_RUN, startBindings} from "./runBindings";
 import {applyInOrder, computeNoDataElementKeys, setsEqual, type EngineBuffers} from "./engineBuffers";
@@ -100,9 +100,11 @@ export function flushEngine(
 
   if (!affected.size && !Object.keys(tableRowProps).length && !noDataKeys) return;
 
-  const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
+  // Общий индекс (кэш по ссылке на массив), а не своя карта: её сборка на каждый такт —
+  // проход по всей схеме ради нескольких затронутых привязок.
+  const {byKey} = getElementIndex(getSceneView().elements);
   const selfOf = (key: string) => {
-    const el = byKey.get(key);
+    const el = byKey[key];
     return el ? getRenderedElement(el) : null;
   };
   const generation = idx.generation;
@@ -122,9 +124,10 @@ export function flushEngine(
 
     publishErrors(errors);
 
-    // Только при разработке: таблицы на каждый тик (сотни тегов) в рабочей сборке забивали
-    // консоль оператора и держали в памяти копии значений.
-    if (isDev) {
+    // Только при разработке и по флагу (`isRuntimeTraceOn`): таблицы на каждый тик (сотни
+    // тегов) забивали консоль и держали в памяти копии значений.
+    const trace = isRuntimeTraceOn();
+    if (trace) {
       console.groupCollapsed(
         `[monitor:engine] тик: изменилось тегов ${changedTags.length}, свойств ${changedProps.length}, локальных строк ${changedNames.length}, затронуто биндингов ${affected.size}, сработало ${fired.length}`,
       );
@@ -138,7 +141,7 @@ export function flushEngine(
     if (Object.keys(stateNameByKey).length || Object.keys(propsByKey).length || noDataKeys) {
       // Слои no-op №2/№3 (то же состояние/значение, пустой батч) — внутри
       // applyRuntimeBatch: без фактических изменений set() не вызывается.
-      log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
+      if (trace) log("применяю батч:", {stateNameByKey, propsByKey, noDataKeys});
       getSceneView().applyRuntimeBatch({stateNameByKey, propsByKey, noDataKeys});
     }
   });

@@ -5,27 +5,56 @@ import {ChevronDown, ChevronRight} from "lucide-react";
 import {DiagramElement} from "@/core/scene";
 import {cn} from "@/shared/lib/cn";
 import {layerIcon} from "./layerIcons";
+import {elementDisplayName} from "../../lib/elementNames";
 
-/** Строка дерева слоёв: treeitem с уровнем и состоянием, стрелка свёртки, иконка, подпись. */
-export function LayerRow({el, depth, isComposition, collapsed, selectedIds, currentKey, onClick, onDoubleClick, onKeyDown, toggleCollapsed}: {
+/**
+ * Обработчики строки. Объект один на всю панель и по ссылке не меняется — иначе мемоизация
+ * строк не срабатывала бы ни разу (см. `LayersPanel`).
+ */
+export interface LayerRowActions {
+  click: (el: DiagramElement, e: React.MouseEvent) => void;
+  doubleClick: (el: DiagramElement) => void;
+  keyDown: (e: React.KeyboardEvent, el: DiagramElement, hasMembers: boolean, isCollapsed: boolean) => void;
+  /** Строка получила фокус — стрелки дальше считаются от неё. */
+  focus: (el: DiagramElement) => void;
+  toggleCollapsed: (key: string) => void;
+}
+
+/**
+ * Высота строки и зазор между строками, px. Виртуальный список считает положение строк по
+ * этим числам, не измеряя разметку, поэтому высота задана строке явно (`h-7` = 28 px).
+ */
+export const LAYER_ROW_HEIGHT = 28;
+export const LAYER_ROW_GAP = 2;
+
+interface LayerRowProps {
   el: DiagramElement;
   depth: number;
   isComposition: boolean;
-  collapsed: Set<string>;
-  selectedIds: string[];
-  currentKey: string | null;
-  onClick: (e: React.MouseEvent) => void;
-  onDoubleClick: () => void;
-  onKeyDown: (e: React.KeyboardEvent, el: DiagramElement, hasMembers: boolean, isCollapsed: boolean) => void;
-  toggleCollapsed: (key: string) => void;
-}) {
-  const isContainer = el.type === "group";
-  const memberKeys = isContainer ? [...(el.composition ?? []), ...el.children] : [];
-  const hasMembers = memberKeys.length > 0;
-  const isCollapsed = collapsed.has(el.key);
-  const isSelected = selectedIds.includes(el.key);
+  isCollapsed: boolean;
+  isSelected: boolean;
+  /** Строка — точка входа в дерево по Tab (roving tabindex). */
+  isCurrent: boolean;
+  /** Смещение строки от начала списка, px: в разметке только видимые строки (см. `LayersPanel`). */
+  top: number;
+  actions: LayerRowActions;
+}
 
-  const title = el.label || el.type;
+/**
+ * Строка дерева слоёв: treeitem с уровнем и состоянием, стрелка свёртки, иконка, подпись.
+ *
+ * Мемоизирована, а всё изменчивое приходит булевыми флагами: пока строка получала весь
+ * `selectedIds`, множество свёрнутых и новые замыкания, любая правка схемы и любая смена
+ * выделения перерисовывали дерево целиком — на схеме в тысячи элементов это тысячи строк на
+ * каждое действие. Теперь перерисовываются только строки, у которых что-то изменилось.
+ */
+export const LayerRow = React.memo(function LayerRow({
+  el, depth, isComposition, isCollapsed, isSelected, isCurrent, top, actions,
+}: LayerRowProps) {
+  const isContainer = el.type === "group";
+  const hasMembers = isContainer && (el.composition?.length ?? 0) + el.children.length > 0;
+
+  const title = elementDisplayName(el);
   const icon = layerIcon(el);
 
   return (
@@ -35,18 +64,19 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
       aria-level={depth + 1}
       aria-selected={isSelected}
       aria-expanded={hasMembers ? !isCollapsed : undefined}
-      tabIndex={el.key === currentKey ? 0 : -1}
+      tabIndex={isCurrent ? 0 : -1}
       className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer select-none text-sm transition-colors",
+        "absolute inset-x-0 top-0 h-7 flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer select-none text-sm transition-colors",
         isSelected
           ? "bg-primary/20 text-primary"
           : "text-foreground hover:bg-accent",
         isComposition && "opacity-60",
       )}
-      style={{paddingLeft: `${8 + depth * 14}px`}}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
-      onKeyDown={(e) => onKeyDown(e, el, hasMembers, isCollapsed)}
+      style={{paddingLeft: `${8 + depth * 14}px`, transform: `translateY(${top}px)`}}
+      onClick={(e) => actions.click(el, e)}
+      onFocus={() => actions.focus(el)}
+      onDoubleClick={() => actions.doubleClick(el)}
+      onKeyDown={(e) => actions.keyDown(e, el, hasMembers, isCollapsed)}
       title={el.isComponent ? `${title} (компонент)` : isComposition ? `${title} (примитив компонента)` : title}
     >
       {hasMembers ? (
@@ -56,7 +86,7 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
           type="button"
           tabIndex={-1}
           aria-hidden
-          onClick={(e) => { e.stopPropagation(); toggleCollapsed(el.key); }}
+          onClick={(e) => { e.stopPropagation(); actions.toggleCollapsed(el.key); }}
           className="shrink-0 text-muted-foreground hover:text-foreground"
         >
           {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
@@ -68,4 +98,4 @@ export function LayerRow({el, depth, isComposition, collapsed, selectedIds, curr
       <span className="truncate">{title}</span>
     </div>
   );
-}
+});

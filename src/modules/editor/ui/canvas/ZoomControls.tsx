@@ -1,14 +1,17 @@
 "use client";
 
 import React from "react";
-import { Minus, Plus, Maximize, RotateCcw, FileText, Lock, Unlock } from "lucide-react";
+import { Minus, Plus, Maximize, RotateCcw, FileText, Lock, Monitor } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import {IconButton} from "@/shared/ui/IconButton";
+import {ZoomPercentField} from "./ZoomPercentField";
 
 interface ZoomControlsProps {
   zoom: number;
-  /** Шаг в 1 процентный пункт: 1 — «+», −1 — «−». */
+  /** Шаг по ряду масштабов: 1 — «+», −1 — «−». */
   onZoomStep: (direction: 1 | -1) => void;
+  /** Масштаб, введённый в поле процентов. */
+  onZoomTo: (zoom: number) => void;
   onFit: () => void;
   onFitSheet: () => void;
   onReset: () => void;
@@ -34,7 +37,7 @@ interface ZoomControlsProps {
  * переменной нет — работает запасное значение 0px.
  */
 export function ZoomControls({
-  zoom, onZoomStep, onFit, onFitSheet, onReset, readOnly, viewLocked, onToggleViewLock,
+  zoom, onZoomStep, onZoomTo, onFit, onFitSheet, onReset, readOnly, viewLocked, onToggleViewLock,
 }: ZoomControlsProps) {
   const panel = "absolute bottom-4 z-toolbar flex items-center gap-0.5 rounded-lg border bg-card/90 backdrop-blur px-1.5 py-1 shadow-lg select-none transition-[right] duration-300 ease-in-out";
   const style = { right: "calc(var(--ws-right-m, 0px) + 16px)" };
@@ -51,11 +54,9 @@ export function ZoomControls({
 
   return (
     <div style={style} className={panel}>
-      <IconButton icon={Minus} label="Уменьшить на 1%" onClick={() => onZoomStep(-1)} />
-      <span className="w-12 text-center text-xs font-medium text-foreground tabular-nums">
-        {Math.round(zoom * 100)}%
-      </span>
-      <IconButton icon={Plus} label="Увеличить на 1%" onClick={() => onZoomStep(1)} />
+      <IconButton icon={Minus} label="Уменьшить" onClick={() => onZoomStep(-1)} />
+      <ZoomPercentField zoom={zoom} onZoomTo={onZoomTo} />
+      <IconButton icon={Plus} label="Увеличить" onClick={() => onZoomStep(1)} />
       <div className="mx-0.5 h-4 w-px bg-border" />
       <IconButton icon={Maximize} label="Вписать схему" onClick={onFit} />
       <IconButton icon={FileText} label="Вписать лист" onClick={onFitSheet} />
@@ -63,15 +64,23 @@ export function ZoomControls({
       {!readOnly && (
         <>
           <div className="mx-0.5 h-4 w-px bg-border" />
-          <IconButton
-            icon={viewLocked ? Lock : Unlock}
-            label="Зафиксировать вид для монитора"
-            pressed={viewLocked}
+          {/* Значок монитора с подписью, а не замок: замок читался как «редактирование
+              заблокировано» (#18 п. 4). Нажатая кнопка — вид зафиксирован. */}
+          <button
+            type="button"
+            aria-pressed={viewLocked}
             onClick={onToggleViewLock}
             title={viewLocked
               ? "Вид для монитора зафиксирован (рамка на холсте) — нажмите, чтобы снять"
               : "Зафиксировать этот вид для монитора: оператор увидит схему так и не сможет её зумить и двигать"}
-          />
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors",
+              viewLocked ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <Monitor size={14} />
+            {viewLocked ? "Вид монитора задан" : "Вид монитора"}
+          </button>
         </>
       )}
     </div>

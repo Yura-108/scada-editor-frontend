@@ -1,6 +1,8 @@
 import { DiagramElement } from "../types/editorElement.type";
 import { ElementIndex } from "../element/elementIndex";
-import { elementBoundsRendered } from "./getElementBounds";
+import { readActiveStates } from "../activeStates";
+import { useRuntimeOverlayStore } from "../runtimeOverlayStore";
+import { ElementBounds, elementBoundsRendered } from "./getElementBounds";
 
 /**
  * Схемы меньше этого размера отдаём целиком: отсечение само по себе стоит
@@ -16,6 +18,47 @@ const CULLING_MIN_ELEMENTS = 200;
  * «впритык» дало бы дёрганье вместо выигрыша.
  */
 const MARGIN_RATIO = 0.5;
+
+interface RootBoundsCache {
+  states: Record<string, string>;
+  overrides: Record<string, Record<string, unknown>>;
+  byKey: Map<string, ElementBounds>;
+}
+
+/**
+ * Границы корневых узлов, посчитанные для конкретной схемы.
+ *
+ * Отсечение пересчитывается на каждое движение камеры, а границы корня от камеры не
+ * зависят: это обход всех его потомков с подъёмом по предкам и измерением текста. Без
+ * кэша каждый кадр пана заново обходил всю схему ради того же ответа.
+ *
+ * Границы зависят ровно от трёх вещей: массива элементов (индекс кэширован по ссылке на
+ * него), активных состояний и рантайм-оверрайдов монитора — их `getRenderedElement` читает
+ * изнутри. Все три меняются только заменой объекта, поэтому сравнения ссылок достаточно:
+ * сменилась любая — кэш схемы сбрасывается целиком. WeakMap не держит старые схемы в памяти.
+ */
+const rootBoundsCache = new WeakMap<ElementIndex, RootBoundsCache>();
+
+const rootBoundsReader = (index: ElementIndex): ((el: DiagramElement) => ElementBounds) => {
+  const states = readActiveStates();
+  const overrides = useRuntimeOverlayStore.getState().overridesByKey;
+
+  let cache = rootBoundsCache.get(index);
+  if (!cache || cache.states !== states || cache.overrides !== overrides) {
+    cache = {states, overrides, byKey: new Map()};
+    rootBoundsCache.set(index, cache);
+  }
+  const {byKey} = cache;
+
+  return (el) => {
+    let bounds = byKey.get(el.key);
+    if (!bounds) {
+      bounds = elementBoundsRendered(el, index);
+      byKey.set(el.key, bounds);
+    }
+    return bounds;
+  };
+};
 
 interface Params {
   /** Корневые узлы сцены в порядке отрисовки. */
@@ -61,6 +104,8 @@ export function selectVisibleRootKeys({
   const alwaysVisible = new Set(selectedIds);
   if (activeGroupKey) alwaysVisible.add(activeGroupKey);
 
+  const boundsOf = rootBoundsReader(elementIndex);
+
   const keys: string[] = [];
   for (const el of rootElements) {
     if (alwaysVisible.has(el.key)) {
@@ -68,7 +113,7 @@ export function selectVisibleRootKeys({
       continue;
     }
 
-    const b = elementBoundsRendered(el, elementIndex);
+    const b = boundsOf(el);
     // Пустая группа даёт неконечные границы — такие оставляем на холсте.
     if (!isFinite(b.minX)) {
       keys.push(el.key);

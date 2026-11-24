@@ -8,7 +8,7 @@ import {adoptProcedureStatuses, pushProcedureEvents} from "../useProcedureStore"
 import {pushTaskStatuses, resetTaskStatuses} from "../useAutomationTasksStore";
 import {openRuntimeConnection, type RuntimeConnection, type RuntimeStatus} from "./runtimeConnection";
 import {ingestProperties, ingestTags, type EngineBuffers} from "./engineBuffers";
-import {pushTrendPoints, rememberWireBools} from "./trendFeed";
+import {dropQueuedTrendPoints, flushTrendPoints, pushTrendPoints, queueTrendPoints, rememberWireBools} from "./trendFeed";
 import type {RuntimeMode} from "./useRuntimeEngine";
 import type {SceneSubscription} from "./useSceneSubscription";
 
@@ -105,7 +105,9 @@ export function useLiveConnection({
         // флаша сместила бы секундомер шага. Отдаём сразу.
         pushProcedureEvents(procedures);
         rememberWireBools(tags);
-        pushTrendPoints(tags);
+        // Точки трендов — в очередь до такта (см. trendFeed): в стор они идут раз в такт,
+        // а не на каждый кадр WS.
+        queueTrendPoints(tags);
         // Несколько апдейтов одного тега в батче: Map даёт last-write-wins (см. ingestTags).
         ingestTags(buffers, tags);
         ingestProperties(buffers, properties);
@@ -134,9 +136,14 @@ export function useLiveConnection({
 
     // Именно interval, а не rAF: rAF замерзает в фоновой вкладке, значения
     // копились бы без применения. Плюс мгновенный догон при возврате на вкладку.
-    const timer = setInterval(() => flushRef.current(), FLUSH_INTERVAL_MS);
+    // Такт: сначала точки трендов, потом значения — обе части кадра ложатся на экран вместе.
+    const tick = () => {
+      flushTrendPoints();
+      flushRef.current();
+    };
+    const timer = setInterval(tick, FLUSH_INTERVAL_MS);
     const onVisibility = () => {
-      if (!document.hidden) flushRef.current();
+      if (!document.hidden) tick();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -156,6 +163,7 @@ export function useLiveConnection({
       document.removeEventListener("visibilitychange", onVisibility);
       conn.close();
       connRef.current = null;
+      dropQueuedTrendPoints();
       resetSessionState();
       setSessionId(null);
       setStatusDetail(null);

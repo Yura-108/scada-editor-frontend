@@ -27,9 +27,16 @@ returns a bare array with no total, so "more" means "the last page was full").
   implementation, shared by the Konva shape and the monitor's SVG `TrendModal`.
 - **Monitor data**: `useTrendStore` holds series only for tags in `watched` (pens of the open
   scene). `useRuntimeEngine` sets `watched` and loads `[now − window, now]` from
-  `GET /api/runtime/archive/values` on every `index` change, and appends WS points in
-  `onSnapshot`/`onUpdate` **directly, not through `buffers.pending`/`flush`** — coalescing would merge
-  two changes inside one flush tick. `TrendShapeElement` treats "my pens are watched" as "I am in
+  `GET /api/runtime/archive/values` on every `index` change. WS points go **not through
+  `buffers.pending`/`flush`** — coalescing would merge two changes inside one flush tick — but through
+  their own queue in `trendFeed.ts`: `onUpdate` queues every point (`queueTrendPoints`) and the
+  engine tick hands the queue to the store in one `setState` (`flushTrendPoints`, right before
+  `flush`). Appending on every WS frame copied the series and redrew the whole canvas layer several
+  times per tick. A point keeps the frame's `ts`, so the delay is invisible on the time axis.
+  `onSnapshot` and the archive tape still push immediately (`pushTrendPoints`, which drains the queue
+  first). The queue is drained before `mergeTrendHistory` (history replaces everything older than its
+  `to`; a point appended after it would land on top of the archive twice) and dropped when the live
+  session ends. `TrendShapeElement` treats "my pens are watched" as "I am in
   the monitor"; there is no readOnly flag in the render context.
 - **The operator's changes are local**: `TrendModal` (opened by «Открыть тренд» in the monitor
   menu; trends get no «Опции») keeps window, scale, hidden pens and the rewind position in its own

@@ -1,4 +1,6 @@
-import {cellBindings, cellRuntimeKey, getRenderedElement, getSceneView, isLiveField, propertyByName} from "@/core/scene";
+import {
+  cellBindings, cellRuntimeKey, getElementIndex, getRenderedElement, getSceneView, isLiveField, propertyByName,
+} from "@/core/scene";
 import type {SandboxBinding, ScriptSandbox} from "@/core/runtime";
 import {devLog} from "@/shared/lib/devLog";
 import type {BindingIndex} from "./bindingIndex";
@@ -109,11 +111,11 @@ export function reseedScene(
   // исполняет только биндинги ИЗМЕНИВШИХСЯ тегов — очередной кадр приносит то же
   // значение, страж no-op его отсекает, и биндинг не выполняется. Ровно этот путь
   // проходит оператор, применивший рецепт на одной схеме и перешедший на другую.
-  const byKey = new Map(getSceneView().elements.map(el => [el.key, el] as const));
+  const {byKey} = getElementIndex(getSceneView().elements);
   const toRun = idx.all.filter(cb => hasKnownTrigger(cb, buf.values, buf.valuesByProp));
   const work = sandbox && toRun.length
     ? startBindings(sandbox, generation, toRun, buf, key => {
-      const el = byKey.get(key);
+      const el = byKey[key];
       return el ? getRenderedElement(el) : null;
     })
     : Promise.resolve(EMPTY_RUN);
