@@ -1,8 +1,8 @@
 import {NextRequest} from "next/server";
-import {protectedRoute} from "@/lib/protected";
+import {protectedRoute} from "@/server/auth/protected";
 import {
   badRecipeId, missingProjectId, parseProjectId, parseRecipeId, proxyProcedure,
-} from "@/lib/procedureProxy";
+} from "@/server/proxy/procedureProxy";
 
 export const GET = protectedRoute(async (req: NextRequest, {token, params}) => {
   const id = parseRecipeId(params.id);

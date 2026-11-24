@@ -1,0 +1,178 @@
+"use client";
+
+import React, {useMemo, useState} from "react";
+import {ChevronDown, Pencil, Trash2, X} from "lucide-react";
+import {cn} from "@/shared/lib/cn";
+import {Button} from "@/shared/ui/Button";
+import {IconButton} from "@/shared/ui/IconButton";
+import {Banner} from "@/shared/ui/Banner";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {Spinner} from "@/shared/ui/Spinner";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
+import {useDeleteTemplate, useTemplates} from "../api/templates";
+import {groupTemplates} from "../lib/automationTemplates";
+import {openTemplateModal} from "./OpenTemplateModal";
+import type {AutomationTaskTemplate} from "../types/automationTemplate.types";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
+import {SidePanel} from "./SidePanel";
+
+const SIZE = {min: 220, max: 520, initial: 288};
+
+/** Общий пустой список: `?? []` в рендере давал бы новый массив и сбивал useMemo. */
+const NO_TEMPLATES: AutomationTaskTemplate[] = [];
+
+interface Props {
+  /** Вставка кладёт в набор черновик задачи; сохраняет его обычное сохранение набора. */
+  /** Нет — нет права правки в проекте: шаблоны видны, но вставить их некуда. */
+  onInsert?: (template: AutomationTaskTemplate) => void;
+  /** Узкое окно: полоса у края, открытая — поверх формы (#7 п. 1). */
+  overlay: boolean;
+}
+
+/**
+ * Палитра заготовок задач — общая для всех проектов, фильтра по проекту нет.
+ * Порядок внутри группы задаёт сервер (по имени), группировка по категории — здесь.
+ */
+export function TemplatePalette({onInsert, overlay}: Props) {
+  const templates = useTemplates();
+  const items = templates.data ?? NO_TEMPLATES;
+  // Пока есть список, перечитка (после сохранения) идёт фоном и список не прячется.
+  // Без списка «Повторить» после ошибки снова показывает «Загрузка…», а не старую ошибку.
+  const status =
+    templates.status === "success" ? "ready" : templates.isFetching ? "loading" : "error";
+  const error = templates.error
+    ? templates.error.message || "Не удалось загрузить шаблоны задач"
+    : null;
+  const reload = templates.refetch;
+  const {mutate: deleteTemplate} = useDeleteTemplate();
+
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const groups = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const filtered = needle
+      ? items.filter(t => t.name.toLowerCase().includes(needle))
+      : items;
+    return groupTemplates(filtered);
+  }, [items, search]);
+
+  // При поиске держим группы раскрытыми: иначе найденное прячется в свёрнутой категории.
+  const isSearching = search.trim().length > 0;
+  const isExpanded = (category: string) => isSearching || !collapsed[category];
+
+  const handleDelete = async (template: AutomationTaskTemplate) => {
+    const ok = await confirmModal({
+      title: `Удалить шаблон «${template.name}»?`,
+      description: "Восстановить будет нечем: истории у шаблонов нет. "
+        + "На уже созданные из него задачи удаление не влияет.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (ok && template.id != null) void deleteTemplate(template.id);
+  };
+
+  return (
+    // Сворачивается и меняет ширину, как дерево тегов: раньше стояла колонкой 288 px без кнопки.
+    <SidePanel storageKey="automation.templates" title="Шаблоны задач" size={SIZE} overlay={overlay}>
+      <div className="p-3 pl-4 pt-2 border-b border-border shrink-0">
+        <div className="relative">
+          <SearchInput
+            size="sm"
+            placeholder="Поиск шаблонов…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            inputClassName="pr-7"
+          />
+          {search && (
+            <IconButton
+              icon={X}
+              label="Очистить поиск"
+              size="xs"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
+              onClick={() => setSearch("")}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+        {status === "loading" && <Spinner label="Загрузка…" className="px-1" />}
+
+        {status === "error" && (
+          <Banner tone="destructive" title="Палитра шаблонов недоступна." className="px-3 py-2">
+            {error && <p className="text-xs break-words">{error}</p>}
+            <Button size="sm" className="mt-2 w-full" onClick={() => void reload()}>Повторить</Button>
+          </Banner>
+        )}
+
+        {status === "ready" && items.length === 0 && (
+          <EmptyState size="sm" title="Шаблонов ещё нет: сохраните готовую задачу как шаблон кнопкой «В шаблоны»." />
+        )}
+
+        {status === "ready" && items.length > 0 && groups.length === 0 && (
+          <EmptyState size="sm" title="Ничего не найдено" />
+        )}
+
+        {groups.map(group => (
+          <div key={group.category} className="space-y-1">
+            <button
+              onClick={() => !isSearching && setCollapsed(c => ({...c, [group.category]: !c[group.category]}))}
+              disabled={isSearching}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent disabled:hover:bg-transparent"
+            >
+              <ChevronDown
+                size={14}
+                className={cn("text-muted-foreground shrink-0 transition-transform", !isExpanded(group.category) && "-rotate-90")}
+              />
+              <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground truncate">
+                {group.category}
+              </span>
+              <span className="text-xs text-muted-foreground shrink-0">{group.items.length}</span>
+            </button>
+
+            {isExpanded(group.category) && (
+              <div className="space-y-1 pl-1">
+                {group.items.map(template => (
+                  <div
+                    key={template.id}
+                    className="group/tpl flex items-center gap-1 rounded-lg hover:bg-accent"
+                  >
+                    <button
+                      onClick={() => onInsert?.(template)}
+                      disabled={!onInsert}
+                      className="flex-1 min-w-0 text-left px-2 py-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+                      title={!onInsert ? "Нет права правки в проекте — вставить задачу нельзя" : template.description || `Вставить «${template.name}» в набор`}
+                    >
+                      <div className="truncate text-sm">{template.name}</div>
+                      {template.description && (
+                        <div className="truncate text-xs text-muted-foreground">{template.description}</div>
+                      )}
+                    </button>
+                    <IconButton
+                      icon={Pencil}
+                      size="xs"
+                      className="opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100"
+                      onClick={() => openTemplateModal({mode: "edit", initial: template})}
+                      title="Править шаблон"
+                      label={`Править «${template.name}»`}
+                    />
+                    <IconButton
+                      icon={Trash2}
+                      size="xs"
+                      variant="danger"
+                      className="opacity-0 group-hover/tpl:opacity-100 focus-visible:opacity-100"
+                      onClick={() => void handleDelete(template)}
+                      title="Удалить шаблон"
+                      label={`Удалить «${template.name}»`}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </SidePanel>
+  );
+}

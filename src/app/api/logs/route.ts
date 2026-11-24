@@ -1,5 +1,5 @@
-import { protectedRoute } from "@/lib/protected";
-import { backendErrorResponse } from "@/lib/backendProxy";
+import { protectedRoute } from "@/server/auth/protected";
+import { backendErrorResponse } from "@/server/proxy/backendProxy";
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
@@ -36,10 +36,10 @@ export const GET = protectedRoute(async (req: NextRequest, { token }) => {
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Route Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: (error instanceof Error && error.message) || 'Internal Server Error' },
       { status: 500 }
     );
   }
@@ -64,10 +64,10 @@ export const POST = protectedRoute(async (req: NextRequest, { token }) => {
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Route Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: (error instanceof Error && error.message) || 'Internal Server Error' },
       { status: 500 }
     );
   }

@@ -1,0 +1,136 @@
+"use client";
+
+import React, {useState} from "react";
+import {Check, Copy, Download, FileDown} from "lucide-react";
+import {toast} from "sonner";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {copyText, downloadText} from "@/shared/lib/downloadText";
+import {safeFileName} from "@/shared/lib/downloadJson";
+
+/**
+ * Блок тегов проекта для `controllers.yaml` шлюза.
+ *
+ * Текст берётся с бэкенда готовым и НЕ переформатируется: в YAML от отступов зависит смысл.
+ */
+function GatewayExportContent({root}: {root: string}) {
+  const closeModal = useCloseModal();
+
+  const projectName = root.split(".")[1] ?? root;
+  const [controllerId, setControllerId] = useState(`ptusa-${projectName.toLowerCase()}`);
+  const [endpoint, setEndpoint] = useState("pac://127.0.0.1:10000");
+  const [yaml, setYaml] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+
+  const handleBuild = async () => {
+    if (!controllerId.trim() || !endpoint.trim()) return;
+    setIsLoading(true);
+    try {
+      const query = new URLSearchParams({
+        root,
+        controllerId: controllerId.trim(),
+        endpoint: endpoint.trim(),
+      });
+      const res = await fetch(`/api/device/export/gateway?${query}`);
+
+      if (!res.ok) {
+        // 404 — под этим корнем нет каналов с «Именем в ПЛК»: так отвечает старая база,
+        // собранная не импортом. Текст бэкенда объясняет это точнее нашего.
+        const body = await res.json().catch(() => null);
+        const message = (body as {message?: string} | null)?.message;
+        throw new Error(message || `Не удалось выгрузить теги (${res.status})`);
+      }
+
+      setYaml(await res.text());
+    } catch (err) {
+      console.error("Ошибка выгрузки для шлюза:", err);
+      toast.error(err instanceof Error ? err.message : "Не удалось выгрузить теги");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!yaml) return;
+    const ok = await copyText(yaml);
+    if (!ok) {
+      toast.error("Браузер не дал доступ к буферу обмена — выделите текст и скопируйте вручную");
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <>
+      <DialogHeader
+        title="Выгрузка тегов для шлюза"
+        description={<>        Блок контроллера для <b>{root}</b>. Вставьте его в <code>controllers.yaml</code> шлюза и
+        пересоберите шлюз — без этого теги нового проекта приходить не будут.</>}
+      />
+
+      <DialogBody className="space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Идентификатор контроллера">
+            <Input value={controllerId} onChange={(e) => setControllerId(e.target.value)} />
+          </Field>
+          <Field label="Адрес">
+            <Input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
+          </Field>
+        </div>
+
+        {yaml && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={fieldLabelClass}>Блок для controllers.yaml</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleCopy()}
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Скопировано" : "Копировать"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadText(`${safeFileName(root, "gateway")}.yaml`, yaml)}
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  <Download size={14} />
+                  Скачать
+                </button>
+              </div>
+            </div>
+            <pre className="max-h-72 overflow-auto rounded-xl border border-border bg-muted p-3 text-xs text-foreground">
+              {yaml}
+            </pre>
+          </div>
+        )}
+      </DialogBody>
+
+      <DialogFooter>
+        <Button onClick={closeModal}>{yaml ? "Закрыть" : "Отмена"}</Button>
+        <Button
+          variant="primary"
+          onClick={() => void handleBuild()}
+          disabled={!controllerId.trim() || !endpoint.trim() || isLoading}
+        >
+          <FileDown size={16} />
+          {isLoading ? "Готовлю…" : yaml ? "Пересобрать" : "Сформировать"}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+export function openGatewayExportModal(root: string) {
+  useModalStore.getState().openModal(<GatewayExportContent root={root} />, {size: "fullscreen", closeOnOverlay: false});
+}

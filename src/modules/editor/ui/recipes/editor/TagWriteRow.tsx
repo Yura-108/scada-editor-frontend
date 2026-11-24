@@ -1,0 +1,52 @@
+import React from "react";
+import {Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
+import {shortTagPath} from "@/core/scene";
+import {actionValueText, coerceActionValue, valueTextProblem} from "../../../lib/recipeValidation";
+import type {RecipeStepAction, RecipeTag} from "@/core/project";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
+
+/**
+ * Запись одного тега: тег из манифеста, значение, путь и «убрать». Одна и та же строка —
+ * в действии шага и в безопасном состоянии паузы.
+ */
+export function TagWriteRow({action, tags, onChange, onRemove}: {
+  action: RecipeStepAction;
+  tags: RecipeTag[];
+  onChange: (next: RecipeStepAction) => void;
+  onRemove: () => void;
+}) {
+  const tag = tags.find(t => t.name === action.tag);
+  const text = actionValueText(action.value);
+  // Не по типу — красное поле с подсказкой сразу (#11 п. 8); полный текст — в списке под формой.
+  const problem = valueTextProblem(text, tag?.value_type);
+  return (
+    <div className="flex items-center gap-2">
+      {/* Тег выбирается ИЗ МАНИФЕСТА, а не вводится: бэкенд проверяет записи одним
+          `checkAction`, и свободный ввод — главный источник 400 «tag not declared in manifest». */}
+      <Select
+        size="sm"
+        className="max-w-[45%]"
+        value={action.tag}
+        onValueChange={(v) => {
+          const picked = tags.find(t => t.name === v);
+          onChange({tag: v, value: coerceActionValue(actionValueText(action.value), picked?.value_type)});
+        }}
+        options={tags.map(t => ({value: t.name, label: t.name}))}
+      />
+      <Input
+        size="sm"
+        value={text}
+        placeholder={tag?.value_type === "bool" ? "true / false" : "значение"}
+        aria-invalid={problem ? true : undefined}
+        title={problem ?? undefined}
+        onChange={(e) => onChange({...action, value: coerceActionValue(e.target.value, tag?.value_type)})}
+      />
+      <span className="text-xs text-muted-foreground truncate max-w-[28%]" title={tag?.tag}>
+        {tag ? shortTagPath(tag.tag) : "тег не найден"}
+      </span>
+      <IconButton icon={Trash2} label="Убрать запись" size="xs" variant="danger" onClick={onRemove} />
+    </div>
+  );
+}

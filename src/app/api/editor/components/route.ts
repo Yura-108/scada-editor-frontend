@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
-import { backendErrorResponse } from '@/lib/backendProxy';
-import {normalizeSaveResponse, toSaveEnvelope} from '@/lib/saveEnvelope';
-import {protectedRoute} from "@/lib/protected";
+import { backendErrorResponse } from '@/server/proxy/backendProxy';
+import {normalizeSaveResponse, toSaveEnvelope} from '@/server/proxy/saveEnvelope';
+import {protectedRoute} from "@/server/auth/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -58,7 +58,7 @@ export const PUT = protectedRoute(async (req: NextRequest, {token}) => {
   // полезнее, чем тот же 400 от бэкенда без указания, чего не хватило.
   if (envelope.scene_id == null) {
     return NextResponse.json(
-      {message: "Не указана сцена (scene_id) — сохранять состав нечему."},
+      {message: "Не указана схема (scene_id) — сохранять состав нечему."},
       {status: 400}
     );
   }

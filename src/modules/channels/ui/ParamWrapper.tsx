@@ -1,0 +1,57 @@
+import {clsx} from "clsx";
+import React, {ReactNode} from "react";
+import {DeviceParamsType} from "@/core/devices";
+import {X} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
+import {resolveParamWidget} from "@/core/devices";
+
+interface IParamWrapper {
+  param: DeviceParamsType;
+  hasChanged: boolean;
+  children: ReactNode;
+  onRemove?: (key: string) => void;
+}
+
+const ParamWrapper: React.FC<IParamWrapper> = ({param, hasChanged, children, onRemove}) => {
+  return (
+    <div
+      className={clsx(
+        'text-sm group relative flex flex-col h-full bg-card rounded-2xl shadow-sm border-2 transition-all duration-200 p-4',
+        hasChanged
+          ? 'border-param ring-4 ring-param/20'
+          : 'border-input hover:border-muted-foreground/50',
+        resolveParamWidget(param.type) === 'textarea'
+          ? 'col-span-2'
+          : 'col-span-1'
+      )}
+    >
+      {/* Метка изменения */}
+      {hasChanged && (
+        <div
+          className="absolute -top-3 -right-3 bg-param text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+          Изменено
+        </div>
+      )}
+
+      {/* Кнопка удалить */}
+      {onRemove && (
+        <IconButton
+          icon={X}
+          label="Удалить параметр"
+          size="xs"
+          variant="danger"
+          className="absolute top-2 right-2"
+          onClick={() => onRemove(param.key)}
+        />
+      )}
+
+      <label className="block text-sm font-semibold text-foreground mb-3">
+        {param.name}
+      </label>
+
+      {children}
+    </div>
+  )
+}
+
+export default ParamWrapper;

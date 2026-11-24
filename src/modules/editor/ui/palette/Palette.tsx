@@ -1,0 +1,132 @@
+"use client";
+
+import { useState } from "react";
+import PaletteItem from "./PaletteItem";
+import {X, ChevronDown, Trash2} from "lucide-react";
+import {filterPalette, groupPalette, sortCategories} from "../../lib/paletteUtils";
+import {PaletteItemType} from "../../types/palette.types";
+import {deletePaletteCategory, usePaletteItems} from "../../model/palette";
+import {confirmModal} from "@/shared/ui/dialog/confirmModal";
+import {SearchInput} from "@/shared/ui/field/SearchInput";
+import {IconButton} from "@/shared/ui/IconButton";
+import {EmptyState} from "@/shared/ui/EmptyState";
+
+const STATIC_ID_THRESHOLD = 10 ** 5;
+
+export default function Palette() {
+  const paletteItems = usePaletteItems();
+  const [search, setSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const filtered = filterPalette(paletteItems, search);
+  const grouped = groupPalette(filtered);
+  const sortedCategories = sortCategories(grouped);
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  // При поиске все категории раскрываются автоматически
+  const isSearchActive = search.trim().length > 0;
+  const getCategoryExpandedState = (category: string) => {
+    return isSearchActive || expandedCategories[category] !== false;
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-background dark:bg-background/70 border-r border-border">
+      {/* Поиск */}
+      <div className="p-4 pb-3 border-b border-border shrink-0">
+        <div className="relative">
+          <SearchInput
+            placeholder="Поиск элементов..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            inputClassName="pr-9"
+          />
+          {search && (
+            <IconButton
+              icon={X}
+              label="Очистить поиск"
+              size="xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+              onClick={() => setSearch("")}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Список */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 custom-scrollbar">
+        {sortedCategories.length === 0 ? (
+          <EmptyState size="sm" title="Ничего не найдено" className="py-10" />
+        ) : (
+          sortedCategories.map((category) => {
+            const isExpanded = getCategoryExpandedState(category);
+            const items: PaletteItemType[] = grouped[category];
+            const isDeletableCategory = items.every(item => item.id < STATIC_ID_THRESHOLD);
+
+            return (
+              <div key={category} className="space-y-2">
+                <div className="group/cat flex items-center gap-1">
+                  {/* Основная кликабельная область */}
+                  <button
+                    onClick={() => !isSearchActive && toggleCategory(category)}
+                    disabled={isSearchActive}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md transition-all hover:bg-accent disabled:hover:bg-transparent"
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`text-muted-foreground transition-transform shrink-0 ${
+                        isExpanded ? "" : "-rotate-90"
+                      }`}
+                    />
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-left flex-1 truncate">
+                      {category}
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-medium shrink-0">
+                {items.length}
+              </span>
+                  </button>
+
+                  {/* Кнопка удаления группы — справа */}
+                  {isDeletableCategory && (
+                    <IconButton
+                      icon={Trash2}
+                      variant="danger"
+                      size="xs"
+                      className="opacity-0 group-hover/cat:opacity-100 focus-visible:opacity-100"
+                      onClick={async () => {
+                        // Удаление категории необратимо (серверная операция вне undo),
+                        // а порог у неё был самый низкий — один клик по иконке.
+                        const confirmed = await confirmModal({
+                          title: `Удалить группу «${category}»?`,
+                          description: `Будут удалены все шаблоны группы (${items.length} шт.). Действие необратимо и не отменяется через Ctrl+Z.`,
+                          confirmLabel: "Удалить группу",
+                          danger: true,
+                        });
+                        if (confirmed) void deletePaletteCategory(category);
+                      }}
+                      label={`Удалить группу «${category}»`}
+                    />
+                  )}
+                </div>
+
+                {isExpanded && (
+                  <div className="grid gap-1.5 pl-1">
+                    {items.map((item: PaletteItemType, index) => (
+                      <PaletteItem key={`${category}-${item.id}-${index}`} item={item} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+

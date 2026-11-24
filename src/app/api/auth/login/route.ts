@@ -1,18 +1,30 @@
-import { setTokenCookie } from '@/lib/setTokenCookies';
-import { callAuth } from '@/lib/auth';
+import { parseSessionPair, setTokenCookie } from '@/server/auth/setTokenCookies';
+import { callAuth } from '@/server/auth/auth';
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { ok, status, data } = await callAuth('/api/auth/login', body);
+  const { ok, status, data, retryAfter } = await callAuth('/api/auth/login', body);
 
-  if (!ok) {
-    return Response.json({ message: data.message ?? 'Неверный логин или пароль' }, { status });
+  // 10 неудачных попыток за 15 минут — учётка закрыта до конца окна, даже с верным паролем.
+  if (status === 429) {
+    const minutes = Math.max(1, Math.ceil((retryAfter ?? 60) / 60));
+    return Response.json(
+      { message: `Слишком много неудачных попыток, повторите через ${minutes} мин.` },
+      { status, headers: retryAfter != null ? { 'Retry-After': String(retryAfter) } : undefined },
+    );
   }
 
-  const token = (data.token ?? data.accessToken) as string | undefined;
-  if (!token) {
+  if (!ok) {
+    // На 401 бэкенд присылает английское «Invalid credentials» — оператору нужен свой текст.
+    // Остальные отказы (учётка отключена, сервис недоступен) — как сказал бэкенд.
+    const message = status === 401 ? 'Неверный логин или пароль' : data.message ?? 'Не удалось войти';
+    return Response.json({ message }, { status });
+  }
+
+  const pair = parseSessionPair(data);
+  if (!pair) {
     return Response.json({ message: 'Бэкенд не вернул токен' }, { status: 502 });
   }
 
-  return setTokenCookie(token, request);
+  return setTokenCookie(pair, request);
 }

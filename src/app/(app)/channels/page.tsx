@@ -1,34 +1,58 @@
 'use client';
 
 import { useEffect } from 'react';
-import StartMenu from '@/components/channels/StartMenu';
-import DeviceTreePanel from '@/components/channels/DeviceTreePanel';
-import { useDeviceStore } from '@/store/useDeviceStore';
-import DeviceParams from '@/components/channels/DeviceParams';
+import { Building2, FolderOpen } from 'lucide-react';
+import {ChannelsToolbar, DeviceParams} from "@/modules/channels";
+import {DeviceTreePanel, useDeviceTreeStore} from "@/core/devices";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {PageFrame} from "@/shared/ui/page/PageFrame";
+
+/** Пусто, пока ничего не загружено: подсказываем, где выбрать, вместо пустых панелей. */
+function NothingLoaded() {
+  return (
+    <EmptyState
+      icon={FolderOpen}
+      title="Проект не загружен"
+      description={<>
+        На панели сверху выберите <Building2 className="inline h-4 w-4 align-text-bottom" /> площадку,
+        затем один или несколько проектов и нажмите «Загрузить» — слева появится дерево устройств.
+        <span className="mt-2 block text-xs">
+          Нет нужного проекта — импортируйте базу из файла кнопкой «Импорт .cdbx» справа сверху.
+        </span>
+      </>}
+    />
+  );
+}
 
 export default function Workspace() {
-  const { nodes } = useDeviceStore();
+  const nodes = useDeviceTreeStore(s => s.nodes);
+  const isLoadingNodes = useDeviceTreeStore(s => s.isLoadingNodes);
+  const nodesError = useDeviceTreeStore(s => s.nodesError);
+  const loadedRootPath = useDeviceTreeStore(s => s.loadedRootPath);
+  const loaded = nodes.length > 0 || isLoadingNodes || nodesError != null || (loadedRootPath?.length ?? 0) > 0;
 
   // При входе в базу каналов подхватываем изменения (например, отмену действия в логах),
   // если данные были помечены устаревшими.
   useEffect(() => {
-    void useDeviceStore.getState().refreshIfStale();
+    void useDeviceTreeStore.getState().refreshIfStale();
   }, []);
 
   return (
-    <div className="min-h-app bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
-      <main className="container mx-auto flex flex-col md:flex-row justify-around pt-8 pb-20 gap-6 px-8">
-        {nodes && (
-          <aside className="transition-all duration-300 ease-in-out basis-full md:basis-[25%] lg:basis-[20%] md:sticky md:top-8 md:self-start">
-            <DeviceTreePanel />
-          </aside>
-        )}
-        <section className="transition-all duration-300 ease-in-out flex-1">
-          <DeviceParams />
-        </section>
-      </main>
+    <PageFrame>
+      <ChannelsToolbar />
 
-      <StartMenu />
-    </div>
+      {loaded ? (
+        <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 p-4 overflow-y-auto md:overflow-hidden">
+          <aside className="shrink-0 h-[60vh] md:h-full md:w-80 lg:w-96">
+            <DeviceTreePanel fill />
+          </aside>
+          <section className="flex-1 min-w-0 md:overflow-y-auto">
+            <DeviceParams />
+          </section>
+        </main>
+      ) : (
+        <NothingLoaded />
+      )}
+    </PageFrame>
   );
 }

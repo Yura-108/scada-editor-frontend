@@ -1,0 +1,326 @@
+import type {ProcedureEvent, ProcedureStatus} from "@/core/project";
+import type {AutomationTaskStatus} from "@/core/automation";
+import {devLog} from "@/shared/lib/devLog";
+import {gatewayWsOrigin} from "@/shared/lib/gatewayOrigin";
+import {ACCESS_NOT_READY_DELAY_MS, createRuntimeSession, deleteRuntimeSession} from "../../api/runtimeSession";
+import {classifyClose} from "./runtimeCloseCodes";
+import {routeRuntimeFrame} from "./runtimeFrames";
+
+/**
+ * Транспорт режима монитора (контракт Java-команды от 15.07.2026, детали —
+ * PHASE4_RUNTIME_PLAN.md, WP4):
+ *
+ *  1. POST /api/runtime/sessions {projectId} (через наш BFF, Bearer нужен только
+ *     на этом шаге) → {sessionId, wsPath, projectTree, ticket}. ticket — одноразовый
+ *     билет на 30 с, его BFF берёт у auth на каждую сессию: сокет открывается напрямую
+ *     браузером, httpOnly-cookie ему не видна, а полный JWT в query осел бы в журналах.
+ *  2. Raw WebSocket (НЕ SockJS/STOMP!) на GATEWAY + wsPath из ответа.
+ *     `wsPath` — `/ws/runtime/<instanceId>/<sessionId>`: экземпляров runtime может быть
+ *     несколько, и gateway выбирает нужный по имени экземпляра в пути (список берёт у
+ *     runtime раз в 10 с). Собирать путь вручную нельзя, а `sessionId` (`<instanceId>.<uuid>`)
+ *     — непрозрачная строка: её только передают обратно, не разбирают.
+ *     Gateway требует билет в query (?ticket=…) — заголовок Authorization браузерный
+ *     WebSocket слать не умеет; билет принимается один раз, без годного — 401.
+ *
+ * Сессия — НАБЛЮДАТЕЛЬ проекта, а не владелец работы: проект живёт по флагу «в
+ * эксплуатации», процедуры и состояние свойств принадлежат ему и идут без единого
+ * открытого монитора. Уход со страницы снимает только подписку на кадры.
+ *
+ * Свойства сессии: реконнект заново делает POST (новый sessionId); heartbeat на сервере
+ * нет — шлём клиентский ping (неизвестные типы сервер молча игнорирует); ответ на ACTION
+ * минует батч и несёт `tags: null` — нормализация `?? []` обязательна. Первый кадр после
+ * подключения — `SNAPSHOT`, дальше привычные `UPDATE`.
+ */
+
+/** quality отсутствует или "GOOD" — значение достоверно; любое другое — нет
+ *  (не сравнивать на равенство "BAD" — контракт расширяемый, см. docs/contract/TAG_CONTRACT_CHANGES.md). */
+export type RuntimeTagUpdate = {tagId: string; value: string | null; ts?: number; quality?: string};
+/** propertyName — имя свойства компонента; propertyId нестабилен
+ *  между пересохранениями таблицы, маршрутизация строк таблицы должна идти по имени. */
+export type RuntimePropertyUpdate = {propertyId: number; propertyName: string; value: unknown; ts?: number};
+/** rejected — окончательный отказ: код закрытия 1003 (сессия уже занята другим соединением
+ *  либо неизвестна), 1008 (чужая сессия), 409 на создание сессии (проект не в эксплуатации)
+ *  или 403 на него (нет доступа). Реконнект в этих случаях бессмысленен и лишь прятал бы
+ *  причину за «Переподключение…».
+ *  revoked — код закрытия 4403: права в проекте отозваны или учётка отключена. Тоже без
+ *  реконнекта, но монитор ещё и уводит к выбору проекта. */
+export type RuntimeStatus = "connecting" | "live" | "reconnecting" | "closed" | "rejected" | "revoked";
+
+/** Сервер отказал в нажатии (контракт 2026-10-15-access-roles-contract.md); соединение живо. */
+export interface ActionDenied {
+  scriptId: number;
+  reason: string;
+  /** null — у NO_OPERATE / NO_PROJECT_ACCESS. */
+  requiredLevel: number | null;
+}
+
+export interface RuntimeConnectionHandlers {
+  onUpdate: (
+    tags: RuntimeTagUpdate[],
+    properties: RuntimePropertyUpdate[],
+    procedures: ProcedureEvent[],
+  ) => void;
+  /**
+   * Первый кадр после подключения: всё состояние проекта на этот момент.
+   *
+   * Проект работает и без наблюдателей, поэтому открывший монитор приходит в середину
+   * процесса и без снимка видел бы пустой экран до следующего изменения — у долгого шага
+   * мойки это десятки минут. Дубль с последующими `UPDATE` безвреден: значение
+   * перезаписывается по ключу.
+   */
+  onSnapshot?: (
+    tags: RuntimeTagUpdate[],
+    properties: RuntimePropertyUpdate[],
+    procedures: ProcedureStatus[],
+  ) => void;
+  /** detail — причина для "rejected" (e.reason из close-события либо текст отказа сессии). */
+  onStatus?: (status: RuntimeStatus, detail?: string) => void;
+  /** Статусы задач automation — приходят только после subscribeTasks(). */
+  onTasks?: (tasks: AutomationTaskStatus[]) => void;
+  /**
+   * Номер prod-выпуска, который крутит проект (контракт 2026-09-29-project-release-contract.md).
+   * `changed: false` — из ответа на создание сессии (при каждом (ре)коннекте); `true` — кадр
+   * `TREE_CHANGED`: проект переключили на другой выпуск, схемы надо перечитать. Следом за ним
+   * сервер шлёт `SNAPSHOT`, и он идёт обычным `onSnapshot`.
+   */
+  onRelease?: (versionNo: number, changed: boolean) => void;
+  /** `ACTION_DENIED`: нажатие отклонено по правам, состояние элементов не меняется. */
+  onActionDenied?: (denied: ActionDenied) => void;
+}
+
+export interface RuntimeConnection {
+  close: () => void;
+  /**
+   * Запуск серверного скрипта: {"type":"ACTION","scriptId","args"?}. `args` — уже
+   * проверенный объект (normalizeActionArgs); без него поле не отправляется.
+   */
+  sendAction: (scriptId: number, args?: Record<string, unknown>) => void;
+  /** {"type":"SUBSCRIBE_TASKS"} — сервер пришлёт полный список статусов, дальше изменения. */
+  subscribeTasks: () => void;
+  unsubscribeTasks: () => void;
+  /**
+   * {"type":"SUBSCRIBE_SCENE","sceneId","tags"?} (контракты 2026-10-08-ws-scene-subscription-contract.md,
+   * 2026-10-09-ws-scene-subscription-tags-fix.md): дальше `UPDATE.tags` — только теги поддерева
+   * сцены плюс `tags`. `tags` — только теги ВНЕ сцены; пустой в кадр не попадает, чтобы сессия
+   * делила общий кадр сцены с остальными. Заменяет прежнюю подписку целиком. `SNAPSHOT`,
+   * свойства, процедуры и задачи не фильтруются.
+   */
+  subscribeScene: (sceneId: number, tags: readonly string[]) => void;
+  /** {"type":"UNSUBSCRIBE_SCENE"} — снова все теги проекта. */
+  unsubscribeScene: () => void;
+  /** id текущей сессии (для GET /snapshot) — null, если сокет ещё не подключён/уже закрыт.
+   *  Меняется при каждом (ре)коннекте, поэтому это геттер, а не статичное поле. */
+  getSessionId: () => string | null;
+}
+
+const PING_INTERVAL_MS = 20_000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
+
+const log = (...args: unknown[]) => devLog("[monitor:ws]", ...args);
+
+export function openRuntimeConnection(
+  projectId: number,
+  {onUpdate, onStatus, onTasks, onSnapshot, onRelease, onActionDenied}: RuntimeConnectionHandlers,
+): RuntimeConnection {
+  let ws: WebSocket | null = null;
+  let closed = false;
+  let pingTimer: ReturnType<typeof setInterval> | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectDelay = 1000;
+  let firstConnect = true;
+  let currentSessionId: string | null = null;
+  // Подписка живёт на соединении, а не на сессии runtime: после переподключения новая сессия
+  // о ней не знает, поэтому onopen отправляет SUBSCRIBE_TASKS заново.
+  let tasksWanted = false;
+  // Подписка на сцену — по той же причине повторяется в onopen. TREE_CHANGED её снимает на
+  // сервере, и мы забываем её тоже: у сцен нового выпуска могут быть другие id и теги, новую
+  // пришлёт движок, когда схема выпуска перерисуется.
+  let sceneWanted: {sceneId: number; tags: readonly string[]} | null = null;
+
+  const sceneFrame = ({sceneId, tags}: {sceneId: number; tags: readonly string[]}) =>
+    JSON.stringify(tags.length ? {type: "SUBSCRIBE_SCENE", sceneId, tags} : {type: "SUBSCRIBE_SCENE", sceneId});
+
+  const setStatus = (s: RuntimeStatus, detail?: string) => onStatus?.(s, detail);
+
+  const stopPing = () => {
+    if (pingTimer) {
+      clearInterval(pingTimer);
+      pingTimer = null;
+    }
+  };
+
+  /** `detail` — причина паузы (например, недоступный экземпляр): её показывает монитор. */
+  /** `minDelay` — не раньше чем через столько (сервер ещё грузит права после рестарта). */
+  const scheduleReconnect = (detail?: string, minDelay = 0) => {
+    if (closed || reconnectTimer) return;
+    setStatus("reconnecting", detail);
+    const delay = Math.max(reconnectDelay, minDelay);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      void connect();
+    }, delay);
+    reconnectDelay = Math.min(delay * 2, RECONNECT_MAX_DELAY_MS);
+  };
+
+  const connect = async () => {
+    if (closed) return;
+
+    setStatus(firstConnect ? "connecting" : "reconnecting");
+
+    log(`создаю сессию для проекта ${projectId}${firstConnect ? "" : " (переподключение)"}...`);
+
+    firstConnect = false;
+
+    // Сессия одноразовая: каждый (ре)коннект начинается с нового POST.
+    let wsPath: string;
+    let wsTicket: string;
+
+    try {
+      const outcome = await createRuntimeSession(projectId);
+
+      if (outcome.kind === "rejected") {
+        log(outcome.reason === "state"
+          ? `сессия отклонена: ${outcome.message} — реконнект не запускаю`
+          : `сессия отклонена по правам: ${outcome.message} — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", outcome.message);
+        return;
+      }
+
+      if (outcome.kind === "retry") {
+        log(outcome.reason === "unavailable"
+          ? `экземпляр недоступен: ${outcome.detail} — повторю с паузой`
+          : "права на сервере ещё не загружены — повторю с паузой");
+        scheduleReconnect(outcome.detail, outcome.minDelay);
+        return;
+      }
+
+      wsPath = outcome.wsPath;
+      wsTicket = outcome.ticket;
+      currentSessionId = outcome.sessionId;
+      if (outcome.versionNo !== undefined && !closed) onRelease?.(outcome.versionNo, false);
+
+      log(`сессия ${outcome.rawSessionId ?? "?"} создана → подключаюсь к ${gatewayWsOrigin()}${wsPath}`);
+    } catch (err) {
+      console.warn("[monitor:ws] не удалось создать рантайм-сессию:", err);
+      scheduleReconnect();
+      return;
+    }
+
+    if (closed) return;
+
+    // Браузерный WebSocket не умеет слать заголовок Authorization — билет идёт query-параметром.
+    const separator = wsPath.includes("?") ? "&" : "?";
+    // Адрес GATEWAY, не самого рантайма: экземпляр выбирается по `instanceId` в `wsPath`,
+    // и прямое подключение к сервису (:8085) попадёт не в тот экземпляр — соединение
+    // закроется кодом 1003 «Session belongs to instance …».
+    const socket = new WebSocket(`${gatewayWsOrigin()}${wsPath}${separator}ticket=${encodeURIComponent(wsTicket)}`);
+    ws = socket;
+
+    socket.onopen = () => {
+      if (closed) { socket.close(); return; }
+      reconnectDelay = 1000;
+      setStatus("live");
+      log("соединение открыто, статус: live");
+      // Сервер молча игнорирует неизвестные типы — ping держит соединение
+      // живым при редких тегах/прокси (heartbeat на сервере не реализован).
+      stopPing();
+      pingTimer = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({type: "PING"}));
+        }
+      }, PING_INTERVAL_MS);
+      if (tasksWanted) socket.send(JSON.stringify({type: "SUBSCRIBE_TASKS"}));
+      if (sceneWanted) {
+        log(`SUBSCRIBE_SCENE → сцена ${sceneWanted.sceneId}, доп. тегов ${sceneWanted.tags.length} (повтор после подключения)`);
+        socket.send(sceneFrame(sceneWanted));
+      }
+    };
+
+    socket.onmessage = (e) => {
+      routeRuntimeFrame(e.data, {onUpdate, onSnapshot, onTasks, onRelease, onActionDenied}, () => {
+        sceneWanted = null;
+      });
+    };
+
+    socket.onclose = (e) => {
+      stopPing();
+      if (ws === socket) ws = null;
+      // Наблюдатель снят, и следующий коннект получит НОВЫЙ sessionId — по старому
+      // `GET /sessions/{id}/snapshot` уже не ответит. Сама работа проекта продолжается.
+      currentSessionId = null;
+
+      const outcome = classifyClose(e.code, e.reason);
+      if (outcome.kind === "rejected") {
+        log(`соединение отклонено (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
+        if (!closed) setStatus("rejected", outcome.detail);
+        return;
+      }
+      if (outcome.kind === "revoked") {
+        log(`доступ к проекту отозван (code=4403${e.reason ? `, reason="${e.reason}"` : ""}) — реконнект не запускаю`);
+        if (!closed) setStatus("revoked", "Доступ к проекту отозван");
+        return;
+      }
+      if (outcome.kind === "retry-later") {
+        log("сервер ещё загружает права (code=1013) — переподключусь с паузой");
+        scheduleReconnect("Сервер запускается, переподключение…", ACCESS_NOT_READY_DELAY_MS);
+        return;
+      }
+
+      if (!closed) {
+        log(`соединение закрыто (code=${e.code}${e.reason ? `, reason="${e.reason}"` : ""}) — переподключаюсь через ${reconnectDelay}мс`);
+      }
+      // Сессия умерла на сервере — переподключение только через новый POST
+      // (который заодно берёт свежий токен из cookie).
+      scheduleReconnect();
+    };
+  };
+
+  void connect();
+
+  return {
+    close: () => {
+      log("закрываю соединение по запросу (выход из монитора/смена проекта)");
+      closed = true;
+      stopPing();
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      // Best-effort снятие наблюдателя — до этого брошенная сессия продолжает копить
+      // значения тегов в буфер. Процедуры и состояние проекта это НЕ останавливает:
+      // мойка идёт дальше, гасит проект только снятие флага «в эксплуатации».
+      // Не await'им (не блокируем закрытие сокета/уход со страницы), keepalive
+      // переживает unload; ошибка ничего не ломает на клиенте.
+      if (currentSessionId) deleteRuntimeSession(currentSessionId);
+      ws?.close();
+      ws = null;
+      currentSessionId = null;
+      setStatus("closed");
+    },
+    sendAction: (scriptId: number, args?: Record<string, unknown>) => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        log(`ACTION → scriptId=${scriptId}${args ? ` args=${JSON.stringify(args)}` : ""}`);
+        ws.send(JSON.stringify(args ? {type: "ACTION", scriptId, args} : {type: "ACTION", scriptId}));
+      } else {
+        console.warn(`[monitor:ws] sendAction(${scriptId}) проигнорирован — соединение не открыто`);
+      }
+    },
+    getSessionId: () => currentSessionId,
+    subscribeTasks: () => {
+      tasksWanted = true;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "SUBSCRIBE_TASKS"}));
+    },
+    unsubscribeTasks: () => {
+      tasksWanted = false;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "UNSUBSCRIBE_TASKS"}));
+    },
+    subscribeScene: (sceneId: number, tags: readonly string[]) => {
+      sceneWanted = {sceneId, tags: [...tags]};
+      if (ws?.readyState === WebSocket.OPEN) {
+        log(`SUBSCRIBE_SCENE → сцена ${sceneId}, доп. тегов ${tags.length}`);
+        ws.send(sceneFrame(sceneWanted));
+      }
+    },
+    unsubscribeScene: () => {
+      sceneWanted = null;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: "UNSUBSCRIBE_SCENE"}));
+    },
+  };
+}

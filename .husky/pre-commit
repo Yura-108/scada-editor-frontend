@@ -1,0 +1,8 @@
+case "$(git branch --show-current)" in
+  dev|main)
+    echo "Создайте отдельную ветку задачи. Изменения в dev и main попадают через PR." >&2
+    exit 1
+    ;;
+esac
+
+lint-staged

@@ -1,0 +1,143 @@
+"use client";
+
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CanvasMenuItem } from "@/core/canvas";
+import type { MonitorMenuSettings } from "@/core/scene";
+import { monitorMenuStyles } from "@/core/scene";
+
+interface CanvasContextMenuProps {
+  /** settings — вид меню компонента в мониторе; у меню редактора их нет. */
+  menu: { x: number; y: number; items: CanvasMenuItem[]; settings?: MonitorMenuSettings } | null;
+  /** Закрытие по Escape и клику вне меню. */
+  onClose?: () => void;
+}
+
+// Отступ от края экрана, чтобы меню не прилипало вплотную к границе.
+const MARGIN = 8;
+
+/**
+ * Кастомное контекстное меню холста.
+ * position: fixed + clientX/clientY — координаты уже в системе окна, поэтому
+ * меню не обрезается overflow-hidden контейнера холста. Позиция зажимается в
+ * пределах экрана (переворот к курсору у правого/нижнего края), а высокое меню
+ * получает max-height и прокрутку — все пункты остаются доступны.
+ */
+export function CanvasContextMenu({ menu, onClose }: CanvasContextMenuProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Раньше меню закрывалось только по mousedown на Stage, поэтому оставалось
+  // висеть поверх интерфейса при клике по боковой панели или нажатии Escape.
+  useEffect(() => {
+    if (!menu || !onClose) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+
+    // capture у Escape — чтобы меню закрылось раньше глобальных хоткеев редактора
+    // (иначе тот же Escape заодно вышел бы из активной группы).
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [menu, onClose]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!menu || !el) return;
+
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Не влезает справа/снизу — сдвигаем внутрь экрана (но не левее/выше отступа).
+    let left = menu.x;
+    let top = menu.y;
+    if (left + rect.width > vw - MARGIN) left = Math.max(MARGIN, vw - MARGIN - rect.width);
+    if (top + rect.height > vh - MARGIN) top = Math.max(MARGIN, vh - MARGIN - rect.height);
+
+    // Измеряем в layout-фазе и позиционируем до отрисовки — без мигания.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPos({ left, top });
+  }, [menu]);
+
+  if (!menu) return null;
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "fixed",
+        top: pos?.top ?? menu.y,
+        left: pos?.left ?? menu.x,
+        zIndex: "var(--z-dropdown)",
+        // Пока не измерили — прячем, чтобы не мигнуло в необрезанной позиции.
+        visibility: pos ? "visible" : "hidden",
+      }}
+    >
+      <ContextMenuPanel
+        items={menu.items}
+        settings={menu.settings}
+        style={{ maxHeight: `calc(100vh - ${MARGIN * 2}px)` }}
+      />
+    </div>
+  );
+}
+
+interface ContextMenuPanelProps {
+  items: CanvasMenuItem[];
+  settings?: MonitorMenuSettings;
+  style?: React.CSSProperties;
+  /** false — только вид (превью в панели свойств): клики и фокус не принимаются. */
+  interactive?: boolean;
+}
+
+/**
+ * Сама плашка меню — отдельно от позиционирования, чтобы редактор мог показать превью
+ * меню компонента ровно в том виде, в каком его увидит оператор.
+ */
+export function ContextMenuPanel({ items, settings, style, interactive = true }: ContextMenuPanelProps) {
+  const styles = monitorMenuStyles(settings);
+
+  return (
+    <div
+      style={{ ...style, ...styles.panel }}
+      className={[
+        "min-w-40 overflow-y-auto bg-card rounded-md p-1 shadow-xl border border-border",
+        interactive ? "" : "pointer-events-none select-none",
+      ].join(" ")}
+      aria-hidden={interactive ? undefined : true}
+    >
+      {/* disabled и variant раньше игнорировались: заблокированный пункт
+          выглядел активным и вызывал обработчик, а «Удалить» не отличалось
+          от обычных пунктов. */}
+      {items.map((item, idx) => (
+        <button
+          key={idx}
+          type="button"
+          disabled={item.disabled}
+          tabIndex={interactive ? undefined : -1}
+          onClick={!interactive || item.disabled ? undefined : item.onClick}
+          style={styles.item}
+          className={[
+            "group flex w-full items-center px-3 py-2 text-sm text-left rounded-sm whitespace-nowrap",
+            "focus-visible:outline-none focus-visible:bg-primary focus-visible:text-primary-foreground",
+            item.disabled
+              ? "cursor-not-allowed opacity-40 text-muted-foreground"
+              : item.variant === "danger"
+                ? "cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                : "cursor-pointer text-foreground hover:bg-primary hover:text-primary-foreground",
+          ].join(" ")}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}

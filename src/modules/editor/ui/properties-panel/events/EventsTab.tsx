@@ -1,0 +1,87 @@
+"use client";
+
+import React from "react";
+import {MousePointerClick, Pencil, Plus, Trash2} from "lucide-react";
+import {IconButton} from "@/shared/ui/IconButton";
+import {cn} from "@/shared/lib/cn";
+import {DiagramElement} from "@/core/scene";
+import {ElementEventName, ElementEvents} from "@/core/scene";
+import {useEditorStore} from "../../../model/editorStore";
+import {openEventScriptModal} from "./OpenEventScriptModal";
+
+interface EventsTabProps {
+  element: DiagramElement;
+}
+
+const EVENTS: Array<{name: ElementEventName; label: string; hint: string}> = [
+  {name: "onClick", label: "onClick", hint: "Клик по элементу"},
+  {name: "onDoubleClick", label: "onDoubleClick", hint: "Двойной клик по элементу"},
+];
+
+/**
+ * Вкладка «События»: JS-обработчики onClick/onDoubleClick, исполняемые на клиенте
+ * в режиме монитора. Например — изменение значения свойства объекта
+ * (`setProperty("Test", Test + 1)`), на которое реагируют привязки других элементов.
+ */
+export const EventsTab: React.FC<EventsTabProps> = ({element}) => {
+  const updateElement = useEditorStore(s => s.updateElement);
+
+  const removeHandler = (name: ElementEventName) => {
+    const nextEvents: ElementEvents = (element.events ?? []).filter(e => e.event_type !== name);
+    updateElement(element.key, {events: nextEvents});
+  };
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm font-medium text-foreground">События</h4>
+      <p className="text-xs text-muted-foreground">
+        JavaScript-обработчики, исполняемые в режиме монитора при клике по элементу. Могут менять
+        значение свойства объекта (<code>setProperty</code>) или визуал/состояние самого элемента.
+      </p>
+
+      <div className="space-y-2">
+        {EVENTS.map(({name, label, hint}) => {
+          const handler = element.events?.find(e => e.event_type === name)?.handler;
+          return (
+            <div
+              key={name}
+              className={cn(
+                "rounded-xl border px-3 py-2.5",
+                "bg-card/60 border-border",
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <MousePointerClick size={15} className="text-primary shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground">{label}</div>
+                  <div className="text-[11px] text-muted-foreground">{hint}</div>
+                </div>
+
+                <div className="ml-auto flex items-center gap-1.5">
+                  {handler ? (
+                    <>
+                      <IconButton icon={Pencil} label="Редактировать скрипт" size="xs" onClick={() => openEventScriptModal({element, event: name})} />
+                      <IconButton icon={Trash2} label="Удалить обработчик" size="xs" variant="danger" onClick={() => removeHandler(name)} />
+                    </>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                      onClick={() => openEventScriptModal({element, event: name})}
+                    >
+                      <Plus size={13} />
+                      Добавить
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Обработчики срабатывают только в режиме «Монитор» — в редакторе клики выделяют элемент.
+      </p>
+    </div>
+  );
+};

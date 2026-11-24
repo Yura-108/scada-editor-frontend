@@ -5,8 +5,14 @@
    Вариант матчит и сам элемент с классом, и всех его потомков. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: oklch(1 0 0);
+/* Цвета интерфейса — только через эти токены (правило и таблица соответствия —
+   docs/architecture.md, «UI-kit: цвета»). Цвета самих схем (заливки и обводки
+   элементов) — данные документа и сюда не относятся.
+   `.light` — светлые токены для куска страницы в тёмной теме (колонки каталога /dev/ui). */
+:root, .light {
+  /* Фон страницы чуть темнее карточек: на белом фоне белые панели и окна
+     (`card`) сливались со страницей — страницы ставили себе bg-neutral-50 сами. */
+  --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -27,8 +33,28 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  /* Статусы: сплошная заливка и цвет текста/иконки; мягкий фон и рамка —
+     прозрачностью (`bg-warning/10`, `border-warning/30`). `-foreground` — текст
+     на сплошной заливке. */
+  --success: oklch(0.596 0.145 163.225);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.666 0.179 58.318);
+  --warning-foreground: oklch(0.985 0 0);
+  --info: oklch(0.588 0.158 241.966);
+  --info-foreground: oklch(0.985 0 0);
+  /* Смысловые цвета предметной области. selection и active-group — те же, что у
+     холста (core/canvas/useThemeColors.ts): Konva нужны строки цвета, а не классы,
+     поэтому значения продублированы — меняйте в обоих местах. */
+  --selection: #3b82f6;
+  --active-group: #f59e0b;
+  --tag: oklch(0.6 0.118 184.704);
+  --param: oklch(0.558 0.288 302.321);
+  --overlay: oklch(0 0 0 / 60%);
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  /* Рамка поля темнее рамки блока: neutral-200 на белом поле почти не видна,
+     поля и так рисовали себе border-gray-300. */
+  --input: oklch(0.87 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -63,6 +89,19 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  /* В тёмной теме заливки статусов светлее — текст на них тёмный. */
+  --destructive-foreground: oklch(0.145 0 0);
+  --success: oklch(0.765 0.177 163.223);
+  --success-foreground: oklch(0.145 0 0);
+  --warning: oklch(0.828 0.189 84.429);
+  --warning-foreground: oklch(0.145 0 0);
+  --info: oklch(0.746 0.16 232.661);
+  --info-foreground: oklch(0.145 0 0);
+  --selection: #60a5fa;
+  --active-group: #fbbf24;
+  --tag: oklch(0.777 0.152 181.912);
+  --param: oklch(0.714 0.203 305.504);
+  --overlay: oklch(0 0 0 / 60%);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -104,6 +143,18 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-selection: var(--selection);
+  --color-active-group: var(--active-group);
+  --color-tag: var(--tag);
+  --color-param: var(--param);
+  --color-overlay: var(--overlay);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -154,6 +205,9 @@
    редактора и монитора. */
 :root {
   --app-header-h: 4rem;
+  /* Шапка раздела (PageHeader) под шапкой приложения. От неё же считают отступ плавающие
+     элементы редактора — тулбар, плашки над холстом, панель истории версий. */
+  --page-header-h: 3rem;
 }
 
 /* Высота/минимальная высота области ПОД шапкой. dvh, а не vh: на мобильных
@@ -169,11 +223,12 @@
   --z-canvas: 0;
   --z-canvas-overlay: 10; /* редактор текста поверх фигуры на холсте */
   --z-toolbar: 30; /* плавающая панель инструментов, зум */
+  --z-floating: 35; /* плавающие окна монитора («Опции», инспектор): над тулбаром, под панелями */
   --z-panel: 40; /* боковые панели редактора */
   --z-panel-handle: 45; /* ручки изменения ширины панелей */
+  --z-drawer: 47; /* выезжающая панель поверх боковых («История версий»): над их ручками, под шапкой */
   --z-header: 50; /* sticky-шапка приложения */
-  --z-modal: 100; /* ModalRoot и одиночные диалоги */
-  --z-modal-nested: 110; /* диалог, открытый из другого диалога */
+  --z-modal: 100; /* окна; каждое следующее в стеке или открытое изнутри — на +1 (DialogFrame) */
   --z-confirm: 120; /* подтверждения — всегда поверх всего диалогового стека */
   --z-dropdown: 150; /* Select/Popover/контекстные меню */
   --z-toast: 200;
@@ -194,14 +249,17 @@
 @utility z-panel-handle {
   z-index: var(--z-panel-handle);
 }
+@utility z-drawer {
+  z-index: var(--z-drawer);
+}
+@utility z-floating {
+  z-index: var(--z-floating);
+}
 @utility z-header {
   z-index: var(--z-header);
 }
 @utility z-modal {
   z-index: var(--z-modal);
-}
-@utility z-modal-nested {
-  z-index: var(--z-modal-nested);
 }
 @utility z-confirm {
   z-index: var(--z-confirm);
@@ -256,6 +314,21 @@
     border-radius: inherit;
   }
 
+  /* Курсор ввода над полями. Системный курсор Windows рисуется инверсией фона, но на части
+     видеокарт выходит просто белым — и на светлом поле пропадает. Свой — тёмная черта с белой
+     обводкой: виден на любом фоне и в обеих темах. `:where()` даёт нулевую специфичность:
+     `disabled:cursor-not-allowed` и собственный курсор поля по-прежнему перебивают правило.
+     Цепочка `:not()`, а не `:not(a, b)`: со списком внутри `:where()` dev-сборщик Next молча
+     выбрасывает всё правило. */
+  :where(
+      input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+      textarea,
+      [contenteditable='true'],
+      [contenteditable='']
+    ) {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M5 2.5h6M8 2.5v19M5 21.5h6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M5 2.5h6M8 2.5v19M5 21.5h6' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 8 12, text;
+  }
+
   /* Гаттер уже зарезервирован выше, поэтому компенсация ширины полосы
      прокрутки от react-remove-scroll не нужна — иначе контент сдвинется. */
   body[data-scroll-locked] {
@@ -299,6 +372,64 @@
 
 .custom-tree .rc-tree-switcher-line-icon {
   display: none !important;
+}
+
+/* Курсор клавиатуры в дереве устройств: стрелки водят его, Enter открывает узел (#16 п. 10).
+   Виден только пока дерево в фокусе — мышью работают как раньше. */
+.custom-tree.rc-tree-focused .rc-tree-treenode-active [data-tree-key] {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Галочки дерева выбора тегов (#24 п. 2). Стили `rc-tree/assets` не подключены, без этих
+   правил элемент галочки 0×0 и отметка в дереве не видна вовсе. Три состояния: пусто,
+   отмечено, частично (у ветки отмечена часть каналов). */
+.custom-tree .rc-tree-checkbox {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border: 1px solid var(--input);
+  border-radius: 4px;
+  background: var(--background);
+  cursor: pointer;
+}
+.custom-tree .rc-tree-checkbox:hover {
+  border-color: var(--primary);
+}
+.custom-tree .rc-tree-checkbox-checked,
+.custom-tree .rc-tree-checkbox-indeterminate {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.custom-tree .rc-tree-checkbox-checked::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--primary-foreground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.custom-tree .rc-tree-checkbox-indeterminate::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 6.5px;
+  width: 8px;
+  height: 2px;
+  background: var(--primary-foreground);
+}
+.custom-tree .rc-tree-checkbox-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Строка дерева выбора тегов: название кликабельно (раскрыть ветку / отметить канал). */
+.tag-tree-checkable .rc-tree-node-content-wrapper {
+  cursor: pointer;
 }
 
 .rc-tree .rc-tree-indent-unit {

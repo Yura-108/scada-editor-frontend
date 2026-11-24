@@ -1,0 +1,171 @@
+"use client";
+
+import React, {useState} from "react";
+import {Boxes, Pencil, Plus, Tag as TagIcon, Trash2} from "lucide-react";
+import {cn} from "@/shared/lib/cn";
+import {DiagramElement} from "@/core/scene";
+import {useEditorStore} from "../../../model/editorStore";
+import {collectTagScope} from "@/core/runtime";
+import {buildDirectBinding, buildDirectTagBinding} from "../../../lib/directBinding";
+import {openBindingEditorModal} from "./OpenBindingEditorModal";
+import {ChooseObjectPropertyModal, type PickedProperty} from "./OpenChooseObjectPropertyModal";
+import {pickTag} from "@/core/devices";
+import {shortTagPath} from "@/core/scene";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {IconButton} from "@/shared/ui/IconButton";
+import {EmptyState} from "@/shared/ui/EmptyState";
+
+interface BindingsTabProps {
+  element: DiagramElement;
+  addButtonClasses: string;
+}
+
+/** Визуальное свойство элемента, в которое пишет прямая привязка (значение gauge и т.п.). */
+const DIRECT_TARGET = "value";
+
+/**
+ * Вкладка «Привязки» панели свойств: список JS-биндингов элемента
+ * (исполняются на клиенте в режиме монитора), тумблер включения,
+ * редактирование/удаление, создание нового.
+ *
+ * Три способа: «Привязать тег» — прямая привязка «значение ← тег», значение пишет
+ * рантайм по `tag_id`, и собственных свойств элементу не нужно; «Привязать свойство» —
+ * прямая привязка «значение ← свойство другого компонента»; «Скрипт-привязка» — редактор
+ * JavaScript для сложной логики (setState по порогу и т.п.).
+ */
+export const BindingsTab: React.FC<BindingsTabProps> = ({element, addButtonClasses}) => {
+  const updateBinding = useEditorStore(s => s.updateBinding);
+  const removeBinding = useEditorStore(s => s.removeBinding);
+  const addBinding = useEditorStore(s => s.addBinding);
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const bindings = element.bindings ?? [];
+
+  // Прямая привязка «значение элемента ← тег»: собственных свойств элементу для неё не нужно.
+  const bindTag = async () => {
+    const tagId = await pickTag({
+      title: "Привязка к тегу",
+      description: "Значение элемента будет следовать за выбранным тегом. Собственных свойств элементу для этого не нужно.",
+      confirmLabel: "Привязать",
+    });
+    if (tagId) addBinding(element.key, buildDirectTagBinding(DIRECT_TARGET, tagId));
+  };
+  // Раньше требовалось СОХРАНЁННО� свойство: биндинг ссылался на него номером, а номер
+  // появлялся только после отдельного запроса. Теперь свойство уезжает той же сценой, и
+  // бэкенд привязывает биндинг по `component_property_name` — достаточно, чтобы свойство
+  // просто было.
+  const canSave = (element.properties?.length ?? 0) > 0;
+
+  // Прямая привязка: значение элемента = значение выбранного свойства.
+  const createDirectBinding = (picked: PickedProperty) => {
+    setPickerOpen(false);
+    const taken = new Set(collectTagScope(element.properties).names);
+    addBinding(element.key, buildDirectBinding(DIRECT_TARGET, picked, taken));
+  };
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm font-medium text-foreground">Привязки</h4>
+      <p className="text-xs text-muted-foreground">
+        В режиме монитора значение элемента может следовать за тегом, браться из свойства
+        другого компонента, либо управляться JavaScript-скриптом (переключение состояния,
+        смена визуальных свойств).
+      </p>
+
+      {!canSave && (
+        <div className="text-xs text-warning">
+          У элемента нет свойств — привязать можно только тег (кнопка ниже). Для привязки
+          к свойству другого компонента сначала добавьте элементу свойство на вкладке
+          «Свойства».
+        </div>
+      )}
+
+      {bindings.length === 0 ? (
+        <EmptyState size="sm" title="Нет привязок" className="py-3" />
+      ) : (
+        <div className="space-y-2">
+          {bindings.map(binding => {
+            const ref = binding.direct ? binding.propertyRefs?.[0] : undefined;
+            return (
+              <div
+                key={binding.id}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-xl border",
+                  "bg-card/60 border-border",
+                  !binding.enabled && "opacity-60",
+                )}
+              >
+                {/* Тумблер включения */}
+                <Checkbox
+                  checked={binding.enabled}
+                  title={binding.enabled ? "Привязка активна" : "Привязка выключена"}
+                  onChange={e => updateBinding(element.key, binding.id, {enabled: e.target.checked})}
+                />
+
+                {binding.direct && binding.tag ? (
+                  <div
+                    className="flex-1 min-w-0 text-sm text-foreground truncate flex items-center gap-1.5"
+                    title={`Значение ← тег ${binding.tag}`}
+                  >
+                    <TagIcon size={13} className="text-tag shrink-0" />
+                    <span className="text-muted-foreground">значение ←</span>
+                    <span className="truncate">{shortTagPath(binding.tag)}</span>
+                  </div>
+                ) : binding.direct && ref ? (
+                  <div
+                    className="flex-1 min-w-0 text-sm text-foreground truncate flex items-center gap-1.5"
+                    title={`Значение ← ${ref.componentLabel} · ${ref.propertyName}`}
+                  >
+                    <Boxes size={13} className="text-success shrink-0" />
+                    <span className="text-muted-foreground">значение ←</span>
+                    <span className="truncate">
+                      {ref.componentLabel} · {ref.propertyName}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    className="flex-1 min-w-0 text-left text-sm text-foreground truncate hover:underline"
+                    title="Редактировать привязку"
+                    onClick={() => openBindingEditorModal({element, binding})}
+                  >
+                    {binding.name || "Без названия"}
+                  </button>
+                )}
+
+                {!binding.direct && (
+                  <IconButton icon={Pencil} label="Редактировать" size="xs" onClick={() => openBindingEditorModal({element, binding})} />
+                )}
+                <IconButton icon={Trash2} label="Удалить привязку" size="xs" variant="danger" onClick={() => removeBinding(element.key, binding.id)} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button className={addButtonClasses} onClick={() => void bindTag()}>
+        <TagIcon size={18} />
+        Привязать тег
+      </button>
+
+      <button className={addButtonClasses} onClick={() => setPickerOpen(true)}>
+        <Boxes size={18} />
+        Привязать свойство
+      </button>
+
+      <button
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent border border-dashed border-input transition-colors"
+        onClick={() => openBindingEditorModal({element})}
+      >
+        <Plus size={14} />
+        Скрипт-привязка (JavaScript)
+      </button>
+
+      <ChooseObjectPropertyModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={createDirectBinding}
+      />
+    </div>
+  );
+};

@@ -1,0 +1,77 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        env:
+          HUSKY: '0'
+        run: npm ci
+      - name: Run project checks
+        run: npm run check:pr
+
+  docker:
+    name: Docker build and smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build production image
+        run: docker build --tag scada-frontend:ci .
+      - name: Smoke test the standalone server
+        run: |
+          docker run --detach --name scada-smoke --publish 127.0.0.1:3000:3000 scada-frontend:ci
+          trap 'docker logs scada-smoke; docker rm --force scada-smoke' EXIT
+          login_status=$(curl --fail --silent --show-error --retry 15 --retry-all-errors --retry-delay 2 \
+            --retry-max-time 45 --max-time 5 --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:3000/login)
+          worker_status=$(curl --fail --silent --show-error --max-time 5 --output /dev/null \
+            --write-out '%{http_code}' http://127.0.0.1:3000/sandbox/worker.js)
+          echo "HTTP status: /login=$login_status, /sandbox/worker.js=$worker_status"
+          test "$login_status" = 200
+          test "$worker_status" = 200
+
+  title:
+    name: PR title
+    if: github.event_name == 'pull_request'
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check Conventional Commits format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?!?: [^[:space:]].*$'
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "::error::Use a Conventional Commits title, for example fix(editor): restore layer selection"
+            exit 1
+          fi

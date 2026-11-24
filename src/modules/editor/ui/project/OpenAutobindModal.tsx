@@ -1,0 +1,245 @@
+"use client";
+
+import React, {useEffect, useState} from "react";
+import {AlertTriangle, CheckCircle2, Link2} from "lucide-react";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {useEditorStore} from "../../model/editorStore";
+import {Button} from "@/shared/ui/Button";
+import {Banner} from "@/shared/ui/Banner";
+import {Field} from "@/shared/ui/field/Field";
+import {fieldLabelClass} from "@/shared/ui/field/fieldStyles";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {Collapsible} from "@/shared/ui/codeModalParts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/field/Select";
+import type {AutobindMiss, AutobindReport} from "../../types/autobind.types";
+
+/** Строки несовпадений: имя компонента, свойство (у `not_found` его нет) и сцена. */
+function MissList({items}: {items: AutobindMiss[]}) {
+  return (
+    <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
+      {items.map((miss, i) => (
+        // Ключ с индексом: один компонент попадает в список по разу на каждое своё свойство.
+        <li key={`${miss.component_id}-${miss.property ?? ""}-${i}`}>
+          <span className="font-mono font-semibold">{miss.name}</span>
+          {miss.property && <> · <span className="font-mono">{miss.property}</span></>}
+          {" — "}
+          <span className="text-muted-foreground">{miss.scene}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AutobindReportView({report}: {report: AutobindReport}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-foreground">
+        Привязано свойств: <b>{report.bound}</b>, изменено: <b>{report.changed}</b>.
+      </p>
+
+      {report.scenes.length > 0 ? (
+        <div className="space-y-1">
+          <span className={fieldLabelClass}>Изменённые схемы</span>
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
+            {report.scenes.map((s) => (
+              <li key={s.scene_id}>
+                {s.name} — версия {s.version_no}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Ничего не поменялось: теги уже соответствовали базе.
+        </p>
+      )}
+
+      {report.not_found.length > 0 && (
+        <Collapsible
+          title={`Объект не найден: ${report.not_found.length}`}
+          badge={<span className="text-xs text-muted-foreground">теги этих компонентов не тронуты</span>}
+        >
+          <p className="text-xs text-muted-foreground mb-2">
+            В базе нет объекта с таким именем — либо старое имя («Имя в ПЛК») указывает сразу
+            на несколько объектов, и выбрать однозначно нельзя.
+          </p>
+          <MissList items={report.not_found} />
+        </Collapsible>
+      )}
+
+      {report.missing_fields.length > 0 && (
+        <Collapsible
+          title={`Нет поля у объекта: ${report.missing_fields.length}`}
+          badge={<span className="text-xs text-warning">проверьте имя свойства</span>}
+        >
+          <MissList items={report.missing_fields} />
+        </Collapsible>
+      )}
+
+      {report.in_operation && (
+        <p className="flex items-start gap-2 text-sm text-warning">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          Проект в эксплуатации — новые теги подхватятся после повторного подъёма.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AutobindContent({projectId, projectName}: {projectId: number; projectName: string}) {
+  const closeModal = useCloseModal();
+  const autobindProject = useEditorStore((s) => s.autobindProject);
+
+  const [sites, setSites] = useState<string[]>([]);
+  const [site, setSite] = useState("");
+  const [roots, setRoots] = useState<string[]>([]);
+  const [root, setRoot] = useState("");
+  const [isLoadingRoots, setIsLoadingRoots] = useState(false);
+  const [isBinding, setIsBinding] = useState(false);
+  const [report, setReport] = useState<AutobindReport | null>(null);
+
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/device/site/");
+        if (!res.ok) return;
+        const data: unknown = await res.json();
+        setSites(Array.isArray(data) ? data.filter((s): s is string => typeof s === "string") : []);
+      } catch (err) {
+        console.error("Не удалось загрузить площадки:", err);
+      }
+    })();
+  }, []);
+
+  // Список баз перезапрашивается на каждую смену площадки. `cancelled` — защита от гонки:
+  // ответ по прежней площадке не должен перетереть свежий (тот же приём в ChannelsToolbar).
+  useEffect(() => {
+    if (!site) {
+      setRoots([]);
+      setRoot("");
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingRoots(true);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/device/hierarchy?site=${encodeURIComponent(site)}`);
+        if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+        const data = await res.json() as {nodes?: {key: string}[]};
+        if (cancelled) return;
+        setRoots((data.nodes ?? []).map((n) => n.key));
+        setRoot("");
+      } catch (err) {
+        if (!cancelled) console.error("Не удалось загрузить базы каналов:", err);
+      } finally {
+        if (!cancelled) setIsLoadingRoots(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [site]);
+
+  const handleBind = async () => {
+    if (!root) return;
+    setIsBinding(true);
+    try {
+      const result = await autobindProject(projectId, root);
+      // `null` — отказ от сохранения или ошибка: тост уже показан действием, форму оставляем.
+      if (result) setReport(result);
+    } finally {
+      setIsBinding(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader
+        icon={report
+          ? <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-success" />
+          : <Link2 className="mt-1 h-5 w-5 shrink-0 text-primary" />}
+        title="Автопривязка к базе каналов"
+        description={<>
+          Проект <b>{projectName}</b>. Теговые свойства получат пути из базы: имя компонента —
+          объект, имя свойства — поле.
+        </>}
+      />
+
+      <DialogBody>
+        {report ? (
+          <AutobindReportView report={report} />
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Площадка">
+                <Select value={site} onValueChange={setSite}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите площадку…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field
+                label="База каналов"
+                hint={site && !isLoadingRoots && roots.length === 0 ? "На этой площадке баз нет" : undefined}
+              >
+                <Select value={root} onValueChange={setRoot} disabled={!site || isLoadingRoots}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingRoots ? "Загрузка…" : "Выберите базу…"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Подпись — последний сегмент, значение — полный путь: именно он уезжает
+                        в `channel_root`. */}
+                    {roots.map((key) => (
+                      <SelectItem key={key} value={key}>{key.split(".").pop() || key}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+
+            <Banner role="note" tone="warning" icon={AlertTriangle}>
+              Совпавшие теги будут перезаписаны, даже если уже заданы. Отменить — восстановлением
+              предыдущей версии схемы.
+            </Banner>
+          </div>
+        )}
+      </DialogBody>
+
+      <DialogFooter>
+        <Button onClick={closeModal}>{report ? "Закрыть" : "Отмена"}</Button>
+        {!report && (
+          <Button
+            variant="primary"
+            onClick={() => void handleBind()}
+            disabled={!root || isBinding}
+          >
+            <Link2 size={16} />
+            {isBinding ? "Привязываю…" : "Привязать"}
+          </Button>
+        )}
+      </DialogFooter>
+    </>
+  );
+}
+
+/**
+ * Автопривязка — из выбора проекта в шапке редактора; поверх открытого окна, если оно есть.
+ */
+export function openAutobindModal(projectId: number, projectName: string) {
+  useModalStore.getState().pushModal(
+    <AutobindContent projectId={projectId} projectName={projectName} />,
+    {size: "lg", closeOnOverlay: false},
+  );
+}

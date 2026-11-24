@@ -1,0 +1,169 @@
+"use client";
+
+import React from "react";
+import {Plus} from "lucide-react";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
+import OpenAddPropertyModal from "../property/PropertyModal";
+import {TREND_DEFAULTS, TREND_LIMITS, TREND_WINDOW_PRESETS, nextPenName, readTrendSettings, trendPens, trendTiming} from "@/core/scene";
+import type {DiagramElement, TrendPenStyle, TrendSettings} from "@/core/scene";
+import {historyEditing} from "../../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {Select} from "@/shared/ui/field/Select";
+import {TrendPenRow} from "./TrendPenRow";
+
+interface Props {
+  element: DiagramElement;
+  onChange: (value: TrendSettings | undefined) => void;
+  inputClassName: string;
+  addButtonClassName: string;
+  /** false — дерева устройств нет, тег перу выбрать не из чего. */
+  canAddPen: boolean;
+  addPenHint: string;
+}
+
+const labelClass = fieldLabelSmClass;
+
+const formatWindow = (sec: number) =>
+  TREND_WINDOW_PRESETS.find(p => p.seconds === sec)?.label ?? `${sec} с`;
+
+/**
+ * Настройка тренда (контракт 2026-09-28-tag-archive-contract.md, раздел 1).
+ *
+ * Перо — это тег-свойство элемента: добавляется той же формой свойства, только с готовым
+ * именем `penN`, типом «Тег» и `float`. Здесь же его оформление — цвет, толщина и свой
+ * масштаб по Y (пусто — по данным), которые едут в `trend.pens` под именем свойства.
+ * Всё пишется в базу элемента (BASE_ONLY_KEYS): попадает в undo и помечает схему изменённой.
+ */
+export function TrendSettingsBlock({element, onChange, inputClassName, addButtonClassName, canAddPen, addPenHint}: Props) {
+  const settings = readTrendSettings(element.trend);
+  const {window: windowSec, step} = trendTiming(settings);
+  const pens = trendPens(element);
+
+  const commit = (patch: TrendSettings) => onChange(readTrendSettings({...settings, ...patch}));
+
+  const commitPen = (name: string, patch: Partial<TrendPenStyle>, clear?: keyof TrendPenStyle) => {
+    const current: TrendPenStyle = {...(settings?.pens?.[name] ?? {}), ...patch};
+    if (clear) delete current[clear];
+    commit({pens: {...(settings?.pens ?? {}), [name]: current}});
+  };
+
+  const presets = TREND_WINDOW_PRESETS.some(p => p.seconds === windowSec)
+    ? TREND_WINDOW_PRESETS
+    : [...TREND_WINDOW_PRESETS, {label: formatWindow(windowSec), seconds: windowSec}];
+
+  const addPen = () => {
+    if (!canAddPen) return;
+    OpenAddPropertyModal({
+      elementKey: element.key,
+      preset: {name: nextPenName(element.properties), property_type: "Тег", value_type: "float"},
+    });
+  };
+
+  return (
+    <div className="pt-3 space-y-3">
+      <div className="h-px bg-border" />
+      <h4 className="text-sm font-medium text-foreground">Тренд</h4>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label htmlFor="trend-window" className={labelClass}>Окно</label>
+          <Select
+            id="trend-window"
+            size="sm"
+            value={String(windowSec)}
+            onValueChange={v => commit({window: Number(v)})}
+            options={presets.map(p => ({value: String(p.seconds), label: p.label}))}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="trend-step" className={labelClass}>Шаг сетки, с</label>
+          <NumberInput {...historyEditing}
+            id="trend-step"
+            className={inputClassName}
+            value={settings?.step}
+            placeholder={String(TREND_DEFAULTS.step)}
+            min={TREND_LIMITS.step.min}
+            max={TREND_LIMITS.step.max}
+            step={60}
+            onCommit={v => commit({step: v})}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Окно — сколько времени видно в мониторе; оператор может сменить его у себя, не сохраняя.
+        Шаг — только сетка и подписи времени ({step} с).
+      </p>
+
+      {/* Одна ось на весь тренд (контракт 2026-09-29-trend-common-scale-contract.md): разные
+          единицы приводятся к ней коэффициентом пера, а не своей шкалой у каждого. */}
+      <div className="grid grid-cols-2 gap-3">
+        {(["min", "max"] as const).map(key => (
+          <div key={key} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor={`trend-scale-${key}`} className={labelClass}>
+                Шкала Y: {key === "min" ? "мин" : "макс"}
+              </label>
+              {settings?.[key] !== undefined && (
+                <button
+                  type="button"
+                  className="text-[10px] text-primary hover:underline"
+                  onClick={() => commit({[key]: undefined})}
+                >
+                  авто
+                </button>
+              )}
+            </div>
+            <NumberInput {...historyEditing}
+              id={`trend-scale-${key}`}
+              className={inputClassName}
+              value={settings?.[key]}
+              placeholder="авто"
+              onCommit={v => commit({[key]: v})}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Пусто — по данным всех перьев. Единицу пишите в «Имя» пера («Масса, т»), а к шкале её
+        приводят коэффициент и сдвиг: на графике значение тега × коэффициент + сдвиг.
+      </p>
+
+      <div className="space-y-2">
+        <div className={labelClass}>Перья</div>
+        {pens.length === 0 && (
+          <div className="text-sm text-muted-foreground italic">
+            Перьев нет — тренд пустой.
+          </div>
+        )}
+        {pens.map(pen => {
+          const property = element.properties?.find(p => p.name === pen.name);
+          const style = settings?.pens?.[pen.name];
+          return (
+            <TrendPenRow
+              key={pen.name}
+              pen={pen}
+              property={property}
+              style={style}
+              elementKey={element.key}
+              inputClassName={inputClassName}
+              commitPen={commitPen}
+            />
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        className={canAddPen
+          ? addButtonClassName
+          : "flex items-center gap-2 py-2 rounded-xl text-sm font-medium text-muted-foreground cursor-not-allowed"}
+        onClick={addPen}
+        disabled={!canAddPen}
+        title={canAddPen ? undefined : addPenHint}
+      >
+        <Plus size={18} />
+        Добавить перо
+      </button>
+    </div>
+  );
+}

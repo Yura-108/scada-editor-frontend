@@ -287,7 +287,7 @@ Dockerfile · DEPLOY.md · CLAUDE.md
 
 ### Требования
 
-- **Node.js 20+** и npm.
+- **Node.js 24 LTS** и npm. Версия для разработки и CI указана в [`.nvmrc`](.nvmrc).
 - Запущенный бэкенд с gateway (по умолчанию `http://localhost:8080`). Без него приложение
   откроется, но войти и что-либо загрузить не получится.
 
@@ -337,6 +337,7 @@ npm run dev
 | `npm run build` | Продакшн-сборка в режиме `standalone`; `postbuild` копирует `.next/static` и `public` в `.next/standalone` |
 | `npm run start` | Запуск собранного приложения: `node .next/standalone/server.js` |
 | `npm run lint` | ESLint |
+| `npm run check:pr` | ESLint без предупреждений, TypeScript, проверка циклов и цветов, production-сборка |
 
 Перед коммитом **Husky + lint-staged** прогоняют `eslint --fix` и `prettier --write` по
 изменённым `*.{js,ts,tsx}`.
@@ -348,7 +349,7 @@ npm run dev
 ### Docker
 
 Многостадийный [`Dockerfile`](Dockerfile): `deps` → `builder` (`npm run build`) → `runner`
-на `node:20-alpine` со standalone-выводом. Сервер слушает порт **3000**. Переменные
+на Node.js 24 LTS со standalone-выводом. Сервер слушает порт **3000**. Переменные
 `BACKEND_URL*` передаются при запуске контейнера (например, через docker-compose), в образ они
 не вшиваются.
 
@@ -427,6 +428,7 @@ docker run -p 3000:3000 \
 
 | Файл | Для кого |
 |------|----------|
+| [Правила работы с Git](CONTRIBUTING.md) | Разработчики и агенты. Как создать ветку, проверить изменения и открыть PR |
 | [`docs/editor-user-manual.md`](docs/editor-user-manual.md) | Пользователь редактора: интерфейс, элементы, горячие клавиши |
 | [`CLAUDE.md`](CLAUDE.md) | Разработчик (и ИИ-ассистент): архитектура, инварианты, подводные камни |
 | [`DEPLOY.md`](DEPLOY.md) | Деплой на Linux: systemd, nginx |
@@ -435,11 +437,8 @@ docker run -p 3000:3000 \
 
 ## Заметки для разработчиков
 
-- **Тестов нет**: тестовый раннер не настроен. Проверка — `npm run lint`, `tsc` и ручной
-  прогон в `npm run dev`.
-- **Ошибки типов.** `npx tsc --noEmit` выдаёт стабильный набор старых ошибок: объединение
-  `ElementType` неполное. `next build` их игнорирует (`typescript.ignoreBuildErrors` в
-  `next.config.ts`). Правило: **не добавлять новых ошибок** сверх этого набора.
+- **Перед PR** выполните `npm run check:pr`. Ошибки типов блокируют сборку. Пока тестовый
+  раннер отсутствует, изменения поведения также проверяйте вручную в `npm run dev`.
 - **Русский язык** в комментариях и текстах интерфейса — придерживайтесь его.
 - **Guard-ы иерархии.** Операции со сценой проверяют, что она принадлежит текущему проекту
   (`sceneBelongsToCurrentProject`). Не убирайте эти проверки.
@@ -452,4 +451,4 @@ docker run -p 3000:3000 \
 - **Проверка сериализации без браузера**: транспилировать `buildComponentTree`,
   `transformElements` и `createUuid` через `npx tsc --module commonjs` и прогнать цикл в
   Node-скрипте.
-- **Git**: разработка ведётся в ветке `dev`, стабильное состояние — `main`.
+- **Git.** Для каждой задачи создавайте отдельную ветку от `origin/dev` и открывайте PR в `dev`. Стабильная версия находится в `main`.

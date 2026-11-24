@@ -1,8 +1,8 @@
 import {NextRequest, NextResponse} from "next/server";
-import {protectedRoute} from "@/lib/protected";
-import {badPath, parseId, passThrough} from "@/lib/editorHistoryProxy";
-import {RUNTIME_BACKEND_URL} from "@/lib/procedureProxy";
-import type {PropertyWriteItemDto} from "@/types/runtimeWrite.types";
+import {protectedRoute} from "@/server/auth/protected";
+import {badPath, parseId, passThrough} from "@/server/proxy/editorHistoryProxy";
+import {RUNTIME_BACKEND_URL} from "@/server/proxy/procedureProxy";
+import type {PropertyWriteItemDto} from "@/core/runtime";
 
 const badRequest = (message: string) => NextResponse.json({message}, {status: 400});
 
