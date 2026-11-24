@@ -109,7 +109,40 @@ const CHECKS: Check[] = [
     return JSON.stringify(v(before)).includes("5") && JSON.stringify(v(after)).includes("null")
       ? true : JSON.stringify({before, after});
   }},
+  {name: "Занятая страница — не зависание скрипта: ответ воркера успевает дойти", run: async sb => {
+    await sb.load(6, {bindings: [binding("busy", 'setState("Да")')], events: []});
+    sb.setValues(6, VALUES);
+    const run = sb.runBindings(6, [{id: "busy", self: null}]);
+    // Страница занята дольше срока прогона (тяжёлый рендер схемы): воркер давно ответил,
+    // но его сообщение ждёт в очереди рядом со сработавшим таймером сторожа.
+    const until = performance.now() + 350;
+    while (performance.now() < until) { /* держим поток */ }
+    try {
+      const res = await run;
+      return res && "intents" in res[0] ? true : JSON.stringify(res);
+    } catch (err) {
+      return String(err);
+    }
+  }},
+  {name: "Прогон сразу за тяжёлой загрузкой схемы — не зависание: срок идёт с начала работы над запросом", run: async sb => {
+    // Как при открытии схемы в мониторе: загрузку не ждём, прогон уходит следом.
+    const many = Array.from({length: HEAVY_LOAD_BINDINGS}, (_, i) => binding(`h${i}`, `setState(T > ${i} ? "Да" : "Нет")`));
+    const started = performance.now();
+    const loaded = sb.load(5, {bindings: many, events: []});
+    sb.setValues(5, VALUES);
+    try {
+      const res = await sb.runBindings(5, [{id: "h0", self: null}]);
+      const ms = Math.round(performance.now() - started);
+      await loaded;
+      return res && "intents" in res[0] ? true : `ответ через ${ms} мс: ${JSON.stringify(res)}`;
+    } catch (err) {
+      return `через ${Math.round(performance.now() - started)} мс: ${String(err)}`;
+    }
+  }},
 ];
+
+/** Столько привязок компилируются заведомо дольше срока одного прогона (200 мс). */
+const HEAVY_LOAD_BINDINGS = 20_000;
 
 /** Ручная проверка песочницы скриптов: прогоняет CHECKS в настоящем воркере браузера. */
 export function SandboxChecks() {

@@ -9,6 +9,7 @@ import type {
  *
  * Каждый запрос — под сторожем: нет ответа за отведённое время — воркер убивается и поднимается
  * заново с последней загруженной схемой и значениями, а запрос отклоняется `SandboxTimeoutError`.
+ * Время считается с момента, когда воркер взялся за запрос, а не с отправки (см. `arm`).
  * Раньше `while (true) {}` в привязке вешал весь монитор; решать, что делать с виновным скриптом
  * (отключить и загрузить схему без него), — вызывающему, по `ids` в ошибке.
  *
@@ -52,10 +53,14 @@ export interface ScriptSandbox {
 interface Pending {
   type: SandboxRequest["type"];
   ids: string[];
-  timer: ReturnType<typeof setTimeout>;
+  timeoutMs: number;
+  /** `null` — запрос ещё в очереди воркера: сторож взводится, когда до него дойдёт дело. */
+  timer: ReturnType<typeof setTimeout> | null;
   resolve: (msg: SandboxResponse) => void;
   reject: (err: Error) => void;
 }
+
+const noop = () => {};
 
 /**
  * Воркер — отдельный файл (`scripts/build-sandbox-worker.mjs`), а не `new URL(…, import.meta.url)`:
@@ -78,12 +83,29 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
 
   const snapshot = (): SandboxValues => ({tags: [...tags], props: [...props]});
 
+  /**
+   * Взводит сторож первому запросу в очереди — тому, над которым воркер работает сейчас.
+   *
+   * Воркер отвечает строго по очереди, а срок запроса — это срок его ИСПОЛНЕНИЯ. Пока сторож
+   * взводился при отправке, прогон привязок, ушедший сразу за загрузкой схемы, тратил свои
+   * 200 мс на её компиляцию: на большой схеме он «зависал», ни разу не начавшись, воркер
+   * убивался, и здоровые привязки отключались как зависшие. `pending` хранит порядок отправки
+   * (`Map`), поэтому первый в нём — текущий.
+   */
+  const arm = () => {
+    const head = pending.entries().next();
+    if (head.done) return;
+    const [key, p] = head.value;
+    if (p.timer === null) p.timer = setTimeout(() => restart(key), p.timeoutMs);
+  };
+
   const settle = (key: number, msg: SandboxResponse) => {
     const p = pending.get(key);
     if (!p) return;
-    clearTimeout(p.timer);
+    if (p.timer !== null) clearTimeout(p.timer);
     pending.delete(key);
     p.resolve(msg);
+    arm();
   };
 
   const onMessage = (e: MessageEvent<SandboxResponse>) => {
@@ -96,14 +118,19 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
     worker?.terminate();
     worker = null;
     for (const [key, p] of pending) {
-      clearTimeout(p.timer);
+      if (p.timer !== null) clearTimeout(p.timer);
       p.reject(key === culprit ? new SandboxTimeoutError(p.type, p.ids) : new SandboxRestartedError());
     }
     pending.clear();
     if (disposed || !lastLoad) return;
-    // Схема и значения — заново; ответ на эту загрузку никто не ждёт.
+    // Схема и значения — заново. Ответ на эту загрузку никто не ждёт, но в очереди она стоит:
+    // запросы, отправленные следом, не должны тратить свой срок на запуск воркера и компиляцию.
+    pending.set(-lastLoad.generation, {
+      type: "load", ids: [], timeoutMs: SANDBOX_TIMEOUTS.load, timer: null, resolve: noop, reject: noop,
+    });
     ensure().postMessage({type: "load", ...lastLoad} satisfies SandboxRequest);
     ensure().postMessage({type: "values", generation: lastLoad.generation, values: snapshot()} satisfies SandboxRequest);
+    arm();
   };
 
   const ensure = (): Worker => {
@@ -120,17 +147,16 @@ export function createScriptSandbox({createWorker = defaultWorker}: {createWorke
   /** Отправить и ждать ответа под сторожем. `key` — requestId или −generation для `load`. */
   const request = (key: number, msg: SandboxRequest, ids: string[], timeoutMs: number) =>
     new Promise<SandboxResponse>((resolve, reject) => {
-      const timer = setTimeout(() => restart(key), timeoutMs);
-      pending.set(key, {type: msg.type, ids, timer, resolve, reject});
+      pending.set(key, {type: msg.type, ids, timeoutMs, timer: null, resolve, reject});
       try {
         ensure().postMessage(msg);
       } catch (err) {
         // Не клонируется (`self` с функцией) или песочница закрыта: ответа не будет, и сторож
         // не должен принять это за зависание.
-        clearTimeout(timer);
         pending.delete(key);
         reject(err instanceof Error ? err : new Error(String(err)));
       }
+      arm();
     });
 
   const oneShotEvent = async (event: SandboxEvent, values: SandboxValues, self: unknown, timeoutMs: number) => {

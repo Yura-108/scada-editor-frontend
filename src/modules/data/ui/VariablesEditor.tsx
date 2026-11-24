@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import {Plus, Trash2} from "lucide-react";
+import {ListChecks, Plus, Trash2, Variable} from "lucide-react";
 import {cn} from "@/shared/lib/cn";
 import {Button} from "@/shared/ui/Button";
 import {IconButton} from "@/shared/ui/IconButton";
@@ -13,13 +13,15 @@ import {
   type AutomationValueType,
   type AutomationVariable,
 } from "@/core/automation";
-import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {MultiSelect} from "@/shared/ui/MultiSelect";
 import {Input} from "@/shared/ui/field/Input";
 import {Select} from "@/shared/ui/field/Select";
-import {fieldBase, fieldSizes} from "@/shared/ui/field/fieldStyles";
 
-/** Список задач-писателей раскрывается из «поля» — у него вид поля, но это `<summary>`. */
-const fieldLook = cn(fieldBase, fieldSizes.sm, "flex items-center");
+const ROW_GRID = "grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2";
+
+/** Подсказка в пустом «Имени» — с «например», чтобы её не принимали за введённое имя (#23 п. 3). */
+const NAME_PLACEHOLDER = "Имя, например pump.speedSp";
 
 interface Props {
   variables: AutomationVariable[];
@@ -62,12 +64,15 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
     );
   };
 
-  const toggleWriter = (taskIndex: number, name: string, on: boolean) =>
+  /** Писатели переменной — номера задач в списке: у новой задачи ещё нет `id`. */
+  const setWriters = (name: string, taskIndexes: string[]) => {
+    const on = new Set(taskIndexes);
     onChange(variables, tasks.map((t, i) => {
-      if (i !== taskIndex) return t;
       const without = t.writes_variables.filter(w => w !== name);
-      return {...t, writes_variables: on ? [...without, name] : without};
+      return {...t, writes_variables: on.has(String(i)) ? [...without, name] : without};
     }));
+  };
+  const taskOptions = tasks.map((t, i) => ({value: String(i), label: t.name}));
 
   return (
     <div className="p-4 max-w-5xl">
@@ -78,14 +83,25 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
             <Plus size={14} />Переменная
           </Button>
         </div>
-        <div className="grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-          <span>Имя</span><span>Тип</span><span>По умолчанию</span><span>Описание</span><span>Пишут задачи</span><span />
-        </div>
+        {/* Подписи колонок — только вместе со строками: без них это недорисованная таблица (#23 п. 1). */}
+        {variables.length === 0 ? (
+          <EmptyState
+            size="sm"
+            icon={Variable}
+            className="rounded-lg border border-dashed"
+            title="Переменных пока нет"
+            description="Переменная хранит значение, которое задачи автоматизации записывают и читают. Нажмите «+ Переменная», чтобы добавить первую."
+          />
+        ) : (
+          <div className={cn(ROW_GRID, "text-xs uppercase tracking-wider text-muted-foreground")}>
+            <span>Имя</span><span>Тип</span><span>По умолчанию</span><span>Описание</span><span>Пишут задачи</span><span />
+          </div>
+        )}
         {variables.map((v, i) => {
-          const writers = tasks.filter(t => v.name !== "" && t.writes_variables.includes(v.name));
+          const writers = v.name === "" ? [] : taskOptions.filter((_, ti) => tasks[ti].writes_variables.includes(v.name)).map(o => o.value);
           return (
-            <div key={i} className="grid grid-cols-[1fr_100px_140px_1fr_1fr_auto] gap-2 items-start">
-              <Input size="sm" value={v.name} placeholder="pump.speedSp" onChange={e => patch(i, {name: e.target.value})} title={`${VARIABLE_TAG_PREFIX}${v.name}`} />
+            <div key={i} className={cn(ROW_GRID, "items-start")}>
+              <Input size="sm" value={v.name} placeholder={NAME_PLACEHOLDER} onChange={e => patch(i, {name: e.target.value})} title={`${VARIABLE_TAG_PREFIX}${v.name}`} />
               <Select
                 size="sm"
                 value={v.value_type}
@@ -94,24 +110,17 @@ export function VariablesEditor({variables, tasks, errors, onChange}: Props) {
               />
               <Input size="sm" value={v.default_value ?? ""} onChange={e => patch(i, {default_value: e.target.value === "" ? null : e.target.value})} />
               <Input size="sm" value={v.description ?? ""} onChange={e => patch(i, {description: e.target.value === "" ? null : e.target.value})} />
-              <details className="relative">
-                <summary className={cn(fieldLook, "cursor-pointer list-none truncate", writers.length === 0 && "text-warning")}>
-                  {writers.length ? writers.map(t => t.name).join(", ") : "нет писателя"}
-                </summary>
-                <div className="absolute z-dropdown mt-1 w-full min-w-48 max-h-60 overflow-y-auto rounded-lg border bg-popover text-popover-foreground p-2 shadow-lg space-y-1">
-                  {tasks.length === 0 && <p className="text-xs text-muted-foreground">Задач нет — заведите на странице «Автоматизация».</p>}
-                  {v.name === "" && tasks.length > 0 && <p className="text-xs text-muted-foreground">Сначала задайте имя переменной.</p>}
-                  {v.name !== "" && tasks.map((t, ti) => (
-                    <Checkbox
-                      key={t.id ?? `new-${ti}`}
-                      className="flex"
-                      checked={t.writes_variables.includes(v.name)}
-                      onChange={e => toggleWriter(ti, v.name, e.target.checked)}
-                      label={<span className="truncate">{t.name}</span>}
-                    />
-                  ))}
-                </div>
-              </details>
+              {/* Общий выпадающий список: закрывается щелчком мимо и по Esc, открыт только один.
+                  Раньше это был <details> — он закрывался лишь по своей же строке (#23 п. 2). */}
+              <MultiSelect
+                options={taskOptions}
+                selected={writers}
+                onChange={(values) => setWriters(v.name, values)}
+                icon={<ListChecks />}
+                disabled={v.name === "" || tasks.length === 0}
+                placeholder={tasks.length === 0 ? "задач нет" : v.name === "" ? "сначала имя" : "нет писателя"}
+                className={cn("w-full", v.name !== "" && writers.length === 0 && "border-warning")}
+              />
               <IconButton icon={Trash2} label="Удалить переменную" title="Удалить" variant="danger" onClick={() => remove(i)} />
             </div>
           );
