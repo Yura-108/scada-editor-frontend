@@ -287,7 +287,7 @@ Dockerfile · DEPLOY.md · CLAUDE.md
 
 ### Требования
 
-- **Node.js 20+** и npm.
+- **Node.js 24 LTS** и npm. Версия для разработки и CI указана в [`.nvmrc`](.nvmrc).
 - Запущенный бэкенд с gateway (по умолчанию `http://localhost:8080`). Без него приложение
   откроется, но войти и что-либо загрузить не получится.
 
@@ -337,6 +337,7 @@ npm run dev
 | `npm run build` | Продакшн-сборка в режиме `standalone`; `postbuild` копирует `.next/static` и `public` в `.next/standalone` |
 | `npm run start` | Запуск собранного приложения: `node .next/standalone/server.js` |
 | `npm run lint` | ESLint |
+| `npm run check:pr` | ESLint без предупреждений, TypeScript, проверка циклов и цветов, production-сборка |
 
 Перед коммитом **Husky + lint-staged** прогоняют `eslint --fix` и `prettier --write` по
 изменённым `*.{js,ts,tsx}`.
@@ -348,7 +349,7 @@ npm run dev
 ### Docker
 
 Многостадийный [`Dockerfile`](Dockerfile): `deps` → `builder` (`npm run build`) → `runner`
-на `node:20-alpine` со standalone-выводом. Сервер слушает порт **3000**. Переменные
+на Node.js 24 LTS со standalone-выводом. Сервер слушает порт **3000**. Переменные
 `BACKEND_URL*` передаются при запуске контейнера (например, через docker-compose), в образ они
 не вшиваются.
 
