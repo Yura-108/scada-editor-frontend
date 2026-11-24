@@ -1,6 +1,6 @@
 ---
 name: scada-editor
-description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/components/editor/**, src/store/useEditorStore.ts, the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
+description: Architecture, data model, and conventions of the SCADA scheme editor (the /editor area) in this repo — flat element array, parentKey/children/composition membership, states/overrides + getRenderedElement, Konva rendering (Canvas → ShapeElement/GroupNode), grid snapping, the palette + adding new element types, properties panel, copy/paste, drag-drop, serialization bake/unbake round-trip, and zundo undo. Use this BEFORE reading/editing anything under src/core/canvas/**, src/modules/editor/** (useEditorStore and its slices), the element palette/properties/registry, canvas interactions, or serialization (buildComponentTree/transformElements). It maps the code and lists the non-obvious gotchas so you don't rediscover them.
 ---
 
 # SCADA Editor — architecture & gotchas
@@ -13,7 +13,7 @@ the core of the repo. Comments and user-facing strings are **in Russian** — ma
 Goal when editing: **don't add NEW errors beyond baseline** (check the count before/after).
 `next build` is red for the same reason. There is no test runner.
 
-## Core data model (`src/types/editorElement.type.ts`, `src/store/useEditorStore.ts`)
+## Core data model (`src/core/scene/types/editorElement.type.ts`, `src/modules/editor/model/editorStore.ts` + `model/slices/*`)
 
 `elements: DiagramElement[]` is a **flat** array. Hierarchy is by keys, not nesting:
 - `parentKey` — every element points at its container (or `String(scene.id)` at the root).
@@ -44,9 +44,9 @@ leaves whose live position sits in overrides.
 ## Coordinates, states, rendering
 
 - Child coords are **local to the parent container**. Absolute = sum of rendered x/y up the
-  `parentKey` chain (`src/lib/editor/getAbsoluteRenderedPos.ts`).
+  `parentKey` chain (`src/core/scene/geometry/getAbsoluteRenderedPos.ts`).
 - **Groups store x/y/w/h in the base element. Leaf elements store visual props in per-state
-  `overrides`.** `getRenderedElement(el)` (`src/lib/getRenderedElement.ts`) returns
+  `overrides`.** `getRenderedElement(el)` (`src/core/scene/render/getRenderedElement.ts`) returns
   `{...el, ...currentState.overrides}` — **always render/measure/position via it, never raw `el`.**
   When a leaf is moved, `updateElementVisual` writes x/y to the current state's overrides, NOT base.
   This is why anything that shifts position (copy/paste offset, etc.) must touch overrides too.
@@ -61,7 +61,7 @@ leaves whose live position sits in overrides.
   `setState("Имя")` intent is resolved by name in `applyRuntimeBatch` and a miss is **silently
   skipped**; (d) the backend merges by name when no id is sent. Names must therefore be unique
   per element — nothing enforced it before rename, so the rename path validates the collision.
-- **Rename specifics** (`renameComponentStateInSubtree` + `src/lib/editor/stateNameRefs.ts`):
+- **Rename specifics** (`renameComponentStateInSubtree` + `src/modules/editor/model/stateNameRefs.ts`):
   spread the state so `serverId` survives — it is the *only* thing that makes the backend read a
   rename instead of delete+create (`docs/contract/frontend-contract-changes.md:306`,
   `buildComponentTree.ts:189-192`). `currentComponentStateByElementKey` needs no touching (keyed
@@ -75,9 +75,9 @@ leaves whose live position sits in overrides.
   (into base for groups), clamps w/h to `MIN_SIZE`, and calls `recomputeAncestorBounds` when a
   positional key changed. `updateElement` writes structural fields (scripts, properties, …).
 
-## Konva render tree (`src/components/editor/`)
+## Konva render tree (`src/core/canvas/` — shapes; `src/modules/editor/ui/canvas/` — editor Canvas)
 
-- `Canvas.tsx` — thin orchestrator (~200 lines): the `<Stage>` sized to the **viewport**
+- `Canvas.tsx` (now `src/modules/editor/ui/canvas/`, layers in `layers/`, click/menu hooks in `hooks/`) — thin orchestrator: the `<Stage>` sized to the **viewport**
   (`canvasRect` from the store — NEVER a fixed 5000×5000; Konva allocates w×h×DPR canvases per
   layer and a huge stage eats hundreds of MB / breaks Safari; the 5000-unit world is virtual via
   `camera {x,y,zoom}` transform), grid pattern, marquee, context menu, and builds one
@@ -91,12 +91,15 @@ leaves whose live position sits in overrides.
   `getRenderedElement` reads it non-reactively via `getState()`; (b) `useThemeColors` memoizes
   `themeColors` — keep it stable; (c) anchor/handle `onDragMove` handlers write to the store
   **only when the snapped value changes** (grid-step guard), not per mousemove pixel.
-- `canvas/shapes/ShapeElement.tsx` — **leaf dispatcher**: `if (rendered.type === "…")` branches →
-  a dedicated component, else a generic `<Rect>` fallback (covers rectangle/path/unknown).
-- `canvas/shapes/GroupNode.tsx` — recursive group/component; renders `[...composition, ...children]`.
-- Dedicated leaf components (all take `ShapeElementProps` from `canvas/types.ts`):
+- `core/canvas/shapes/ShapeElement.tsx` — **leaf dispatcher**: `if (rendered.type === "…")` branches →
+  a dedicated component; anything else falls back to `RectShapeElement` (covers rectangle/path/unknown).
+  `Polygon`/`Circle`/`Line`/`RectShapeElement` get `rendered` and `themeColors` from the dispatcher
+  (plus `closeMenu` for the polygon), the others compute them themselves.
+- `GroupNode` (inside `core/canvas/shapes/CanvasNode.tsx`) — recursive group/component; renders `[...composition, ...children]`.
+- Dedicated leaf components (all take `ShapeElementProps` from `core/canvas/types.ts`):
   `TextShapeElement`, `CheckboxShapeElement`, `ProgressBarShapeElement`, `ButtonShapeElement`,
-  `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`.
+  `ToggleShapeElement`, `SliderShapeElement`, `DropdownShapeElement`, `InputShapeElement`,
+  `PolygonShapeElement`, `CircleShapeElement`, `LineShapeElement`, `RectShapeElement`, and the rest in `shapes/`.
 - Handles: `Anchor.tsx` (vertex/resize, needs `themeColors`), `CircleResizeHandle.tsx`,
   `ResizeHandleSE.tsx` (shared corner/right-edge box handle, self-contained blue square).
 - Stage interaction/pan/zoom/marquee: `canvas/hooks/useStageInteractions.ts` — marquee is
@@ -111,7 +114,7 @@ leaves whose live position sits in overrides.
   line/circle groups have no controlled x/y, React wouldn't reset them). Every resize/vertex
   handle MUST carry `name="resize-handle"` — that's what excludes it from starting a session.
 - **Z-order**: `zIndex` on `BaseCanvasElement` (CSS-like, **scoped to siblings** — same
-  `parentKey`), applied by `src/lib/editor/zOrder.ts` (`sortByZIndex`/`sortKeysByZIndex`,
+  `parentKey`), applied by `src/core/scene/element/zOrder.ts` (`sortByZIndex`/`sortKeysByZIndex`,
   missing == 0). The sort is **stable**, so equal z falls back to the old positional order —
   flat-array order at the top level, `composition`+`children` concatenation inside a container
   (that's why legacy scenes look identical). Two render sites: `Canvas.tsx` root list (sorted
@@ -126,7 +129,7 @@ leaves whose live position sits in overrides.
   from the unstripped image. Leave it in overrides and `{...base, ...overrides}` silently
   resurrects the old layer on the next save. Panel field: `Z_INDEX_FIELD` in
   `basePropertySchema` (every type) and prepended in `MultiPropertiesPanel`.
-- **Sheet (лист)**: the scene has a real size, `src/lib/editor/sheet.ts` —
+- **Sheet (лист)**: the scene has a real size, `src/core/scene/sheet/sheet.ts` —
   `resolveSheet(elements)` (cached by array ref, like `getElementIndex`) reads it from the
   `canvas: {width, height}` block of the service element (`visible:false`, `type:"meta"` —
   CONTUR's `contur_meta`), falling back to `DEFAULT_SHEET` (A3, 11900×8400). **Derived, never
@@ -138,7 +141,7 @@ leaves whose live position sits in overrides.
   clamp — nothing bounds coordinates. `CANVAS_WIDTH/HEIGHT = 5000` are gone.
 - Zoom UI: `canvas/ZoomControls.tsx` (±20% around viewport center, fit-to-content,
   **fit-to-sheet**, 100%); absolute camera setter `setCamera(x, y, zoom)` in the store.
-  Zoom clamp **[0.03, 3]**, single source `src/lib/editor/zoomLimits.ts` (it used to be two
+  Zoom clamp **[0.03, 3]**, single source `src/core/scene/sheet/zoomLimits.ts` (it used to be two
   independent copies that drifted); 0.03 because A0 (21520×15240) is 0.039 in a laptop window.
 - **Grid step follows zoom** (`gridPattern.ts`): the pattern lives in world coords, so at
   fit-A0 a 20-unit cell is ~1px of grey mush. ≥0.25 → fine (20) + `GRID_MAJOR` (200);
@@ -163,7 +166,7 @@ leaves whose live position sits in overrides.
   in the Layer (group frame for groups, rendered bounds for leaves). Deliberately NOT passed
   through ctx/shape props — that would re-render the whole memoized scene on every mouse move.
   Any future per-element hover effect must follow the same single-overlay pattern.
-- **Transformer** (`canvas/shapes/SelectionTransformer.tsx`): single selection of box types only
+- **Transformer** (`core/canvas/shapes/SelectionTransformer.tsx`): single selection of box types only
   (`NON_TRANSFORMABLE` in Canvas = group/text/circle/line/polygon keep specialized handles).
   On transformend scale is converted to w/h and RESET to 1; rotation commits to `rotate` —
   every transformable shape's root Group MUST render `rotation={rendered.rotate || 0}` or the
@@ -171,10 +174,10 @@ leaves whose live position sits in overrides.
   round dots (6/zoom) with `padding` so they sit OUTSIDE the widget; the shape's own dashed
   selection rect is suppressed via `ctx.transformerKey` (in ShapeElement dispatcher) — one
   border, not two.
-- **Colors**: all color props go through `src/components/ui/ColorField.tsx` (picker + hex input
+- **Colors**: all color props go through `src/shared/ui/field/ColorField.tsx` (picker + hex input
   + «прозрачный» button). `"transparent"` is a valid stored color value — Konva renders it as
   fully transparent; renderers' `rendered.color || fallback` chains treat it as truthy (kept).
-- **Smart guides** (`src/lib/editor/smartGuides.ts` + guide session in Canvas): on dragstart
+- **Smart guides** (`src/modules/editor/lib/smartGuides.ts` + guide session in Canvas): on dragstart
   collect edge/center lines of same-parent non-selected neighbors; on dragmove magnet the
   dragged node (`e.target` — may be the inner Arrow/Circle, not the id-Group) within a
   screen-constant threshold (6/zoom) and draw the matched lines. Final commit still grid-snaps
@@ -191,11 +194,11 @@ leaves whose live position sits in overrides.
   gets `zoom` as a prop from Canvas (it re-renders with camera anyway).
 - Properties panel has a «Геометрия» block: numeric X/Y/W/H (lines: X1/Y1/X2/Y2), writes via
   `updateElementVisual` (coords are parent-local).
-- Pure geometry helpers live in `src/lib/editor/`.
+- Pure geometry helpers live in `src/core/scene/geometry/`; editor-only helpers in `src/modules/editor/lib/` (smartGuides, sceneCamera, fitCamera, …) and `src/modules/editor/model/` (transformSelection, templateInstance, …).
 
 ## Snapping (GRID = 20)
 
-`snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/lib/utils.ts`). **Snap in world coords.** Konva's
+`snap(v) = round(v/GRID)*GRID`, `GRID=20` (`src/core/scene/geometry/grid.ts`). **Snap in world coords.** Konva's
 `e.target.x()` is already parent-local/world, so `snap(e.target.x())` on drag is correct. Drops
 convert screen→world before placing.
 
@@ -215,7 +218,7 @@ convert screen→world before placing.
 A table's tag properties belong to the **whole element** (`element.properties`, edited on the
 ordinary «Свойства» tab like any other element). Which field of which property lands in which
 cell is described by **`bindings[].cell`** (`{row, col, propertyName, field}`), and the single
-place that knows the rule is `src/lib/editor/tableBindings.ts` (`resolveCellText`,
+place that knows the rule is `src/core/scene/element/tableBindings.ts` (`resolveCellText`,
 `cellBindingAt`, `cellBindings`, `CELL_SOURCE_FIELDS`).
 
 - **Only `field: "value"` goes through the runtime.** `name`/`tag_id`/`value_type`/
@@ -242,19 +245,23 @@ place that knows the rule is `src/lib/editor/tableBindings.ts` (`resolveCellText
 ## Adding a new element type (5 touch points)
 
 Example to copy: the "Управление" controls (`button/toggle/slider/dropdown/input`).
-1. **`src/constants/palette.ts`** — a `PaletteItemType` (unique `id ≥ 10**5`, `type`, `name`,
+1. **`src/modules/editor/lib/palette.ts`** — a `PaletteItemType` (unique `id ≥ 10**5`, `type`, `name`,
    `category`, `defaultProps` with **grid-aligned w/h**). Palette groups by `category`
    dynamically; a new category just appears. `id ≥ 10**5` marks it a non-deletable static item.
-2. **`src/types/editorElement.type.ts`** — add the string to the **`ElementType` union** and any
+2. **`src/core/scene/types/editorElement.type.ts`** — add the string to the **`ElementType` union** and any
    new fields to `LeafElement`. The union now lists ALL real leaf types; keeping it complete is
    what removed a pile of "no overlap" baseline errors — don't regress it.
-3. **`src/constants/propertiesPanel.ts`** — add the key to **BOTH** `elementRegistry`
-   (`complex:false` for a widget) and `elementPropertyMap` (a `PropertySchema[]`). These are
-   `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
-4. **`src/store/useEditorStore.ts` → `addElementAt`** — a `if (type === '…')` branch mirroring the
-   `checkbox`/`progress_bar` ones (full scaffolding: `id:null, key:createUuid(), composition:[],
-   parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`).
-5. **`src/components/editor/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
+3. **`src/modules/editor/lib/elementSchema/`** (entry: `lib/propertiesPanel.ts`) — add the key to **BOTH**
+   `elementRegistry` in `elementTypes.ts` (`complex:false` for a widget; plus its label in
+   `elementTypeLabels`) and the fields list in `shapeFields.ts` or `widgetFields.ts` (a
+   `PropertySchema[]`). `elementPropertyMap` (assembled in `propertiesPanel.ts`) and `elementRegistry`
+   are `Record<ElementType, …>`, so a new union member is a **required** key — omitting it errors.
+4. **`src/modules/editor/model/newElement.ts` → `TYPE_PROPS`** — an entry with the type's own fields (size, colours,
+   value), mirroring `checkbox`/`progress_bar`. The shared scaffolding (`id:null, key, composition:[],
+   parentId/parentKey scene, children:[], scripts:[], bindings:[], properties:[], states:[{…isDefault}]`)
+   comes from `baseElement`; `addElementAt` calls `buildNewElement`, then `placeNewElement` puts it into
+   the entered container.
+5. **`src/core/canvas/shapes/`** — a `XxxShapeElement.tsx` on `ShapeElementProps` +
    a dispatch branch in `ShapeElement.tsx`. Include: Group at `rendered.x/y`, selection dashed Rect,
    live-snap drag (with the `e.target===e.currentTarget` guard if it has a resize handle), and a
    `ResizeHandleSE` where resizing makes sense.
@@ -264,24 +271,24 @@ Serialization needs **no** change for plain visual props (see below). The drop h
 
 ## Making element params actually functional
 
-The properties panel is generated from `elementPropertyMap[type]` (`PropertiesPanel.tsx`). A param
+The properties panel is generated from `elementPropertyMap[type]` (`src/modules/editor/ui/properties-panel/`; fields render in `PropertyInput.tsx`). A param
 "exists" in the panel but only *works* if the shape component **reads that exact key**. Common bug:
 the panel writes one key while the renderer reads another (e.g. panel `backgroundColor` vs renderer
 `bg`). When wiring params: make the renderer read the schema key (fallback to legacy key for old
-scenes), and make `addElementAt` seed the same key. `PropertiesPanel.handleSelectChange`
+scenes), and make `buildNewElement` (`newElement.ts`) seed the same key. `PropertyInput.handleSelectChange`
 special-cases `orientation` (progress bar) to **swap w/h** so vertical bars become tall/narrow.
 
 ## Serialization round-trip (bake ↔ unbake)
 
 Backend stores each component's visual state as an **opaque JSON string** in `states[].image`.
-- **Save** — `src/lib/buildComponentTree.ts` (from `exportScene`). `buildBaseImage` serializes an
+- **Save** — `src/core/scene/serialization/buildComponentTree.ts` (from `exportScene`). `buildBaseImage` serializes an
   element by **deleting** a fixed set of structural keys (id, key, type, parentId/Key, children,
   composition, scripts, bindings, properties, states, label) and JSON-stringifying the rest. So
   **new visual props auto-persist** — no change needed. Component `composition` primitives are baked
   into each state's `image` as a `composition:[descriptor]` array; only `children` become nested nodes.
   `buildShapeDescriptor` explicitly re-adds the primitive's `scripts`/`bindings`/`properties` to the
   descriptor (they'd otherwise be deleted by `buildBaseImage` and silently lost on round-trip).
-- **Load** — `src/lib/transformElements.ts` (from `loadScene`). Flattens the tree, **unbakes**
+- **Load** — `src/core/scene/serialization/transformElements.ts` (from `loadScene`). Flattens the tree, **unbakes**
   `image.composition` back into flat primitives re-parented into the component, strips structural
   keys from overrides. Base x/y/w/h come from the unstripped default image. The unbake restores
   `scripts`/`bindings`/`properties` from the descriptor and strips them from visual overrides —
@@ -289,8 +296,9 @@ Backend stores each component's visual state as an **opaque JSON string** in `st
 
 Keep the round-trip symmetric when changing one side. Headless check: transpile these two modules +
 `createUuid` and run `buildComponentTree → transformElements` in Node (near-zero runtime deps) —
-`npx tsc src/lib/{buildComponentTree,transformElements,createUuid}.ts --module commonjs --target
-es2020 --noResolve --skipLibCheck --outDir <scratch>`, then sed `@/lib/createUuid` → `./createUuid`.
+`npx tsc src/core/scene/serialization/{buildComponentTree,transformElements}.ts src/shared/lib/createUuid.ts
+--module commonjs --target es2020 --noResolve --skipLibCheck --outDir <scratch>` (plus the relative
+helpers `transformElements` imports), then sed `@/shared/lib/createUuid` → `./createUuid`.
 
 ## Palette templates (`buildPaletteComponentTree` ↔ `addTemplate`)
 
@@ -324,7 +332,7 @@ version contract — that's why templates have no merge), so **entities link by 
 
 ## Undo / history (zundo `temporal`)
 
-Store is wrapped in `temporal` (`zundo`). Options at the bottom of `useEditorStore.ts`:
+Store is wrapped in `temporal` (`zundo`). Options at the bottom of `src/modules/editor/model/editorStore.ts`:
 `limit:50`, `partialize: s => ({elements})`, and **`equality: (a,b) => a.elements === b.elements`**.
 The equality is essential: without it zundo snapshots on **every** `set()` (camera/zoom/pan,
 selection, state switch), flooding the stack with duplicate-`elements` entries so Ctrl+Z appears to
@@ -369,19 +377,19 @@ unbounded.
 
 | Concern | File |
 |---|---|
-| Store (state + all actions + undo config) | `src/store/useEditorStore.ts` |
-| Types (DiagramElement, LeafElement, ElementType, states) | `src/types/editorElement.type.ts` |
-| Rendered element (base + active overrides) | `src/lib/getRenderedElement.ts` |
-| Canvas orchestrator | `src/components/editor/Canvas.tsx` |
-| Leaf dispatch + generic fallback | `src/components/editor/canvas/shapes/ShapeElement.tsx` |
-| Group/component recursion | `src/components/editor/canvas/shapes/GroupNode.tsx` |
-| Render context / ShapeElementProps / MIN_SIZE | `src/components/editor/canvas/types.ts` |
-| Palette items | `src/constants/palette.ts` |
-| Registry + property schemas | `src/constants/propertiesPanel.ts` |
-| Properties panel UI | `src/components/editor/PropertiesPanel.tsx` |
+| Store (assembly + undo config) / actions by zone | `src/modules/editor/model/editorStore.ts` / `model/slices/*.slice.ts`; pure helpers in `model/elementTree.ts`, `model/elementStates.ts`, `model/editorStoreInternals.ts` |
+| Types (DiagramElement, LeafElement, ElementType, states) | `src/core/scene/types/editorElement.type.ts` |
+| Rendered element (base + active overrides) | `src/core/scene/render/getRenderedElement.ts` |
+| Canvas orchestrator | `src/modules/editor/ui/canvas/Canvas.tsx` (+ `layers/`, `hooks/`) |
+| Leaf dispatch + generic fallback | `src/core/canvas/shapes/ShapeElement.tsx` → `RectShapeElement.tsx` |
+| Group/component recursion | `GroupNode` in `src/core/canvas/shapes/CanvasNode.tsx` |
+| Render context / ShapeElementProps / MIN_SIZE | `src/core/canvas/types.ts` |
+| Palette items | `src/modules/editor/lib/palette.ts` |
+| Registry + property schemas | `src/modules/editor/lib/elementSchema/*` (entry `lib/propertiesPanel.ts`) |
+| Properties panel UI | `src/modules/editor/ui/properties-panel/` (`PropertiesPanel.tsx` + `tabs/`, `hooks/`, `lib/`) |
 | Drop handling | `src/app/editor/EditorClient.tsx` |
-| Save / load serialization | `src/lib/buildComponentTree.ts`, `src/lib/transformElements.ts` |
-| Snapping/GRID | `src/lib/utils.ts` |
+| Save / load serialization | `src/core/scene/serialization/buildComponentTree.ts`, `src/core/scene/serialization/transformElements.ts` |
+| Snapping/GRID | `src/core/scene/geometry/grid.ts` |
 
 ## Gotchas checklist (fast recall)
 

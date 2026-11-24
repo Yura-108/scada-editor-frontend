@@ -1,0 +1,169 @@
+"use client";
+
+import React, {useState} from "react";
+import {ListOrdered, Plus, RefreshCw} from "lucide-react";
+import {cn} from "@/shared/lib/cn";
+import {Spinner} from "@/shared/ui/Spinner";
+import {Banner} from "@/shared/ui/Banner";
+import {Button} from "@/shared/ui/Button";
+import {EmptyState} from "@/shared/ui/EmptyState";
+import {FloatingHelp} from "@/shared/ui/FloatingHelp";
+import {useEditorStore} from "../../model/editorStore";
+import {useRecipes} from "../../api/recipes";
+import {Recipe} from "@/core/project";
+import openRecipeEditorModal from "./RecipeEditorModal";
+import {useCurrentProjectGrant} from "@/core/access";
+import {RecipeRow} from "./RecipeRow";
+import {RecipeStepEditor} from "./RecipeStepEditor";
+import {headClass} from "./tableClasses";
+import {useRecipeDrafts} from "./useRecipeDrafts";
+
+/**
+ * Процедурные рецепты открытого проекта. Рецепт не принадлежит ни компоненту, ни сцене —
+ * он описывает процедуру над тегами, — но принадлежит ПРОЕКТУ и до мойки доезжает только
+ * с выпуском (`docs/contract/2026-10-19-recipes-in-project-contract.md`).
+ *
+ * Состав показывается ЗДЕСЬ ЖЕ, разворотом строки: рецепт не содержимое схемы, и выносить
+ * его на холст незачем. Значения уставок правятся прямо в таблице тегов — но всегда
+ * в пределах ВЫБРАННОГО шага: собственного значения у тега в контракте нет, оно
+ * принадлежит действию шага.
+ */
+const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []` давал бы новый массив на каждый рендер
+
+/** «Подробнее» справки вкладки. */
+const RECIPES_HELP_MORE = (
+  <ul>
+    <li>Теги рецепта выбираются из базы каналов: «Создать рецепт» → «Выбрать из базы каналов».</li>
+    <li>Значения уставок правятся прямо в таблице: раскройте рецепт и выберите шаг.</li>
+    <li>После сохранения выпустите проект («Выпуски проекта») и назначьте выпуск prod — иначе монитор рецепт не увидит.</li>
+  </ul>
+);
+
+export function RecipesPanel() {
+  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
+  const recipesQuery = useRecipes(projectId);
+  const recipes = recipesQuery.data ?? NO_RECIPES;
+  const isLoading = recipesQuery.status !== "success" && recipesQuery.isFetching; // перечитка со списком — фоном
+  const loadError = recipesQuery.status === "error" ? recipesQuery.error.message || "Ошибка загрузки рецептов" : null;
+
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
+  // Смотреть — `view`/`edit`, менять — `edit` в этом проекте (иначе бэкенд ответит 403 NO_EDIT).
+  const canEditRecipes = useCurrentProjectGrant().edit;
+  const {stepsOf, isDirty, dropDraft, editValue, savingId, handleSave, handleDelete} =
+    useRecipeDrafts(projectId, () => setExpanded(null));
+
+  const toggle = (recipe: Recipe) => {
+    const opening = expanded !== recipe.id;
+    setExpanded(opening ? recipe.id : null);
+    if (opening) setStepIndex(0);
+  };
+
+  return (
+    // На всю ширину вкладки: узкая таблица, прижатая влево, оставляла пустой половину экрана (#11 п. 12).
+    <div className="p-6 space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        {/* Единый вид заголовка панели (как в «Слоях» и «Свойствах»). */}
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Рецепты
+        </h3>
+
+        {canEditRecipes && <button
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+            "bg-primary text-primary-foreground hover:bg-primary/90",
+          )}
+          onClick={() => openRecipeEditorModal()}
+        >
+          <Plus size={16} />
+          Создать рецепт
+        </button>}
+      </div>
+
+      {projectId == null ? (
+        <EmptyState size="sm" title="Выберите проект — рецепты принадлежат проекту." className="min-h-[180px] justify-center" />
+      ) : isLoading ? (
+        <Spinner size={20} label="Загрузка рецептов…" className="min-h-[180px] justify-center gap-3" />
+      ) : loadError ? (
+        <Banner
+          tone="destructive"
+          actions={<Button size="sm" onClick={() => void recipesQuery.refetch()}><RefreshCw size={14} />Повторить</Button>}
+        >
+          Не удалось загрузить рецепты: {loadError}
+        </Banner>
+      ) : recipes.length === 0 ? (
+        <EmptyState size="sm" icon={ListOrdered} title="Рецептов пока нет" className="min-h-[180px] justify-center" />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card dark:bg-card/70 backdrop-blur-sm">
+          {/* Ширины колонок заданы: метка «не сохранено» раньше раздвигала таблицу, и под
+              курсором на месте «Редактировать» оказывалось «Удалить» (#11 п. 9). */}
+          <table className="w-full table-fixed text-left border-collapse">
+            <colgroup>
+              <col className="w-10" />
+              <col />
+              <col className="w-24" />
+              <col className="w-24" />
+              <col className="w-44" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border bg-muted dark:bg-muted/80 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="w-10" />
+                <th className={cn(headClass, "whitespace-nowrap py-3.5")}>Название</th>
+                <th className={cn(headClass, "whitespace-nowrap py-3.5")}>Теги</th>
+                <th className={cn(headClass, "whitespace-nowrap py-3.5")}>Шаги</th>
+                <th className={cn(headClass, "whitespace-nowrap py-3.5 text-center")}>Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border text-sm text-foreground">
+              {recipes.map((recipe) => {
+                const isOpen = expanded === recipe.id;
+                const steps = stepsOf(recipe);
+                const dirty = isDirty(recipe);
+                const index = Math.min(stepIndex, Math.max(0, steps.length - 1));
+                const step = steps[index];
+
+                return (
+                  <React.Fragment key={recipe.id}>
+                    <RecipeRow
+                      recipe={recipe}
+                      isOpen={isOpen}
+                      dirty={dirty}
+                      stepCount={steps.length}
+                      canEditRecipes={canEditRecipes}
+                      toggle={toggle}
+                      handleDelete={handleDelete}
+                    />
+
+                    {isOpen && (
+                      <RecipeStepEditor
+                        recipe={recipe}
+                        steps={steps}
+                        index={index}
+                        step={step}
+                        dirty={dirty}
+                        canEditRecipes={canEditRecipes}
+                        savingId={savingId}
+                        setStepIndex={setStepIndex}
+                        dropDraft={dropDraft}
+                        handleSave={handleSave}
+                        onEditValue={(i, name, v) => editValue(recipe, i, name, v)}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Справка — в «?» справа внизу, как в «Автоматизации» и «Данных проекта» (#11 п. 12). */}
+      {projectId != null && (
+        <FloatingHelp storageKey="help.recipes" title="Рецепты" more={RECIPES_HELP_MORE}>
+          <p>Рецепт — процедура над тегами ПЛК: шаги по порядку, на каждом записываются значения тегов, потом рецепт ждёт перехода к следующему шагу.</p>
+          <p>Выполняется в мониторе, вкладка «Процедуры». До мойки рецепт доходит только с выпуском проекта.</p>
+        </FloatingHelp>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,104 @@
+"use client";
+
+import React from "react";
+import {CheckCircle2} from "lucide-react";
+import {countOf} from "@/shared/lib/plural";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {Button} from "@/shared/ui/Button";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {Collapsible} from "@/shared/ui/codeModalParts";
+import type {DeviceLayoutReport} from "../../lib/deviceLayoutImport";
+
+/**
+ * Итог импорта плана устройств. Показывается только когда есть о чём сказать:
+ * чистый прогон обходится тостом, иначе диалог пришлось бы закрывать каждый раз.
+ */
+function DeviceImportReportContent({report}: {report: DeviceLayoutReport}) {
+  const closeModal = useCloseModal();
+  const skipped = report.devices - report.placed;
+
+  return (
+    <>
+      <DialogHeader
+        icon={<CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-success" />}
+        title="Импорт плана устройств"
+        description={<>
+          Поставлено устройств: <b>{report.placed}</b> из {report.devices}
+          {report.lines > 0 && <>, линий: <b>{report.lines}</b></>}
+          {report.junctions > 0 && <>, узлов: <b>{report.junctions}</b></>}.
+        </>}
+      />
+
+      <DialogBody className="space-y-3">
+        {report.missing.length > 0 && (
+          <Collapsible
+            title={`Шаблон не найден: ${countOf(skipped, "устройство", "устройства", "устройств")}`}
+            badge={<span className="text-xs text-warning">нет в палитре</span>}
+          >
+            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
+              {report.missing.map((m) => (
+                <li key={`${m.group ?? ""}/${m.template}`}>
+                  <span className="font-mono font-semibold">
+                    {m.group ? `${m.group} / ${m.template}` : m.template}
+                  </span>
+                  {" — "}
+                  {/* Две разные беды: нет всей группы (переименовали/не завели) или нет
+                      одного шаблона в ней. Чинятся по-разному, поэтому и пишутся по-разному. */}
+                  <span className="text-warning">
+                    {m.reason === "no-group" ? `группы «${m.group}» нет в палитре` : m.group ? `в группе «${m.group}» нет шаблона` : "шаблона нет в палитре"}
+                  </span>
+                  {", "}
+                  {m.count} шт.:{" "}
+                  <span className="font-mono">{m.names.join(", ")}</span>
+                </li>
+              ))}
+            </ul>
+          </Collapsible>
+        )}
+
+        {report.ambiguous.length > 0 && (
+          <Collapsible
+            title={`Имя шаблона неоднозначно: ${report.ambiguous.length}`}
+            badge={<span className="text-xs text-muted-foreground">в палитре несколько, взят первый</span>}
+          >
+            <ul className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground font-mono">
+              {report.ambiguous.map((a) => (
+                <li key={`${a.group ?? ""}/${a.template}`}>
+                  {a.group ? `${a.group} / ${a.template}` : a.template} — {a.count} шт.
+                </li>
+              ))}
+            </ul>
+          </Collapsible>
+        )}
+
+        {report.unsupportedRotation.length > 0 && (
+          <Collapsible
+            title={`Угол не кратен 90°: ${report.unsupportedRotation.length}`}
+            badge={<span className="text-xs text-warning">поставлены без поворота</span>}
+          >
+            <p className="max-h-48 overflow-y-auto text-xs text-muted-foreground font-mono">
+              {report.unsupportedRotation.join(", ")}
+            </p>
+          </Collapsible>
+        )}
+
+        {report.missing.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Чтобы эти устройства встали на схему, сохраните компонент с таким именем в
+            указанную группу палитры и повторите импорт. Шаблон берётся только из группы,
+            указанной в файле, — одноимённый шаблон из другой группы не подставляется.
+          </p>
+        )}
+      </DialogBody>
+
+      <DialogFooter>
+        <Button variant="primary" onClick={closeModal}>Понятно</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+export function openDeviceImportReportModal(report: DeviceLayoutReport) {
+  useModalStore.getState().openModal(<DeviceImportReportContent report={report} />, {size: "lg"});
+}

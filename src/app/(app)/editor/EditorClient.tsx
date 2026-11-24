@@ -1,20 +1,18 @@
 "use client";
 
 import {useEffect} from "react";
-import WorkSpace from "@/components/editor/WorkSpace";
-import {usePaletteStore} from "@/store/usePaletteStore";
-import {useAutoSaveScene, useWarnOnUnsavedChanges} from "@/lib/useAutoSaveScene";
-import {useSceneChangedNotifications} from "@/lib/editor/useSceneChangedNotifications";
-import {useEditorStore} from "@/store/useEditorStore";
-import {useSessionUserStore} from "@/store/useSessionUserStore";
-import {canOpenInEditor, grantOf} from "@/lib/access/grants";
+import {
+  loadPaletteItems, restoreLastProject, useAutoSaveScene, useEditorStore, useSceneChangedNotifications,
+  useWarnOnUnsavedChanges, WorkSpace,
+} from "@/modules/editor";
+import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
+import {registerMonitorDialogs} from "@/modules/monitor";
 import {toast} from "sonner";
 
-export default function EditorPage() {
-  // Точечный селектор: подписка на весь стор палитры перерисовывала страницу
-  // редактора при любой её загрузке/правке.
-  const loadPaletteItems = usePaletteStore(s => s.loadPaletteItems);
+// Меню монитора открывается и здесь — при просмотре версии (холст только для чтения).
+registerMonitorDialogs();
 
+export default function EditorPage() {
   // Автосохранение раз в 10 минут (только при изменениях, тихо, без сброса выделения)
   // + предупреждение при закрытии вкладки с несохранённой схемой.
   useAutoSaveScene();
@@ -34,8 +32,15 @@ export default function EditorPage() {
     void useEditorStore.getState().loadProjectList().then(projects => {
       if (cancelled || !projects) return;
       const {currentProject, setCurrentProject} = useEditorStore.getState();
-      if (!currentProject) return;
       const admin = useSessionUserStore.getState().admin;
+      if (!currentProject) {
+        // После перезагрузки — последний проект, если он открывается в редакторе. Схему не
+        // открываем: выбор схемы остаётся за инженером, вкладки закреплённых схем видны и так.
+        restoreLastProject(projects.filter(p => canOpenInEditor(grantOf(p, admin))));
+        const restored = useEditorStore.getState().currentProject;
+        if (restored) void useEditorStore.getState().loadSceneList(restored.id);
+        return;
+      }
       const project = projects.find(p => p.id === currentProject.id);
       if (!canOpenInEditor(grantOf(project, admin))) {
         setCurrentProject(null);
@@ -47,11 +52,11 @@ export default function EditorPage() {
 
   useEffect(() => {
     // Палитра подгружается автоматически при монтировании, если ещё не загружена.
-    loadPaletteItems();
-  }, [loadPaletteItems]);
+    void loadPaletteItems();
+  }, []);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-muted text-foreground overflow-hidden">
       {/* Элементы добавляются кликом: клик по элементу палитры «вооружает» инструмент,
           клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick). */}
       <WorkSpace />

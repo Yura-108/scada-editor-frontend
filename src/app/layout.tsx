@@ -3,12 +3,16 @@ import { Geist } from 'next/font/google';
 import Providers from './providers';
 import { ThemeProvider } from 'next-themes';
 import React from 'react';
-import { ModalRoot } from '@/components/ui/ModalRoot';
-import { ConfirmRoot } from '@/components/ui/ConfirmModal';
-import { cn } from '@/lib/utils';
+import { ModalRoot } from '@/shared/ui/dialog/ModalRoot';
+import { ConfirmRoot } from '@/shared/ui/dialog/ConfirmRoot';
+import { cn } from '@/shared/lib/cn';
+import type { Metadata } from 'next';
 
 // Имя переменной должно совпадать с --font-geist-sans из globals.css (@theme inline).
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+
+/** Название раздела к нему дописывает DocumentTitle рабочей области. */
+export const metadata: Metadata = { title: 'SCADA' };
 
 /**
  * Корневой layout: только оболочка документа, провайдеры и глобальные стеки окон.

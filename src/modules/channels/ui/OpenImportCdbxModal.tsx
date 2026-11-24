@@ -1,0 +1,230 @@
+"use client";
+
+import React, {useEffect, useState} from "react";
+import {FileUp, FolderPlus} from "lucide-react";
+import {toast} from "sonner";
+import {cn} from "@/shared/lib/cn";
+import {useModalStore} from "@/shared/ui/dialog/modalStore";
+import {Button} from "@/shared/ui/Button";
+import {Field} from "@/shared/ui/field/Field";
+import {Input} from "@/shared/ui/field/Input";
+import {Select} from "@/shared/ui/field/Select";
+import {fieldBase, fieldLabelClass, fieldSizes} from "@/shared/ui/field/fieldStyles";
+import {useCloseModal} from "@/shared/ui/dialog/useCloseModal";
+import {DialogBody, DialogFooter, DialogHeader} from "@/shared/ui/dialog/DialogParts";
+import {pickFile} from "@/shared/lib/pickFile";
+import type {CdbxImportReport} from "@/core/devices";
+import {openImportReportModal} from "./OpenImportReportModal";
+import {errorTextFromJson} from "@/core/access";
+import {useDeviceTreeStore} from "@/core/devices";
+
+/** Кнопка выбора файла выглядит как поле. */
+const pickerClass = cn(fieldBase, "flex items-center gap-3 text-left");
+
+/** Пункт «Новая площадка…» в списке площадок. */
+const NEW_SITE = "__new__";
+
+/** Площадка и проект — имена узлов базы, точка в них разделяет уровни пути. */
+const badSegment = (value: string) => !value.trim() || value.includes(".");
+
+/** Выбор одного файла исходников ПЛК; повторный клик по выбранному — сброс. */
+function PlcSourceButton({hint, file, onChange}: {
+  hint: string;
+  file: File | null;
+  onChange: (file: File | null) => void;
+}) {
+  const handleClick = async () => {
+    if (file) {
+      onChange(null);
+      return;
+    }
+    const picked = await pickFile("");
+    if (picked) onChange(picked);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleClick()}
+      title={file ? "Убрать файл" : `Выбрать ${hint}`}
+      className={cn(pickerClass, fieldSizes.sm, !file && "text-muted-foreground")}
+    >
+      <FileUp className="h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 truncate">{file ? file.name : hint}</span>
+      {file && <span className="shrink-0 text-xs text-muted-foreground">убрать</span>}
+    </button>
+  );
+}
+
+function ImportCdbxContent() {
+  const closeModal = useCloseModal();
+
+  const [file, setFile] = useState<File | null>(null);
+  // Исходники проекта ПЛК (контракт, раздел 1.1): необязательны и независимы друг от друга.
+  const [ioFile, setIoFile] = useState<File | null>(null);
+  const [objectsFile, setObjectsFile] = useState<File | null>(null);
+  const [site, setSite] = useState("");
+  const [project, setProject] = useState("");
+  const [sites, setSites] = useState<string[]>([]);
+  // Новая площадка вводится руками; по умолчанию — выбор из существующих. Раньше площадка
+  // всегда была свободным полем с примером «Барановичи-1», и опечатка в «BN1» молча
+  // создала бы вторую площадку (#16 п. 11).
+  const [newSite, setNewSite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/device/site/")
+      .then(res => (res.ok ? res.json() : []))
+      .then((data: unknown) => {
+        const list = Array.isArray(data) ? data.filter((s): s is string => typeof s === "string") : [];
+        setSites(list);
+        if (list.length) setSite(prev => prev || list[0]);
+        else setNewSite(true);
+      })
+      .catch(() => { setSites([]); setNewSite(true); });
+  }, []);
+
+  const siteTaken = newSite && sites.some(s => s.trim().toLowerCase() === site.trim().toLowerCase());
+
+  const handlePick = async () => {
+    const picked = await pickFile(".cdbx");
+    if (!picked) return;
+    setFile(picked);
+    // Имя проекта по умолчанию — из файла, но менять его инженер вправе: бэкенд из файла
+    // ничего не берёт, путь базы задаётся здесь.
+    if (!project.trim()) {
+      const base = picked.name.replace(/\.cdbx$/i, "").replace(/\./g, "_").trim();
+      if (base) setProject(base);
+    }
+  };
+
+  const canSubmit = Boolean(file) && !badSegment(site) && !badSegment(project) && !siteTaken && !isLoading;
+
+  const handleSubmit = async () => {
+    if (!file || !canSubmit) return;
+
+    setIsLoading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("site", site.trim());
+      form.append("project", project.trim());
+      // Только выбранные: расширение не проверяем, непохожее бэкенд молча пропустит.
+      if (ioFile) form.append("io", ioFile);
+      if (objectsFile) form.append("objects", objectsFile);
+
+      const res = await fetch("/api/device/import", {method: "POST", body: form});
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        // 409 «проект уже есть» и 400 «битый файл» — объяснимые отказы, текст бэкенда
+        // точнее любого нашего: показываем его как есть.
+        // 403 PATH_NOT_ALLOWED — проект вне веток каталога пользователя.
+        throw new Error(errorTextFromJson(res.status, data, `Не удалось импортировать файл (${res.status})`));
+      }
+
+      const report = data as CdbxImportReport;
+      closeModal();
+
+      // Новый проект не входит в загруженные, и сам по себе в дереве не появится —
+      // подгружаем его рядом с уже открытыми, иначе инженеру пришлось бы искать его
+      // через выбор проектов.
+      const { loadedRootPath, loadNodes } = useDeviceTreeStore.getState();
+      await loadNodes([...(loadedRootPath ?? []), report.root]).catch(() => {});
+
+      openImportReportModal(report);
+    } catch (err) {
+      console.error("Ошибка импорта .cdbx:", err);
+      toast.error(err instanceof Error ? err.message : "Не удалось импортировать файл");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader
+        title="Импорт базы каналов"
+        description="Файл `.cdbx` старой системы станет новым проектом базы каналов. Площадку и имя проекта задаёте вы — из файла они не берутся. Существующие проекты импорт не трогает."
+      />
+
+      <DialogBody className="space-y-5">
+        <div className="space-y-1.5">
+          <span className={fieldLabelClass}>Файл</span>
+          <button
+            type="button"
+            onClick={() => void handlePick()}
+            className={cn(pickerClass, fieldSizes.md, !file && "text-muted-foreground")}
+          >
+            <FileUp className="h-5 w-5 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate">
+              {file ? file.name : "Выберите файл .cdbx"}
+            </span>
+            {file && (
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {(file.size / (1024 * 1024)).toFixed(1)} МБ
+              </span>
+            )}
+          </button>
+        </div>
+
+        <Field label="Площадка">
+          <Select
+            value={newSite ? NEW_SITE : site}
+            onValueChange={(v) => {
+              if (v === NEW_SITE) { setNewSite(true); setSite(""); }
+              else { setNewSite(false); setSite(v); }
+            }}
+            placeholder="Выберите площадку"
+            options={[...sites.map(s => ({value: s, label: s})), {value: NEW_SITE, label: "Новая площадка…"}]}
+          />
+        </Field>
+        {newSite && (
+          <Field
+            label="Имя новой площадки"
+            hint={sites.length ? "Будет создана новая площадка. Если площадка уже есть — выберите её в списке выше." : "Площадок ещё нет — импорт создаст первую."}
+            error={siteTaken ? "Такая площадка уже есть — выберите её в списке выше" : undefined}
+          >
+            <Input autoFocus value={site} onChange={(e) => setSite(e.target.value)} placeholder="Например, BN2" />
+          </Field>
+        )}
+
+        <Field label="Проект">
+          <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="BN1_MCA2" />
+        </Field>
+
+        <details className="rounded-xl border border-border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            Исходники проекта ПЛК (необязательно, но дерево получится точнее)
+          </summary>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Эти файлы лежат в проекте ПЛК рядом с <code>main.plua</code>. Без них приборы
+            раскладываются по общему правилу, а объекты получают имена вида <code>LINE1.OBJECT</code>.
+          </p>
+          <div className="mt-3 space-y-2">
+            <PlcSourceButton hint="main.io.lua" file={ioFile} onChange={setIoFile} />
+            <PlcSourceButton hint="main.objects.lua" file={objectsFile} onChange={setObjectsFile} />
+          </div>
+        </details>
+
+        {(site.includes(".") || project.includes(".")) && (
+          <p className="text-sm text-destructive">
+            Точка разделяет уровни пути в базе — в имени площадки и проекта её быть не может.
+          </p>
+        )}
+      </DialogBody>
+
+      <DialogFooter>
+        <Button onClick={closeModal}>Отмена</Button>
+        <Button variant="primary" onClick={() => void handleSubmit()} disabled={!canSubmit}>
+          <FolderPlus size={16} />
+          {isLoading ? "Импорт…" : "Импортировать"}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+export function openImportCdbxModal() {
+  useModalStore.getState().openModal(<ImportCdbxContent />, {size: "md", closeOnOverlay: false});
+}

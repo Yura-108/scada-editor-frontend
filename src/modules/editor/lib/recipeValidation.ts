@@ -1,0 +1,129 @@
+import {
+  RECIPE_VALUE_TYPES, type Recipe, type RecipeCreatePayload, type RecipeStepAction, type RecipeTag, type RecipeValueType,
+} from "@/core/project";
+
+/**
+ * Клиентская проверка рецепта — зеркало серверной (`RecipeServiceImpl`).
+ *
+ * Не заменяет её, а избавляет от круга до сервера ради предсказуемого 400: бэкенд
+ * отбивает пустые `steps`, действие на необъявленный тег и значение не по типу.
+ */
+
+/** Приведение введённого текста к типу, объявленному в манифесте. */
+export function coerceActionValue(raw: string, valueType: RecipeValueType | undefined): unknown {
+  const trimmed = raw.trim();
+
+  if (valueType === "bool") {
+    if (/^(true|1|да)$/i.test(trimmed)) return true;
+    if (/^(false|0|нет)$/i.test(trimmed)) return false;
+    // Нераспознанное оставляем строкой: пусть проверка честно скажет «не по типу»,
+    // чем в ПЛК уедет противоположная уставка.
+    return trimmed;
+  }
+
+  if (valueType === "number") {
+    if (trimmed === "") return trimmed;
+    const num = Number(trimmed.replace(",", "."));
+    return Number.isFinite(num) ? num : trimmed;
+  }
+
+  return trimmed;
+}
+
+/** Текстовое представление значения для поля ввода. */
+export const actionValueText = (value: unknown): string =>
+  value === null || value === undefined ? "" : String(value);
+
+/**
+ * Что не так с введённым текстом значения — для подсказки у самого поля (#11 п. 8), до
+ * сохранения. `null` — годится; пустое поле тоже годится: тег на этом шаге не пишется.
+ */
+export function valueTextProblem(raw: string, valueType: RecipeValueType | undefined): string | null {
+  if (raw.trim() === "") return null;
+  if (valueMatchesType(coerceActionValue(raw, valueType), valueType)) return null;
+  return valueType === "bool" ? "Должно быть true или false" : "Должно быть число";
+}
+
+/** Тип значения словом, как в списке типов: «Число», а не `number`. */
+const typeLabel = (valueType: RecipeValueType | undefined): string =>
+  RECIPE_VALUE_TYPES.find(t => t.value === valueType)?.label.toLowerCase() ?? String(valueType);
+
+/** Совпадает ли значение с объявленным типом — та же таблица, что у `requireTypeMatch`. */
+export function valueMatchesType(value: unknown, valueType: RecipeValueType | undefined): boolean {
+  switch (valueType) {
+    case "number": return typeof value === "number";
+    case "bool": return typeof value === "boolean";
+    case "string": return typeof value === "string";
+    // Тип не объявлен — бэкенд не проверяет (`default -> true`), и мы тоже.
+    default: return true;
+  }
+}
+
+/** Список проблем; пустой — можно отправлять. */
+export function validateRecipe(payload: RecipeCreatePayload | Recipe): string[] {
+  const problems: string[] = [];
+
+  if (!payload.name?.trim()) problems.push("Укажите название рецепта");
+
+  const tags: RecipeTag[] = payload.tags ?? [];
+  const byName = new Map<string, RecipeTag>();
+  for (const tag of tags) {
+    const name = tag.name?.trim();
+    if (!name) {
+      problems.push("У тега рецепта пустое имя");
+      continue;
+    }
+    if (byName.has(name)) {
+      // Имя — ключ, по которому на тег ссылается шаг; дубль сделал бы ссылку неоднозначной.
+      problems.push(`Имя тега «${name}» встречается в тегах рецепта дважды`);
+      continue;
+    }
+    if (!tag.tag?.trim()) problems.push(`У тега «${name}» не указан путь`);
+    byName.set(name, tag);
+  }
+
+  /**
+   * Записи тега проверяются одинаково у шага и у безопасного состояния: бэкенд гоняет их
+   * через один и тот же `checkAction`, и расходиться этим правилам незачем.
+   */
+  const checkActions = (actions: RecipeStepAction[] | null | undefined, label: string) => {
+    for (const action of actions ?? []) {
+      const tag = byName.get(action.tag?.trim() ?? "");
+      if (!tag) {
+        problems.push(`${label}: тег «${action.tag}» не добавлен в теги рецепта`);
+        continue;
+      }
+      if (!valueMatchesType(action.value, tag.value_type)) {
+        problems.push(
+          `${label}: значение «${actionValueText(action.value)}» не подходит тегу «${tag.name}»`
+          + ` — нужно значение типа «${typeLabel(tag.value_type)}»`,
+        );
+      }
+    }
+  };
+
+  // Раньше проверки шагов: рецепт без шагов уходит из функции ниже, а ошибка в безопасном
+  // состоянии от этого не перестаёт быть ошибкой.
+  checkActions(payload.pause_action, "Безопасное состояние");
+
+  if (!payload.steps?.length) {
+    problems.push("Нужен хотя бы один шаг");
+    return problems;
+  }
+
+  payload.steps.forEach((step, index) => {
+    const label = step.name?.trim() || `Шаг ${index + 1}`;
+
+    // Шаг без записей допустим (ожидание подтверждения), но без названия — нет: в мониторе
+    // оператор видит шаги по названиям, «без названия» ему ни о чём не говорит (#11 п. 5).
+    if (!step.name?.trim()) problems.push(`Шаг ${index + 1}: укажите название`);
+
+    checkActions(step.action, label);
+
+    if (step.timeout_ms != null && (!Number.isFinite(step.timeout_ms) || step.timeout_ms <= 0)) {
+      problems.push(`${label}: таймаут должен быть положительным числом миллисекунд`);
+    }
+  });
+
+  return problems;
+}

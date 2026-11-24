@@ -1,10 +1,12 @@
-FROM node:20-alpine AS deps
+FROM node:24.21.0-alpine AS base
+
+FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --ignore-scripts
 
 # ── Сборка ───────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -16,7 +18,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ── Продакшн-образ ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

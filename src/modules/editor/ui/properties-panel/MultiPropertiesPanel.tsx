@@ -1,0 +1,193 @@
+"use client";
+
+import React, {useMemo} from "react";
+import {cn} from "@/shared/lib/cn";
+import {DiagramElement, ElementType, PropertySchema} from "@/core/scene";
+import {elementPropertyMap, Z_INDEX_FIELD} from "../../lib/propertiesPanel";
+import {useEditorStore} from "../../model/editorStore";
+import {getRenderedElement} from "@/core/scene";
+import {ColorField} from "@/shared/ui/field/ColorField";
+import {NumberInput} from "@/shared/ui/field/NumberInput";
+import {historyEditing} from "../../model/historyGroup";
+import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import {baseInputClasses} from "./panelClasses";
+import {Checkbox} from "@/shared/ui/field/Checkbox";
+import {Select} from "@/shared/ui/field/Select";
+
+interface MultiPropertiesPanelProps {
+  elements: DiagramElement[];
+}
+
+/**
+ * Панель для мульти-выделения: редактирует общие свойства сразу у всех выбранных.
+ * Показываются только параметры, которые есть у КАЖДОГО выбранного типа
+ * (пересечение схем по key+type) + общая геометрия (Ш/В). Разные значения
+ * показываются как «—»/пусто; ввод применяет значение ко всем (один шаг undo).
+ */
+export function MultiPropertiesPanel({elements}: MultiPropertiesPanelProps) {
+  const updateElementsVisual = useEditorStore(s => s.updateElementsVisual);
+
+  const keys = useMemo(() => elements.map(el => el.key), [elements]);
+  const renderedAll = useMemo(() => elements.map(el => getRenderedElement(el) as unknown as Record<string, unknown>), [elements]);
+
+  // Пересечение схем свойств всех выбранных типов (совпадение по key и type поля).
+  const commonSchema: PropertySchema[] = useMemo(() => {
+    const types = [...new Set(elements.map(el => el.type))];
+    if (!types.length) return [];
+    const base = elementPropertyMap[types[0] as ElementType] ?? [];
+    return [
+      // Слой есть у любого элемента (BaseCanvasElement.zIndex), в elementPropertyMap
+      // его нет — там схемы по типам. Задавать слой сразу нескольким полезно.
+      Z_INDEX_FIELD,
+      ...base.filter(prop =>
+        types.every(t => (elementPropertyMap[t as ElementType] ?? []).some(p => p.key === prop.key && p.type === prop.type)),
+      ),
+    ];
+  }, [elements]);
+
+  // Общее значение поля по всем выбранным (undefined — значения различаются).
+  const sharedValue = (key: string): unknown => {
+    const first = renderedAll[0]?.[key];
+    return renderedAll.every(r => r[key] === first) ? first : undefined;
+  };
+
+  const apply = (key: string, value: unknown) => updateElementsVisual(keys, {[key]: value});
+
+  const label = (text: string, htmlFor: string) => (
+    <label htmlFor={htmlFor} className={cn(fieldLabelSmClass, "mb-1.5")}>
+      {text}
+    </label>
+  );
+
+  const renderInput = (prop: PropertySchema) => {
+    const shared = sharedValue(prop.key);
+    const id = `multi-${prop.key}`;
+
+    switch (prop.type) {
+      case "number":
+        return (
+          <div key={prop.key} className="space-y-1.5">
+            {label(prop.label, id)}
+            <NumberInput {...historyEditing}
+              id={id} className={baseInputClasses}
+              value={typeof shared === "number" ? shared : undefined}
+              placeholder={shared === undefined ? "разные" : ""}
+              onCommit={(v) => apply(prop.key, v)}
+            />
+          </div>
+        );
+      case "text":
+        return (
+          <div key={prop.key} className="space-y-1.5">
+            {label(prop.label, id)}
+            <input
+              id={id} className={baseInputClasses}
+              value={typeof shared === "string" ? shared : ""}
+              placeholder={shared === undefined ? "разные" : ""}
+              onChange={(e) => apply(prop.key, e.target.value)}
+            />
+          </div>
+        );
+      case "color":
+        return (
+          <ColorField {...historyEditing}
+            key={prop.key}
+            id={id}
+            label={prop.label}
+            value={typeof shared === "string" && shared ? shared : undefined}
+            onChange={(v) => apply(prop.key, v)}
+            inputClassName={baseInputClasses}
+          />
+        );
+      case "select":
+        return (
+          <div key={prop.key} className="space-y-1.5">
+            {label(prop.label, id)}
+            <Select
+              id={id}
+              size="sm"
+              value={typeof shared === "string" ? shared : ""}
+              onValueChange={(v) => apply(prop.key, v)}
+              options={[
+                ...(shared === undefined ? [{value: "", label: "— разные —", disabled: true}] : []),
+                ...(prop.options ?? []),
+              ]}
+            />
+          </div>
+        );
+      case "boolean":
+        return (
+          <div key={prop.key} className="flex items-center gap-2 py-1">
+            <Checkbox
+              checked={shared === true}
+              ref={(node) => { if (node) node.indeterminate = shared === undefined; }}
+              onChange={(e) => apply(prop.key, e.target.checked)}
+              label={prop.label}
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const sharedW = sharedValue("w");
+  const sharedH = sharedValue("h");
+
+  return (
+    <div className="h-full flex flex-col bg-card/70 backdrop-blur-sm border-l border-border overflow-hidden">
+      <div className="shrink-0 p-4 pb-3 border-b border-border">
+        <h3 className="text-base font-medium text-foreground tracking-tight">
+          Выбрано элементов: {elements.length}
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Изменения применяются ко всем выбранным
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 space-y-5 text-sm">
+        {/* Общая геометрия: размер (позицию массово не задаём — элементы наложатся друг на друга) */}
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
+            Размер
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              {label("Ширина", "multi-w")}
+              <NumberInput {...historyEditing}
+                id="multi-w" className={baseInputClasses}
+                value={typeof sharedW === "number" ? sharedW : undefined}
+                placeholder={sharedW === undefined ? "разные" : ""}
+                onCommit={(v) => apply("w", v)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              {label("Высота", "multi-h")}
+              <NumberInput {...historyEditing}
+                id="multi-h" className={baseInputClasses}
+                value={typeof sharedH === "number" ? sharedH : undefined}
+                placeholder={sharedH === undefined ? "разные" : ""}
+                onCommit={(v) => apply("h", v)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {commonSchema.length > 0 && (
+          <div className="space-y-4">
+            <div className="h-px bg-border" />
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Общие параметры
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              {commonSchema.filter(p => p.type !== "color").map(renderInput)}
+            </div>
+            <div className="space-y-4">
+              {commonSchema.filter(p => p.type === "color").map(renderInput)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

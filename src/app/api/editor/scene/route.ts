@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
-import { backendErrorResponse } from '@/lib/backendProxy';
-import {protectedRoute} from "@/lib/protected";
+import { backendErrorResponse } from '@/server/proxy/backendProxy';
+import {protectedRoute} from "@/server/auth/protected";
 
 const BACKEND_URL = process.env.BACKEND_URL_EDITOR || 'http://localhost:8080';
 
@@ -46,7 +46,7 @@ export const POST = protectedRoute(async (req: NextRequest, {token}) => {
 
   if (!scenePayload?.name) {
     return NextResponse.json(
-      {error: "Имя сцены не валидное!"},
+      {error: "Недопустимое название схемы"},
       {status: 400}
     );
   }

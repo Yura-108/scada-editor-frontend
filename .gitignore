@@ -44,3 +44,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# рабочие материалы — живут только локально, в репозиторий не попадают
+/docs/*
+!/docs/editor-user-manual.md
+# архитектура и знания о предметной области — часть репозитория (на них ссылается CLAUDE.md)
+!/docs/architecture.md
+!/docs/domain/
+/REPORT.md
+/ВОПРОС-*.md
+/ОТВЕТ-*.md
+*.sql
+hs_err_pid*.log
+
+# IDE и анализаторы
+/.idea/
+/qodana.yaml
+
+# воркер-песочница, собирается scripts/build-sandbox-worker.mjs
+/public/sandbox/
