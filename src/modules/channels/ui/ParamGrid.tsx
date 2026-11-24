@@ -51,14 +51,14 @@ export function ParamGrid({normalParams, editedParams, errors, handleChange, rea
             key={param.key}
             param={param}
             hasChanged={hasChanged}
-            onRemove={readOnly ? undefined : handleRemoveParam}
+            onRemove={readOnly ? undefined : handleRemoveParam}
           >
             <ParamValueField
               widget={widget}
-              name={param.name}
+              name={param.name}
               value={value}
               checked={checked}
-              choices={widget === 'input' ? paramChoices(param.name, value) : null}
+              choices={widget === 'input' ? paramChoices(param.name, value) : null}
               error={errors.get(keyStr)}
               onChange={(next) => handleChange(keyStr, next)}
             />
