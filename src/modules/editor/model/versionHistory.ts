@@ -1,31 +1,73 @@
-import {toast} from "sonner";
-import type {VersionSummary} from "@/core/project";
+import { toast } from 'sonner';
+import { fetchVersions, type VersionSummary } from '@/core/project';
 
 /**
- * Ближайшее ручное сохранение старше того, что лежит на холсте, — для «Вернуться к
- * предыдущему сохранению». `all` — история всех видов, свежие первыми; `null` — такого нет.
- *
- * Нужны ВСЕ виды, а не только MANUAL: чтобы понять, «предыдущее» относительно чего искать,
- * надо увидеть и записи RESTORE. Список, отфильтрованный по MANUAL, после восстановления не
- * меняется вовсе — по нему шаг назад всегда упирался бы в одну и ту же версию.
+ * После «Восстановить» из истории возвращаем состояние до операции.
+ * Повторный шаг с панели идёт к более раннему ручному сохранению.
  */
-export function findPreviousManualVersion(
-  all: VersionSummary[],
-  sceneVersion: number | null,
+export function findPreviousVersion(
+  page: VersionSummary[],
+  head: VersionSummary,
+  returnedFromToolbar: boolean,
 ): VersionSummary | null {
-  if (!all.length) return null;
+  if (head.kind === 'RESTORE' && !returnedFromToolbar) {
+    return page.find((v) => v.version_no < head.version_no) ?? null;
+  }
+  let contentVersion = head.restored_from ?? head.version_no;
+  for (const version of page) {
+    if (
+      version.version_no === contentVersion &&
+      version.kind === 'RESTORE' &&
+      version.restored_from != null &&
+      version.restored_from < contentVersion
+    ) {
+      contentVersion = version.restored_from;
+    }
+    if (version.kind === 'MANUAL' && version.version_no < contentVersion) return version;
+  }
+  return null;
+}
 
-  // Что лежит на холсте сейчас. sceneVersion может отставать (бэкенд не всегда
-  // отдаёт version_no) — тогда берём самую свежую запись истории.
-  const head = all.find(v => v.version_no === sceneVersion) ?? all[0];
+const returnVersions = new Map<number, number>();
+const returnKey = (sceneId: number) => `scada-editor:return-version:${sceneId}`;
 
-  // Для RESTORE содержимое равно версии-источнику: шаг назад надо делать от неё,
-  // иначе «отменить отмену» вернуло бы ту же самую версию по кругу.
-  const contentVersion =
-    head.kind === "RESTORE" && head.restored_from != null ? head.restored_from : head.version_no;
+/** Сервер помечает оба действия как RESTORE. Вкладка помнит, какой шаг был сделан с панели. */
+export function rememberReturnedVersion(sceneId: number, versionNo: number): void {
+  returnVersions.set(sceneId, versionNo);
+  try {
+    window.sessionStorage.setItem(returnKey(sceneId), String(versionNo));
+  } catch {
+    // Если хранилище недоступно, повторный шаг работает до перезагрузки вкладки.
+  }
+}
 
-  // Список свежие-первыми, поэтому первая подходящая строка — ближайшая старшая.
-  return all.find(v => v.kind === "MANUAL" && v.version_no < contentVersion) ?? null;
+function wasReturnedFromToolbar(sceneId: number, versionNo: number): boolean {
+  const inMemory = returnVersions.get(sceneId);
+  if (inMemory != null) return inMemory === versionNo;
+  try {
+    return window.sessionStorage.getItem(returnKey(sceneId)) === String(versionNo);
+  } catch {
+    return false;
+  }
+}
+
+export async function loadPreviousVersion(sceneId: number, limit: number) {
+  let page = await fetchVersions('scenes', sceneId, { limit });
+  const head = page[0];
+  if (!head) return { head: null, previous: null };
+  const returnedFromToolbar = wasReturnedFromToolbar(sceneId, head.version_no);
+  const history: VersionSummary[] = [];
+  let cursor: string | undefined;
+  while (page.length) {
+    history.push(...page);
+    const previous = findPreviousVersion(history, head, returnedFromToolbar);
+    if (previous) return { head, previous };
+    const nextCursor = page.at(-1)?.created_at;
+    if (page.length < limit || !nextCursor || nextCursor === cursor) break;
+    cursor = nextCursor;
+    page = await fetchVersions('scenes', sceneId, { limit, to: cursor });
+  }
+  return { head, previous: null };
 }
 
 /**
@@ -43,13 +85,15 @@ export function reportRestoreOutcome(
 ): void {
   if (restoredFrom != null && restoredFrom !== versionNo) {
     toast.warning(`Сервер восстановил версию ${restoredFrom}, а не ${versionNo}`, {
-      description: "На холсте содержимое версии " + restoredFrom +
-        ". Если это повторяется, история версий на сервере отдаёт не тот снимок.",
+      description:
+        'На холсте содержимое версии ' +
+        restoredFrom +
+        '. Если это повторяется, история версий на сервере отдаёт не тот снимок.',
       duration: 12_000,
     });
   } else if (!trustResponse) {
     toast.warning(`Версия ${versionNo} восстановлена, схема перечитана с сервера`, {
-      description: "Ответ восстановления пришёл в неожиданном виде, поэтому холсту он не доверен.",
+      description: 'Ответ восстановления пришёл в неожиданном виде, поэтому холсту он не доверен.',
       duration: 10_000,
     });
   } else {
