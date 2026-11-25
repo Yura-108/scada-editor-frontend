@@ -1,11 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import {useEditorStore} from "../../../model/editorStore";
-import {resolveSheet, cameraForMonitorView, resolveMonitorView} from "@/core/scene";
-import { cameraForSheet } from "../../../lib/fitCamera";
-import { visibleCanvasArea } from "../lib/visibleArea";
-import { CameraScope, readSceneCamera, writeSceneCamera } from "../../../lib/sceneCamera";
+import { useEffect, useRef } from 'react';
+import { useEditorStore } from '../../../model/editorStore';
+import { resolveSheet, cameraForMonitorView, resolveMonitorView } from '@/core/scene';
+import { cameraForSheet, centerSheetCamera } from '../../../lib/fitCamera';
+import { editorSession } from '../../../model/editorSession';
+import { visibleCanvasArea } from '../lib/visibleArea';
+import { CameraScope, readSceneCamera, writeSceneCamera } from '../../../lib/sceneCamera';
 
 /** Задержка отложенной записи — как у раскладки редактора (WorkSpace). */
 const SAVE_DELAY = 300;
@@ -21,18 +22,18 @@ const SAVE_DELAY = 300;
  * `"monitor"` — в мониторе (у них общий стор, но раздельная память вида).
  */
 export function useSceneCameraMemory(scope: CameraScope) {
-  const sceneId = useEditorStore(s => s.scene?.id ?? null);
-  const projectId = useEditorStore(s => s.currentProject?.id ?? null);
-  const canvasRect = useEditorStore(s => s.canvasRect);
-  const elements = useEditorStore(s => s.elements);
-  const setCamera = useEditorStore(s => s.setCamera);
+  const sceneId = useEditorStore((s) => s.scene?.id ?? null);
+  const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
+  const canvasRect = useEditorStore((s) => s.canvasRect);
+  const elements = useEditorStore((s) => s.elements);
+  const setCamera = useEditorStore((s) => s.setCamera);
 
   /** Ключ сцены, для которой камера уже восстановлена. */
   const restoredKeyRef = useRef<string | null>(null);
 
   // Вид, зафиксированный инженером, — только для монитора: в редакторе замок камеру не
   // трогает. Он важнее запомненной камеры браузера (см. core/scene/sheet/monitorView.ts).
-  const lockedView = scope === "monitor" ? resolveMonitorView(elements) : null;
+  const lockedView = scope === 'monitor' ? resolveMonitorView(elements) : null;
 
   useEffect(() => {
     if (sceneId == null) {
@@ -40,7 +41,7 @@ export function useSceneCameraMemory(scope: CameraScope) {
       return;
     }
 
-    const key = `${scope}:${projectId ?? "-"}:${sceneId}`;
+    const key = `${scope}:${projectId ?? '-'}:${sceneId}`;
 
     // Зафиксированный вид: ширина области — во весь холст, верх — как у инженера. На
     // ресайзе окна и перезагрузке той же сцены пересчитываем, сохраняя прокрутку
@@ -59,7 +60,8 @@ export function useSceneCameraMemory(scope: CameraScope) {
     // (loadScene с keepHistory): id не меняется — вид не дёргается на автосохранении.
     if (restoredKeyRef.current === key) return;
 
-    const saved = readSceneCamera(scope, projectId, sceneId);
+    const isNewEditorScene = scope === 'editor' && sceneId === editorSession.newSceneCameraId;
+    const saved = isNewEditorScene ? null : readSceneCamera(scope, projectId, sceneId);
     if (saved) {
       restoredKeyRef.current = key;
       setCamera(saved.x, saved.y, saved.zoom);
@@ -73,7 +75,10 @@ export function useSceneCameraMemory(scope: CameraScope) {
 
     restoredKeyRef.current = key;
     // Лист — в видимую часть холста, не под боковые панели и инструменты (#10 п. 2).
-    const cam = cameraForSheet(resolveSheet(elements), visibleCanvasArea(canvasRect));
+    const sheet = resolveSheet(elements);
+    const area = visibleCanvasArea(canvasRect);
+    const cam = isNewEditorScene ? centerSheetCamera(sheet, area) : cameraForSheet(sheet, area);
+    if (isNewEditorScene) editorSession.newSceneCameraId = null;
     setCamera(cam.x, cam.y, cam.zoom);
   }, [scope, projectId, sceneId, canvasRect, elements, setCamera, lockedView]);
 

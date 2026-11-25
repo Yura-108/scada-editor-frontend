@@ -36,6 +36,8 @@ fits into `visibleCanvasArea(canvasRect)` (`ui/canvas/lib/visibleArea.ts`), not 
 by `data-canvas-root`; a collapsed panel (translated off the canvas) does not count. A new overlay
 over the canvas must carry the attribute too.
 
+После создания схемы редактор ставит центр листа в центр видимой части холста при 100%. Для существующих схем действует память камеры, а «Вписать лист» по-прежнему помещает на экран весь лист.
+
 ## Coordinates, states, and rendering
 
 - Child coordinates are **local to the parent container**. Absolute position = sum of rendered `x/y` up the `parentKey` chain (`getAbsoluteRenderedPosition`).

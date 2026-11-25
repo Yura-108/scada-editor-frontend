@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import {useMemo} from "react";
-import {cn} from "@/shared/lib/cn";
-import {DiagramElement, ElementType, PropertySchema} from "@/core/scene";
-import {basePropertySchema, elementPropertyMap} from "../../../lib/propertiesPanel";
-import {StateSelect} from "../StateSelect";
-import {useEditorStore} from "../../../model/editorStore";
-import {EditAllStatesToggle} from "../EditAllStatesToggle";
-import {PropertyInput} from "../PropertyInput";
-import {useTableCell} from "../hooks/useTableCell";
-import {GeometrySection} from "./visual/GeometrySection";
-import {TableCellSection} from "./visual/TableCellSection";
-import {TableSizeSection} from "./visual/TableSizeSection";
-import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
+import { useMemo } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { circleFill, DiagramElement, ElementType, PropertySchema } from '@/core/scene';
+import { basePropertySchema, elementPropertyMap } from '../../../lib/propertiesPanel';
+import { StateSelect } from '../StateSelect';
+import { useEditorStore } from '../../../model/editorStore';
+import { EditAllStatesToggle } from '../EditAllStatesToggle';
+import { PropertyInput } from '../PropertyInput';
+import { useTableCell } from '../hooks/useTableCell';
+import { GeometrySection } from './visual/GeometrySection';
+import { TableCellSection } from './visual/TableCellSection';
+import { TableSizeSection } from './visual/TableSizeSection';
+import { fieldLabelSmClass } from '@/shared/ui/field/fieldStyles';
 
 interface VisualTabProps {
   element: DiagramElement;
@@ -21,14 +21,17 @@ interface VisualTabProps {
 }
 
 /** Вкладка «Визуал»: состояние, ячейка и размеры таблицы, геометрия, свойства типа. */
-export function VisualTab({element, values}: VisualTabProps) {
-  const editAllStates = useEditorStore(s => s.editAllStates);
+export function VisualTab({ element, values }: VisualTabProps) {
+  const editAllStates = useEditorStore((s) => s.editAllStates);
   const cell = useTableCell(element, values);
 
-  const schema: PropertySchema[] = useMemo(() => [
-    ...basePropertySchema,
-    ...(elementPropertyMap[element.type as ElementType] || []),
-  ], [element.type]);
+  const schema: PropertySchema[] = useMemo(
+    () =>
+      [...basePropertySchema, ...(elementPropertyMap[element.type as ElementType] || [])].filter(
+        (property) => element.type !== 'circle' || property.key !== 'radius',
+      ),
+    [element.type],
+  );
 
   return (
     <div className="space-y-5">
@@ -38,59 +41,62 @@ export function VisualTab({element, values}: VisualTabProps) {
           правится: переключил состояние на другой вкладке — и те же поля
           показывают уже другие числа. */}
       <div className="space-y-1.5">
-        <label className={fieldLabelSmClass}>
-          Состояние
-        </label>
-        <StateSelect elementKey={element.key} states={element.states}/>
+        <label className={fieldLabelSmClass}>Состояние</label>
+        <StateSelect elementKey={element.key} states={element.states} />
         {element.states.length > 1 && (
-          <p className={cn(
-            "text-[11px]",
-            editAllStates
-              ? "text-warning"
-              : "text-muted-foreground",
-          )}>
+          <p
+            className={cn('text-[11px]', editAllStates ? 'text-warning' : 'text-muted-foreground')}
+          >
             {editAllStates
-              ? "Значения ниже пишутся во ВСЕ состояния элемента."
-              : "Значения ниже относятся к этому состоянию."}
+              ? 'Значения ниже пишутся во ВСЕ состояния элемента.'
+              : 'Значения ниже относятся к этому состоянию.'}
           </p>
         )}
         {/* У элемента с единственным состоянием переключать нечего. Подпись под
             ним не дублируем — строка выше уже сказала, куда лягут значения. */}
-        {element.states.length > 1 && <EditAllStatesToggle withHint={false}/>}
+        {element.states.length > 1 && <EditAllStatesToggle withHint={false} />}
       </div>
 
-      <TableCellSection element={element} values={values} cell={cell}/>
+      <TableCellSection element={element} values={values} cell={cell} />
 
-      {cell.tableTracks && <TableSizeSection elementKey={element.key} tableTracks={cell.tableTracks}/>}
+      {cell.tableTracks && (
+        <TableSizeSection elementKey={element.key} tableTracks={cell.tableTracks} />
+      )}
 
-      <GeometrySection elementKey={element.key} type={element.type} values={values}/>
+      <GeometrySection elementKey={element.key} type={element.type} values={values} />
 
       {/* Обычные параметры - два в ряд */}
       <div className="grid grid-cols-2 gap-4">
         {schema
-          .filter(property => property.type !== "color")
+          .filter((property) => property.type !== 'color')
           .map((property, index) => (
             <div key={`${element.id}-${property.key}-${index}`}>
-              <PropertyInput elementKey={element.key} property={property} values={values}/>
+              <PropertyInput elementKey={element.key} property={property} values={values} />
             </div>
           ))}
       </div>
 
       {/* Цветовые параметры - полная ширина */}
-      {schema.some(p => p.type === "color") && (
+      {schema.some((p) => p.type === 'color') && (
         <div className="space-y-4 pt-2">
           <div className="h-px bg-border" />
           <div className="space-y-4">
             {schema
-              .filter(property => property.type === "color")
-              .map((property, index) => (
-                <PropertyInput
-                  key={`${element.id}-${property.key}-${index}`}
-                  elementKey={element.key}
-                  property={property}
-                  values={values}
-                />
-              ))}
+              .filter((property) => property.type === 'color')
+              .map((property, index) => {
+                const isCircleFill = element.type === 'circle' && property.key === 'bg';
+                const fillKey = typeof values.color === 'string' && values.color ? 'color' : 'bg';
+                const fillValues = isCircleFill ? { [fillKey]: circleFill(values) } : values;
+                return (
+                  <PropertyInput
+                    key={`${element.id}-${property.key}-${index}`}
+                    elementKey={element.key}
+                    property={isCircleFill ? { ...property, key: fillKey } : property}
+                    values={fillValues}
+                    transparentLabel={isCircleFill ? 'Без заливки' : undefined}
+                  />
+                );
+              })}
           </div>
         </div>
       )}

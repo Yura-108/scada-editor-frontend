@@ -1,4 +1,4 @@
-import type {DiagramElement, SceneType} from "@/core/scene";
+import type { DiagramElement, SceneType } from '@/core/scene';
 
 /**
  * Буферы и счётчики сессии редактора, которые живут ВНЕ стора: их никто не рендерит, и
@@ -54,7 +54,7 @@ interface EditorSession {
    * ради которой когда-то завели `pasteCount`. Поэтому вторая и следующие вставки в ту же
    * точку сдвигаются лесенкой по клетке.
    */
-  lastPastePoint: {x: number; y: number} | null;
+  lastPastePoint: { x: number; y: number } | null;
   stackedPastes: number;
 
   /**
@@ -77,7 +77,7 @@ interface EditorSession {
   draftStash: {
     projectId: number | null;
     scene: SceneType | null;
-    sceneList: {id: number; name: string}[];
+    sceneList: { id: number; name: string }[];
     elements: DiagramElement[];
     selectedIds: string[];
     activeGroupKey: string | null;
@@ -106,6 +106,8 @@ interface EditorSession {
 
   /** Номер последнего вызова `loadScene` — см. проверку устаревших ответов там. */
   sceneLoadSeq: number;
+  /** Схема, для которой первое открытие редактора начинает работу со 100%. */
+  newSceneCameraId: number | null;
 }
 
 export const editorSession: EditorSession = {
@@ -118,4 +120,5 @@ export const editorSession: EditorSession = {
   draftStash: null,
   versionPreviewStash: null,
   sceneLoadSeq: 0,
+  newSceneCameraId: null,
 };

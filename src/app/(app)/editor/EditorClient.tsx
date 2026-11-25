@@ -1,13 +1,18 @@
-"use client";
+'use client';
 
-import {useEffect} from "react";
+import { useEffect } from 'react';
 import {
-  loadPaletteItems, restoreLastProject, useAutoSaveScene, useEditorStore, useSceneChangedNotifications,
-  useWarnOnUnsavedChanges, WorkSpace,
-} from "@/modules/editor";
-import {useSessionUserStore, canOpenInEditor, grantOf} from "@/core/access";
-import {registerMonitorDialogs} from "@/modules/monitor";
-import {toast} from "sonner";
+  loadPaletteItems,
+  restoreLastProject,
+  useAutoSaveScene,
+  useEditorStore,
+  useSceneChangedNotifications,
+  useWarnOnUnsavedChanges,
+  WorkSpace,
+} from '@/modules/editor';
+import { useSessionUserStore, canOpenInEditor, grantOf } from '@/core/access';
+import { registerMonitorDialogs } from '@/modules/monitor';
+import { toast } from 'sonner';
 
 // Меню монитора открывается и здесь — при просмотре версии (холст только для чтения).
 registerMonitorDialogs();
@@ -29,25 +34,32 @@ export default function EditorPage() {
   // сбрасываем его, как только узнали права.
   useEffect(() => {
     let cancelled = false;
-    void useEditorStore.getState().loadProjectList().then(projects => {
-      if (cancelled || !projects) return;
-      const {currentProject, setCurrentProject} = useEditorStore.getState();
-      const admin = useSessionUserStore.getState().admin;
-      if (!currentProject) {
-        // После перезагрузки — последний проект, если он открывается в редакторе. Схему не
-        // открываем: выбор схемы остаётся за инженером, вкладки закреплённых схем видны и так.
-        restoreLastProject(projects.filter(p => canOpenInEditor(grantOf(p, admin))));
-        const restored = useEditorStore.getState().currentProject;
-        if (restored) void useEditorStore.getState().loadSceneList(restored.id);
-        return;
-      }
-      const project = projects.find(p => p.id === currentProject.id);
-      if (!canOpenInEditor(grantOf(project, admin))) {
-        setCurrentProject(null);
-        toast.info(`Проект «${currentProject.name}» недоступен в редакторе — нет права просмотра или правки`);
-      }
-    });
-    return () => { cancelled = true; };
+    void useEditorStore
+      .getState()
+      .loadProjectList()
+      .then((projects) => {
+        if (cancelled || !projects) return;
+        const { currentProject, setCurrentProject } = useEditorStore.getState();
+        const admin = useSessionUserStore.getState().admin;
+        if (!currentProject) {
+          // После перезагрузки — последний проект, если он открывается в редакторе. Схему не
+          // открываем: выбор схемы остаётся за инженером, вкладки закреплённых схем видны и так.
+          restoreLastProject(projects.filter((p) => canOpenInEditor(grantOf(p, admin))));
+          const restored = useEditorStore.getState().currentProject;
+          if (restored) void useEditorStore.getState().loadSceneList(restored.id);
+          return;
+        }
+        const project = projects.find((p) => p.id === currentProject.id);
+        if (!canOpenInEditor(grantOf(project, admin))) {
+          setCurrentProject(null);
+          toast.info(
+            `Проект «${currentProject.name}» недоступен в редакторе — нет права просмотра или правки`,
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -56,7 +68,7 @@ export default function EditorPage() {
   }, []);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-muted text-foreground overflow-hidden">
+    <div className="h-[calc(100dvh_-_var(--app-header-h)_-_1px)] min-h-0 w-full flex flex-col bg-muted text-foreground overflow-hidden">
       {/* Элементы добавляются кликом: клик по элементу палитры «вооружает» инструмент,
           клик по холсту ставит элемент (см. Canvas.handleStagePlacementClick). */}
       <WorkSpace />

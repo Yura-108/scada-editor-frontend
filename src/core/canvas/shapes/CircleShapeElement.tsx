@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Group, Circle } from "react-konva";
-import Konva from "konva";
-import { LeafElement } from "@/core/scene";
-import type { ShapeElementProps, ThemeColors } from "../types";
-import { CircleResizeHandle } from "./CircleResizeHandle";
-import { ShapeInscription } from "./ShapeInscription";
+import React from 'react';
+import { Group, Circle } from 'react-konva';
+import Konva from 'konva';
+import { circleFill, LeafElement } from '@/core/scene';
+import type { ShapeElementProps, ThemeColors } from '../types';
+import { CircleResizeHandle } from './CircleResizeHandle';
+import { ShapeInscription } from './ShapeInscription';
 
 interface CircleShapeElementProps extends ShapeElementProps {
   /** Вид элемента, уже посчитанный `ShapeElement` (состояние + рантайм). */
@@ -15,7 +15,17 @@ interface CircleShapeElementProps extends ShapeElementProps {
 }
 
 /** Круг: центр тянется, радиус — ручкой, надпись внутри правится двойным кликом. */
-export function CircleShapeElement({ el, rendered, isSelected, isEditing, snap, onElementClick, onStartTextEdit, updateElementVisual, themeColors }: CircleShapeElementProps) {
+export function CircleShapeElement({
+  el,
+  rendered,
+  isSelected,
+  isEditing,
+  snap,
+  onElementClick,
+  onStartTextEdit,
+  updateElementVisual,
+  themeColors,
+}: CircleShapeElementProps) {
   // Раньше в ветке круга вызывался React.createRef() прямо в рендере: он создаёт
   // НОВЫЙ ref на каждый рендер, и CircleResizeHandle мог получить отцепленный.
   const circleRef = React.useRef<Konva.Circle>(null);
@@ -29,9 +39,11 @@ export function CircleShapeElement({ el, rendered, isSelected, isEditing, snap, 
         x={cx}
         y={cy}
         radius={r}
-        fill={rendered.color || rendered.bg || "rgba(200,200,200,0.5)"}
-        stroke={isSelected ? themeColors.selection : (rendered.strokeColor || themeColors.strokeDefault)}
-        strokeWidth={isSelected ? 3 : (rendered.strokeWidth || 2)}
+        fill={circleFill(rendered)}
+        stroke={
+          isSelected ? themeColors.selection : rendered.strokeColor || themeColors.strokeDefault
+        }
+        strokeWidth={isSelected ? 3 : rendered.strokeWidth || 2}
         draggable
         onDragEnd={(e) => {
           // Позиция узла круга — это его ЦЕНТР, и он уже привязан к сетке общим
@@ -61,7 +73,7 @@ export function CircleShapeElement({ el, rendered, isSelected, isEditing, snap, 
           `inset` в 15% диаметра — примерно вписанный в окружность квадрат, иначе длинная
           строка вылезала бы за края там, где круг уже сузился. */}
       <ShapeInscription
-        text={isEditing ? "" : (rendered.text ?? "")}
+        text={isEditing ? '' : (rendered.text ?? '')}
         x={rendered.x}
         y={rendered.y}
         w={2 * r}
