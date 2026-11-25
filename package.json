@@ -10,9 +10,10 @@
     "postbuild": "node scripts/copy-standalone-assets.mjs",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
+    "test": "vitest run",
     "check:store-cycles": "node scripts/check-store-cycles.mjs",
     "check:ui-colors": "node scripts/check-ui-colors.mjs",
-    "check:pr": "npm run lint -- --max-warnings=0 && tsc --noEmit && npm run check:store-cycles && npm run check:ui-colors && npm run build",
+    "check:pr": "npm run lint -- --max-warnings=0 && tsc --noEmit && npm test && npm run check:store-cycles && npm run check:ui-colors && npm run build",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -69,7 +70,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/lodash": "^4.17.24",
-    "@types/node": "^20",
+    "@types/node": "^24.19.3",
     "@types/rc-tree": "^1.11.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -87,7 +88,8 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.1.1"
   },
   "allowScripts": {
     "unrs-resolver@1.11.1": true
