@@ -7,6 +7,7 @@
 ```bash
 npm run dev      # Next.js dev server (Turbopack) на http://localhost:3000
 npm run lint     # eslint
+npm test         # Vitest, тесты прав и BFF
 npm run build    # next build (standalone) — ошибка типов роняет сборку, eslint — нет
 npx tsc --noEmit # проверка типов
 npm run check:store-cycles  # нет ли цикла импортов обратно на стор редактора (см. ниже)
@@ -20,7 +21,6 @@ node scripts/build-sandbox-worker.mjs  # воркер-песочница скр�
   браузере падает `Cannot access 'createXxxSlice' before initialization`. Такому файлу нужен
   `editorStore()` из `editorStoreRef`. `npm run check:store-cycles` ищет такие цепочки.
 
-- **Тестов нет** (ни jest, ни vitest).
 - Хук коммита проверяет ветку и запускает `lint-staged`. Перед PR обязательна полная проверка `npm run check:pr`.
 - Алиас путей: `@/*` → `src/*`.
 - **`tsc --noEmit` — без ошибок.** `next build` тоже проверяет типы и падает на ошибке; eslint
@@ -58,7 +58,7 @@ node scripts/build-sandbox-worker.mjs  # воркер-песочница скр�
 
 1. Большая правка или рефакторинг — сначала план, потом код.
 2. **Перенос файлов и изменение логики — разные коммиты.** Коммит переезда: только `git mv` и импорты.
-3. Для любой задачи соблюдайте [правила Git](CONTRIBUTING.md). Создайте отдельную ветку от `origin/dev` и завершите блок проверенным PR в `dev`.
+3. Для любой задачи соблюдайте [правила Git](CONTRIBUTING.md). Создайте отдельную ветку от `upstream/dev` и завершите блок проверенным PR в `savushkin-dev:dev`.
 4. После каждого шага: `npm run lint` и `npx tsc --noEmit` (0 ошибок), а если трогали стор
    редактора или его импорты — `npm run check:store-cycles`; если трогали разметку — `npm run check:ui-colors`.
 5. Не меняйте поведение «попутно» при рефакторинге. Нашли баг — сообщите отдельно.

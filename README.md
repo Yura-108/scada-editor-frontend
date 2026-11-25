@@ -337,7 +337,8 @@ npm run dev
 | `npm run build` | Продакшн-сборка в режиме `standalone`; `postbuild` копирует `.next/static` и `public` в `.next/standalone` |
 | `npm run start` | Запуск собранного приложения: `node .next/standalone/server.js` |
 | `npm run lint` | ESLint |
-| `npm run check:pr` | ESLint без предупреждений, TypeScript, проверка циклов и цветов, production-сборка |
+| `npm test` | Vitest. Права проекта и ответы маршрута BFF с имитацией gateway |
+| `npm run check:pr` | ESLint без предупреждений, TypeScript, автотесты, проверка циклов и цветов, production-сборка |
 
 Перед коммитом **Husky + lint-staged** прогоняют `eslint --fix` и `prettier --write` по
 изменённым `*.{js,ts,tsx}`.
@@ -437,8 +438,7 @@ docker run -p 3000:3000 \
 
 ## Заметки для разработчиков
 
-- **Перед PR** выполните `npm run check:pr`. Ошибки типов блокируют сборку. Пока тестовый
-  раннер отсутствует, изменения поведения также проверяйте вручную в `npm run dev`.
+- **Перед PR** выполните `npm run check:pr`. Изменения поведения также проверяйте вручную в `npm run dev`.
 - **Русский язык** в комментариях и текстах интерфейса — придерживайтесь его.
 - **Guard-ы иерархии.** Операции со сценой проверяют, что она принадлежит текущему проекту
   (`sceneBelongsToCurrentProject`). Не убирайте эти проверки.
@@ -451,4 +451,4 @@ docker run -p 3000:3000 \
 - **Проверка сериализации без браузера**: транспилировать `buildComponentTree`,
   `transformElements` и `createUuid` через `npx tsc --module commonjs` и прогнать цикл в
   Node-скрипте.
-- **Git.** Для каждой задачи создавайте отдельную ветку от `origin/dev` и открывайте PR в `dev`. Стабильная версия находится в `main`.
+- **Git.** Для каждой задачи создавайте отдельную ветку от `upstream/dev` и открывайте PR в `dev` репозитория `savushkin-dev/scada-editor-frontend`. Стабильная версия находится в его ветке `main`.
