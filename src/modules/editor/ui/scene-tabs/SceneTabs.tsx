@@ -1,14 +1,28 @@
-"use client";
+'use client';
 
-import React, {useEffect, useMemo, useRef} from "react";
-import {PinOff, type LucideIcon} from "lucide-react";
-import {DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent} from "@dnd-kit/core";
-import {SortableContext, arrayMove, horizontalListSortingStrategy, useSortable} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
-import {cn} from "@/shared/lib/cn";
-import {useEditorStore} from "../../model/editorStore";
-import {usePinnedScenesStore} from "../../model/pinnedScenesStore";
-import {handleTabListKey} from "@/shared/lib/tabListKeys";
+import React, { useEffect, useMemo, useRef } from 'react';
+import { PinOff, type LucideIcon } from 'lucide-react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/shared/lib/cn';
+import { useEditorStore } from '../../model/editorStore';
+import { usePinnedScenesStore } from '../../model/pinnedScenesStore';
+import { SceneTabButton } from './SceneTabButton';
+import { PickerSelect } from '@/shared/ui/field/PickerSelect';
+import { useSceneTabOverflow } from './useSceneTabOverflow';
 
 /**
  * Оболочка закреплённой вкладки: перетаскивание порядка.
@@ -22,21 +36,37 @@ import {handleTabListKey} from "@/shared/lib/tabListKeys";
  * сломало бы и семантику `role="tab"`, и поиск соседей в `handleTabListKey` — тот ищет
  * `[role="tab"]` по DOM-порядку.
  */
-function SortableTabShell({id, children}: {
+function SortableTabShell({
+  id,
+  hidden,
+  shrink,
+  children,
+}: {
   id: string;
+  hidden: boolean;
+  shrink: boolean;
   children: (dragListeners: Record<string, unknown>) => React.ReactNode;
 }) {
-  const {setNodeRef, listeners, transform, transition, isDragging} = useSortable({id});
+  const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: hidden,
+  });
 
   return (
     <div
       ref={setNodeRef}
+      data-scene-tab={id}
+      inert={hidden}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
       }}
-      className="group/tab shrink-0 flex items-center"
+      className={cn(
+        'group/tab flex items-center',
+        shrink ? 'min-w-0 shrink' : 'shrink-0',
+        hidden && 'pointer-events-none invisible absolute left-0',
+      )}
     >
       {children((listeners ?? {}) as Record<string, unknown>)}
     </div>
@@ -61,7 +91,7 @@ interface SceneTabsProps {
   onActivate: (key: string) => void;
   /** Перетаскиваемая вкладка-не-схема; её место в ряду хранится в `recipesIndex`. */
   extraTab?: SceneTabDescriptor;
-  /** Неперетаскиваемая заглушка на случай «ни схемы, ни закреплённых». */
+  /** Неперетаскиваемая вкладка холста, пока схема не открыта. */
   fallbackTab?: SceneTabDescriptor;
   /** id панели содержимого — для `aria-controls` вкладок. */
   contentId: string;
@@ -75,6 +105,7 @@ interface SceneTabsProps {
   editable?: boolean;
   /** Схема с несохранёнными правками — у её вкладки точка. Монитор не передаёт: там не правят. */
   dirtySceneId?: number | null;
+  overflowMenu?: boolean;
 }
 
 /**
@@ -99,26 +130,31 @@ export function SceneTabs({
   style,
   editable = true,
   dirtySceneId = null,
+  overflowMenu = false,
 }: SceneTabsProps) {
   // Точечные селекторы: рядом с полосой на обоих экранах живёт тяжёлый Canvas.
-  const scene = useEditorStore(s => s.scene);
-  const sceneList = useEditorStore(s => s.sceneList);
-  const currentProjectId = useEditorStore(s => s.currentProject?.id ?? null);
-  const pins = usePinnedScenesStore(s => s.pins);
-  const recipesIndex = usePinnedScenesStore(s => s.recipesIndex);
-  const hydratePins = usePinnedScenesStore(s => s.hydrate);
-  const unpinScene = usePinnedScenesStore(s => s.unpin);
-  const reorderPins = usePinnedScenesStore(s => s.reorder);
+  const scene = useEditorStore((s) => s.scene);
+  const sceneList = useEditorStore((s) => s.sceneList);
+  const currentProjectId = useEditorStore((s) => s.currentProject?.id ?? null);
+  const pins = usePinnedScenesStore((s) => s.pins);
+  const recipesIndex = usePinnedScenesStore((s) => s.recipesIndex);
+  const hydratePins = usePinnedScenesStore((s) => s.hydrate);
+  const unpinScene = usePinnedScenesStore((s) => s.unpin);
+  const reorderPins = usePinnedScenesStore((s) => s.reorder);
 
   // Закреплённые схемы принадлежат проекту: при его смене список другой.
-  useEffect(() => { hydratePins(); }, [currentProjectId, hydratePins]);
+  useEffect(() => {
+    hydratePins();
+  }, [currentProjectId, hydratePins]);
 
   // Закрепления общие: коллега мог поменять их, пока вкладка браузера была в фоне — перечитываем
   // при возвращении, чтобы не ждать перезагрузки.
   useEffect(() => {
-    const onVisible = () => { if (!document.hidden) hydratePins(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    const onVisible = () => {
+      if (!document.hidden) hydratePins();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [hydratePins]);
 
   /**
@@ -130,15 +166,23 @@ export function SceneTabs({
    */
   const tabs = useMemo(() => {
     const nameOf = (id: number, fallback: string) =>
-      sceneList.find(s => s.id === id)?.name ?? fallback;
+      sceneList.find((s) => s.id === id)?.name ?? fallback;
 
-    type Tab = {key: string; label: string; sceneId: number | null; draggable: boolean; icon?: LucideIcon};
+    type Tab = {
+      key: string;
+      label: string;
+      sceneId: number | null;
+      draggable: boolean;
+      icon?: LucideIcon;
+    };
 
     // Закреплённая схема, которой нет в списке, не показывается: её удалили, а в мониторе — её
     // нет в prod-выпуске. Пока список не пришёл, показываем все (имена — из закрепления).
-    const visiblePins = sceneList.length ? pins.filter(pin => sceneList.some(s => s.id === pin.id)) : pins;
+    const visiblePins = sceneList.length
+      ? pins.filter((pin) => sceneList.some((s) => s.id === pin.id))
+      : pins;
 
-    const list: Tab[] = visiblePins.map(pin => ({
+    const list: Tab[] = visiblePins.map((pin) => ({
       key: `scene:${pin.id}`,
       // Имя из списка схем свежее, чем запомненное при закреплении.
       label: nameOf(pin.id, pin.name),
@@ -149,11 +193,13 @@ export function SceneTabs({
     // `extraTab` — такая же перетаскиваемая вкладка, её место хранится индексом вставки.
     if (extraTab) {
       list.splice(Math.min(recipesIndex, list.length), 0, {
-        ...extraTab, sceneId: null, draggable: editable,
+        ...extraTab,
+        sceneId: null,
+        draggable: editable,
       });
     }
 
-    if (scene && !pins.some(p => p.id === scene.id)) {
+    if (scene && !pins.some((p) => p.id === scene.id)) {
       list.push({
         key: `scene:${scene.id}`,
         label: nameOf(scene.id, scene.name),
@@ -162,27 +208,25 @@ export function SceneTabs({
       });
     }
 
-    // Ни схемы, ни закреплённых: редактору нужна вкладка холста (на ней живёт ToolsPanel
-    // с кнопкой «Загрузить схему», иначе с «Рецептов» было бы не выбраться).
-    if (fallbackTab && !scene && !pins.length) {
-      list.push({...fallbackTab, sceneId: null, draggable: false});
+    // Холст остаётся доступен после выбора проекта с закреплёнными схемами.
+    if (fallbackTab && !scene) {
+      list.push({ ...fallbackTab, sceneId: null, draggable: false });
     }
 
     return list;
   }, [pins, recipesIndex, scene, sceneList, extraTab, fallbackTab, editable]);
 
   /** Ключи перетаскиваемых вкладок в текущем порядке — их и сортирует dnd-kit. */
-  const sortableTabKeys = useMemo(
-    () => tabs.filter(t => t.draggable).map(t => t.key),
-    [tabs],
-  );
+  const sortableTabKeys = useMemo(() => tabs.filter((t) => t.draggable).map((t) => t.key), [tabs]);
 
   // Только Pointer: клавиатурный сенсор dnd-kit перехватил бы стрелки, которыми
   // `handleTabListKey` ходит по вкладкам. Порог 4px оставляет обычный клик кликом.
-  const tabDndSensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 4}}));
+  const tabDndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
 
   const handleTabDragEnd = (event: DragEndEvent) => {
-    const {active, over} = event;
+    const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const from = sortableTabKeys.indexOf(String(active.id));
@@ -194,7 +238,11 @@ export function SceneTabs({
     reorderPins(arrayMove(sortableTabKeys, from, to));
   };
 
-  const tabKeys = tabs.map(t => t.key);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const hiddenKeys = useSceneTabOverflow(stripRef, tabs, overflowMenu, activeKey, extraTab?.key);
+  const hiddenTabs = tabs.filter((tab) => hiddenKeys.includes(tab.key));
+  const tabKeys = tabs.filter((tab) => !hiddenKeys.includes(tab.key)).map((tab) => tab.key);
+  const shrinkActiveTab = hiddenTabs.length > 0 && tabKeys.length === 1;
 
   /**
    * Куда встаёт единственная остановка Tab (roving tabindex).
@@ -205,51 +253,41 @@ export function SceneTabs({
    */
   const focusKey = tabKeys.includes(activeKey) ? activeKey : tabKeys[0];
 
-  /** Сама кнопка вкладки. Вынесена, чтобы закреплённая и обычная рисовались одинаково. */
-  const tabButtonNode = (
-    tab: (typeof tabs)[number],
-    dragListeners?: Record<string, unknown>,
-  ) => {
-    const isActive = activeKey === tab.key;
-    return (
-      <button
-        id={`scene-tab-${tab.key}`}
-        role="tab"
-        type="button"
-        aria-selected={isActive}
-        aria-controls={contentId}
-        tabIndex={tab.key === focusKey ? 0 : -1}
-        onClick={() => onActivate(tab.key)}
-        onKeyDown={(e) => handleTabListKey(e, tabKeys, activeKey, onActivate)}
-        title={tab.sceneId !== null ? tab.label : undefined}
-        className={cn(
-          "shrink-0 max-w-48 inline-flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors whitespace-nowrap",
-          dragListeners && "cursor-grab active:cursor-grabbing",
-          isActive
-            ? "text-primary border-b-2 border-primary"
-            : "text-muted-foreground hover:text-foreground border-b-2 border-transparent",
-        )}
-        {...dragListeners}
-      >
-        {tab.icon && <tab.icon size={14} className="mr-1.5 shrink-0" aria-hidden />}
-        {/* Обрезается подпись, а не кнопка: иначе у длинного имени пропала бы и точка. */}
-        <span className="truncate">{tab.label}</span>
-        {/* Как у вкладок разделов (`shared/ui/Tabs`): точка цветом предупреждения. */}
-        {tab.sceneId !== null && tab.sceneId === dirtySceneId && (
-          <span className="ml-1 text-warning" title="Есть несохранённые изменения">
-            •<span className="sr-only"> (есть несохранённые изменения)</span>
-          </span>
-        )}
-      </button>
-    );
-  };
+  const tabButtonNode = (tab: (typeof tabs)[number], dragListeners?: Record<string, unknown>) => (
+    <SceneTabButton
+      tab={tab}
+      activeKey={activeKey}
+      focusKey={focusKey}
+      visibleKeys={tabKeys}
+      dirtySceneId={dirtySceneId}
+      contentId={contentId}
+      shrink={shrinkActiveTab && tab.key === focusKey}
+      dragListeners={dragListeners}
+      onActivate={onActivate}
+    />
+  );
 
   const renderTab = (tab: (typeof tabs)[number]) => {
+    const hidden = hiddenKeys.includes(tab.key);
+    const shrink = shrinkActiveTab && tab.key === focusKey;
     if (!tab.draggable) {
-      return <React.Fragment key={tab.key}>{tabButtonNode(tab)}</React.Fragment>;
+      return (
+        <div
+          key={tab.key}
+          data-scene-tab={tab.key}
+          inert={hidden}
+          className={cn(
+            'flex items-center',
+            shrink ? 'min-w-0 shrink' : 'shrink-0',
+            hidden && 'pointer-events-none invisible absolute left-0',
+          )}
+        >
+          {tabButtonNode(tab)}
+        </div>
+      );
     }
     return (
-      <SortableTabShell key={tab.key} id={tab.key}>
+      <SortableTabShell key={tab.key} id={tab.key} hidden={hidden} shrink={shrink}>
         {(dragListeners) => (
           <>
             {tabButtonNode(tab, dragListeners)}
@@ -278,15 +316,18 @@ export function SceneTabs({
 
   // Активная вкладка всегда в видимой части полосы: новая схема встаёт в конец ряда, и раньше
   // её вкладка оставалась за краем, а полоса не прокручивалась (#10 п. 5).
-  const stripRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (overflowMenu) return;
     const strip = stripRef.current;
-    const tab = strip?.querySelector<HTMLElement>(`[id="scene-tab-${globalThis.CSS.escape(activeKey)}"]`);
+    const tab = strip?.querySelector<HTMLElement>(
+      `[id="scene-tab-${globalThis.CSS.escape(activeKey)}"]`,
+    );
     if (!strip || !tab) return;
-    const s = strip.getBoundingClientRect(), t = tab.getBoundingClientRect();
-    if (t.left < s.left) strip.scrollBy({left: t.left - s.left - 16});
-    else if (t.right > s.right) strip.scrollBy({left: t.right - s.right + 16});
-  }, [activeKey, tabs.length]);
+    const s = strip.getBoundingClientRect(),
+      t = tab.getBoundingClientRect();
+    if (t.left < s.left) strip.scrollBy({ left: t.left - s.left - 16 });
+    else if (t.right > s.right) strip.scrollBy({ left: t.right - s.right + 16 });
+  }, [activeKey, overflowMenu, tabs.length]);
 
   // Показывать нечего — не занимаем 44px пустой полосой. Так бывает только там, где нет
   // ни `extraTab`, ни `fallbackTab`: у монитора до выбора схемы.
@@ -296,21 +337,43 @@ export function SceneTabs({
     <div
       ref={stripRef}
       style={style}
-      role="tablist"
-      aria-label={ariaLabel}
       className={cn(
         // Тонкая полоса прокрутки: толстая под 13 вкладками съедала строку (#10 п. 5).
-        "h-11 shrink-0 border-b border-border bg-card dark:bg-card/80 backdrop-blur-md flex items-center px-4 gap-2 overflow-x-auto [scrollbar-width:thin]",
+        'relative h-11 shrink-0 border-b border-border bg-card dark:bg-card/80 backdrop-blur-md flex items-center px-4 gap-2',
+        overflowMenu ? 'overflow-hidden' : 'overflow-x-auto [scrollbar-width:thin]',
         className,
       )}
     >
       {/* Перетаскиваются закреплённые схемы и «Рецепты». Текущая незакреплённая схема —
           вкладка временная, стоит последней и в сортировку не входит. */}
-      <DndContext sensors={tabDndSensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
-        <SortableContext items={sortableTabKeys} strategy={horizontalListSortingStrategy}>
-          {tabs.map(renderTab)}
-        </SortableContext>
-      </DndContext>
+      <div role="tablist" aria-label={ariaLabel} className="flex min-w-0 items-center gap-2">
+        <DndContext
+          sensors={tabDndSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleTabDragEnd}
+        >
+          <SortableContext
+            items={sortableTabKeys.filter((key) => !hiddenKeys.includes(key))}
+            strategy={horizontalListSortingStrategy}
+          >
+            {tabs.map(renderTab)}
+          </SortableContext>
+        </DndContext>
+      </div>
+      {hiddenTabs.length > 0 && (
+        <PickerSelect
+          aria-label={`Ещё ${hiddenTabs.length} вкладок`}
+          placeholder={`Ещё ${hiddenTabs.length}`}
+          className="w-24 shrink-0"
+          value={null}
+          onValueChange={onActivate}
+          items={hiddenTabs.map((tab) => ({
+            value: tab.key,
+            label: tab.label,
+            meta: tab.icon ? <tab.icon size={14} aria-hidden /> : undefined,
+          }))}
+        />
+      )}
     </div>
   );
 }
