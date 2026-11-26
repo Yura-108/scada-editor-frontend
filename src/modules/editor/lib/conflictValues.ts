@@ -1,25 +1,37 @@
-import {basePropertySchema, elementPropertyMap} from "./propertiesPanel";
+import isEqual from 'lodash/isEqual';
+import { basePropertySchema, elementPropertyMap } from './propertiesPanel';
 
 /**
- * Значения «Было / У вас / У них» в окне конфликта сохранения — читаемо, а не сырым JSON (#21).
+ * Значения «Было / У вас / На сервере» в окне конфликта сохранения (#21).
  *
  * Геометрия и вид элемента лежат в `image` состояния одной JSON-строкой, и сервер присылает
  * конфликт на неё целиком (контракт, §2: «конфликт на весь блоб, без разбора»). Целиком её не
  * прочесть, поэтому, если значения — JSON-объекты, оставляем только поля, которые различаются, с
  * подписями из панели свойств. Остальные значения (уставка свойства и т. п.) — как есть.
  */
-export type ConflictLine = {text: string; title?: string};
-export type ConflictColumns = {base: ConflictLine[]; yours: ConflictLine[]; theirs: ConflictLine[]};
+export type ConflictLine = { text: string; title?: string };
+export type ConflictColumns = {
+  base: ConflictLine[];
+  yours: ConflictLine[];
+  theirs: ConflictLine[];
+};
 
 const MAX_TEXT = 60;
 
 /** Геометрия правится в блоке «Геометрия», а не схемами полей — подписи здесь. */
 const GEOMETRY_LABELS: Record<string, string> = {
-  x: "X", y: "Y", w: "Ширина", h: "Высота",
-  x1: "X1", y1: "Y1", x2: "X2", y2: "Y2",
-  rotate: "Поворот", composition: "Части компонента",
+  x: 'Положение X',
+  y: 'Положение Y',
+  w: 'Ширина',
+  h: 'Высота',
+  x1: 'X1',
+  y1: 'Y1',
+  x2: 'X2',
+  y2: 'Y2',
+  rotate: 'Поворот',
+  composition: 'Части компонента',
   // У каждого виджета своя подпись («Цвет полосы», «Цвет фона»…) — без типа берём общую.
-  color: "Цвет",
+  color: 'Цвет',
 };
 
 /**
@@ -46,44 +58,60 @@ const labelOf = (key: string): string => {
 
 /** Короткий текст; полный — во всплывающей подсказке, если пришлось обрезать. */
 const clip = (text: string): ConflictLine =>
-  text.length > MAX_TEXT ? {text: `${text.slice(0, MAX_TEXT - 1)}…`, title: text} : {text};
+  text.length > MAX_TEXT ? { text: `${text.slice(0, MAX_TEXT - 1)}…`, title: text } : { text };
 
 /** Строка поля. Вложенное (части компонента, списки) — коротко, сам JSON — в подсказке. */
 const fieldLine = (key: string, value: unknown): ConflictLine => {
-  const label = labelOf(key);
-  if (value !== null && typeof value === "object") {
-    const short = Array.isArray(value) ? `${value.length} шт.` : "{…}";
-    return {text: `${label}: ${short}`, title: JSON.stringify(value)};
+  // Старый или неполный ответ может содержать неразбираемое изображение состояния.
+  if (key === 'image')
+    return { text: `Вид элемента: ${value === undefined ? '—' : 'данные недоступны'}` };
+  const label = labelOf(key.startsWith('image.') ? key.slice('image.'.length) : key);
+  if (value !== null && typeof value === 'object') {
+    const short = Array.isArray(value) ? `${value.length} шт.` : '{…}';
+    return { text: `${label}: ${short}`, title: JSON.stringify(value) };
   }
-  return clip(`${label}: ${value === undefined ? "—" : String(value)}`);
+  return clip(`${label}: ${value === undefined ? '—' : String(value)}`);
 };
 
 const parseObject = (raw: string): Record<string, unknown> | null => {
   try {
     const value: unknown = JSON.parse(raw);
-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   } catch {
     return null;
   }
 };
 
+const flattenImage = (object: Record<string, unknown>): Map<string, unknown> => {
+  const fields = new Map(Object.entries(object));
+  const image = fields.get('image');
+  const parsed = typeof image === 'string' ? parseObject(image) : image;
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    fields.delete('image');
+    for (const [key, value] of Object.entries(parsed)) fields.set(`image.${key}`, value);
+  }
+  return fields;
+};
+
 export function conflictColumns(base?: string, yours?: string, theirs?: string): ConflictColumns {
   const raw = [base, yours, theirs];
   const present = raw.filter((v): v is string => v != null);
-  const objects = raw.map(v => (v == null ? undefined : parseObject(v)));
+  const objects = raw.map((v) => (v == null ? undefined : parseObject(v)));
 
   // Обычные значения — или не все присланные значения разбираются как объекты.
   if (!present.length || objects.some((o, i) => raw[i] != null && o === null)) {
     const plain = (v?: string) => (v == null ? [] : [clip(v)]);
-    return {base: plain(base), yours: plain(yours), theirs: plain(theirs)};
+    return { base: plain(base), yours: plain(yours), theirs: plain(theirs) };
   }
 
-  const keys = [...new Set(objects.flatMap(o => (o ? Object.keys(o) : [])))];
-  const differing = keys.filter(key => {
-    const seen = new Set(objects.filter(Boolean).map(o => JSON.stringify(o![key])));
-    return seen.size > 1;
-  });
-  const column = (o: Record<string, unknown> | null | undefined): ConflictLine[] =>
-    o ? differing.map(key => fieldLine(key, o[key])) : [];
-  return {base: column(objects[0]), yours: column(objects[1]), theirs: column(objects[2])};
+  const fields = objects.map((o) => (o ? flattenImage(o) : undefined));
+  const keys = [...new Set(fields.flatMap((o) => (o ? [...o.keys()] : [])))];
+  const differing = keys.filter((key) =>
+    fields.some((o) => !isEqual(o?.get(key), fields[0]?.get(key))),
+  );
+  const column = (o: Map<string, unknown> | undefined): ConflictLine[] =>
+    o ? differing.map((key) => fieldLine(key, o.get(key))) : [];
+  return { base: column(fields[0]), yours: column(fields[1]), theirs: column(fields[2]) };
 }
