@@ -68,6 +68,8 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@tailwindcss/postcss": "^4",
     "@types/lodash": "^4.17.24",
     "@types/node": "^24.19.3",
