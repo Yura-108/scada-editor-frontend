@@ -1,21 +1,23 @@
-"use client";
+'use client';
 
-import React, {useMemo, useRef, useState} from "react";
-import * as Popover from "@radix-ui/react-popover";
-import {Check, ChevronDown} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
-import {EmptyState} from "../EmptyState";
-import {usePortalContainer} from "../portalContainer";
-import {fieldBase, fieldSizes} from "./fieldStyles";
-import {SearchInput} from "./SearchInput";
+import React, { useMemo, useRef, useState } from 'react';
+import * as Popover from '@radix-ui/react-popover';
+import { Check, ChevronDown } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { EmptyState } from '../EmptyState';
+import { usePortalContainer } from '../portalContainer';
+import { fieldBase, fieldSizes } from './fieldStyles';
+import { SearchInput } from './SearchInput';
 
 export interface PickerItem {
   value: string;
   label: string;
   /** Значок после названия, например «prod №3». */
   meta?: React.ReactNode;
-  /** Кнопки строки — `IconButton size="xs"`: закрепить, выпуски, удалить. */
+  /** Кнопки рядом с названием. */
   actions?: React.ReactNode;
+  /** Раскрытые действия под строкой выбора. */
+  details?: React.ReactNode;
 }
 
 /** С какого числа пунктов над списком появляется поиск. */
@@ -38,14 +40,15 @@ export function PickerSelect({
   items,
   placeholder,
   valueLabel,
-  emptyText = "Ничего нет",
+  emptyText = 'Ничего нет',
   disabled = false,
   open,
   onOpenChange,
   className,
   contentClassName,
+  listClassName,
   title,
-  "aria-label": ariaLabel,
+  'aria-label': ariaLabel,
 }: {
   value: string | null;
   onValueChange: (value: string) => void;
@@ -60,8 +63,9 @@ export function PickerSelect({
   className?: string;
   /** Ширина раскрытого списка, когда строкам с кнопками тесно в ширине поля. */
   contentClassName?: string;
+  listClassName?: string;
   title?: string;
-  "aria-label": string;
+  'aria-label': string;
 }) {
   const [innerOpen, setInnerOpen] = useState(false);
   const portalContainer = usePortalContainer();
@@ -71,42 +75,54 @@ export function PickerSelect({
     onOpenChange?.(next);
   };
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
   const searchable = items.length >= SEARCH_FROM;
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? items.filter(item => item.label.toLowerCase().includes(q)) : items;
+    return q ? items.filter((item) => item.label.toLowerCase().includes(q)) : items;
   }, [items, query]);
 
-  const current = items.find(item => item.value === value)?.label ?? valueLabel;
-  const options = () => [...(listRef.current?.querySelectorAll<HTMLElement>("[data-picker-option]") ?? [])];
+  const current = items.find((item) => item.value === value)?.label ?? valueLabel;
+  const options = () => [
+    ...(listRef.current?.querySelectorAll<HTMLElement>('[data-picker-option]') ?? []),
+  ];
 
   // Стрелки — между кнопками выбора строк; кнопки действий доступны по Tab.
   const onListKey = (e: React.KeyboardEvent) => {
-    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const all = options();
     if (!all.length) return;
     e.preventDefault();
     const idx = all.indexOf(document.activeElement as HTMLElement);
-    const next = e.key === "ArrowDown" ? (idx + 1) % all.length : (idx - 1 + all.length) % all.length;
+    const next =
+      e.key === 'ArrowDown' ? (idx + 1) % all.length : (idx - 1 + all.length) % all.length;
     all[idx < 0 ? 0 : next]?.focus();
   };
 
   return (
-    <Popover.Root open={isOpen} onOpenChange={next => { setOpen(next); if (!next) setQuery(""); }}>
+    <Popover.Root
+      open={isOpen}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQuery('');
+      }}
+    >
       <Popover.Trigger asChild disabled={disabled}>
         <button
           type="button"
           aria-label={ariaLabel}
           title={title ?? current}
           className={cn(
-            fieldBase, fieldSizes.sm,
-            "flex min-w-0 items-center gap-2 text-left disabled:cursor-not-allowed",
+            fieldBase,
+            fieldSizes.sm,
+            'flex min-w-0 items-center gap-2 text-left disabled:cursor-not-allowed',
             className,
           )}
         >
-          <span className={cn("min-w-0 flex-1 truncate", !current && "text-muted-foreground")}>{current ?? placeholder}</span>
+          <span className={cn('min-w-0 flex-1 truncate', !current && 'text-muted-foreground')}>
+            {current ?? placeholder}
+          </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </Popover.Trigger>
@@ -120,55 +136,79 @@ export function PickerSelect({
             e.preventDefault();
             requestAnimationFrame(() => {
               const target = searchable
-                ? listRef.current?.parentElement?.querySelector<HTMLElement>("input")
-                : options().find(o => o.dataset.value === value) ?? options()[0];
+                ? listRef.current?.parentElement?.querySelector<HTMLElement>('input')
+                : (options().find((o) => o.dataset.value === value) ?? options()[0]);
               target?.focus();
             });
           }}
           className={cn(
-            "z-dropdown w-(--radix-popover-trigger-width) min-w-72 max-w-[90vw] overflow-hidden rounded-lg border",
-            "bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0",
+            'z-dropdown flex max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-72 max-w-[90vw] flex-col overflow-hidden rounded-lg border',
+            'bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0',
             contentClassName,
           )}
         >
           {searchable && (
-            <div className="border-b p-2">
+            <div className="shrink-0 border-b p-2">
               <SearchInput
                 size="sm"
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onListKey}
                 placeholder="Найти"
                 aria-label={`Найти: ${ariaLabel}`}
               />
             </div>
           )}
-          <div ref={listRef} onKeyDown={onListKey} className="max-h-80 overflow-y-auto p-1">
+          <div
+            ref={listRef}
+            onKeyDown={onListKey}
+            className={cn('min-h-0 max-h-80 overflow-y-auto p-1', listClassName)}
+          >
             {visible.length === 0 ? (
-              <EmptyState size="sm" className="py-3" title={items.length ? "Ничего не найдено" : emptyText} />
-            ) : visible.map(item => {
-              const selected = item.value === value;
-              return (
-                <div
-                  key={item.value}
-                  className={cn("flex items-center gap-1 rounded-md pr-1", selected ? "bg-primary/10" : "hover:bg-accent")}
-                >
-                  <button
-                    type="button"
-                    data-picker-option
-                    data-value={item.value}
-                    aria-current={selected || undefined}
-                    onClick={() => { onValueChange(item.value); setOpen(false); setQuery(""); }}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                  >
-                    <Check className={cn("h-4 w-4 shrink-0 text-primary", !selected && "invisible")} aria-hidden />
-                    <span className="min-w-0 truncate">{item.label}</span>
-                    {item.meta}
-                  </button>
-                  {item.actions && <div className="flex shrink-0 items-center gap-0.5">{item.actions}</div>}
-                </div>
-              );
-            })}
+              <EmptyState
+                size="sm"
+                className="py-3"
+                title={items.length ? 'Ничего не найдено' : emptyText}
+              />
+            ) : (
+              visible.map((item) => {
+                const selected = item.value === value;
+                return (
+                  <div key={item.value}>
+                    <div
+                      className={cn(
+                        'flex items-center gap-1 rounded-md pr-1',
+                        selected ? 'bg-primary/10' : 'hover:bg-accent',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        data-picker-option
+                        data-value={item.value}
+                        aria-current={selected || undefined}
+                        onClick={() => {
+                          onValueChange(item.value);
+                          setOpen(false);
+                          setQuery('');
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                      >
+                        <Check
+                          className={cn('h-4 w-4 shrink-0 text-primary', !selected && 'invisible')}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                        {item.meta}
+                      </button>
+                      {item.actions && (
+                        <div className="flex shrink-0 items-center gap-0.5">{item.actions}</div>
+                      )}
+                    </div>
+                    {item.details}
+                  </div>
+                );
+              })
+            )}
           </div>
         </Popover.Content>
       </Popover.Portal>
