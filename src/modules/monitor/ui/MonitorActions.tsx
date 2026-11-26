@@ -1,11 +1,11 @@
-import React from "react";
-import {Cpu, SearchCode} from "lucide-react";
-import {useCurrentProjectGrant, canWriteDirectly} from "@/core/access";
-import {Badge} from "@/shared/ui/Badge";
-import {Button} from "@/shared/ui/Button";
-import {useAutomationTasksStore} from "../model/useAutomationTasksStore";
-import {countTaskProblems} from "./AutomationTaskPanel";
-import {openObjectInspectorModal} from "./ObjectInspectorModal";
+import React from 'react';
+import { Cpu, SearchCode } from 'lucide-react';
+import { useCurrentProjectGrant, canWriteDirectly } from '@/core/access';
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import { useAutomationTasksStore } from '../model/useAutomationTasksStore';
+import { countTaskProblems } from './AutomationTaskPanel';
+import { openObjectInspectorModal } from './ObjectInspectorModal';
 
 interface Props {
   /** Живая сессия: кнопки только при ней — в архиве записи невозможны, а значения из прошлого. */
@@ -19,10 +19,10 @@ interface Props {
  * только с 1280, и на ноутбуке оставались значки без слов (#18 п. 14). Кнопки «Процедуры» нет: она дублировала
  * вкладку «Процедуры» и сбивала подсветку вкладок (#6 п. 3).
  */
-export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
+export function MonitorActions({ live, showTasks, onToggleTasks }: Props) {
   // «Опции» и инспектор пишут теги/свойства напрямую: «управление» и уровень ≥ 9.
   const directWrite = canWriteDirectly(useCurrentProjectGrant());
-  const taskProblems = useAutomationTasksStore(s => countTaskProblems(s.byId));
+  const taskProblems = useAutomationTasksStore((s) => countTaskProblems(s.byId));
 
   if (!live) return null;
 
@@ -31,7 +31,12 @@ export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
       {/* Инспектор объектов: любой объект выпуска со всех схем, все его свойства с правкой.
           Только при живой сессии — в архиве записи невозможны, а значения из прошлого. */}
       {directWrite && (
-        <Button size="sm" onClick={() => openObjectInspectorModal()} title="Инспектор объектов: свойства любого объекта проекта">
+        <Button
+          size="sm"
+          className="shrink-0 max-xl:px-2"
+          onClick={() => openObjectInspectorModal()}
+          title="Инспектор объектов: свойства любого объекта проекта"
+        >
           <SearchCode size={14} />
           <span className="hidden lg:inline">Инспектор</span>
         </Button>
@@ -41,8 +46,8 @@ export function MonitorActions({live, showTasks, onToggleTasks}: Props) {
         size="sm"
         onClick={onToggleTasks}
         aria-pressed={showTasks}
-        className="aria-pressed:bg-accent"
-        title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : "Фоновые задачи проекта"}
+        className="shrink-0 aria-pressed:bg-accent max-xl:px-2"
+        title={taskProblems > 0 ? `Задач с проблемами: ${taskProblems}` : 'Фоновые задачи проекта'}
       >
         <Cpu size={14} />
         <span className="hidden lg:inline">Задачи</span>
