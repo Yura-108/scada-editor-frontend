@@ -23,6 +23,7 @@ import {
 } from '@/core/project';
 import { editorSession } from './editorSession';
 import { editorStore } from './editorStoreRef';
+import { resolvePendingPropertyRefs } from './propertyRefs';
 
 /**
  * Сцена принадлежит текущему выбранному проекту, если:
@@ -128,9 +129,8 @@ export const applyServerComponents = (
   components: unknown[],
   scene: { id?: number | string; key?: string } | null,
 ): DiagramElement[] => {
-  const elements = transformElements(
-    (components ?? []) as Parameters<typeof transformElements>[0],
-    scene,
+  const elements = resolvePendingPropertyRefs(
+    transformElements((components ?? []) as Parameters<typeof transformElements>[0], scene),
   );
 
   editorSession.documentGeneration += 1;

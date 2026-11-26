@@ -1,11 +1,10 @@
-import type {SceneType} from "@/core/scene";
+import type { SceneType } from '@/core/scene';
 // переедет в core/scene вместе с остальным lib (шаг 8)
-import {putScene} from "@/core/project";
-import type {EditorState} from "./editorStore";
-import {editorSession} from "./editorSession";
-import {editorStore} from "./editorStoreRef";
-import {applyServerComponents, rebaseHistoryIds} from "./editorStoreInternals";
-import {resolvePendingPropertyRefs} from "./propertyRefs";
+import { putScene } from '@/core/project';
+import type { EditorState } from './editorStore';
+import { editorSession } from './editorSession';
+import { editorStore } from './editorStoreRef';
+import { applyServerComponents, rebaseHistoryIds } from './editorStoreInternals';
 
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
@@ -45,7 +44,7 @@ export async function replaceCanvasFromServer(
   get: () => EditorState,
   scene: SceneType,
   projectId: number | null | undefined,
-  tree: {components: Record<string, unknown>[]; version: number} | null,
+  tree: { components: Record<string, unknown>[]; version: number } | null,
 ): Promise<void> {
   const temporal = editorStore().temporal.getState();
   temporal.pause();
@@ -55,12 +54,12 @@ export async function replaceCanvasFromServer(
       if (projectId != null) {
         putScene(
           projectId,
-          {...(scene as unknown as Record<string, unknown>), children: tree.components},
+          { ...(scene as unknown as Record<string, unknown>), children: tree.components },
           tree.version,
         );
       }
     } else {
-      await get().loadScene(Number(scene.id), {keepHistory: true});
+      await get().loadScene(Number(scene.id), { keepHistory: true });
     }
   } finally {
     editorStore().temporal.getState().resume();
@@ -68,8 +67,8 @@ export async function replaceCanvasFromServer(
 }
 
 /**
- * Хвост успешного сохранения: холст получает серверное дерево (уже с id), ссылки на
- * свойства — номера, история undo — серверные id. При `keepView` (автосейв) выделение,
+ * Хвост успешного сохранения: холст получает серверное дерево с id, история undo — эти же
+ * серверные id. При `keepView` (автосейв) выделение,
  * активная группа и состояния возвращаются по ключам — чтобы автосейв не «дёргал»
  * пользователя.
  */
@@ -78,7 +77,7 @@ export async function applySavedTree(
   set: EditorSet,
   scene: SceneType,
   projectId: number | undefined,
-  saved: {components: Record<string, unknown>[]; versionNo: number | null},
+  saved: { components: Record<string, unknown>[]; versionNo: number | null },
   keepView: boolean | undefined,
 ): Promise<void> {
   // Дерево из ответа заменяет elements серверным (уже с id) и сбрасывает
@@ -100,9 +99,11 @@ export async function applySavedTree(
   // в нём никто не гарантировал, доверять ему холст нельзя, и мы уходим
   // в честную перезагрузку сцены.
   await replaceCanvasFromServer(
-    get, scene, projectId,
+    get,
+    scene,
+    projectId,
     saved.versionNo != null && saved.components.length
-      ? {components: saved.components, version: saved.versionNo}
+      ? { components: saved.components, version: saved.versionNo }
       : null,
   );
 
@@ -110,23 +111,12 @@ export async function applySavedTree(
   // Снимки, снятые до сохранения, содержат id:null у новых элементов, и
   // следующее сохранение вставило бы их повторно (дубли на сервере).
   // Переносим присвоенные сервером id в стек по ключам.
-  // Свойства только что получили серверные номера — раздаём их ссылкам,
-  // которые адресовали свойство парой «ключ элемента + имя». До сохранения
-  // номера не существовало, и рантайму ссылка была не видна.
-  const withRefs = resolvePendingPropertyRefs(get().elements);
-  if (withRefs !== get().elements) {
-    const t = editorStore().temporal.getState();
-    t.pause();
-    set({elements: withRefs});
-    t.resume();
-  }
-
   rebaseHistoryIds(get().elements);
 
   if (keepView) {
-    const keys = new Set(get().elements.map(el => el.key));
+    const keys = new Set(get().elements.map((el) => el.key));
     set({
-      selectedIds: (prevSelected ?? []).filter(k => keys.has(k)),
+      selectedIds: (prevSelected ?? []).filter((k) => keys.has(k)),
       activeGroupKey: prevActive && keys.has(prevActive) ? prevActive : null,
       currentComponentStateByElementKey: Object.fromEntries(
         Object.entries(prevStates ?? {}).filter(([k]) => keys.has(k)),

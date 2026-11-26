@@ -1,5 +1,5 @@
-import {ComponentCreateDto, DiagramElement} from "../types/editorElement.type";
-import {BindingDto} from "../types/binding.types";
+import { ComponentCreateDto, DiagramElement } from '../types/editorElement.type';
+import { BindingDto } from '../types/binding.types';
 
 /**
  * id свойства элемента для DTO-поля `component_property_id` (контракт требует
@@ -15,9 +15,9 @@ import {BindingDto} from "../types/binding.types";
  */
 const firstSavedPropertyId = (el: DiagramElement): number | undefined => {
   const props = el.properties ?? [];
-  const tagProp = props.find(p => p.property_type === "Тег" && typeof p.id === "number");
+  const tagProp = props.find((p) => p.property_type === 'Тег' && typeof p.id === 'number');
   if (tagProp) return tagProp.id;
-  return props.find(p => typeof p.id === "number")?.id;
+  return props.find((p) => typeof p.id === 'number')?.id;
 };
 
 /**
@@ -28,7 +28,8 @@ const firstSavedPropertyId = (el: DiagramElement): number | undefined => {
  */
 const firstSavedPropertyName = (el: DiagramElement): string | undefined => {
   const props = el.properties ?? [];
-  return (props.find(p => p.property_type === "Тег" && p.name) ?? props.find(p => p.name))?.name;
+  return (props.find((p) => p.property_type === 'Тег' && p.name) ?? props.find((p) => p.name))
+    ?.name;
 };
 
 /**
@@ -40,7 +41,7 @@ const firstSavedPropertyName = (el: DiagramElement): string | undefined => {
  */
 const stripRefIds = (refs: unknown): unknown => {
   if (!Array.isArray(refs)) return refs;
-  return refs.map(({propertyId: _pid, componentId: _cid, ...rest}) => rest);
+  return refs.map(({ propertyId: _pid, componentId: _cid, ...rest }) => rest);
 };
 
 /**
@@ -50,7 +51,7 @@ const stripRefIds = (refs: unknown): unknown => {
  * `id` ни на одном уровне, сущности связываются по именам, а id, попавший в шаблон из
  * сцены, адресует чужую сущность. Флаг существует ровно ради этой разницы.
  */
-type EncodeOptions = {withServerIds?: boolean};
+type EncodeOptions = { withServerIds?: boolean };
 
 /**
  * TagBinding → DTO: биндинг целиком уезжает JSON-строкой в опак-поле `script`
@@ -59,19 +60,22 @@ type EncodeOptions = {withServerIds?: boolean};
  */
 const encodeBindings = (
   el: DiagramElement,
-  {withServerIds = true}: EncodeOptions = {},
+  { withServerIds = true }: EncodeOptions = {},
 ): BindingDto[] =>
   Array.isArray(el.bindings)
-    ? el.bindings.map(b => {
+    ? el.bindings.map((b) => {
         // Серверные поля живут в DTO-обёртке, а не внутри опак-строки `script`:
         // вырезаем их перед сериализацией, иначе в JSON осел бы id, который сервер мог
         // уже не знать (свойство удалили и завели заново — номер сменился).
-        const {serverId, componentPropertyId, componentPropertyName, ...payload} = b;
+        const { serverId, componentPropertyId, componentPropertyName, ...payload } = b;
 
         // В шаблоне номера свойств бессмысленны — ссылки живут по именам и ключам.
         const script = withServerIds
           ? payload
-          : {...payload, ...(payload.propertyRefs ? {propertyRefs: stripRefIds(payload.propertyRefs)} : {})};
+          : {
+              ...payload,
+              ...(payload.propertyRefs ? { propertyRefs: stripRefIds(payload.propertyRefs) } : {}),
+            };
 
         // В шаблоне номера свойств не отдаём ВООБЩЕ: у его DTO нет id ни на одном
         // уровне, сущности связываются по именам (§2 контракта версий). Прежний код
@@ -84,19 +88,19 @@ const encodeBindings = (
         // и привязать биндинг бэкенд может только по `component_property_name`. В сцене
         // имя вдобавок переживает снимок версии, чего не делает номер (свойство, удалённое
         // и заведённое заново, получает новый id).
-        const propertyName = (withServerIds ? componentPropertyName : undefined)
-          ?? firstSavedPropertyName(el);
+        const propertyName =
+          (withServerIds ? componentPropertyName : undefined) ?? firstSavedPropertyName(el);
 
         return {
           // Пришёл с id — возвращаем тот же (§2 контракта): без него переименование
           // биндинга читается как «удалили один, создали другой».
-          ...(withServerIds && serverId != null ? {id: serverId} : {}),
+          ...(withServerIds && serverId != null ? { id: serverId } : {}),
           // Пару «свойство» возвращаем как получили. Своё значение вычисляем только для
           // новых биндингов: имя нужно снимку версии, а номер снимок не переживает.
           // Сохранённых свойств нет — поле ОПУСКАЕМ: нулевого свойства не существует.
-          ...(propertyId != null ? {component_property_id: propertyId} : {}),
-          ...(propertyName != null ? {component_property_name: propertyName} : {}),
-          name: b.name ?? "",
+          ...(propertyId != null ? { component_property_id: propertyId } : {}),
+          ...(propertyName != null ? { component_property_name: propertyName } : {}),
+          name: b.name ?? '',
           script: JSON.stringify(script),
         };
       })
@@ -110,24 +114,24 @@ const encodeBindings = (
  */
 const encodeEvents = (
   el: DiagramElement,
-  {withServerIds = true}: EncodeOptions = {},
-): {id?: number | string; event_type: string; script: string}[] =>
+  { withServerIds = true }: EncodeOptions = {},
+): { id?: number | string; event_type: string; script: string }[] =>
   Array.isArray(el.events)
     ? el.events
-        .filter(e => e.handler?.code?.trim())
-        .map(e => ({
+        .filter((e) => e.handler?.code?.trim())
+        .map((e) => ({
           // Пришёл с id — возвращаем тот же (§2 контракта). Сами события сервер
           // сопоставляет по event_type, так что id здесь ради снимка версии.
-          ...(withServerIds && e.serverId != null ? {id: e.serverId} : {}),
+          ...(withServerIds && e.serverId != null ? { id: e.serverId } : {}),
           event_type: e.event_type,
           script: e.handler.propertyRefs?.length
-            ? JSON.stringify({v: 1, code: e.handler.code, propertyRefs: e.handler.propertyRefs})
+            ? JSON.stringify({ v: 1, code: e.handler.code, propertyRefs: e.handler.propertyRefs })
             : e.handler.code,
         }))
     : [];
 
 const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
-  const visualProps = {...el} as Record<string, unknown>;
+  const visualProps = { ...el } as Record<string, unknown>;
 
   delete visualProps.id;
   delete visualProps.key;
@@ -147,6 +151,9 @@ const buildBaseImage = (el: DiagramElement): Record<string, unknown> => {
   return visualProps;
 };
 
+const propertiesWithoutIds = (properties: DiagramElement['properties']) =>
+  (properties ?? []).map(({ id: _id, ...property }) => ({ ...property, component_id: null }));
+
 /**
  * Дескриптор примитива для запекания в image компонента: визуальные поля примитива
  * в конкретном состоянии (сопоставление по имени состояния, fallback — дефолтное).
@@ -157,13 +164,14 @@ const buildShapeDescriptor = (
 ): Record<string, unknown> => {
   const base = buildBaseImage(primitive);
   const state =
-    primitive.states.find(s => s.name === stateName) ??
-    primitive.states.find(s => s.isDefault) ??
+    primitive.states.find((s) => s.name === stateName) ??
+    primitive.states.find((s) => s.isDefault) ??
     primitive.states[0];
 
   return {
     type: primitive.type,
     key: primitive.key,
+    label: primitive.label,
     ...base,
     ...(state?.overrides ?? {}),
     // Данные примитива (теги/скрипты/биндинги/события) — иначе теряются при round-trip:
@@ -174,74 +182,88 @@ const buildShapeDescriptor = (
     // слиянии `image` сравнивается целым блобом — любая необязательная величина внутри
     // означала бы конфликт там, где визуально ничего не менялось.
     ...(primitive.scripts?.length
-      ? {scripts: primitive.scripts.map(({serverId, ...s}) => s)}
+      ? { scripts: primitive.scripts.map(({ serverId, ...s }) => s) }
       : {}),
     ...(Array.isArray(primitive.bindings) && primitive.bindings.length
       ? {
-          bindings: primitive.bindings.map(
-            ({serverId, componentPropertyId, componentPropertyName, ...b}) => b,
-          ),
+          bindings: primitive.bindings.map(({ serverId, componentPropertyId, ...b }) => b),
         }
       : {}),
-    ...(primitive.events?.length ? {events: encodeEvents(primitive, {withServerIds: false})} : {}),
-    ...(primitive.properties?.length ? {properties: primitive.properties} : {}),
+    ...(primitive.events?.length
+      ? { events: encodeEvents(primitive, { withServerIds: false }) }
+      : {}),
+    ...(primitive.properties?.length
+      ? { properties: propertiesWithoutIds(primitive.properties) }
+      : {}),
   };
 };
 
 const getOrderedChildren = (element: DiagramElement, elements: DiagramElement[]) => {
-  const directChildren = elements.filter(child => String(child.parentKey) === String(element.key));
-  const directChildrenMap = new Map(directChildren.map(child => [child.key, child]));
+  const directChildren = elements.filter(
+    (child) => String(child.parentKey) === String(element.key),
+  );
+  const directChildrenMap = new Map(directChildren.map((child) => [child.key, child]));
 
   return element.children?.length
     ? [
         ...element.children
-          .map(childKey => directChildrenMap.get(String(childKey)))
+          .map((childKey) => directChildrenMap.get(String(childKey)))
           .filter((child): child is DiagramElement => Boolean(child)),
-        ...directChildren.filter(child => !element.children.includes(child.key)),
+        ...directChildren.filter((child) => !element.children.includes(child.key)),
       ]
     : directChildren;
 };
 
-const buildComponentNode = (element: DiagramElement, elements: DiagramElement[]): ComponentCreateDto => {
+const buildComponentNode = (
+  element: DiagramElement,
+  elements: DiagramElement[],
+): ComponentCreateDto => {
   const baseImage = buildBaseImage(element);
+  const properties =
+    element.id == null ? propertiesWithoutIds(element.properties) : (element.properties ?? []);
 
-  const byKey = new Map(elements.map(e => [e.key, e] as const));
+  const byKey = new Map(elements.map((e) => [e.key, e] as const));
 
   // Компонент: примитивы composition запекаются в image, узлами идут только компоненты.
   // «Глупая» группа / прочее: поведение как раньше — все прямые дети становятся узлами.
   const compositionPrimitives = element.isComponent
     ? (element.composition ?? [])
-        .map(k => byKey.get(k))
+        .map((k) => byKey.get(k))
         .filter((e): e is DiagramElement => Boolean(e))
     : [];
   const childNodes = element.isComponent
     ? (element.children ?? [])
-        .map(k => byKey.get(k))
+        .map((k) => byKey.get(k))
         .filter((e): e is DiagramElement => Boolean(e))
     : getOrderedChildren(element, elements);
 
-  const states = (element.states.length ? element.states : [{id: "default", name: "Нормальное", overrides: {}, isDefault: true}])
-    .map((state, index) => {
-      const stateImage: Record<string, unknown> = {...baseImage, ...(state.overrides ?? {})};
-      if (element.isComponent && compositionPrimitives.length) {
-        stateImage.composition = compositionPrimitives.map(p => buildShapeDescriptor(p, state.name));
-      }
-      return {
-        // Пришедший с сервера id обязан вернуться тем же — иначе переименование
-        // состояния читается как «удалили и создали заново» (§2 контракта версий).
-        // Локальный uuid новых состояний не отправляем: сервер их создаст сам.
-        ...(state.serverId != null ? {id: state.serverId} : {}),
-        name: state.name,
-        image: JSON.stringify(stateImage),
-        isDefault: state.isDefault ?? index === 0,
-      };
-    });
+  const states = (
+    element.states.length
+      ? element.states
+      : [{ id: 'default', name: 'Нормальное', overrides: {}, isDefault: true }]
+  ).map((state, index) => {
+    const stateImage: Record<string, unknown> = { ...baseImage, ...(state.overrides ?? {}) };
+    if (element.isComponent && compositionPrimitives.length) {
+      stateImage.composition = compositionPrimitives.map((p) =>
+        buildShapeDescriptor(p, state.name),
+      );
+    }
+    return {
+      // Пришедший с сервера id обязан вернуться тем же — иначе переименование
+      // состояния читается как «удалили и создали заново» (§2 контракта версий).
+      // Локальный uuid новых состояний не отправляем: сервер их создаст сам.
+      ...(state.serverId != null ? { id: state.serverId } : {}),
+      name: state.name,
+      image: JSON.stringify(stateImage),
+      isDefault: state.isDefault ?? index === 0,
+    };
+  });
 
   return {
     id: element.id,
     key: element.key,
-    name: element.label ?? "",
-    children: childNodes.map(child => buildComponentNode(child, elements)),
+    name: element.label ?? '',
+    children: childNodes.map((child) => buildComponentNode(child, elements)),
     version: 0,
     type: element.type,
     parent_key: element.parentKey,
@@ -250,7 +272,7 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
       ? element.scripts.map((s) => ({
           // Пришёл с id — возвращаем тот же (§2 контракта): у скрипта есть имя, и без id
           // переименование читается сервером как «удалили и создали заново».
-          ...(s.serverId != null ? {id: s.serverId} : {}),
+          ...(s.serverId != null ? { id: s.serverId } : {}),
           name: s.name,
           script: s.content,
           // Всегда, даже когда false: список скриптов бэкенд считает полным, и
@@ -261,7 +283,7 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
           access_level: s.accessLevel ?? null,
         }))
       : [],
-    bindings: encodeBindings(element),
+    bindings: encodeBindings(element.id == null ? { ...element, properties } : element),
     events: encodeEvents(element),
     states,
     // Свойства едут ЦЕЛИКОМ и у любого типа элемента: отдельного REST-пути у них
@@ -272,8 +294,9 @@ const buildComponentNode = (element: DiagramElement, elements: DiagramElement[])
     //   - фильтровать список нельзя. Раньше у таблицы отправлялись только строки
     //     (isRowBindingProperty), и любое обычное свойство таблицы стиралось на сервере
     //     при каждом сохранении;
-    //   - собирать его надо ровно из element.properties, без промежуточных условий.
-    properties: element.properties ?? [],
+    // У нового узла свойства получают свои ID. Старый дескриптор мог хранить номера
+    // свойств примитива из времени, когда тот ещё был отдельным узлом.
+    properties,
   };
 };
 
@@ -282,21 +305,21 @@ export const buildComponentTree = (
   elements: DiagramElement[],
   parentKey: string | null = null,
 ): ComponentCreateDto[] => {
-  const rootElements = elements.filter(el => String(el.parentKey) === String(parentKey));
-  return rootElements.map(el => buildComponentNode(el, elements));
+  const rootElements = elements.filter((el) => String(el.parentKey) === String(parentKey));
+  return rootElements.map((el) => buildComponentNode(el, elements));
 };
 
 export const buildPaletteComponentTree = (
   elements: DiagramElement[],
-  rootKey: string | null = null
+  rootKey: string | null = null,
 ): Record<string, unknown> | null => {
   const rootElement = rootKey
-    ? elements.find(el => String(el.key) === String(rootKey))
-    : elements.find(el => el.parentKey === null);
+    ? elements.find((el) => String(el.key) === String(rootKey))
+    : elements.find((el) => el.parentKey === null);
 
   if (!rootElement) return null;
 
-  const byKey = new Map(elements.map(e => [e.key, e] as const));
+  const byKey = new Map(elements.map((e) => [e.key, e] as const));
 
   const buildNestedNode = (element: DiagramElement): Record<string, unknown> => {
     const baseImage = buildBaseImage(element);
@@ -306,30 +329,35 @@ export const buildPaletteComponentTree = (
     // то есть переставал быть компонентом, а его примитивы становились обычными детьми.
     const compositionPrimitives = element.isComponent
       ? (element.composition ?? [])
-          .map(k => byKey.get(k))
+          .map((k) => byKey.get(k))
           .filter((e): e is DiagramElement => Boolean(e))
       : [];
     const childNodes = element.isComponent
       ? (element.children ?? [])
-          .map(k => byKey.get(k))
+          .map((k) => byKey.get(k))
           .filter((e): e is DiagramElement => Boolean(e))
       : getOrderedChildren(element, elements);
 
     // Серверные id вложенных сущностей в шаблон НЕ уезжают: у DTO шаблона их нет ни на
     // одном уровне (§2 контракта — потому для шаблонов и нет слияния), а id, попавший
     // сюда из сцены, адресовал бы чужую сущность.
-    const states = (element.states.length ? element.states : [{id: "default", name: "Нормальное", overrides: {}, isDefault: true}])
-      .map((state, index) => {
-        const stateImage: Record<string, unknown> = {...baseImage, ...(state.overrides ?? {})};
-        if (element.isComponent && compositionPrimitives.length) {
-          stateImage.composition = compositionPrimitives.map(p => buildShapeDescriptor(p, state.name));
-        }
-        return {
-          name: state.name,
-          image: JSON.stringify(stateImage),
-          isDefault: state.isDefault ?? index === 0,
-        };
-      });
+    const states = (
+      element.states.length
+        ? element.states
+        : [{ id: 'default', name: 'Нормальное', overrides: {}, isDefault: true }]
+    ).map((state, index) => {
+      const stateImage: Record<string, unknown> = { ...baseImage, ...(state.overrides ?? {}) };
+      if (element.isComponent && compositionPrimitives.length) {
+        stateImage.composition = compositionPrimitives.map((p) =>
+          buildShapeDescriptor(p, state.name),
+        );
+      }
+      return {
+        name: state.name,
+        image: JSON.stringify(stateImage),
+        isDefault: state.isDefault ?? index === 0,
+      };
+    });
 
     // Свойства едут в шаблон ЦЕЛИКОМ, включая теговые, но БЕЗ конкретного тега:
     // тип свойства («Тег») — это и есть «здесь нужен тег», а сам тег у каждого
@@ -338,7 +366,7 @@ export const buildPaletteComponentTree = (
     // Серверные id снимаются: экземпляр заводит свои свойства сам (addTags при
     // назначении тега).
     const templateProperties = Array.isArray(element.properties)
-      ? element.properties.map(({id: _id, component_id: _cid, ...rest}) => ({
+      ? element.properties.map(({ id: _id, component_id: _cid, ...rest }) => ({
           ...rest,
           tag_id: null,
         }))
@@ -348,14 +376,14 @@ export const buildPaletteComponentTree = (
       // Шаблон не несёт серверных id ни на одном уровне — в том числе узловой.
       id: null,
       key: element.key,
-      name: element.label ?? "",
-      children: childNodes.map(child => buildNestedNode(child)),
+      name: element.label ?? '',
+      children: childNodes.map((child) => buildNestedNode(child)),
       version: 0,
       type: element.type,
       parent_key: element.parentKey,
       parent_id: element.parentId,
       scripts: Array.isArray(element.scripts)
-        ? element.scripts.map(s => ({
+        ? element.scripts.map((s) => ({
             name: s.name,
             script: s.content,
             displayed: Boolean(s.displayed),
@@ -363,8 +391,8 @@ export const buildPaletteComponentTree = (
             access_level: s.accessLevel ?? null,
           }))
         : [],
-      bindings: encodeBindings(element, {withServerIds: false}),
-      events: encodeEvents(element, {withServerIds: false}),
+      bindings: encodeBindings(element, { withServerIds: false }),
+      events: encodeEvents(element, { withServerIds: false }),
       states,
       properties: templateProperties,
     };
@@ -375,14 +403,13 @@ export const buildPaletteComponentTree = (
 
 export const buildSingleComponentTree = (
   elements: DiagramElement[],
-  rootKey: string | null = null // Ключ элемента, который мы считаем корнем
+  rootKey: string | null = null, // Ключ элемента, который мы считаем корнем
 ): ComponentCreateDto | null => {
-
   // 1. Ищем конкретный корневой элемент.
   // Если rootKey не передан, берем первый элемент, у которого parentKey === null
   const rootElement = rootKey
-    ? elements.find(el => String(el.key) === String(rootKey))
-    : elements.find(el => el.parentKey === null);
+    ? elements.find((el) => String(el.key) === String(rootKey))
+    : elements.find((el) => el.parentKey === null);
 
   if (!rootElement) return null;
 
