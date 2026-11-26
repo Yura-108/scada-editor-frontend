@@ -12,7 +12,7 @@ import {
   formatConflictPath,
   SCENE_ORDER_CONFLICT_PATH,
 } from './formatVersion';
-import { conflictColumns, type ConflictLine } from '../../lib/conflictValues';
+import { conflictCirclePaths, conflictColumns, type ConflictLine } from '../../lib/conflictValues';
 
 function ConflictValue({
   label,
@@ -54,6 +54,7 @@ function ConflictValue({
  */
 export default function SaveConflictDialog() {
   const login = useSessionUserStore((s) => s.login);
+  const elements = useEditorStore((s) => (s.saveConflict ? s.elements : null));
   const { saveConflict, dismissSaveConflict, saveOverConflict, previewVersion } = useEditorStore(
     useShallow((s) => ({
       saveConflict: s.saveConflict,
@@ -67,6 +68,7 @@ export default function SaveConflictDialog() {
 
   const { error, base_version, current_version, conflicts } = saveConflict;
   const rows = conflicts ?? [];
+  const circlePaths = elements ? conflictCirclePaths(elements) : new Set<string>();
 
   const ownChanges = Boolean(login && rows.length && rows.every((row) => row.their_user === login));
   const title = ownChanges
@@ -117,7 +119,11 @@ export default function SaveConflictDialog() {
       {rows.length ? (
         <ul className="space-y-3 text-sm">
           {rows.map((c, i) => {
-            const values = conflictColumns(c.base, c.yours, c.theirs);
+            const state =
+              c.entity === 'component_state' || c.entity === 'state'
+                ? { path: c.path, circlePaths }
+                : undefined;
+            const values = conflictColumns(c.base, c.yours, c.theirs, state);
             const sameUser = Boolean(login && c.their_user === login);
             const entity =
               c.path === SCENE_ORDER_CONFLICT_PATH

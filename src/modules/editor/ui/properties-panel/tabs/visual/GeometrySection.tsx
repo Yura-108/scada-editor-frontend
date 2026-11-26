@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import {NumberInput} from "@/shared/ui/field/NumberInput";
-import {useEditorStore} from "../../../../model/editorStore";
-import {getGeometryFields} from "../../lib/geometryFields";
-import {getNumberValue} from "../../lib/getNumberValue";
-import {baseInputClasses} from "../../panelClasses";
-import {historyEditing} from "../../../../model/historyGroup";
-import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
-import {cn} from "@/shared/lib/cn";
+import { NumberInput } from '@/shared/ui/field/NumberInput';
+import { useEditorStore } from '../../../../model/editorStore';
+import { getGeometryFields } from '../../lib/geometryFields';
+import { getNumberValue } from '../../lib/getNumberValue';
+import { baseInputClasses } from '../../panelClasses';
+import { historyEditing } from '../../../../model/historyGroup';
+import { fieldLabelSmClass } from '@/shared/ui/field/fieldStyles';
+import { cn } from '@/shared/lib/cn';
 
 interface GeometrySectionProps {
   elementKey: string;
@@ -20,8 +20,8 @@ interface GeometrySectionProps {
  * Геометрия: точное позиционирование (координаты локальны родителю).
  * У линии позиция кодируется концами x1/y1/x2/y2, а не x/y/w/h.
  */
-export function GeometrySection({elementKey, type, values}: GeometrySectionProps) {
-  const updateElementVisual = useEditorStore(s => s.updateElementVisual);
+export function GeometrySection({ elementKey, type, values }: GeometrySectionProps) {
+  const updateElementVisual = useEditorStore((s) => s.updateElementVisual);
   const geometryFields = getGeometryFields(type, values);
 
   return (
@@ -32,19 +32,20 @@ export function GeometrySection({elementKey, type, values}: GeometrySectionProps
       <div className="grid grid-cols-2 gap-4">
         {geometryFields.map((field) => (
           <div key={field.key} className="space-y-1.5">
-            <label
-              htmlFor={`geom-${field.key}`}
-              className={cn(fieldLabelSmClass, "mb-1.5")}
-            >
+            <label htmlFor={`geom-${field.key}`} className={cn(fieldLabelSmClass, 'mb-1.5')}>
               {field.label}
             </label>
-            <NumberInput {...historyEditing}
+            <NumberInput
+              {...historyEditing}
               id={`geom-${field.key}`}
               className={baseInputClasses}
               value={field.value ?? getNumberValue(values[field.key])}
+              displayPrecision={
+                type === 'group' && (field.key === 'w' || field.key === 'h') ? 2 : undefined
+              }
               step={1}
               onCommit={(v) =>
-                updateElementVisual(elementKey, field.commit ? field.commit(v) : {[field.key]: v})
+                updateElementVisual(elementKey, field.commit ? field.commit(v) : { [field.key]: v })
               }
             />
           </div>

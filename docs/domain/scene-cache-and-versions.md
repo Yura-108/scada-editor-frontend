@@ -32,6 +32,8 @@ in the background (2 at a time, pinned tabs first, stops when the project change
 
 В окне конфликта JSON-поле `image` внутри состояния раскладывается на различающиеся поля геометрии и вида. Значения «Было / У вас / На сервере» переносятся на узком экране. Если автор серверного изменения совпадает с текущим логином, окно показывает «В другой вкладке».
 
+Для состояния круга окно конфликта показывает «X центра» и «Y центра». Центр вычисляется отдельно в каждой версии по её габариту и радиусу.
+
 Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026). The unit of history is the **whole scene**, not an action. Client-side Ctrl+Z (zundo) is unrelated and stays.
 
 - **Save envelope.** `exportScene` sends `PUT {components, scene_id, based_on_version, save_kind}`. `save_kind` comes from an explicit `kind` option (`MANUAL` / `AUTOSAVE`) — never inferred from `silent`, which only means "no toast"; `"RESTORE"` is server-only and sending it is a 400. The BFF (`src/lib/saveEnvelope.ts` + `api/editor/components/route.ts`) forwards that `PUT` to the backend unchanged — one shape, no alternatives; the transitional `EDITOR_SAVE_ENVELOPE` flag that used to switch body *and* method has been removed along with the legacy `POST`-with-a-bare-array path. Responses are still normalized to `{components, version_no}` (`normalizeSaveResponse`), and a missing `version_no` is the signal that the response shape is not guaranteed — the store then reloads the scene instead of trusting the returned tree.

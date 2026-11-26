@@ -53,6 +53,8 @@ over the canvas must carry the attribute too.
 
 ## Group frames hug their content
 
+В свойствах группы ширина и высота видны с точностью до двух знаков после запятой. При фокусе поле показывает точное значение, которое используется для расчётов и сохранения.
+
 `recomputeAncestorBounds` (`src/modules/editor/model/elementTree.ts`) pads with `GROUP_PADDING` — the **same**
 constant `unionBounds` uses when a group is created. It is now **0**: the frame runs exactly
 along the members' outline (geometric edges — stroke width is not part of the bounds). It was

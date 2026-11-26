@@ -3,7 +3,7 @@
 import React from 'react';
 import { Group, Circle } from 'react-konva';
 import Konva from 'konva';
-import { circleFill, LeafElement } from '@/core/scene';
+import { circleFill, circleRadius, LeafElement } from '@/core/scene';
 import type { ShapeElementProps, ThemeColors } from '../types';
 import { CircleResizeHandle } from './CircleResizeHandle';
 import { ShapeInscription } from './ShapeInscription';
@@ -29,7 +29,7 @@ export function CircleShapeElement({
   // Раньше в ветке круга вызывался React.createRef() прямо в рендере: он создаёт
   // НОВЫЙ ref на каждый рендер, и CircleResizeHandle мог получить отцепленный.
   const circleRef = React.useRef<Konva.Circle>(null);
-  const r = rendered.radius || rendered.w / 2 || 40;
+  const r = circleRadius(rendered.radius, rendered.w);
   const cx = rendered.x + r;
   const cy = rendered.y + r;
   return (

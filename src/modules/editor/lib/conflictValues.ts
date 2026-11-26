@@ -1,4 +1,10 @@
 import isEqual from 'lodash/isEqual';
+import {
+  circleRadius,
+  getElementIndex,
+  resolveParentElement,
+  type DiagramElement,
+} from '@/core/scene';
 import { basePropertySchema, elementPropertyMap } from './propertiesPanel';
 
 /**
@@ -22,6 +28,8 @@ const MAX_TEXT = 60;
 const GEOMETRY_LABELS: Record<string, string> = {
   x: 'Положение X',
   y: 'Положение Y',
+  cx: 'X центра',
+  cy: 'Y центра',
   w: 'Ширина',
   h: 'Высота',
   x1: 'X1',
@@ -84,18 +92,68 @@ const parseObject = (raw: string): Record<string, unknown> | null => {
   }
 };
 
-const flattenImage = (object: Record<string, unknown>): Map<string, unknown> => {
+/** В конфликте состояния сервер присылает путь по именам, без типа элемента. */
+export function conflictCirclePaths(elements: DiagramElement[]): ReadonlySet<string> {
+  const index = getElementIndex(elements);
+  const circles = new Set<string>();
+  const otherTypes = new Set<string>();
+
+  for (const element of elements) {
+    let parent = resolveParentElement(element.parentKey, index);
+    if (parent?.isComponent && parent.composition?.includes(element.key)) continue;
+
+    const names = [element.label ?? ''];
+    const seen = new Set([element.key]);
+    while (parent && !seen.has(parent.key)) {
+      seen.add(parent.key);
+      names.push(parent.label ?? '');
+      parent = resolveParentElement(parent.parentKey, index);
+    }
+    if (parent) continue;
+    const path = names
+      .reverse()
+      .reduce((prefix, name) => (prefix ? `${prefix} / ${name}` : name), '');
+    (element.type === 'circle' ? circles : otherTypes).add(path);
+  }
+
+  // При совпадении имён элементов разных типов путь не определяет форму однозначно.
+  for (const path of otherTypes) circles.delete(path);
+  return circles;
+}
+
+const numeric = (value: unknown): number | undefined => {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !value.trim())) return;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const flattenImage = (object: Record<string, unknown>, isCircle: boolean): Map<string, unknown> => {
   const fields = new Map(Object.entries(object));
   const image = fields.get('image');
   const parsed = typeof image === 'string' ? parseObject(image) : image;
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     fields.delete('image');
-    for (const [key, value] of Object.entries(parsed)) fields.set(`image.${key}`, value);
+    const visual = parsed as Record<string, unknown>;
+    const radius = isCircle ? circleRadius(numeric(visual.radius), numeric(visual.w)) : undefined;
+    for (const [key, value] of Object.entries(visual)) {
+      const position =
+        radius !== undefined && (key === 'x' || key === 'y') ? numeric(value) : undefined;
+      if (position !== undefined && radius !== undefined) {
+        fields.set(`image.c${key}`, position + radius);
+      } else {
+        fields.set(`image.${key}`, value);
+      }
+    }
   }
   return fields;
 };
 
-export function conflictColumns(base?: string, yours?: string, theirs?: string): ConflictColumns {
+export function conflictColumns(
+  base?: string,
+  yours?: string,
+  theirs?: string,
+  state?: { path: string; circlePaths: ReadonlySet<string> },
+): ConflictColumns {
   const raw = [base, yours, theirs];
   const present = raw.filter((v): v is string => v != null);
   const objects = raw.map((v) => (v == null ? undefined : parseObject(v)));
@@ -106,7 +164,17 @@ export function conflictColumns(base?: string, yours?: string, theirs?: string):
     return { base: plain(base), yours: plain(yours), theirs: plain(theirs) };
   }
 
-  const fields = objects.map((o) => (o ? flattenImage(o) : undefined));
+  // Имя в пути сервер берёт сначала из нашей версии состояния, затем из чужой и базовой.
+  const stateName = (objects[1] ?? objects[2] ?? objects[0])?.name;
+  const suffix = typeof stateName === 'string' ? ` / ${stateName}` : '';
+  const componentPath =
+    state && suffix && state.path.endsWith(suffix)
+      ? state.path.slice(0, -suffix.length)
+      : state?.path === stateName && typeof stateName === 'string'
+        ? ''
+        : undefined;
+  const isCircle = componentPath !== undefined && state?.circlePaths.has(componentPath) === true;
+  const fields = objects.map((o) => (o ? flattenImage(o, isCircle) : undefined));
   const keys = [...new Set(fields.flatMap((o) => (o ? [...o.keys()] : [])))];
   const differing = keys.filter((key) =>
     fields.some((o) => !isEqual(o?.get(key), fields[0]?.get(key))),

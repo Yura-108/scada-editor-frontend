@@ -18,6 +18,7 @@ export * from './render/getRenderedElement';
 // Элемент и индекс схемы
 export * from './element/elementIndex';
 export * from './element/circleFill';
+export * from './element/circleRadius';
 export * from './element/dashArray';
 export * from './element/monitorMenu';
 export * from './element/trendSettings';

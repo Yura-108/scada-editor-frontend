@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, {useEffect, useRef, useState, useEffectEvent} from "react";
-import type { EditSession } from "./editSession";
-import { cn } from "@/shared/lib/cn";
-import { fieldBase, fieldSizes, type FieldSize } from "./fieldStyles";
+import React, { useEffect, useRef, useState, useEffectEvent } from 'react';
+import type { EditSession } from './editSession';
+import { cn } from '@/shared/lib/cn';
+import { fieldBase, fieldSizes, type FieldSize } from './fieldStyles';
 
 interface NumberInputProps extends EditSession {
   id?: string;
@@ -16,6 +16,8 @@ interface NumberInputProps extends EditSession {
   min?: number;
   max?: number;
   step?: number;
+  /** Число знаков после запятой вне редактирования. В фокусе видно точное значение. */
+  displayPrecision?: number;
   placeholder?: string;
 }
 
@@ -44,21 +46,23 @@ export function NumberInput({
   value,
   onCommit,
   className,
-  size = "sm",
+  size = 'sm',
   min,
   max,
   step = 1,
+  displayPrecision,
   placeholder,
   onEditStart,
   onEditEnd,
   onEditCancel,
 }: NumberInputProps) {
-  const asText = (v: number | undefined) => (v === undefined ? "" : String(v));
+  const asText = (v: number | undefined) => (v === undefined ? '' : String(v));
 
   // draft === null — поле не редактируется и просто показывает значение из стора
   // (так оно само следует за undo/redo, перетаскиванием мышью и сменой элемента,
   // без синхронизации через эффект).
   const [draft, setDraft] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Значение на момент начала правки — к нему возвращает Escape.
@@ -86,7 +90,11 @@ export function NumberInput({
   const endGroupingOnUnmount = useEffectEvent(endGrouping);
   useEffect(() => () => endGroupingOnUnmount(), []);
 
-  const displayed = draft ?? asText(value);
+  const displayValue =
+    !focused && value !== undefined && displayPrecision !== undefined
+      ? Number(value.toFixed(displayPrecision))
+      : value;
+  const displayed = draft ?? asText(displayValue);
 
   const clamp = (n: number) => {
     let next = n;
@@ -100,7 +108,7 @@ export function NumberInput({
 
   const apply = (raw: string, { partial }: { partial: boolean }) => {
     const trimmed = raw.trim();
-    if (partial ? !isComplete(trimmed) : trimmed === "" || trimmed === "-") return;
+    if (partial ? !isComplete(trimmed) : trimmed === '' || trimmed === '-') return;
 
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed)) return;
@@ -143,13 +151,17 @@ export function NumberInput({
         // Живое применение: стрелки ↑↓ и обычный набор сразу видны на холсте.
         apply(e.target.value, { partial: true });
       }}
-      onBlur={(e) => finish(e.target.value)}
+      onFocus={displayPrecision !== undefined ? () => setFocused(true) : undefined}
+      onBlur={(e) => {
+        if (displayPrecision !== undefined) setFocused(false);
+        if (displayPrecision === undefined || draft !== null) finish(e.target.value);
+      }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
+        if (e.key === 'Enter') {
           e.preventDefault();
-          finish((e.target as HTMLInputElement).value);
+          if (displayPrecision === undefined || draft !== null) finish(e.currentTarget.value);
         }
-        if (e.key === "Escape") {
+        if (e.key === 'Escape') {
           e.preventDefault();
           cancel();
         }
