@@ -5,16 +5,24 @@
  * Перенесены из `src/store/useEditorStore.ts` без изменения логики (docs/architecture.md,
  * шаг 6): со стором работают через `editorStore()`, общие буферы — в `editorSession`.
  */
-import {toast} from "sonner";
-import type {DiagramElement, SceneType} from "@/core/scene";
-import type {PropertyCreateRequestDto} from "@/core/scene";
-import type {MergeReport, VersionPreview} from "@/core/project";
-import {useRuntimeOverlayStore, transformElements} from "@/core/scene";
-import {useSessionUserStore, errorTextFromBody, grantOf} from "@/core/access";
+import { toast } from 'sonner';
+import type { DiagramElement, SceneType } from '@/core/scene';
+import type { PropertyCreateRequestDto } from '@/core/scene';
+import type { MergeReport, VersionPreview } from '@/core/project';
+import { useRuntimeOverlayStore, transformElements } from '@/core/scene';
+import { useSessionUserStore, errorTextFromBody, grantOf } from '@/core/access';
 // переедут в core/scene и core/access вместе с остальным lib (шаг 8)
-import {rootComponentsOf, dropScene, fetchSceneWithVersion, prefetchScenes, type SceneSource, readPinnedTabs, fetchCurrentVersion} from "@/core/project";
-import {editorSession} from "./editorSession";
-import {editorStore} from "./editorStoreRef";
+import {
+  rootComponentsOf,
+  dropScene,
+  fetchSceneWithVersion,
+  prefetchScenes,
+  type SceneSource,
+  readPinnedTabs,
+  fetchCurrentVersion,
+} from '@/core/project';
+import { editorSession } from './editorSession';
+import { editorStore } from './editorStoreRef';
 
 /**
  * Сцена принадлежит текущему выбранному проекту, если:
@@ -28,7 +36,7 @@ import {editorStore} from "./editorStoreRef";
  */
 export const sceneBelongsToCurrentProject = (
   scene: SceneType | null,
-  currentProject: {id: number; name: string} | null,
+  currentProject: { id: number; name: string } | null,
 ): boolean => {
   if (!currentProject) return false;
   if (!scene) return false;
@@ -53,15 +61,15 @@ export const parseBackendErrorMessage = errorTextFromBody;
  * (ручные действия) остановиться здесь — бэкенд ответил бы 403 NO_EDIT.
  */
 export const canWriteCurrentProject = (): boolean => {
-  const {currentProject, projectList} = editorStore().getState();
+  const { currentProject, projectList } = editorStore().getState();
   if (!currentProject) return false;
-  const fromList = projectList.find(p => p.id === currentProject.id);
+  const fromList = projectList.find((p) => p.id === currentProject.id);
   return grantOf(fromList ?? currentProject, useSessionUserStore.getState().admin).edit;
 };
 
 /** Ручное действие в режиме просмотра: объяснить, почему ничего не произошло. */
 export const refuseViewOnly = (): false => {
-  toast.info("Только просмотр — сохранение недоступно");
+  toast.info('Только просмотр — сохранение недоступно');
   return false;
 };
 
@@ -79,10 +87,10 @@ export const refuseViewOnly = (): false => {
 export const deleteComponentsRequest = async (ids: number[], basedOnVersion?: number | null) => {
   const res = await fetch('/api/editor/components', {
     method: 'DELETE',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ids,
-      ...(typeof basedOnVersion === 'number' ? {based_on_version: basedOnVersion} : {}),
+      ...(typeof basedOnVersion === 'number' ? { based_on_version: basedOnVersion } : {}),
     }),
   });
 
@@ -92,24 +100,17 @@ export const deleteComponentsRequest = async (ids: number[], basedOnVersion?: nu
   }
 };
 
-
-
 /** Метка нашего формата файла схемы — по ней импорт отличает свой файл от чужой выгрузки. */
-export const SCENE_EXPORT_FORMAT = "SCADA_EDITOR_SCENE";
+export const SCENE_EXPORT_FORMAT = 'SCADA_EDITOR_SCENE';
 
 /** Файл экспорта схемы: конверт с метаданными и плоским массивом элементов. */
 export interface SceneExportFile {
   format: typeof SCENE_EXPORT_FORMAT;
   version: number;
   exported_at: string;
-  scene: {name: string | null};
+  scene: { name: string | null };
   elements: Record<string, unknown>[];
 }
-
-
-
-
-
 
 /**
  * Кладёт дерево компонентов, пришедшее с сервера, в `elements`.
@@ -125,7 +126,7 @@ export interface SceneExportFile {
  */
 export const applyServerComponents = (
   components: unknown[],
-  scene: {id?: number | string; key?: string} | null,
+  scene: { id?: number | string; key?: string } | null,
 ): DiagramElement[] => {
   const elements = transformElements(
     (components ?? []) as Parameters<typeof transformElements>[0],
@@ -160,7 +161,6 @@ export const applyServerComponents = (
   return elements;
 };
 
-
 /**
  * Кладёт на холст сцену, полученную целиком (из сети или из кэша сцен).
  *
@@ -168,24 +168,38 @@ export const applyServerComponents = (
  * следующего сохранения. `null` — версий нет (или номер не узнали).
  * false — сцена не из текущего проекта, холст очищен.
  */
-export const applyLoadedScene = (scene: Record<string, unknown>, version: number | null): boolean => {
-  const {currentProject} = editorStore().getState();
+export const applyLoadedScene = (
+  scene: Record<string, unknown>,
+  version: number | null,
+): boolean => {
+  const { currentProject } = editorStore().getState();
   // Иерархия: сцена обязана принадлежать выбранному проекту.
   if (!sceneBelongsToCurrentProject(scene as unknown as SceneType, currentProject)) {
-    toast.error("Схема не принадлежит выбранному проекту");
-    editorStore().setState({scene: null, elements: [], selectedIds: [], activeGroupKey: null, selectedTableCell: null, currentComponentStateByElementKey: {}});
+    toast.error('Схема не принадлежит выбранному проекту');
+    editorStore().setState({
+      scene: null,
+      elements: [],
+      selectedIds: [],
+      activeGroupKey: null,
+      selectedTableCell: null,
+      currentComponentStateByElementKey: {},
+    });
     return false;
   }
 
-  editorStore().setState({scene: scene as unknown as SceneType});
-  applyServerComponents((scene?.children as unknown[]) ?? [], scene as {id?: number | string});
+  editorStore().setState({ scene: scene as unknown as SceneType });
+  applyServerComponents((scene?.children as unknown[]) ?? [], scene as { id?: number | string });
   // Только что загруженная сцена не считается изменённой.
   // persisted=false: время последнего сейва загрузкой не обновляем.
   markSceneSaved(false);
   // Версии прошлой сцены к этой не относятся — сбрасываем всё разом.
   editorStore().setState({
-    sceneVersion: version, versions: [], versionsExhausted: false,
-    saveConflict: null, staleBaseVersion: null, autosaveError: null,
+    sceneVersion: version,
+    versions: [],
+    versionsExhausted: false,
+    saveConflict: null,
+    staleBaseVersion: null,
+    autosaveError: null,
   });
   return true;
 };
@@ -207,18 +221,19 @@ export const revalidateCachedScene = async (
   generation: number,
 ): Promise<void> => {
   try {
-    const latest = await fetchCurrentVersion("scenes", sceneId);
+    const latest = await fetchCurrentVersion('scenes', sceneId);
     if (latest === shownVersion) return;
 
-    const {scene, version} = await fetchSceneWithVersion(projectId, sceneId, {fresh: true});
+    const { scene, version } = await fetchSceneWithVersion(projectId, sceneId, { fresh: true });
     const s = editorStore().getState();
     if (
-      editorSession.documentGeneration !== generation
-      || s.scene?.id !== sceneId
-      || s.currentProject?.id !== projectId
-      || s.isDirty
-      || s.versionPreview
-    ) return;
+      editorSession.documentGeneration !== generation ||
+      s.scene?.id !== sceneId ||
+      s.currentProject?.id !== projectId ||
+      s.isDirty ||
+      s.versionPreview
+    )
+      return;
 
     applyLoadedScene(scene, version ?? null);
     if (version === undefined) void s.refreshSceneVersion();
@@ -226,7 +241,7 @@ export const revalidateCachedScene = async (
     editorStore().temporal.getState().clear();
   } catch (err) {
     // Молча: показанная схема остаётся, а сохранение всё равно сверит версию.
-    console.warn("[scene-cache] не удалось проверить свежесть схемы:", err);
+    console.warn('[scene-cache] не удалось проверить свежесть схемы:', err);
   }
 };
 
@@ -237,8 +252,12 @@ export const revalidateCachedScene = async (
  * открывают прямо сейчас. Закреплённые схемы (вкладки) — первыми в очереди, на них
  * переходят чаще всего. Сменили проект — очередь старого останавливается.
  */
-export const scheduleScenePrefetch = (projectId: number, list: {id: number}[], source: SceneSource) => {
-  if (typeof window === "undefined") return;
+export const scheduleScenePrefetch = (
+  projectId: number,
+  list: { id: number }[],
+  source: SceneSource,
+) => {
+  if (typeof window === 'undefined') return;
 
   // Сменили проект или источник (ушли из монитора в редактор) — очередь больше не нужна.
   const relevant = () => {
@@ -247,14 +266,15 @@ export const scheduleScenePrefetch = (projectId: number, list: {id: number}[], s
   };
   const run = () => {
     if (!relevant()) return;
-    const pinned = readPinnedTabs(projectId).pins.map(p => p.id);
-    const ids = [...new Set([...pinned, ...list.map(s => s.id)])]
-      .filter(id => list.some(s => s.id === id));
+    const pinned = readPinnedTabs(projectId).pins.map((p) => p.id);
+    const ids = [...new Set([...pinned, ...list.map((s) => s.id)])].filter((id) =>
+      list.some((s) => s.id === id),
+    );
     void prefetchScenes(projectId, ids, relevant, source);
   };
 
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(run, {timeout: 2000});
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 2000 });
   } else {
     setTimeout(run, 500);
   }
@@ -265,15 +285,22 @@ export const scheduleScenePrefetch = (projectId: number, list: {id: number}[], s
  * (сеть, распаковка или отрисовка холста). Отрисовку меряем до второго кадра — первый
  * лишь планирует рендер Konva.
  */
-export const logSceneTiming = (sceneId: number, source: string, startedAt: number, applyAt: number) => {
-  if (process.env.NODE_ENV === "production" || typeof requestAnimationFrame === "undefined") return;
+export const logSceneTiming = (
+  sceneId: number,
+  source: string,
+  startedAt: number,
+  applyAt: number,
+) => {
+  if (process.env.NODE_ENV === 'production' || typeof requestAnimationFrame === 'undefined') return;
   const appliedAt = performance.now();
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    console.info(
-      `[scene] ${sceneId} (${source}): загрузка ${Math.round(applyAt - startedAt)} мс, `
-      + `распаковка ${Math.round(appliedAt - applyAt)} мс, отрисовка ${Math.round(performance.now() - appliedAt)} мс`,
-    );
-  }));
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      console.info(
+        `[scene] ${sceneId} (${source}): загрузка ${Math.round(applyAt - startedAt)} мс, ` +
+          `распаковка ${Math.round(appliedAt - applyAt)} мс, отрисовка ${Math.round(performance.now() - appliedAt)} мс`,
+      );
+    }),
+  );
 };
 
 /**
@@ -292,24 +319,27 @@ export const reportMergedChanges = (merged: MergeReport) => {
   const changes = Array.isArray(merged?.changes) ? merged.changes : [];
 
   if (!changes.length) {
-    toast.info("Сохранено поверх чужой версии", {
+    toast.info('Сохранено поверх чужой версии', {
       description:
-        `Вы правили версию ${merged?.base_version ?? "—"}, ` +
-        `на сервере уже была ${merged?.merged_with_version ?? "—"}. ` +
+        `Вы правили версию ${merged?.base_version ?? '—'}, ` +
+        `на сервере уже была ${merged?.merged_with_version ?? '—'}. ` +
         `Расхождений не нашлось — подмешивать было нечего.`,
       duration: 8_000,
     });
     return;
   }
 
-  const authors = Array.from(new Set(changes.map(c => c.user_name).filter(Boolean)));
-  const shown = changes.slice(0, 3).map(c => c.path).filter(Boolean);
+  const authors = Array.from(new Set(changes.map((c) => c.user_name).filter(Boolean)));
+  const shown = changes
+    .slice(0, 3)
+    .map((c) => c.path)
+    .filter(Boolean);
   const rest = changes.length - shown.length;
 
-  toast.info("Сохранено. В вашу схему добавлены чужие изменения", {
+  toast.info('Сохранено. В вашу схему добавлены чужие изменения', {
     description:
-      `${authors.length ? `Автор(ы): ${authors.join(", ")}. ` : ""}` +
-      `${shown.join("; ")}${rest > 0 ? ` и ещё ${rest}` : ""}`,
+      `${authors.length ? `Автор(ы): ${authors.join(', ')}. ` : ''}` +
+      `${shown.join('; ')}${rest > 0 ? ` и ещё ${rest}` : ''}`,
     duration: 12_000,
   });
 };
@@ -352,7 +382,7 @@ export const enterVersionPreview = (
   // Просмотр — не правка: без этого подписчик сравнил бы содержимое версии со снимком
   // текущей сцены и зажёг «есть несохранённые изменения» посреди чтения истории.
   markSceneSaved(false);
-  editorStore().setState({versionPreview: preview});
+  editorStore().setState({ versionPreview: preview });
 };
 
 /**
@@ -370,7 +400,7 @@ export const discardVersionPreview = () => {
   if (!editorStore().getState().versionPreview) return;
 
   editorSession.versionPreviewStash = null;
-  editorStore().setState({versionPreview: null});
+  editorStore().setState({ versionPreview: null });
   editorStore().temporal.getState().resume();
 };
 
@@ -383,9 +413,9 @@ export const discardVersionPreview = () => {
  * предупреждение — молча потеряв работу, которая никуда не делась.
  */
 export const hasUnsavedWork = (): boolean => {
-  const {isDirty, versionPreview, sceneSource} = editorStore().getState();
+  const { isDirty, versionPreview, sceneSource } = editorStore().getState();
   // В мониторе на холсте выпуск; правки инженера лежат в стеше черновика.
-  if (sceneSource === "release") return editorSession.draftStash?.isDirty ?? false;
+  if (sceneSource === 'release') return editorSession.draftStash?.isDirty ?? false;
   return versionPreview ? (editorSession.versionPreviewStash?.isDirty ?? false) : isDirty;
 };
 
@@ -408,23 +438,23 @@ export const hasUnsavedWork = (): boolean => {
 export const renamePropertyOnServer = async (
   propertyId: number,
   payload: PropertyCreateRequestDto,
-): Promise<{ok: false} | {ok: true; versionNo: number | null}> => {
+): Promise<{ ok: false } | { ok: true; versionNo: number | null }> => {
   try {
     const res = await fetch(`/api/editor/tags/${propertyId}`, {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(parseBackendErrorMessage(res.status, text));
     }
     const body = await res.json().catch(() => null);
-    return {ok: true, versionNo: typeof body?.version_no === "number" ? body.version_no : null};
+    return { ok: true, versionNo: typeof body?.version_no === 'number' ? body.version_no : null };
   } catch (err) {
     console.error(err);
-    toast.error(getErrorMessage(err, "Не удалось переименовать свойство"));
-    return {ok: false};
+    toast.error(getErrorMessage(err, 'Не удалось переименовать свойство'));
+    return { ok: false };
   }
 };
 
@@ -459,9 +489,9 @@ export const adoptPropertyEditVersion = (
   if (base == null) return;
 
   if (versionNo === base || versionNo === base + 1) {
-    editorStore().setState({sceneVersion: versionNo});
+    editorStore().setState({ sceneVersion: versionNo });
   } else {
-    editorStore().setState({staleBaseVersion: versionNo});
+    editorStore().setState({ staleBaseVersion: versionNo });
   }
 };
 
@@ -480,7 +510,8 @@ export const invalidProperties = (elements: DiagramElement[]): string[] => {
       const name = p.name?.trim();
       const where = el.label?.trim() || el.type;
       if (!name) problems.push(`«${where}»: свойство без названия`);
-      else if (!p.value_type?.trim()) problems.push(`«${where}» → «${name}»: не указан тип значения`);
+      else if (!p.value_type?.trim())
+        problems.push(`«${where}» → «${name}»: не указан тип значения`);
     }
   }
   return problems;
@@ -491,41 +522,8 @@ export const markSceneSaved = (persisted: boolean) => {
   editorSession.savedElementsSnapshot = editorStore().getState().elements;
   editorStore().setState({
     isDirty: false,
-    ...(persisted ? {lastSavedAt: Date.now()} : {}),
+    ...(persisted ? { lastSavedAt: Date.now() } : {}),
   });
 };
 
-/**
- * Переносит присвоенные сервером `id` во все снимки истории undo/redo (по `key`).
- *
- * После сохранения история сцены сохраняется (см. `loadScene({keepHistory})`), поэтому
- * откатиться можно и «за» точку сейва. Снимки, снятые до сохранения, помнят новые
- * элементы с `id: null`, а бэкенд апсертит по `id` — повторное сохранение после такого
- * отката создало бы ДУБЛИ. Проставляем актуальные id, чтобы любой снимок оставался
- * безопасным для сохранения.
- */
-export const rebaseHistoryIds = (current: DiagramElement[]) => {
-  const idByKey = new Map(current.map(el => [el.key, el.id]));
-
-  const patch = (snapshot: Partial<{elements: DiagramElement[]}>) => {
-    if (!snapshot.elements) return snapshot;
-    let changed = false;
-    const elements = snapshot.elements.map(el => {
-      const serverId = idByKey.get(el.key);
-      if (el.id == null && serverId != null) {
-        changed = true;
-        return {...el, id: serverId} as DiagramElement;
-      }
-      return el;
-    });
-    // Ссылку массива меняем только при реальной правке — `equality` стора сравнивает
-    // именно её, и лишние новые массивы засорили бы стек дубликатами.
-    return changed ? {...snapshot, elements} : snapshot;
-  };
-
-  const {pastStates, futureStates} = editorStore().temporal.getState();
-  editorStore().temporal.setState({
-    pastStates: pastStates.map(patch),
-    futureStates: futureStates.map(patch),
-  });
-};
+export { rebaseHistoryIds } from './rebaseHistoryIds';
