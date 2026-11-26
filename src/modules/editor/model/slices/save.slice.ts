@@ -1,13 +1,12 @@
-import {toast} from "sonner";
-import type {EditorState} from "../editorStore";
-import type {SaveConflict, SaveKind} from "@/core/project";
-// переедут в core/scene вместе с остальным lib (шаг 8)
-import {buildComponentTree} from "@/core/scene";
-import {dropScene} from "@/core/project";
-import {editorSession} from "../editorSession";
-import {checkBeforeSave} from "../saveGuards";
-import {applySavedTree, withSaveLock} from "../saveFlow";
-import {requestSaveScene} from "../../api/saveScene";
+import { toast } from 'sonner';
+import type { EditorState } from '../editorStore';
+import type { SaveConflict, SaveKind } from '@/core/project';
+import { dropScene } from '@/core/project';
+import { buildSceneSaveComponents } from '../buildSceneSaveComponents';
+import { editorSession } from '../editorSession';
+import { checkBeforeSave } from '../saveGuards';
+import { applySavedTree, withSaveLock } from '../saveFlow';
+import { requestSaveScene } from '../../api/saveScene';
 import {
   canWriteCurrentProject,
   getErrorMessage,
@@ -15,7 +14,7 @@ import {
   parseBackendErrorMessage,
   refuseViewOnly,
   reportMergedChanges,
-} from "../editorStoreInternals";
+} from '../editorStoreInternals';
 
 /**
  * Зона «Сохранение» стора редактора: сохранение сцены (`exportScene`), признак
@@ -97,15 +96,19 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
     // Ручное сохранение дожидается текущего сейва, чтобы затем сохранить
     // уже актуальное (и id-сверенное после reload) состояние — см. withSaveLock.
     return withSaveLock(async (): Promise<boolean> => {
-      set({isSaving: true});
+      set({ isSaving: true });
       try {
-        const {elements, scene, currentProject, sceneVersion} = get();
+        const { elements, scene, currentProject, sceneVersion } = get();
 
         // Сцена из проекта, свойства заполнены, не просмотр версии, есть числовой id.
         const sceneId = checkBeforeSave(get(), opts?.silent);
         if (sceneId == null) return false;
 
-        const components = buildComponentTree(elements, String(scene?.id));
+        const components = buildSceneSaveComponents(
+          elements,
+          sceneId,
+          editorSession.savedElementsSnapshot,
+        );
         const basedOnVersion = opts?.basedOnVersion ?? sceneVersion;
         // Поколение документа НА МОМЕНТ отправки. Если к возврату ответа оно выросло,
         // холст успели заменить (восстановление версии, просмотр, перезагрузка сцены),
@@ -114,14 +117,17 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
 
         // `PUT` со всем составом сцены — см. requestSaveScene.
         const result = await requestSaveScene({
-          components, sceneId, kind: opts?.kind ?? "MANUAL", basedOnVersion,
+          components,
+          sceneId,
+          kind: opts?.kind ?? 'MANUAL',
+          basedOnVersion,
         });
 
         // 409 — сцену успел сохранить кто-то другой. Это не ошибка сохранения:
         // правки пользователя целы, их надо показать рядом с чужими и дать решить.
         // Поэтому ни тоста, ни сброса isDirty, ни перезагрузки сцены.
-        if (result.kind === "conflict") {
-          const {conflict} = result;
+        if (result.kind === 'conflict') {
+          const { conflict } = result;
 
           // Автосохранение сервер не сливает — расхождение версии для него всегда
           // безусловный отказ. Модалку в этом случае не открываем: человек её не
@@ -129,19 +135,25 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
           // иначе следующее ручное сохранение уехало бы с уже «подтянутой» базой и
           // затёрло чужую работу мимо слияния.
           if (opts?.silent) {
-            set({staleBaseVersion: conflict.current_version ?? null});
+            set({ staleBaseVersion: conflict.current_version ?? null });
             return false;
           }
 
-          set({saveConflict: conflict});
+          set({ saveConflict: conflict });
           return false;
         }
 
-        if (result.kind === "failed") {
-          throw new Error(parseBackendErrorMessage(result.status, result.text));
+        if (result.kind === 'failed') {
+          const message = parseBackendErrorMessage(result.status, result.text);
+          if (result.status === 400 && /^(?:child )?component not found: \d+$/i.test(message)) {
+            throw new Error(
+              'Сервер не нашёл элемент схемы. Правки остались на холсте. Оставьте эту вкладку открытой и проверьте последнюю сохранённую версию в другой вкладке.',
+            );
+          }
+          throw new Error(message);
         }
 
-        const {components: savedComponents, versionNo: savedVersion, merged} = result;
+        const { components: savedComponents, versionNo: savedVersion, merged } = result;
 
         // На сервере теперь другой документ — прежняя запись кэша сцен устарела при
         // любом исходе ниже. Где дерево из ответа ложится на холст, оно же ляжет и в кэш.
@@ -155,20 +167,21 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
         // Поэтому ответ принимаем к сведению и не трогаем ни холст, ни базу; версию
         // спрашиваем у истории, там порядок событий уже разрешён.
         if (editorSession.documentGeneration !== generationAtSend) {
-          set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
+          set({ saveConflict: null, staleBaseVersion: null, autosaveError: null });
           if (merged) reportMergedChanges(merged);
           void get().refreshSceneVersion();
           if (get().versions.length) void get().loadVersions();
 
           if (!opts?.silent) {
-            toast.success("Сохранено", {
-              description: "Схему на холсте за это время заменили — показано новое содержимое, не то, что сохранялось.",
+            toast.success('Сохранено', {
+              description:
+                'Схему на холсте за это время заменили — показано новое содержимое, не то, что сохранялось.',
             });
           }
           return true;
         }
 
-        if (!opts?.silent) toast.success("Сохранено успешно!");
+        if (!opts?.silent) toast.success('Сохранено успешно!');
 
         // Версия из ответа — база для следующего сохранения. Берём именно её, а не
         // «спросим потом»: между сохранением и повторным запросом сцену мог сохранить
@@ -181,15 +194,18 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
           staleBaseVersion: null,
           // И причина прошлого отказа автосохранения больше не актуальна.
           autosaveError: null,
-          ...(savedVersion != null ? {sceneVersion: savedVersion} : {}),
+          ...(savedVersion != null ? { sceneVersion: savedVersion } : {}),
         });
 
         if (merged) reportMergedChanges(merged);
 
         if (scene?.id) {
           await applySavedTree(
-            get, set, scene, currentProject?.id,
-            {components: savedComponents, versionNo: savedVersion},
+            get,
+            set,
+            scene,
+            currentProject?.id,
+            { components: savedComponents, versionNo: savedVersion },
             opts?.keepView,
           );
         }
@@ -210,31 +226,31 @@ export const createSaveSlice = (set: EditorSet, get: () => EditorState): SaveSli
           // ошибка в скрипте, контракт 25.09.2026) приходила бы тостом раз в 10 минут,
           // пока скрипт не исправят. Тост — только на НОВУЮ причину, дальше висит
           // плашка AutosaveErrorBanner.
-          const message = getErrorMessage(err, "Автосохранение не удалось");
+          const message = getErrorMessage(err, 'Автосохранение не удалось');
           if (message !== get().autosaveError) {
-            toast.error("Автосохранение не удалось", {description: message});
+            toast.error('Автосохранение не удалось', { description: message });
           }
-          set({autosaveError: message});
+          set({ autosaveError: message });
         } else {
           // Сообщение бэкенда называет скрипт, компонент и строку — его надо успеть
           // прочитать, поэтому тост держится дольше обычного.
-          toast.error(getErrorMessage(err, "Ошибка сохранения схемы"), {duration: 30_000});
+          toast.error(getErrorMessage(err, 'Ошибка сохранения схемы'), { duration: 30_000 });
         }
         return false;
       } finally {
-        set({isSaving: false});
+        set({ isSaving: false });
       }
     });
   },
-  dismissSaveConflict: () => set({saveConflict: null}),
-  dismissStaleBaseVersion: () => set({staleBaseVersion: null}),
+  dismissSaveConflict: () => set({ saveConflict: null }),
+  dismissStaleBaseVersion: () => set({ staleBaseVersion: null }),
   saveOverConflict: async () => {
     const conflict = get().saveConflict;
     if (!conflict) return false;
 
-    set({saveConflict: null});
+    set({ saveConflict: null });
     // Пересохраняем от той версии, которую человек только что увидел в сравнении:
     // отдельного эндпоинта разрешения конфликта в контракте нет и не нужно.
-    return get().exportScene({basedOnVersion: conflict.current_version ?? undefined});
+    return get().exportScene({ basedOnVersion: conflict.current_version ?? undefined });
   },
 });
