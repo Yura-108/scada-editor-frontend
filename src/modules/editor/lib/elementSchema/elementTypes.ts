@@ -1,4 +1,4 @@
-import {ElementType} from "@/core/scene";
+import { ElementType } from '@/core/scene';
 
 export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   button: { complex: false },
@@ -18,13 +18,12 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
   dropdown: { complex: false },
   input: { complex: false },
   image: { complex: false },
-  custom: {complex: true},
+  custom: { complex: true },
   gauge: { complex: false },
   table: { complex: false },
   trend: { complex: false },
   chart: { complex: false },
 };
-
 
 /**
  * Русские названия типов элементов.
@@ -34,28 +33,28 @@ export const elementRegistry: Record<ElementType, { complex: boolean }> = {
  * плюс сырой snake_case идентификатор типа.
  */
 export const elementTypeLabels: Record<ElementType, string> = {
-  button: "Кнопка",
-  progress_bar: "Индикатор выполнения",
-  checkbox: "Флажок",
-  text: "Текст",
-  polygon: "Многоугольник",
-  path: "Кривая",
-  rectangle: "Прямоугольник",
-  circle: "Окружность",
-  arc: "Дуга",
-  curve: "Кривая линия",
-  line: "Линия",
-  group: "Группа",
-  toggle: "Переключатель",
-  slider: "Ползунок",
-  dropdown: "Выпадающий список",
-  input: "Поле ввода",
-  image: "Изображение",
-  custom: "Компонент",
-  gauge: "Стрелочный прибор",
-  table: "Таблица",
-  trend: "График",
-  chart: "Диаграмма",
+  button: 'Кнопка',
+  progress_bar: 'Индикатор выполнения',
+  checkbox: 'Флажок',
+  text: 'Текст',
+  polygon: 'Многоугольник',
+  path: 'Кривая',
+  rectangle: 'Прямоугольник',
+  circle: 'Круг',
+  arc: 'Дуга',
+  curve: 'Кривая линия',
+  line: 'Линия',
+  group: 'Группа',
+  toggle: 'Переключатель',
+  slider: 'Ползунок',
+  dropdown: 'Выпадающий список',
+  input: 'Поле ввода',
+  image: 'Изображение',
+  custom: 'Компонент',
+  gauge: 'Стрелочный прибор',
+  table: 'Таблица',
+  trend: 'График',
+  chart: 'Диаграмма',
 };
 
 /** Название типа для интерфейса; неизвестный тип показываем как есть. */
@@ -71,13 +70,13 @@ export const elementTypeLabel = (type: string): string =>
  * с реестром: при добавлении rotation в очередную фигуру её нужно внести сюда.
  */
 export const ROTATABLE_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([
-  "rectangle",
-  "button",
-  "checkbox",
-  "dropdown",
-  "image",
-  "input",
-  "progress_bar",
-  "slider",
-  "toggle",
+  'rectangle',
+  'button',
+  'checkbox',
+  'dropdown',
+  'image',
+  'input',
+  'progress_bar',
+  'slider',
+  'toggle',
 ]);

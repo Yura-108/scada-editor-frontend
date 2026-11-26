@@ -1,37 +1,47 @@
-"use client";
+'use client';
 
-import {cn} from "@/shared/lib/cn";
-import {PropertySchema} from "@/core/scene";
-import {ColorField} from "@/shared/ui/field/ColorField";
-import {NumberInput} from "@/shared/ui/field/NumberInput";
-import {TextInput} from "@/shared/ui/field/TextInput";
-import {useEditorStore} from "../../model/editorStore";
-import {getNumberValue} from "./lib/getNumberValue";
-import {baseInputClasses} from "./panelClasses";
-import {historyEditing} from "../../model/historyGroup";
-import {fieldLabelSmClass} from "@/shared/ui/field/fieldStyles";
-import {Checkbox} from "@/shared/ui/field/Checkbox";
-import {Select} from "@/shared/ui/field/Select";
+import { cn } from '@/shared/lib/cn';
+import { PropertySchema } from '@/core/scene';
+import { ColorField } from '@/shared/ui/field/ColorField';
+import { NumberInput } from '@/shared/ui/field/NumberInput';
+import { TextInput } from '@/shared/ui/field/TextInput';
+import { useEditorStore } from '../../model/editorStore';
+import { getNumberValue } from './lib/getNumberValue';
+import { baseInputClasses } from './panelClasses';
+import { historyEditing } from '../../model/historyGroup';
+import { fieldLabelSmClass } from '@/shared/ui/field/fieldStyles';
+import { Checkbox } from '@/shared/ui/field/Checkbox';
+import { Select } from '@/shared/ui/field/Select';
 
 interface PropertyInputProps {
   elementKey: string;
   property: PropertySchema;
+  transparentLabel?: string;
   /** Отображаемый вид элемента (`getRenderedElement`). */
   values: Record<string, unknown>;
 }
 
 /** Поле одного визуального свойства из схемы типа элемента. */
-export function PropertyInput({elementKey, property, values}: PropertyInputProps) {
-  const updateElementVisual = useEditorStore(s => s.updateElementVisual);
+export function PropertyInput({
+  elementKey,
+  property,
+  values,
+  transparentLabel,
+}: PropertyInputProps) {
+  const updateElementVisual = useEditorStore((s) => s.updateElementVisual);
 
   const handleSelectChange = (key: string, value: string) => {
     // Смена ориентации прогресс-бара меняет местами w/h, чтобы вертикальный бар был
     // реально узким и высоким, а не оставался в приплюснутой коробке (ключ orientation
     // есть только у прогресс-бара). w/h — позиционные поля, рамки групп пересчитаются.
-    if (key === "orientation" && value !== values.orientation) {
+    if (key === 'orientation' && value !== values.orientation) {
       const curW = Number(values.w) || 0;
       const curH = Number(values.h) || 0;
-      updateElementVisual(elementKey, { orientation: value as "horizontal" | "vertical", w: curH, h: curW });
+      updateElementVisual(elementKey, {
+        orientation: value as 'horizontal' | 'vertical',
+        w: curH,
+        h: curW,
+      });
       return;
     }
     updateElementVisual(elementKey, { [key]: value });
@@ -39,85 +49,90 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
 
   const rawValue = values[property.key];
 
-  const textValue = typeof rawValue === "string"
-    ? rawValue
-    : (typeof property.defaultValue === "string" ? property.defaultValue : "");
+  const textValue =
+    typeof rawValue === 'string'
+      ? rawValue
+      : typeof property.defaultValue === 'string'
+        ? property.defaultValue
+        : '';
 
   const numberValue = getNumberValue(
     rawValue,
-    typeof property.defaultValue === "number" ? property.defaultValue : 0
+    typeof property.defaultValue === 'number' ? property.defaultValue : 0,
   );
 
-  const colorValue = typeof rawValue === "string" && rawValue
-    ? rawValue
-    : (typeof property.defaultValue === "string" && property.defaultValue
-      ? property.defaultValue
-      : "#ffffff");
+  const colorValue =
+    typeof rawValue === 'string' && rawValue
+      ? rawValue
+      : typeof property.defaultValue === 'string' && property.defaultValue
+        ? property.defaultValue
+        : '#ffffff';
 
-  const selectValue = typeof rawValue === "string"
-    ? rawValue
-    : (typeof property.defaultValue === "string" ? property.defaultValue : "");
+  const selectValue =
+    typeof rawValue === 'string'
+      ? rawValue
+      : typeof property.defaultValue === 'string'
+        ? property.defaultValue
+        : '';
 
-  const booleanValue = typeof rawValue === "boolean"
-    ? rawValue
-    : Boolean(property.defaultValue);
+  const booleanValue = typeof rawValue === 'boolean' ? rawValue : Boolean(property.defaultValue);
 
   const label = (
-    <label
-      htmlFor={`prop-${property.key}`}
-      className={cn(fieldLabelSmClass, "mb-1.5")}
-    >
+    <label htmlFor={`prop-${property.key}`} className={cn(fieldLabelSmClass, 'mb-1.5')}>
       {property.label}
     </label>
   );
 
   switch (property.type) {
-    case "text":
+    case 'text':
       return (
         <div className="space-y-1.5">
           {label}
           {/* Коммит по blur/Enter, а не на каждый символ: иначе каждое нажатие
               клавиши — новый массив elements, то есть шаг undo на символ и
               полный пересчёт схемы с перерисовкой холста. */}
-          <TextInput {...historyEditing}
+          <TextInput
+            {...historyEditing}
             id={`prop-${property.key}`}
             className={baseInputClasses}
             value={textValue}
-            placeholder={property.placeholder || ""}
-            onCommit={(v) => updateElementVisual(elementKey, {[property.key]: v})}
+            placeholder={property.placeholder || ''}
+            onCommit={(v) => updateElementVisual(elementKey, { [property.key]: v })}
           />
         </div>
       );
 
-    case "number":
+    case 'number':
       return (
         <div className="space-y-1.5">
           {label}
-          <NumberInput {...historyEditing}
+          <NumberInput
+            {...historyEditing}
             id={`prop-${property.key}`}
             className={baseInputClasses}
             value={numberValue}
             min={property.min}
             max={property.max}
             step={property.step ?? 1}
-            onCommit={(v) => updateElementVisual(elementKey, {[property.key]: v})}
+            onCommit={(v) => updateElementVisual(elementKey, { [property.key]: v })}
           />
         </div>
       );
 
-    case "color":
+    case 'color':
       return (
-        <ColorField {...historyEditing}
-         
+        <ColorField
+          {...historyEditing}
           id={`prop-${property.key}`}
           label={property.label}
           value={colorValue}
-          onChange={(v) => updateElementVisual(elementKey, {[property.key]: v})}
+          transparentLabel={transparentLabel}
+          onChange={(v) => updateElementVisual(elementKey, { [property.key]: v })}
           inputClassName={baseInputClasses}
         />
       );
 
-    case "select":
+    case 'select':
       return (
         <div className="space-y-1.5">
           {label}
@@ -131,14 +146,12 @@ export function PropertyInput({elementKey, property, values}: PropertyInputProps
         </div>
       );
 
-    case "boolean":
+    case 'boolean':
       return (
         <div className="flex items-center gap-2 py-1">
           <Checkbox
             checked={booleanValue}
-            onChange={(e) =>
-              updateElementVisual(elementKey, {[property.key]: e.target.checked})
-            }
+            onChange={(e) => updateElementVisual(elementKey, { [property.key]: e.target.checked })}
             label={property.label}
           />
         </div>

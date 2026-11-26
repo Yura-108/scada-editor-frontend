@@ -1,5 +1,5 @@
-import { clampZoom } from "@/core/scene";
-import type {Camera, SheetSize} from "@/core/scene";
+import { clampZoom } from '@/core/scene';
+import type { Camera, SheetSize } from '@/core/scene';
 
 /** Запас вокруг листа, экранных пикселей. */
 const DEFAULT_PAD = 40;
@@ -18,11 +18,19 @@ export function cameraForSheet(
   canvasRect: { width: number; height: number; x?: number; y?: number },
   pad: number = DEFAULT_PAD,
 ): Camera {
-  const zoom = clampZoom(Math.min(
-    canvasRect.width / (sheet.w + pad * 2),
-    canvasRect.height / (sheet.h + pad * 2),
-  ));
+  const zoom = clampZoom(
+    Math.min(canvasRect.width / (sheet.w + pad * 2), canvasRect.height / (sheet.h + pad * 2)),
+  );
 
+  return centerSheetCamera(sheet, canvasRect, zoom);
+}
+
+/** Центр листа совмещается с центром доступной части холста. */
+export function centerSheetCamera(
+  sheet: SheetSize,
+  canvasRect: { width: number; height: number; x?: number; y?: number },
+  zoom = 1,
+): Camera {
   return {
     x: (canvasRect.x ?? 0) + (canvasRect.width - sheet.w * zoom) / 2,
     y: (canvasRect.y ?? 0) + (canvasRect.height - sheet.h * zoom) / 2,
