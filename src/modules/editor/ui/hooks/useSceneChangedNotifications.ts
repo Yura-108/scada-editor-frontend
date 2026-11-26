@@ -1,13 +1,12 @@
-import {useEffect} from "react";
-import {Client, type StompSubscription} from "@stomp/stompjs";
-import SockJS from "sockjs-client";
-import {devLog} from "@/shared/lib/devLog";
-import {gatewayHttpOrigin} from "@/shared/lib/gatewayOrigin";
-import {refreshSessionCookie} from "@/core/access";
-import {useEditorStore} from "../../model/editorStore";
-import {useSceneChangeStore} from "../../model/sceneChangeStore";
+import { useEffect } from 'react';
+import { Client, type StompSubscription } from '@stomp/stompjs';
+import { devLog } from '@/shared/lib/devLog';
+import { gatewayHttpOrigin } from '@/shared/lib/gatewayOrigin';
+import { refreshSessionCookie } from '@/core/access';
+import { useEditorStore } from '../../model/editorStore';
+import { useSceneChangeStore } from '../../model/sceneChangeStore';
 
-const log = (...args: unknown[]) => devLog("[editor:ws]", ...args);
+const log = (...args: unknown[]) => devLog('[editor:ws]', ...args);
 
 const RECONNECT_DELAY_MS = 5000;
 
@@ -22,8 +21,8 @@ interface SceneChangedMessage {
 /**
  * Уведомления «сцену сохранил другой инженер» (`SCENE_CHANGED`, backend `editor` с 25.09.2026).
  *
- * Отдельный STOMP-клиент на `/ws/editor` через gateway; токен — cookie `access_token`
- * (`withCredentials`), как у остальных подключений. Подписан только на ОТКРЫТУЮ в редакторе
+ * STOMP через WebSocket `/ws/editor/websocket`; браузер отправляет cookie `access_token`
+ * при подключении к gateway. Подписан только на ОТКРЫТУЮ в редакторе
  * сцену: при смене сцены старая подписка снимается. После переподключения подписки STOMP не
  * живут, поэтому `onConnect` подписывается заново.
  *
@@ -36,21 +35,21 @@ export function useSceneChangedNotifications() {
     let subscribedSceneId: number | null = null;
 
     const currentSceneId = (): number | null => {
-      const {scene, sceneSource} = useEditorStore.getState();
-      if (sceneSource !== "draft" || scene?.id == null) return null;
+      const { scene, sceneSource } = useEditorStore.getState();
+      if (sceneSource !== 'draft' || scene?.id == null) return null;
       const id = Number(scene.id);
       return Number.isFinite(id) ? id : null;
     };
 
     const client = new Client({
-      // Фабрика зовётся в браузере при activate()/переподключении — адрес из страницы.
-      webSocketFactory: () =>
-        new SockJS(`${gatewayHttpOrigin()}/ws/editor`, null, {withCredentials: true} as never),
+      // Spring принимает обычный WebSocket на /websocket у зарегистрированного SockJS-адреса.
+      brokerURL: `${gatewayHttpOrigin().replace(/^http/, 'ws').replace(/\/+$/, '')}/ws/editor/websocket`,
       reconnectDelay: RECONNECT_DELAY_MS,
       // Cookie живёт столько же, сколько access-токен: перед каждым (пере)подключением просим
       // BFF освежить её, иначе после долгого простоя страницы gateway ответит 401. Сбой — не
       // повод не подключаться: STOMP сам повторит через RECONNECT_DELAY_MS.
-      beforeConnect: () => refreshSessionCookie().catch(err => log("не удалось освежить cookie:", err)),
+      beforeConnect: () =>
+        refreshSessionCookie().catch((err) => log('не удалось освежить cookie:', err)),
     });
 
     const resubscribe = () => {
@@ -65,31 +64,31 @@ export function useSceneChangedNotifications() {
 
       log(`подписка на сцену ${sceneId}`);
       subscribedSceneId = sceneId;
-      subscription = client.subscribe(`/topic/scenes/${sceneId}`, frame => {
+      subscription = client.subscribe(`/topic/scenes/${sceneId}`, (frame) => {
         let msg: SceneChangedMessage;
         try {
           msg = JSON.parse(frame.body);
         } catch {
           return;
         }
-        if (msg.type !== "SCENE_CHANGED" || typeof msg.version_no !== "number") return;
-        log("SCENE_CHANGED", msg);
+        if (msg.type !== 'SCENE_CHANGED' || typeof msg.version_no !== 'number') return;
+        log('SCENE_CHANGED', msg);
         useSceneChangeStore.getState().receive({
-          sceneId: typeof msg.scene_id === "number" ? msg.scene_id : sceneId,
+          sceneId: typeof msg.scene_id === 'number' ? msg.scene_id : sceneId,
           versionNo: msg.version_no,
-          userName: msg.user_name ?? "",
+          userName: msg.user_name ?? '',
         });
       });
     };
 
     client.onConnect = () => {
-      log("соединение установлено");
+      log('соединение установлено');
       // Подписка прошлого соединения умерла вместе с ним.
       subscription = null;
       subscribedSceneId = null;
       resubscribe();
     };
-    client.onStompError = frame => log("ошибка STOMP:", frame.headers.message);
+    client.onStompError = (frame) => log('ошибка STOMP:', frame.headers.message);
 
     client.activate();
     const unsubscribeStore = useEditorStore.subscribe((s, prev) => {

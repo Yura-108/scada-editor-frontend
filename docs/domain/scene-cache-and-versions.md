@@ -42,8 +42,8 @@ Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026).
 - **A script that does not parse fails the whole save** (400, backend since 25.09.2026; `scripts[].script`, `events[].script`, binding `code`, `properties[].onChange`, all parsed as a *function body*). The editors check first with `checkScriptSyntax` (`core/runtime/script/scriptSyntax.ts`, `new Function` — parses, never runs) and disable «Сохранить»; `OnCanChange` only warns, the backend does not check it. Component scripts are **JavaScript** (GraalJS on the server), not Java, whatever old labels said. A failed *autosave* keeps its reason in `autosaveError`: toast only when the reason changes, then `AutosaveErrorBanner` — otherwise the same 400 would toast every 10 minutes. Any successful save or document switch clears it; «Скрыть» is local to the banner so the next tick does not re-toast.
 - **Document shape differs between endpoints.** The save response puts an *array* in `components`; the restore response puts the *whole document* there, and a plain document GET uses `children`. `rootComponentsOf` (`src/core/project/versions/documentComponents.ts`) is the single place that resolves all three — reading `components` with `Array.isArray` on a restore response silently yields `[]` and wipes the canvas.
 - **Someone else's save is announced over STOMP** (`useSceneChangedNotifications`, mounted once in
-  `EditorClient`): SockJS `/ws/editor` via the gateway, topic `/topic/scenes/{sceneId}` for the open
-  draft scene, body `{type: "SCENE_CHANGED", scene_id, version_no, user_name}`. It is a notice, not
+  `EditorClient`): native WebSocket `/ws/editor/websocket` via the gateway, topic
+  `/topic/scenes/{sceneId}` for the open draft scene, body `{type: "SCENE_CHANGED", scene_id, version_no, user_name}`. It is a notice, not
   sync. Whether to show it is *derived* (`visibleSceneChange`): only for the open scene, only when
   `version_no > sceneVersion` (that is how our own save is filtered — `PUT` writes its version there),
   and never while `isSaving` (our own message can beat the `PUT` response). `SceneChangedBanner`'s

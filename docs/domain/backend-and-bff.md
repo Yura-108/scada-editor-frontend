@@ -48,7 +48,8 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
   `POST /api/auth/ws-ticket` (30 s, single use, not valid for REST) and returns `{...session, ticket}`;
   `runtimeConnection` opens `wsPath?ticket=…`. A new session (and ticket) is created on every
   (re)connect. No ticket → 503, the monitor retries.
-- **Editor STOMP** still authenticates by the `access_token` cookie (same host as the gateway).
+- **Editor STOMP** uses the native WebSocket at `/ws/editor/websocket` and authenticates by the
+  `access_token` cookie (same host as the gateway).
   `beforeConnect` calls `POST /api/auth/refresh` (BFF, 204, cookies only) before every (re)connect,
   so a page idle longer than the token lifetime does not reconnect with an expired cookie.
 - Site keys after this frontend is deployed: `JWT_EXPIRATION_MS=28800000` (auth),

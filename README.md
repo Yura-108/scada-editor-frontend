@@ -198,7 +198,7 @@ flowchart LR
   UI -- "fetch /api/**<br/>cookie access_token" --> API
   API -- "Authorization: Bearer" --> ED & CH & RT & AU
   UI -. "WebSocket монитора" .-> RT
-  UI -. "STOMP /ws/editor" .-> ED
+  UI -. "STOMP /ws/editor/websocket" .-> ED
 ```
 
 **Авторизация.** `POST /api/auth/login` получает токен у бэкенда и кладёт его в
