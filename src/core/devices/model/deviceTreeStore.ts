@@ -1,14 +1,15 @@
 'use client';
 
-import {create} from 'zustand/react';
-import {devtools} from 'zustand/middleware';
-import {toast} from "sonner";
-import type {DeviceParamsType} from '../types/nodeTypes';
-import type {NodeParamType, NodeType} from "../types/channelsTypes";
-import {errorMessage} from "../api/devicesApi";
-import {fetchDeviceTree} from "../api/deviceTreeApi";
-import {useSessionUserStore} from "@/core/access";
-import {rememberLoadedProjects} from "./loadedProjectsMemory";
+import { create } from 'zustand/react';
+import { devtools } from 'zustand/middleware';
+import { toast } from 'sonner';
+import type { DeviceParamsType } from '../types/nodeTypes';
+import type { NodeParamType, NodeType } from '../types/channelsTypes';
+import { errorMessage } from '../api/devicesApi';
+import { fetchDeviceTree } from '../api/deviceTreeApi';
+import { useSessionUserStore } from '@/core/access';
+import { readSelectedDevice, rememberLoadedProjects } from './loadedProjectsMemory';
+import { useDeviceSelection } from './deviceSelectionStore';
 
 /**
  * База каналов: дерево узлов и их параметры.
@@ -29,7 +30,6 @@ interface DeviceTreeState {
   markStale: () => void;
   refreshIfStale: () => Promise<void>;
 
-
   getParams(deviceKey: string | null): DeviceParamsType[];
 
   /** Идёт загрузка дерева устройств — панель показывает скелетон вместо «0 устройств». */
@@ -41,50 +41,55 @@ interface DeviceTreeState {
 }
 
 export const useDeviceTreeStore = create<DeviceTreeState>()(
-  devtools(
-    (set, get) => ({
-      nodes: [],
-      params: [],
-      loadedRootPath: null,
-      isStale: false,
-      isLoadingNodes: false,
-      nodesError: null,
-      markStale: () => set({isStale: true}),
-      refreshIfStale: async () => {
-        const {isStale, loadedRootPath} = get();
-        // Грузим только если данные вообще были загружены и помечены устаревшими.
-        if (!isStale || !loadedRootPath?.length) return;
-        try {
-          await get().loadNodes(loadedRootPath); // loadNodes сам сбросит isStale: false
-        } catch (e) {
-          console.error('Не удалось обновить базу каналов после отмены:', e);
-          // isStale остаётся true — повторим при следующем входе
-        }
-      },
-      getParams: (deviceKey: string | null) => {
-        if (!deviceKey) return [];
-        return get().params.filter((param) => param.parentKey === deviceKey);
-      },
-      loadNodes: async (rootPath) => {
-        set({isLoadingNodes: true, nodesError: null});
-        try {
-          const {nodes, params} = await fetchDeviceTree(rootPath);
-          set({
-            nodes,
-            params,
-            loadedRootPath: rootPath,
-            isStale: false,
-          });
-        } catch (error) {
-          set({nodesError: errorMessage(error, 'Не удалось загрузить базу каналов')});
-          toast.error(errorMessage(error, 'Не удалось загрузить базу каналов'));
-          throw error;
-        } finally {
-          set({isLoadingNodes: false});
-        }
-      },
-    }),
-  ),
+  devtools((set, get) => ({
+    nodes: [],
+    params: [],
+    loadedRootPath: null,
+    isStale: false,
+    isLoadingNodes: false,
+    nodesError: null,
+    markStale: () => set({ isStale: true }),
+    refreshIfStale: async () => {
+      const { isStale, loadedRootPath } = get();
+      // Грузим только если данные вообще были загружены и помечены устаревшими.
+      if (!isStale || !loadedRootPath?.length) return;
+      try {
+        await get().loadNodes(loadedRootPath); // loadNodes сам сбросит isStale: false
+      } catch (e) {
+        console.error('Не удалось обновить базу каналов после отмены:', e);
+        // isStale остаётся true — повторим при следующем входе
+      }
+    },
+    getParams: (deviceKey: string | null) => {
+      if (!deviceKey) return [];
+      return get().params.filter((param) => param.parentKey === deviceKey);
+    },
+    loadNodes: async (rootPath) => {
+      set({ isLoadingNodes: true, nodesError: null });
+      try {
+        const { nodes, params } = await fetchDeviceTree(rootPath);
+        const selection = useDeviceSelection.getState();
+        const selectedKey =
+          selection.selectedDevice ?? readSelectedDevice(useSessionUserStore.getState().login);
+        const stillPresent =
+          selectedKey &&
+          nodes.some((node) => node.key === selectedKey || node.key.startsWith(`${selectedKey}.`));
+        set({
+          nodes,
+          params,
+          loadedRootPath: rootPath,
+          isStale: false,
+        });
+        selection.selectDevice(stillPresent ? selectedKey : null);
+      } catch (error) {
+        set({ nodesError: errorMessage(error, 'Не удалось загрузить базу каналов') });
+        toast.error(errorMessage(error, 'Не удалось загрузить базу каналов'));
+        throw error;
+      } finally {
+        set({ isLoadingNodes: false });
+      }
+    },
+  })),
 );
 
 // Загруженные проекты помнит вкладка: после F5 их снова грузит `useRestoreLoadedProjects`.
