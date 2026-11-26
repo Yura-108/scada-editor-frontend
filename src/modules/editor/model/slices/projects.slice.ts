@@ -1,17 +1,36 @@
-import {toast} from "sonner";
-import type {EditorState} from "../editorStore";
-import type {AutobindReport} from "../../types/autobind.types";
+import { toast } from 'sonner';
+import type { EditorState } from '../editorStore';
+import type { AutobindReport } from '../../types/autobind.types';
 // переедут в core/project вместе с остальным lib (шаг 8)
-import {normalizeProjectList, toEditorProject, type EditorProject, createRelease, NoProdReleaseError, putInOperation, setProdRelease, type CreatedRelease, rememberProject} from "@/core/project";
-import {clearCanvasPointerWorld} from "../../lib/canvasPointer";
-import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {editorSession} from "../editorSession";
-import {editorStore} from "../editorStoreRef";
-import {runtimeInfoPatch, saveBeforeProjectAction} from "../projectActions";
-import {requestAutobind, requestCreateProject, requestProjectList, requestRuntimeInfo} from "../../api/projects";
 import {
-  deleteComponentsRequest, discardVersionPreview, getErrorMessage, hasUnsavedWork, parseBackendErrorMessage,
-} from "../editorStoreInternals";
+  normalizeProjectList,
+  toEditorProject,
+  type EditorProject,
+  createRelease,
+  NoProdReleaseError,
+  putInOperation,
+  setProdRelease,
+  type CreatedRelease,
+  rememberProject,
+} from '@/core/project';
+import { clearCanvasPointerWorld } from '../../lib/canvasPointer';
+import { confirmModal } from '@/shared/ui/dialog/confirmModal';
+import { editorSession } from '../editorSession';
+import { editorStore } from '../editorStoreRef';
+import { runtimeInfoPatch, saveBeforeProjectAction } from '../projectActions';
+import {
+  requestAutobind,
+  requestCreateProject,
+  requestProjectList,
+  requestRuntimeInfo,
+} from '../../api/projects';
+import {
+  deleteComponentsRequest,
+  discardVersionPreview,
+  getErrorMessage,
+  hasUnsavedWork,
+  parseBackendErrorMessage,
+} from '../editorStoreInternals';
 
 /**
  * Зона «Проекты» стора редактора: список проектов, выбранный проект, флаг эксплуатации,
@@ -73,11 +92,11 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       if (!result.ok) throw new Error(parseBackendErrorMessage(result.status, result.text));
 
       const projects = normalizeProjectList(result.data);
-      set({projectList: projects});
+      set({ projectList: projects });
       return projects;
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка загрузки списка проектов"));
+      toast.error(getErrorMessage(err, 'Ошибка загрузки списка проектов'));
     }
   },
   /**
@@ -89,7 +108,7 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
     try {
       const info = await requestRuntimeInfo(projectId);
       if (!info) return;
-      set(state => runtimeInfoPatch(state, projectId, info));
+      set((state) => runtimeInfoPatch(state, projectId, info));
     } catch (err: unknown) {
       console.error(err);
     }
@@ -99,8 +118,8 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    * разрушительный — гасит открытую схему, элементы, список сцен и историю undo.
    */
   setProjectInOperation: async (projectId: number, inOperation: boolean) => {
-    const adopt = (info: {inOperation: boolean; prodVersionNo: number | null}) =>
-      set(state => runtimeInfoPatch(state, projectId, info));
+    const adopt = (info: { inOperation: boolean; prodVersionNo: number | null }) =>
+      set((state) => runtimeInfoPatch(state, projectId, info));
     try {
       let info;
       try {
@@ -110,30 +129,34 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
         // текущий черновик, сделать его prod и повторить — ровно то, чего хотел пользователь.
         if (!(err instanceof NoProdReleaseError)) throw err;
         const ok = await confirmModal({
-          title: "У проекта нет prod-выпуска",
-          description: "Монитор и runtime работают только по выпуску. Выпустить текущий "
-            + "сохранённый черновик, сделать его prod и ввести проект в эксплуатацию?"
-            + (hasUnsavedWork() ? " Несохранённые правки открытой схемы в выпуск не попадут." : ""),
-          confirmLabel: "Выпустить и ввести",
+          title: 'У проекта нет prod-выпуска',
+          description:
+            'Монитор и runtime работают только по выпуску. Выпустить текущий ' +
+            'сохранённый черновик, сделать его prod и ввести проект в эксплуатацию?' +
+            (hasUnsavedWork() ? ' Несохранённые правки открытой схемы в выпуск не попадут.' : ''),
+          confirmLabel: 'Выпустить и ввести',
         });
         if (!ok) return;
-        const release = await createRelease(projectId, "Ввод в эксплуатацию");
+        const release = await createRelease(projectId, 'Ввод в эксплуатацию');
         await setProdRelease(projectId, release.version_no);
         info = await putInOperation(projectId, inOperation);
       }
       adopt(info);
-      toast.success(info.inOperation ? "Проект введён в эксплуатацию" : "Проект выведен из эксплуатации");
+      toast.success(
+        info.inOperation ? 'Проект введён в эксплуатацию' : 'Проект выведен из эксплуатации',
+      );
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка переключения эксплуатации"));
+      toast.error(getErrorMessage(err, 'Ошибка переключения эксплуатации'));
     }
   },
   releaseProject: async (projectId, comment) => {
     const proceed = await saveBeforeProjectAction(get, projectId, {
-      title: "Сохранить схему перед выпуском?",
-      description: "Выпуск снимает то, что сохранено на сервере. Несохранённые правки "
-        + "открытой схемы в него не попадут.",
-      confirmLabel: "Сохранить и выпустить",
+      title: 'Сохранить схему перед выпуском?',
+      description:
+        'Выпуск снимает то, что сохранено на сервере. Несохранённые правки ' +
+        'открытой схемы в него не попадут.',
+      confirmLabel: 'Сохранить и выпустить',
     });
     if (!proceed) return null;
     try {
@@ -146,21 +169,23 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       return release;
     } catch (err) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось выпустить проект"));
+      toast.error(getErrorMessage(err, 'Не удалось выпустить проект'));
       return null;
     }
   },
   makeProdRelease: async (projectId, versionNo) => {
     try {
       const info = await setProdRelease(projectId, versionNo);
-      set(state => runtimeInfoPatch(state, projectId, info));
-      toast.success(info.inOperation
-        ? `Выпуск №${versionNo} — prod: проект переключён, мониторы перечитают схемы`
-        : `Выпуск №${versionNo} — prod: заработает при вводе в эксплуатацию`);
+      set((state) => runtimeInfoPatch(state, projectId, info));
+      toast.success(
+        info.inOperation
+          ? `Выпуск №${versionNo} — prod: проект переключён, мониторы перечитают схемы`
+          : `Выпуск №${versionNo} — prod: заработает при вводе в эксплуатацию`,
+      );
       return true;
     } catch (err) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось сделать выпуск prod"));
+      toast.error(getErrorMessage(err, 'Не удалось сделать выпуск prod'));
       return false;
     }
   },
@@ -171,15 +196,16 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
    * предыдущей версии, а не повторным запросом.
    */
   autobindProject: async (projectId: number, channelRoot: string) => {
-    const {currentProject} = get();
+    const { currentProject } = get();
 
     // Автопривязка пишет новую версию сцены: несохранённая правка после неё упрётся в
     // расхождение версий (слияние или 409). Поэтому спрашиваем ДО запроса.
     const proceed = await saveBeforeProjectAction(get, projectId, {
-      title: "Сохранить схему перед автопривязкой?",
-      description: "Автопривязка запишет новую версию схемы. Если не сохранить сейчас, "
-        + "текущие правки потом упрутся в расхождение версий.",
-      confirmLabel: "Сохранить и привязать",
+      title: 'Сохранить схему перед автопривязкой?',
+      description:
+        'Автопривязка запишет новую версию схемы. Если не сохранить сейчас, ' +
+        'текущие правки потом упрутся в расхождение версий.',
+      confirmLabel: 'Сохранить и привязать',
     });
     if (!proceed) return null;
 
@@ -196,12 +222,15 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       // сохранение затрёт автопривязку. Только для текущего проекта: `loadScene` берёт
       // проект из `currentProject`, и для чужой сцены проверка принадлежности сбросит холст.
       const openScene = get().scene;
-      if (currentProject?.id === projectId && openScene
-        && report.scenes.some(s => s.scene_id === Number(openScene.id))) {
+      if (
+        currentProject?.id === projectId &&
+        openScene &&
+        report.scenes.some((s) => s.scene_id === Number(openScene.id))
+      ) {
         const temporal = editorStore().temporal.getState();
         temporal.pause();
         try {
-          await get().loadScene(Number(openScene.id), {keepHistory: true});
+          await get().loadScene(Number(openScene.id), { keepHistory: true });
         } finally {
           editorStore().temporal.getState().resume();
         }
@@ -213,7 +242,7 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       return report;
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось выполнить автопривязку"));
+      toast.error(getErrorMessage(err, 'Не удалось выполнить автопривязку'));
       return null;
     }
   },
@@ -224,14 +253,14 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
 
       const newProject = toEditorProject(result.data);
       if (!newProject) {
-        throw new Error("Некорректный ответ при создании проекта");
+        throw new Error('Некорректный ответ при создании проекта');
       }
-      set(state => ({projectList: [...state.projectList, newProject]}));
-      toast.success("Проект создан");
+      set((state) => ({ projectList: [...state.projectList, newProject] }));
+      toast.success('Проект создан');
       return newProject;
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка создания проекта"));
+      toast.error(getErrorMessage(err, 'Ошибка создания проекта'));
     }
   },
   deleteProject: async (id: number) => {
@@ -243,7 +272,7 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       // проект каскадом уносит их все — одним номером их версии не описать.
       await deleteComponentsRequest([id]);
 
-      set(state => ({projectList: state.projectList.filter(p => p.id !== id)}));
+      set((state) => ({ projectList: state.projectList.filter((p) => p.id !== id) }));
 
       // Удалили текущий проект — вместе с ним ушли и все его схемы. Сброс на стороне
       // клиента уже написан в setCurrentProject: он гасит открытую сцену, elements,
@@ -253,16 +282,17 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
         get().setCurrentProject(null);
       }
 
-      toast.success("Проект удалён");
+      toast.success('Проект удалён');
     } catch (err: unknown) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Ошибка удаления проекта"));
+      toast.error(getErrorMessage(err, 'Ошибка удаления проекта'));
     }
   },
   setCurrentProject: (project) => {
     // Сброс (null) память не трогает: его делают и гарды прав, а проект остаётся «последним»
     // для разделов, где он доступен.
     if (project) rememberProject(project.id);
+    editorSession.sceneLoadSeq++;
     set(() => ({
       currentProject: project,
       // Иерархия Проект -> Схема -> Элементы: при смене/снятии проекта
@@ -270,6 +300,8 @@ export const createProjectsSlice = (set: EditorSet, get: () => EditorState): Pro
       scene: null,
       elements: [],
       sceneList: [],
+      releaseVersionNo: null,
+      releaseUnavailable: false,
       selectedIds: [],
       activeGroupKey: null,
       selectedTableCell: null,

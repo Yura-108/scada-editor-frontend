@@ -1,8 +1,8 @@
-import {useQuery} from "@tanstack/react-query";
-import {EMPTY_PROCEDURE_LEVELS, type ProcedureLevels} from "@/core/access";
-import type {Recipe} from "@/core/project";
+import { useQuery } from '@tanstack/react-query';
+import { EMPTY_PROCEDURE_LEVELS, type ProcedureLevels } from '@/core/access';
+import type { Recipe } from '@/core/project';
 // переедут в core/access вместе с правами (шаг 8)
-import {parseProcedureLevels, readBackendError} from "@/core/access";
+import { parseProcedureLevels, readBackendError } from '@/core/access';
 
 /**
  * Данные процедур из prod-выпуска проекта. В ключе — номер выпуска: другой проект или новый
@@ -14,9 +14,9 @@ import {parseProcedureLevels, readBackendError} from "@/core/access";
  */
 export const procedureKeys = {
   levels: (projectId: number | null, releaseVersionNo: number | null) =>
-    ["monitor", "procedure-levels", projectId, releaseVersionNo] as const,
+    ['monitor', 'procedure-levels', projectId, releaseVersionNo] as const,
   recipes: (projectId: number | null, releaseVersionNo: number | null) =>
-    ["monitor", "recipes", projectId, releaseVersionNo] as const,
+    ['monitor', 'recipes', projectId, releaseVersionNo] as const,
 };
 
 /**
@@ -27,7 +27,10 @@ export const procedureKeys = {
  * есть 1: кнопки активны, и при нехватке уровня сервер ответит 403 с нужным уровнем. Пока
  * идёт загрузка — тоже пустые. Состояния ошибки у этого запроса нет.
  */
-export function useProcedureLevels(projectId: number | null, releaseVersionNo: number | null): ProcedureLevels {
+export function useProcedureLevels(
+  projectId: number | null,
+  releaseVersionNo: number | null,
+): ProcedureLevels {
   const query = useQuery({
     queryKey: procedureKeys.levels(projectId, releaseVersionNo),
     queryFn: async (): Promise<ProcedureLevels> => {
@@ -36,7 +39,7 @@ export function useProcedureLevels(projectId: number | null, releaseVersionNo: n
         if (!res.ok) return EMPTY_PROCEDURE_LEVELS;
         return parseProcedureLevels(await res.json().catch(() => null));
       } catch (err) {
-        console.warn("[procedures] уровни операций не загружены:", err);
+        console.warn('[procedures] уровни операций не загружены:', err);
         return EMPTY_PROCEDURE_LEVELS;
       }
     },
@@ -65,7 +68,10 @@ export interface MonitorRecipes {
  * Новый выпуск того же проекта: прежний список держим до ответа (`placeholderData`), чтобы
  * шаги идущей мойки не мигали. Другой проект — список пуст сразу.
  */
-export function useMonitorRecipes(projectId: number | null, releaseVersionNo: number | null): MonitorRecipes {
+export function useMonitorRecipes(
+  projectId: number | null,
+  releaseVersionNo: number | null,
+): MonitorRecipes {
   const query = useQuery({
     queryKey: procedureKeys.recipes(projectId, releaseVersionNo),
     queryFn: async (): Promise<Recipe[]> => {
@@ -73,15 +79,16 @@ export function useMonitorRecipes(projectId: number | null, releaseVersionNo: nu
       try {
         res = await fetch(`/api/runtime/projects/${projectId}/recipes`);
       } catch (err) {
-        console.warn("[procedures] рецепты выпуска не загружены:", err);
-        throw new Error("Не удалось загрузить рецепты");
+        console.warn('[procedures] рецепты выпуска не загружены:', err);
+        throw new Error('Не удалось загрузить рецепты');
       }
       if (res.status === 404) {
         // Сервер без этого маршрута (старый бэкенд на стенде): оператору — что это значит,
         // а технический текст «Нет такого эндпоинта: …» — в консоль (#6 п. 5).
-        console.warn("[procedures] рецепты выпуска:", await readBackendError(res));
-        throw new Error("процедуры для этого проекта пока недоступны на сервере");
+        console.warn('[procedures] рецепты выпуска:', await readBackendError(res));
+        throw new Error('процедуры для этого проекта пока недоступны на сервере');
       }
+      if (res.status === 409) throw new Error('проект сейчас недоступен для выполнения процедур');
       if (!res.ok) throw new Error(await readBackendError(res));
       const data: unknown = await res.json().catch(() => null);
       return Array.isArray(data) ? (data as Recipe[]) : [];
@@ -97,7 +104,10 @@ export function useMonitorRecipes(projectId: number | null, releaseVersionNo: nu
     recipes: query.isError ? NO_RECIPES : (query.data ?? NO_RECIPES),
     isLoading: query.isFetching,
     // Во время «Повторить» прежняя ошибка не показывается — идёт загрузка.
-    loadError: query.isError && !query.isFetching ? query.error.message || "Не удалось загрузить рецепты" : null,
+    loadError:
+      query.isError && !query.isFetching
+        ? query.error.message || 'Не удалось загрузить рецепты'
+        : null,
     reload: () => void query.refetch(),
   };
 }

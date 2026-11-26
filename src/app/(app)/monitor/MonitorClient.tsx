@@ -50,7 +50,10 @@ export default function MonitorClient() {
   const loadScene = useEditorStore((s) => s.loadScene);
   const runtimeFlags = useEditorStore((s) => s.projectRuntimeFlags);
   const releaseVersionNo = useEditorStore((s) => s.releaseVersionNo);
-  const releaseError = useEditorStore((s) => s.releaseError);
+  const releaseUnavailable = useEditorStore((s) => s.releaseUnavailable);
+  const prodVersionNo = useEditorStore((s) =>
+    currentProject ? s.projectProdVersions[currentProject.id] : undefined,
+  );
 
   useMonitorSession();
 
@@ -201,10 +204,13 @@ export default function MonitorClient() {
           id="monitor-canvas"
           className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-card"
         >
-          {showProcedures ? (
+          {releaseUnavailable && !scene ? (
+            <NoReleaseNotice
+              prodVersionNo={prodVersionNo}
+              inOperation={projectKey == null ? undefined : runtimeFlags[projectKey]}
+            />
+          ) : showProcedures ? (
             <ProcedurePanel />
-          ) : releaseError && !scene ? (
-            <NoReleaseNotice message={releaseError} />
           ) : !isArchive && status === 'rejected' ? (
             <RejectedNotice detail={statusDetail} />
           ) : scene ? (
@@ -218,7 +224,7 @@ export default function MonitorClient() {
           )}
 
           {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
-          {!showProcedures && !isArchive && <ProcedureHud />}
+          {scene && !showProcedures && !isArchive && status !== 'rejected' && <ProcedureHud />}
           {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
           {!showProcedures && !isArchive && <FloatingWindowsLayer />}
         </div>

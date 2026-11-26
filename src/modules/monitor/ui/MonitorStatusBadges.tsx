@@ -32,7 +32,9 @@ export function MonitorStatusBadges({
     [compileErrors, runtimeErrors],
   );
 
-  const statusView = STATUS_VIEW[hasScene ? status : 'closed'];
+  const statusView = hasScene
+    ? STATUS_VIEW[status]
+    : { label: 'Схема не выбрана', tone: 'neutral' as const };
   // Сколько элементов схемы серые с «?»: раньше объяснения не было нигде — ни подсказки у
   // бейджа (он вне hit-графа), ни сводки, а рядом горело «Подключено» (#18 п. 12).
   const noDataCount = useRuntimeOverlayStore((s) => s.noDataKeys.size);
@@ -54,7 +56,7 @@ export function MonitorStatusBadges({
         </Badge>
       )}
 
-      {!isArchive && isStale && (
+      {hasScene && !isArchive && isStale && (
         <Badge
           tone="warning"
           icon={<Clock size={12} />}
@@ -90,7 +92,7 @@ export function MonitorStatusBadges({
         <Badge
           tone={statusView.tone}
           icon={<Radio size={12} />}
-          title={statusDetail || statusView.label}
+          title={(hasScene && statusDetail) || statusView.label}
         >
           {/* С 1024 px: на ноутбуке от «Подключено» оставалась одна зелёная иконка (#18 п. 14). */}
           <span className="hidden lg:inline">{statusView.label}</span>
@@ -99,7 +101,7 @@ export function MonitorStatusBadges({
 
       {/* Причина паузы рядом со статусом: «Переподключение…» без неё выглядит сбоем сети,
           хотя чинить надо остановленный экземпляр runtime, а не связь у оператора. */}
-      {!isArchive && status === 'reconnecting' && statusDetail && (
+      {hasScene && !isArchive && status === 'reconnecting' && statusDetail && (
         <span
           className="hidden max-w-40 truncate text-xs text-warning 2xl:inline"
           title={statusDetail}

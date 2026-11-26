@@ -1,17 +1,28 @@
-"use client";
+'use client';
 
-import React, {useEffect, useState} from "react";
-import {AlertTriangle, CheckCircle2, ChevronRight, CircleAlert, CircleStop, Package, Pause, Play, RefreshCw} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
-import {Banner} from "@/shared/ui/Banner";
-import {Button} from "@/shared/ui/Button";
-import {EmptyState} from "@/shared/ui/EmptyState";
-import {useMonitorRecipes} from "../api/procedures";
-import {useProcedureStore} from "../model/useProcedureStore";
-import {useProcedureControls} from "../model/procedures/useProcedureControls";
-import {CLOCK_TICK_MS, formatElapsed} from "../model/procedures/procedureFormat";
-import {useOpenScene} from "@/core/project";
-import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
+import React, { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  CircleAlert,
+  CircleStop,
+  Package,
+  Pause,
+  Play,
+  RefreshCw,
+} from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Banner } from '@/shared/ui/Banner';
+import { Button } from '@/shared/ui/Button';
+import { EmptyState } from '@/shared/ui/EmptyState';
+import { type MonitorRecipes, useMonitorRecipes } from '../api/procedures';
+import { useProcedureStore } from '../model/useProcedureStore';
+import { useProcedureControls } from '../model/procedures/useProcedureControls';
+import { CLOCK_TICK_MS, formatElapsed } from '../model/procedures/procedureFormat';
+import { useCurrentProjectGrant } from '@/core/access';
+import { useOpenScene } from '@/core/project';
+import { ProcedureRecipeSelect } from './ProcedureRecipeSelect';
 
 /**
  * Выполнение процедурного рецепта — подробный вид во вкладке «Процедуры».
@@ -27,10 +38,19 @@ import {ProcedureRecipeSelect} from "./ProcedureRecipeSelect";
  * в редакторе, но не выпущенный рецепт мойка не знает, и показывать его нельзя.
  */
 export function ProcedurePanel() {
-  const projectId = useOpenScene(s => s.currentProject?.id ?? null);
-  const {recipes, isLoading, loadError, reload} = useMonitorRecipes(projectId, useOpenScene(s => s.releaseVersionNo));
-  const {recipeId, status, stepStartedAt, watch} = useProcedureStore();
-  const {busy, denied, start, confirm, pause, resume, jump, abort} = useProcedureControls();
+  const projectId = useOpenScene((s) => s.currentProject?.id ?? null);
+  const recipeList = useMonitorRecipes(
+    projectId,
+    useOpenScene((s) => s.releaseVersionNo),
+  );
+  const { recipes, isLoading } = recipeList;
+  const {
+    recipeId: watchedRecipeId,
+    status: watchedStatus,
+    stepStartedAt,
+    watch,
+  } = useProcedureStore();
+  const { busy, denied, start, confirm, pause, resume, jump, abort } = useProcedureControls();
 
   /**
    * Секундомер шага. Держим готовое число, а не считаем `Date.now()` в теле рендера:
@@ -38,7 +58,10 @@ export function ProcedurePanel() {
    */
   const [elapsed, setElapsed] = useState(0);
 
-  const recipe = recipes.find(r => r.id === recipeId) ?? null;
+  const hasRecipes = recipes.length > 0;
+  const recipeId = hasRecipes ? watchedRecipeId : null;
+  const status = hasRecipes ? watchedStatus : null;
+  const recipe = recipes.find((r) => r.id === recipeId);
   const steps = recipe?.steps ?? [];
 
   useEffect(() => {
@@ -64,34 +87,57 @@ export function ProcedurePanel() {
               recipes={recipes}
               recipeId={recipeId}
               onWatch={watch}
-              disabled={isLoading}
-              placeholder={isLoading ? "Загрузка…" : "Выберите рецепт…"}
+              disabled={isLoading || !hasRecipes}
+              placeholder={isLoading ? 'Загрузка…' : 'Выберите рецепт…'}
             />
           </div>
 
           {!isRunning ? (
-            <Button variant="primary" onClick={() => recipeId && start(recipeId)} disabled={!recipeId || busy || !!denied.start} title={denied.start ?? undefined}>
+            <Button
+              variant="primary"
+              onClick={() => recipe && start(recipe.id)}
+              disabled={!recipe || busy || !!denied.start}
+              title={denied.start ?? undefined}
+            >
               <Play size={16} />
               Запустить
             </Button>
           ) : (
             <>
-              <Button variant="primary" onClick={() => recipeId && confirm(recipeId)} disabled={busy || !!denied.confirm} title={denied.confirm ?? undefined}>
+              <Button
+                variant="primary"
+                onClick={() => recipeId && confirm(recipeId)}
+                disabled={busy || !!denied.confirm}
+                title={denied.confirm ?? undefined}
+              >
                 <ChevronRight size={16} />
                 Подтвердить
               </Button>
               {status?.paused ? (
-                <Button onClick={() => recipeId && resume(recipeId)} disabled={busy || !!denied.resume} title={denied.resume ?? undefined}>
+                <Button
+                  onClick={() => recipeId && resume(recipeId)}
+                  disabled={busy || !!denied.resume}
+                  title={denied.resume ?? undefined}
+                >
                   <Play size={16} />
                   Продолжить
                 </Button>
               ) : (
-                <Button onClick={() => recipeId && pause(recipeId)} disabled={busy || !!denied.pause} title={denied.pause ?? undefined}>
+                <Button
+                  onClick={() => recipeId && pause(recipeId)}
+                  disabled={busy || !!denied.pause}
+                  title={denied.pause ?? undefined}
+                >
                   <Pause size={16} />
                   Пауза
                 </Button>
               )}
-              <Button variant="danger" onClick={() => recipeId && abort(recipeId)} disabled={busy || !!denied.abort} title={denied.abort ?? undefined}>
+              <Button
+                variant="danger"
+                onClick={() => recipeId && abort(recipeId)}
+                disabled={busy || !!denied.abort}
+                title={denied.abort ?? undefined}
+              >
                 <CircleStop size={16} />
                 Прервать
               </Button>
@@ -99,43 +145,41 @@ export function ProcedurePanel() {
           )}
         </div>
 
-        {loadError ? (
-          <Banner
-            tone="destructive"
-            icon={CircleAlert}
-            actions={<Button size="sm" onClick={reload} disabled={isLoading}><RefreshCw size={14} />Повторить</Button>}
-          >
-            Не удалось загрузить рецепты: {loadError}
-          </Banner>
-        ) : !isLoading && projectId != null && recipes.length === 0 && (
-          // Выпуски, сделанные до переноса рецептов в проект, их не содержат — это шаг выката.
-          <Banner tone="warning" icon={Package}>
-            В prod-выпуске проекта нет рецептов. Создайте их в редакторе, выпустите проект
-            и назначьте выпуск prod.
-          </Banner>
-        )}
+        <ProcedureRecipeFeedback list={recipeList} projectId={projectId} recipeId={recipeId} />
 
         {status && (
           // role="note": время на шаге меняется каждую секунду — объявлять его скринридеру нельзя.
           <Banner
             role="note"
-            tone={status.completed ? "success" : status.paused || status.stalled ? "warning" : "info"}
-            icon={status.completed ? CheckCircle2 : status.paused ? Pause : status.stalled ? AlertTriangle : Play}
-            title={status.completed
-              ? "Процедура завершена"
-              : `Шаг ${status.stepIndex + 1}${status.stepName ? ` — ${status.stepName}` : ""}`}
+            tone={
+              status.completed ? 'success' : status.paused || status.stalled ? 'warning' : 'info'
+            }
+            icon={
+              status.completed
+                ? CheckCircle2
+                : status.paused
+                  ? Pause
+                  : status.stalled
+                    ? AlertTriangle
+                    : Play
+            }
+            title={
+              status.completed
+                ? 'Процедура завершена'
+                : `Шаг ${status.stepIndex + 1}${status.stepName ? ` — ${status.stepName}` : ''}`
+            }
           >
             {!status.completed && (
               <div className="text-muted-foreground">
                 На шаге: {formatElapsed(elapsed)}
-                {status.stalled && " · шаг подозрительно долго не завершается"}
+                {status.stalled && ' · шаг подозрительно долго не завершается'}
               </div>
             )}
             {/* Причина паузы — отдельной строкой и заметно: по ней оператор решает,
                 можно ли продолжать, и она же объясняет отказ «Продолжить». */}
             {status.paused && !status.completed && (
               <div className="mt-1 font-medium text-warning">
-                Процедура на паузе{status.pauseReason ? `: ${status.pauseReason}` : ""}
+                Процедура на паузе{status.pauseReason ? `: ${status.pauseReason}` : ''}
               </div>
             )}
           </Banner>
@@ -156,15 +200,17 @@ export function ProcedurePanel() {
                 {steps.map((step, index) => {
                   const current = !status?.completed && status?.stepIndex === index;
                   return (
-                    <tr key={index} className={cn(current && "bg-info/10")}>
+                    <tr key={index} className={cn(current && 'bg-info/10')}>
                       <td className="px-4 py-2 text-muted-foreground">{index + 1}</td>
                       <td className="px-4 py-2 text-foreground">
-                        {step.name || <span className="text-muted-foreground italic">без названия</span>}
+                        {step.name || (
+                          <span className="text-muted-foreground italic">без названия</span>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-muted-foreground">
                         {step.action.length
-                          ? step.action.map(a => `${a.tag} = ${String(a.value)}`).join(", ")
-                          : "—"}
+                          ? step.action.map((a) => `${a.tag} = ${String(a.value)}`).join(', ')
+                          : '—'}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <button
@@ -183,11 +229,52 @@ export function ProcedurePanel() {
             </table>
           </div>
         )}
-
-        {!recipeId && (
-          <EmptyState size="sm" title="Выберите рецепт, чтобы увидеть его шаги и запустить выполнение." />
-        )}
       </div>
     </div>
+  );
+}
+
+function ProcedureRecipeFeedback({
+  list,
+  projectId,
+  recipeId,
+}: {
+  list: MonitorRecipes;
+  projectId: number | null;
+  recipeId: string | null;
+}) {
+  const { edit } = useCurrentProjectGrant();
+  const { recipes, isLoading, loadError, reload } = list;
+
+  if (loadError) {
+    return (
+      <Banner
+        tone="destructive"
+        icon={CircleAlert}
+        actions={
+          <Button size="sm" onClick={reload} disabled={isLoading}>
+            <RefreshCw size={14} />
+            Повторить
+          </Button>
+        }
+      >
+        Не удалось загрузить рецепты: {loadError}
+      </Banner>
+    );
+  }
+
+  if (isLoading || projectId == null) return null;
+  if (recipes.length === 0) {
+    return (
+      <Banner tone="warning" icon={Package}>
+        {edit
+          ? 'В рабочем выпуске проекта нет рецептов. Создайте их в редакторе, выпустите проект и выберите «Сделать prod».'
+          : 'В проекте пока нет рецептов. Обратитесь к технологу.'}
+      </Banner>
+    );
+  }
+
+  return recipeId ? null : (
+    <EmptyState size="sm" title="Выберите рецепт, чтобы увидеть его шаги и запустить выполнение." />
   );
 }

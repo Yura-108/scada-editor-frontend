@@ -24,6 +24,10 @@ gone from both sides.
   `document_id` is the history key: `recipes` is a `docType` of the history proxy, and
   `RecipeHistoryModal` (button in `RecipesPanel`) lists versions and restores — restore changes the
   draft only, then the list is re-read.
+- Если рабочий выпуск загрузился и список рецептов пуст, «Процедуры» показывают одно сообщение.
+  Пользователям с правом «Правка» видны шаги по выпуску, остальным предлагается обратиться к
+  технологу. Список и запуск отключены. Во время загрузки или при ошибке сообщение о пустом
+  выпуске не показывается (#27 п. 3).
 - **`action[].tag` is the short `tags[].name`, not the tag path.** The path lives in
   `RecipeTag.tag`. Getting this wrong is a 400 listing the undeclared names, so the steps editor
   offers a dropdown over the manifest rather than free text.

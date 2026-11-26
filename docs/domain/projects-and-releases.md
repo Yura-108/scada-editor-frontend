@@ -27,8 +27,10 @@ draw exactly it, not the editor's draft.
 - **`TREE_CHANGED`** (and a different `versionNo` on a new session after a reconnect) →
   `reloadRelease`: re-read the list, reopen the current scene or the first one. The `SNAPSHOT` that
   follows goes through the usual path; the new `elements` rebuild the binding index.
-- Release responses: 409 = project not in operation (`releaseError`, shown on the canvas, not a
-  toast); 404 on a scene = not in this release (toast, the shown scene stays). The BFF must forward
+- Release responses: 409 marks the release unavailable (`releaseUnavailable`). The canvas explains
+  whether a working release is missing or the project is out of operation when those flags are
+  known. Otherwise it reports that the schemes are unavailable. Runtime routing details stay off
+  the canvas (#27 p. 6). A 404 on a scene shows a toast and keeps the current scheme. The BFF must forward
   `X-Release-Version` (`passThroughRelease`) — `passThrough` drops headers.
 - Editor: «Выпуски» (`ReleasesModal`, from the project picker in the editor header and `ToolsPanel`) — release the **saved**
   draft (unsaved work is offered to be saved first; `unchanged: true` = nothing changed since the last

@@ -54,8 +54,8 @@ export interface ScenesSlice {
   /** Номер выпуска, который сейчас рисует монитор (`X-Release-Version`, сессия, `TREE_CHANGED`). */
   releaseVersionNo: number | null;
   setReleaseVersionNo: (versionNo: number | null) => void;
-  /** Почему монитор не может показать выпуск (проект не в эксплуатации); null — всё в порядке. */
-  releaseError: string | null;
+  /** Runtime ответил 409 на загрузку схем рабочего выпуска. */
+  releaseUnavailable: boolean;
   /** prod сменился (кадр `TREE_CHANGED`): перечитать список и текущую схему выпуска. */
   reloadRelease: (versionNo: number) => Promise<void>;
   loadSceneList: (projectId: number) => Promise<{ id: number; name: string }[] | void>;
@@ -155,7 +155,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
   sceneList: [],
   sceneSource: 'draft',
   releaseVersionNo: null,
-  releaseError: null,
+  releaseUnavailable: false,
 
   setReleaseVersionNo: (versionNo) => {
     if (get().releaseVersionNo !== versionNo) set({ releaseVersionNo: versionNo });
@@ -170,7 +170,12 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       if (state.versionPreview) state.exitVersionPreview();
       const s = get();
       editorSession.draftStash = takeDraftStash(s);
-      set({ sceneSource: 'release', releaseVersionNo: null, releaseError: null, selectedIds: [] });
+      set({
+        sceneSource: 'release',
+        releaseVersionNo: null,
+        releaseUnavailable: false,
+        selectedIds: [],
+      });
       // Показанная схема — черновик; в мониторе её место занимает та же схема из выпуска.
       const projectId = s.currentProject?.id;
       const sceneId = s.scene?.id;
@@ -183,7 +188,7 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     const stash = editorSession.draftStash;
     editorSession.draftStash = null;
     const projectId = state.currentProject?.id ?? null;
-    set({ sceneSource: 'draft', releaseVersionNo: null, releaseError: null });
+    set({ sceneSource: 'draft', releaseVersionNo: null, releaseUnavailable: false });
     if (stash && stash.projectId === projectId) {
       // Снимок «что на сервере» — тоже прежний, и ДО элементов: подписчик стора пересчитывает
       // isDirty в момент `set`, и со снимком выпуска черновик всегда выходил «изменённым»
@@ -219,30 +224,36 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
   },
   loadSceneList: async (projectId: number) => {
     const source = get().sceneSource;
+    const isCurrentList = () => {
+      const state = get();
+      return (
+        state.sceneSource === source &&
+        (source !== 'release' || state.currentProject?.id === projectId)
+      );
+    };
     try {
       // Монитор — схемы prod-выпуска; редактор — черновика.
       const result = await requestSceneList(projectId, source);
-      // Ответ устарел: пока шёл запрос, ушли из монитора (или вернулись в него).
-      if (get().sceneSource !== source) return;
+      if (!isCurrentList()) return;
 
-      // 409 у выпуска — проект не в эксплуатации: это состояние экрана, а не сбой.
-      if (result.kind === 'notInOperation') {
+      if (result.kind === 'releaseUnavailable') {
         set({
           sceneList: [],
           scene: null,
           elements: [],
           releaseVersionNo: null,
-          releaseError: result.message,
+          releaseUnavailable: true,
         });
         return [];
       }
 
       const { list } = result;
-      set({ sceneList: list, ...(source === 'release' ? { releaseError: null } : {}) });
+      set({ sceneList: list, ...(source === 'release' ? { releaseUnavailable: false } : {}) });
       if (result.releaseVersion != null) get().setReleaseVersionNo(result.releaseVersion);
       scheduleScenePrefetch(projectId, list, source);
       return list;
     } catch (err: unknown) {
+      if (!isCurrentList()) return;
       console.error(err);
       toast.error(getErrorMessage(err, 'Не удалось загрузить список схем'));
     }
@@ -257,9 +268,9 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
     // схему, применять нельзя — иначе на холсте окажется не та, что выбрана.
     const seq = ++editorSession.sceneLoadSeq;
     const startedAt = performance.now();
+    const { currentProject, sceneSource: source } = get();
 
     try {
-      const { currentProject } = get();
       if (!currentProject) {
         toast.error('Сначала выберите проект');
         set(emptyDocument());
@@ -272,7 +283,6 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       // кэш не смотрит: ему нужно именно состояние сервера после записи.
       // Выпуск неизменяем: свежесть не проверяем (смену prod приносит TREE_CHANGED, и
       // тогда кэш выпуска сбрасывается целиком), номер версии сцены не нужен.
-      const source = get().sceneSource;
       const isRelease = source === 'release';
       const cached = loadOpts?.keepHistory ? null : getCachedScene(projectId, id, source);
       if (cached && cached.version !== undefined) {
@@ -303,25 +313,25 @@ export const createScenesSlice = (set: EditorSet, get: () => EditorState): Scene
       logSceneTiming(id, 'сеть', startedAt, applyAt);
       if (isRelease) {
         if (releaseVersion != null) get().setReleaseVersionNo(releaseVersion);
-        set({ releaseError: null });
+        set({ releaseUnavailable: false });
       } else if (version === undefined) {
         // Номер не получили — спросим ещё раз в фоне, как раньше: без него редактор
         // работает, а based_on_version подставится к моменту первого сохранения.
         void get().refreshSceneVersion();
       }
     } catch (err: unknown) {
-      if (seq !== editorSession.sceneLoadSeq) return;
+      if (seq !== editorSession.sceneLoadSeq || get().sceneSource !== source) return;
       console.error(err);
       // Монитор: схемы нет в выпуске (например, закреплённая вкладка на схему, которую
       // ещё не выпустили) — показанную схему не гасим, это не поломка экрана.
-      if (err instanceof SceneLoadError && get().sceneSource === 'release') {
+      if (err instanceof SceneLoadError && source === 'release') {
         if (err.status === 404) {
           toast.error('Этой схемы нет в текущем выпуске проекта');
           return;
         }
         if (err.status === 409) {
           set({
-            releaseError: 'Проект не в эксплуатации — выпуск не исполняется',
+            releaseUnavailable: true,
             scene: null,
             elements: [],
           });

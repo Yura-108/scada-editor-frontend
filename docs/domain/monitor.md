@@ -277,3 +277,6 @@ Bindings and event handlers used to run on the page through `new Function`, with
 ## Procedure HUD over the scheme (#6 p. 1)
 
 `ProcedureHud` floats over the canvas in live mode. Until a recipe is picked it is only the grip and the recipe picker (~260 px): the full strip (min 720 px) covered the top of the scheme. Its place is a per-browser setting (`procedureHudPrefs`, localStorage). A HUD never dragged keeps `x = -1` and is anchored by CSS `right`, so it grows to the left when a recipe widens it. A dragged one that no longer fits (wider HUD, narrower window) is shown clamped into the area (`fit` in `useHudPosition`, re-checked by a ResizeObserver and on recipe change); the saved place is not overwritten, so it returns when there is room again.
+
+- Плашка процедур появляется над открытой схемой, когда в рабочем выпуске есть рецепты (#27 п. 4).
+- До выбора схемы индикатор показывает «Схема не выбрана». Статус и причина соединения относятся только к открытой схеме (#27 п. 5).
