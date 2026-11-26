@@ -1,6 +1,8 @@
 'use client';
 
-import {create} from 'zustand/react';
+import { create } from 'zustand/react';
+import { useSessionUserStore } from '@/core/access';
+import { rememberSelectedDevice } from './loadedProjectsMemory';
 
 /**
  * Выбранный узел базы каналов — клиентское состояние, отдельно от данных дерева
@@ -14,5 +16,8 @@ interface DeviceSelectionState {
 
 export const useDeviceSelection = create<DeviceSelectionState>()((set) => ({
   selectedDevice: null,
-  selectDevice: (key) => set({selectedDevice: key}),
+  selectDevice: (key) => {
+    set({ selectedDevice: key });
+    rememberSelectedDevice(useSessionUserStore.getState().login, key);
+  },
 }));
