@@ -2,7 +2,10 @@ import { parseSessionPair, setTokenCookie } from '@/server/auth/setTokenCookies'
 import { callAuth } from '@/server/auth/auth';
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await request.json().catch(() => undefined);
+  if (body === undefined) {
+    return Response.json({ message: 'Некорректный запрос' }, { status: 400 });
+  }
   const { ok, status, data, retryAfter } = await callAuth('/api/auth/login', body);
 
   // 10 неудачных попыток за 15 минут — учётка закрыта до конца окна, даже с верным паролем.
@@ -17,7 +20,8 @@ export async function POST(request: Request) {
   if (!ok) {
     // На 401 бэкенд присылает английское «Invalid credentials» — оператору нужен свой текст.
     // Остальные отказы (учётка отключена, сервис недоступен) — как сказал бэкенд.
-    const message = status === 401 ? 'Неверный логин или пароль' : data.message ?? 'Не удалось войти';
+    const message =
+      status === 401 ? 'Неверный логин или пароль' : (data.message ?? 'Не удалось войти');
     return Response.json({ message }, { status });
   }
 

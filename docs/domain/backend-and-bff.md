@@ -39,6 +39,7 @@ This is a **frontend + BFF**, not a standalone app. Everything under `src/app/ap
 - **Logout** (`/api/auth/logout`) sends `refresh_token` to the backend (errors swallowed) and clears
   both cookies. Already issued access tokens live until `exp`; only "end sessions" in the admin
   (`revoke-sessions`), a password change/reset or disabling the user kills them at once.
+- **Login 400**: пустое или некорректное тело JSON получает «Некорректный запрос» в BFF до обращения к gateway.
 - **Login 429**: 10 failed attempts per login in 15 minutes lock it until the window ends;
   `login/route.ts` turns `Retry-After` into «Слишком много неудачных попыток, повторите через N мин.».
   A login 401 always reads «Неверный логин или пароль» (the backend sends English «Invalid
