@@ -1,4 +1,4 @@
-import {DiagramElement, GroupElement, SceneType} from "@/core/scene";
+import { DiagramElement, GroupElement, SceneType } from '@/core/scene';
 import {
   elementToGroupLocal,
   GROUP_PADDING,
@@ -6,10 +6,11 @@ import {
   snapshotBounds,
   unionBounds,
   resolveParentAbsolute,
-} from "@/core/scene";
-import {createUuid} from "@/shared/lib/createUuid";
-import {isComplex, isComponentEl, isGroup, resplitContainer} from "../elementTree";
-import {syncMemberStates} from "../elementStates";
+} from '@/core/scene';
+import { createUuid } from '@/shared/lib/createUuid';
+import { isComplex, isComponentEl, isGroup, resplitContainer } from '../elementTree';
+import { syncMemberStates } from '../elementStates';
+import { nextElementLabel } from '../../lib/elementNames';
 
 export interface GroupResult {
   elements: DiagramElement[];
@@ -19,7 +20,7 @@ export interface GroupResult {
 /**
  * Группировка выделенного. Два случая:
  *  - простые элементы плюс ровно одна группа — элементы входят в эту группу;
- *  - иначе — новая группа «Group (N)» на месте выделенных.
+ *  - иначе — новая группа «Группа N» на месте выделенных.
  *
  * Возвращает новый массив и выделение (сама группа) или `null`, если группировать нечего.
  */
@@ -31,13 +32,13 @@ export function groupElements(
   if (selectedIds.length < 2) return null;
 
   const topLevelSelected = elements
-    .filter(el => selectedIds.includes(el.key))
-    .filter(el => {
+    .filter((el) => selectedIds.includes(el.key))
+    .filter((el) => {
       let parentKey: string | null | undefined = el.parentKey;
 
       while (parentKey) {
         if (selectedIds.includes(parentKey)) return false;
-        parentKey = elements.find(e => e.key === parentKey)?.parentKey;
+        parentKey = elements.find((e) => e.key === parentKey)?.parentKey;
       }
 
       return true;
@@ -45,7 +46,7 @@ export function groupElements(
 
   if (topLevelSelected.length < 2) return null;
 
-  const simple = topLevelSelected.filter(el => !isGroup(el) && !isComplex(el));
+  const simple = topLevelSelected.filter((el) => !isGroup(el) && !isComplex(el));
   const complex = topLevelSelected.filter(isComplex);
   const groups = topLevelSelected.filter(isGroup);
 
@@ -63,7 +64,7 @@ function addToExistingGroup(
   simple: DiagramElement[],
   scene: SceneType | null,
 ): GroupResult {
-  const simpleKeys = simple.map(s => s.key);
+  const simpleKeys = simple.map((s) => s.key);
   // ВАЖНО: включаем composition (запечённые примитивы компонента) в состав —
   // иначе рамка считается без них, а их локальные координаты не компенсируются
   // при сдвиге origin группы.
@@ -97,7 +98,7 @@ function addToExistingGroup(
   // «Состояния» показывает у них одно состояние против четырёх у компонента.
   updatedElements = syncMemberStates(updatedElements, targetGroup.key, allMemberKeys);
 
-  return {elements: updatedElements, selectedIds: [targetGroup.key]};
+  return { elements: updatedElements, selectedIds: [targetGroup.key] };
 }
 
 /** Новая группа вокруг выделенных элементов верхнего уровня. */
@@ -107,22 +108,23 @@ function wrapInNewGroup(
   scene: SceneType | null,
 ): GroupResult {
   const newGroupId = createUuid();
-  const selectedKeys = topLevelSelected.map(el => el.key);
-  const parentKeys = [...new Set(topLevelSelected.map(el => el.parentKey).filter(Boolean))];
+  const selectedKeys = topLevelSelected.map((el) => el.key);
+  const parentKeys = [...new Set(topLevelSelected.map((el) => el.parentKey).filter(Boolean))];
   // Без сцены фолбэк — null (а не литерал "undefined" от String(undefined)).
-  const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : (scene ? String(scene.id) : null);
+  const commonParentKey = parentKeys.length === 1 ? parentKeys[0] : scene ? String(scene.id) : null;
   const commonParentElement = commonParentKey
-    ? elements.find(el => el.key === commonParentKey && el.type === "group") as GroupElement | undefined
+    ? (elements.find((el) => el.key === commonParentKey && el.type === 'group') as
+        | GroupElement
+        | undefined)
     : undefined;
-  const newGroupParentId = commonParentKey === String(scene?.id)
-    ? scene?.id || null
-    : commonParentElement?.id ?? null;
+  const newGroupParentId =
+    commonParentKey === String(scene?.id) ? scene?.id || null : (commonParentElement?.id ?? null);
 
   const boundsByKey = snapshotBounds(elements, selectedKeys);
   const box = unionBounds([...boundsByKey.values()], GROUP_PADDING);
   const parentAbs = resolveParentAbsolute(commonParentKey, elements, scene?.id);
 
-  let updatedElements = elements.map(el => {
+  let updatedElements = elements.map((el) => {
     if (!selectedKeys.includes(el.key)) return el;
 
     const bounds = boundsByKey.get(el.key)!;
@@ -134,11 +136,11 @@ function wrapInNewGroup(
   });
 
   if (commonParentElement) {
-    updatedElements = updatedElements.map(el => {
+    updatedElements = updatedElements.map((el) => {
       if (el.key !== commonParentElement.key) return el;
 
-      const nextChildren = el.children.filter(childKey => !selectedKeys.includes(childKey));
-      const insertIndex = el.children.findIndex(childKey => selectedKeys.includes(childKey));
+      const nextChildren = el.children.filter((childKey) => !selectedKeys.includes(childKey));
+      const insertIndex = el.children.findIndex((childKey) => selectedKeys.includes(childKey));
 
       if (insertIndex >= 0) {
         nextChildren.splice(insertIndex, 0, newGroupId);
@@ -146,14 +148,14 @@ function wrapInNewGroup(
         nextChildren.push(newGroupId);
       }
 
-      return {...el, children: nextChildren};
+      return { ...el, children: nextChildren };
     });
   }
 
   const group: GroupElement = {
     id: null,
     key: newGroupId,
-    type: "group",
+    type: 'group',
     x: box.absX - parentAbs.x,
     y: box.absY - parentAbs.y,
     w: box.w,
@@ -162,20 +164,22 @@ function wrapInNewGroup(
     children: selectedKeys,
     parentId: newGroupParentId,
     parentKey: commonParentKey,
-    label: `Group (${topLevelSelected.length})`,
-    bg: "rgba(59,130,246,0.08)",
-    borderStyle: "dashed",
-    borderColor: "#3b82f6",
+    label: nextElementLabel('group', elements) ?? undefined,
+    bg: 'rgba(59,130,246,0.08)',
+    borderStyle: 'dashed',
+    borderColor: '#3b82f6',
     scripts: [],
     bindings: [],
     properties: [],
-    states: [{
-      id: createUuid(),
-      name: "Нормальное",
-      overrides: {},
-      isDefault: true,
-    }],
+    states: [
+      {
+        id: createUuid(),
+        name: 'Нормальное',
+        overrides: {},
+        isDefault: true,
+      },
+    ],
   };
 
-  return {elements: [...updatedElements, group], selectedIds: [newGroupId]};
+  return { elements: [...updatedElements, group], selectedIds: [newGroupId] };
 }
