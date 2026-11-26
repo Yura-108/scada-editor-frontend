@@ -33,13 +33,10 @@ jobs:
         env:
           HUSKY: '0'
         run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Run project checks
         run: npm run check:pr
-      - name: Audit production dependencies
-        run: |
-          if ! npm audit --omit=dev --audit-level=high; then
-            echo "::warning::The production dependency audit reported findings or could not complete. See the audit output."
-          fi
 
   secrets:
     name: Secret scan
