@@ -4,6 +4,7 @@
 
 ## Where the monitor reads the scene from
 
+- С 1024 px селектор проекта получает ширину от 160 до 192 px. Полное название выбранного проекта доступно в подсказке.
 - The open project, scene, scene list and release number live in the **editor store** (loading a
   scene writes the document, undo history and draft, so they stay together). The monitor module does
   not import `@/modules/editor`: it reads them through `useOpenScene` / `getOpenScene`

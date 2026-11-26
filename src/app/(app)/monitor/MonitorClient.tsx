@@ -113,7 +113,7 @@ export default function MonitorClient() {
         }
       >
         <ProjectSelect
-          className="min-w-24 max-w-32 xl:max-w-48"
+          className="min-w-24 max-w-32 lg:min-w-40 lg:max-w-48"
           projects={projectList}
           value={currentProject?.id}
           onChange={(id) => setCurrentProject(projectList.find((p) => p.id === id) ?? null)}
