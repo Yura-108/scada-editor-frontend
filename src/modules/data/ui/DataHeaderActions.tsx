@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React from "react";
-import {RefreshCw, Save, Trash2, Upload} from "lucide-react";
-import {Button} from "@/shared/ui/Button";
-import {IconButton} from "@/shared/ui/IconButton";
+import React from 'react';
+import { RefreshCw, Save, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/shared/ui/Button';
+import { IconButton } from '@/shared/ui/IconButton';
 
 /** Подпись второстепенной кнопки: на узком окне — только иконка, текст в подсказке. */
-const secondaryLabel = "hidden lg:inline";
+const secondaryLabel = 'hidden xl:inline';
 
 /**
  * Кнопки справа в шапке «Данных»: номер версии документа вкладки, «Перечитать», «Удалить
@@ -14,8 +14,21 @@ const secondaryLabel = "hidden lg:inline";
  * На узком окне у второстепенных кнопок остаётся иконка с подсказкой — «Сохранить» всегда с подписью.
  */
 export function DataHeaderActions({
-  onVariablesTab, tablesTab, loaded, version, canWrite, canRemoveTable, tablesLoaded, tablesDirty,
-  dirty, saving, invalidCells, onReload, onRemoveTable, onApply, onSave,
+  onVariablesTab,
+  tablesTab,
+  loaded,
+  version,
+  canWrite,
+  canRemoveTable,
+  tablesLoaded,
+  tablesDirty,
+  dirty,
+  saving,
+  invalidCells,
+  onReload,
+  onRemoveTable,
+  onApply,
+  onSave,
 }: {
   onVariablesTab: boolean;
   tablesTab: boolean;
@@ -33,41 +46,68 @@ export function DataHeaderActions({
   onApply: () => void;
   onSave: () => void;
 }) {
-  return <>
-    {loaded && version != null && (
-      <span className="text-xs text-muted-foreground" title={onVariablesTab ? "Версия набора автоматизации" : "Версия таблиц"}>v{version}</span>
-    )}
-    <IconButton icon={RefreshCw} label="Перечитать с сервера" variant="secondary" disabled={!loaded} onClick={onReload} />
-    {canWrite && tablesTab && canRemoveTable && (
-      <Button
-        size="sm"
-        className="text-destructive"
-        onClick={onRemoveTable}
-        title="Удалить выбранную таблицу (применится при сохранении)"
-        aria-label="Удалить таблицу"
-      >
-        <Trash2 size={14} /><span className={secondaryLabel}>Удалить таблицу</span>
-      </Button>
-    )}
-    {canWrite ? <>
-      <Button
-        size="sm"
-        onClick={onApply}
-        disabled={!tablesLoaded || tablesDirty}
-        title={tablesDirty ? "Сначала сохраните таблицы" : "Применить данные: попросить automation перечитать сохранённые данные"}
-        aria-label="Применить данные"
-      >
-        <Upload size={14} /><span className={secondaryLabel}>Применить данные</span>
-      </Button>
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={onSave}
-        disabled={!loaded || !dirty || saving || (!onVariablesTab && invalidCells > 0)}
-        title={!onVariablesTab && invalidCells > 0 ? "Исправьте ячейки с неверным значением" : undefined}
-      >
-        <Save size={14} />{saving ? "Сохранение…" : "Сохранить"}
-      </Button>
-    </> : null}
-  </>;
+  return (
+    <div className="flex items-center gap-1.5 xl:gap-3">
+      {loaded && version != null && (
+        <span
+          className="text-xs text-muted-foreground"
+          title={onVariablesTab ? 'Версия набора автоматизации' : 'Версия таблиц'}
+        >
+          v{version}
+        </span>
+      )}
+      <IconButton
+        icon={RefreshCw}
+        label="Перечитать с сервера"
+        variant="secondary"
+        disabled={!loaded}
+        onClick={onReload}
+      />
+      {canWrite && tablesTab && canRemoveTable && (
+        <Button
+          size="sm"
+          className="text-destructive max-xl:px-2"
+          onClick={onRemoveTable}
+          title="Удалить выбранную таблицу (применится при сохранении)"
+          aria-label="Удалить таблицу"
+        >
+          <Trash2 size={14} />
+          <span className={secondaryLabel}>Удалить таблицу</span>
+        </Button>
+      )}
+      {canWrite ? (
+        <>
+          <Button
+            size="sm"
+            className="max-xl:px-2"
+            onClick={onApply}
+            disabled={!tablesLoaded || tablesDirty}
+            title={
+              tablesDirty
+                ? 'Сначала сохраните таблицы'
+                : 'Применить данные: попросить automation перечитать сохранённые данные'
+            }
+            aria-label="Применить данные"
+          >
+            <Upload size={14} />
+            <span className={secondaryLabel}>Применить данные</span>
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onSave}
+            disabled={!loaded || !dirty || saving || (!onVariablesTab && invalidCells > 0)}
+            title={
+              !onVariablesTab && invalidCells > 0
+                ? 'Исправьте ячейки с неверным значением'
+                : undefined
+            }
+          >
+            <Save size={14} />
+            {saving ? 'Сохранение…' : 'Сохранить'}
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
 }

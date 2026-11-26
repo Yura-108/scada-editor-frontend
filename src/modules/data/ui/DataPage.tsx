@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import React, {useState} from "react";
-import Link from "next/link";
-import {CircleAlert} from "lucide-react";
-import {toast} from "sonner";
-import {Banner} from "@/shared/ui/Banner";
-import {FloatingHelp} from "@/shared/ui/FloatingHelp";
-import {Spinner} from "@/shared/ui/Spinner";
-import {Tabs} from "@/shared/ui/Tabs";
-import {UnsavedNotice} from "@/shared/ui/UnsavedNotice";
-import {PageFrame} from "@/shared/ui/page/PageFrame";
-import {PageHeader} from "@/shared/ui/page/PageHeader";
-import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {useBeforeUnloadWarning, useUnsavedGuard} from "@/shared/lib/unsavedGuard";
-import {ReadOnlyBanner, useCurrentProjectGrant} from "@/core/access";
-import {type EditorProject, ProjectPlaceholder, ProjectSelect} from "@/core/project";
-import {useTablesDocument} from "../model/useTablesDocument";
-import {useVariablesDocument} from "../model/useVariablesDocument";
-import {DATA_HELP, type DataTab} from "./dataHelp";
-import {DataHeaderActions} from "./DataHeaderActions";
-import {DataTabContent} from "./DataTabContent";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { CircleAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import { Banner } from '@/shared/ui/Banner';
+import { FloatingHelp } from '@/shared/ui/FloatingHelp';
+import { Spinner } from '@/shared/ui/Spinner';
+import { Tabs } from '@/shared/ui/Tabs';
+import { UnsavedNotice } from '@/shared/ui/UnsavedNotice';
+import { PageFrame } from '@/shared/ui/page/PageFrame';
+import { PageHeader } from '@/shared/ui/page/PageHeader';
+import { confirmModal } from '@/shared/ui/dialog/confirmModal';
+import { useBeforeUnloadWarning, useUnsavedGuard } from '@/shared/lib/unsavedGuard';
+import { ReadOnlyBanner, useCurrentProjectGrant } from '@/core/access';
+import { type EditorProject, ProjectPlaceholder, ProjectSelect } from '@/core/project';
+import { useTablesDocument } from '../model/useTablesDocument';
+import { useVariablesDocument } from '../model/useVariablesDocument';
+import { DATA_HELP, type DataTab } from './dataHelp';
+import { DataHeaderActions } from './DataHeaderActions';
+import { DataTabContent } from './DataTabContent';
 
 /**
  * Данные проекта: таблицы, которые серверные скрипты читают через data(), и переменные проекта.
@@ -30,7 +30,13 @@ import {DataTabContent} from "./DataTabContent";
  *
  * Проект выбирает страница (`app/(app)/data`): он живёт в сторе редактора, а модуль его не знает.
  */
-export function DataPage({projectList, project, unavailable, listLoaded, onSelectProject}: {
+export function DataPage({
+  projectList,
+  project,
+  unavailable,
+  listLoaded,
+  onSelectProject,
+}: {
   projectList: EditorProject[];
   project: EditorProject | null;
   unavailable: EditorProject | null;
@@ -39,28 +45,32 @@ export function DataPage({projectList, project, unavailable, listLoaded, onSelec
 }) {
   // Сохранять и отправлять на исполнение — только с правом правки (403 NO_EDIT).
   const canWrite = useCurrentProjectGrant().edit;
-  const [tab, setTab] = useState<DataTab>("tables");
+  const [tab, setTab] = useState<DataTab>('tables');
   const [saving, setSaving] = useState(false);
 
   const projectId = project?.id ?? null;
-  const tables = useTablesDocument(projectId, tab === "history");
+  const tables = useTablesDocument(projectId, tab === 'history');
   const variables = useVariablesDocument(projectId);
-  const {data, dirty: dataDirty, errors: dataErrors, invalidCells} = tables;
-  const {automation, dirty: automationDirty, errors: automationErrors} = variables;
+  const { data, dirty: dataDirty, errors: dataErrors, invalidCells } = tables;
+  const { automation, dirty: automationDirty, errors: automationErrors } = variables;
 
-  const onVariablesTab = tab === "variables";
+  const onVariablesTab = tab === 'variables';
   const loaded = onVariablesTab ? automation !== null : data !== null;
   const dirty = onVariablesTab ? automationDirty : dataDirty;
   const version = onVariablesTab ? automation?.version : data?.version;
 
   const switchProject = async (id: number) => {
-    if ((dataDirty || automationDirty) && !(await confirmModal({
-      title: "Сменить проект?",
-      description: "Несохранённые правки таблиц и переменных пропадут.",
-      confirmLabel: "Сменить",
-      danger: true,
-    }))) return;
-    onSelectProject(projectList.find(p => p.id === id) ?? null);
+    if (
+      (dataDirty || automationDirty) &&
+      !(await confirmModal({
+        title: 'Сменить проект?',
+        description: 'Несохранённые правки таблиц и переменных пропадут.',
+        confirmLabel: 'Сменить',
+        danger: true,
+      }))
+    )
+      return;
+    onSelectProject(projectList.find((p) => p.id === id) ?? null);
   };
 
   /** Плашка внизу сохраняет всё несохранённое, а не только документ открытой вкладки. */
@@ -80,17 +90,18 @@ export function DataPage({projectList, project, unavailable, listLoaded, onSelec
     }
   };
 
-  useUnsavedGuard("data", {
-    label: () => [dataDirty && "таблицы", automationDirty && "переменные проекта"].filter(Boolean).join(", "),
+  useUnsavedGuard('data', {
+    label: () =>
+      [dataDirty && 'таблицы', automationDirty && 'переменные проекта'].filter(Boolean).join(', '),
     isDirty: () => canWrite && (dataDirty || automationDirty),
     save: handleSaveAll,
   });
 
   const handleDiscardAll = async () => {
     const ok = await confirmModal({
-      title: "Отменить несохранённые изменения?",
-      description: "Таблицы и переменные перечитаются с сервера, ваши правки пропадут.",
-      confirmLabel: "Отменить изменения",
+      title: 'Отменить несохранённые изменения?',
+      description: 'Таблицы и переменные перечитаются с сервера, ваши правки пропадут.',
+      confirmLabel: 'Отменить изменения',
       danger: true,
     });
     if (!ok) return;
@@ -112,21 +123,23 @@ export function DataPage({projectList, project, unavailable, listLoaded, onSelec
   };
 
   // Нарушения таблиц уровня набора (предел 1 МБ, таблица без имени) — баннером.
-  const dataBanner = dataErrors.filter(e => e.table === null || e.field === "tables");
+  const dataBanner = dataErrors.filter((e) => e.table === null || e.field === 'tables');
   // Нарушения набора automation, не относящиеся к переменным, здесь не исправить.
-  const automationBanner = automationErrors.filter(e => !e.field.startsWith("variables"));
+  const automationBanner = automationErrors.filter((e) => !e.field.startsWith('variables'));
   const banner = onVariablesTab
-    ? automationBanner.map(e => `${e.task ? `${e.task} · ` : ""}${e.field}: ${e.message}`)
-    : dataBanner.map(e => `${e.field}: ${e.message}`);
+    ? automationBanner.map((e) => `${e.task ? `${e.task} · ` : ''}${e.field}: ${e.message}`)
+    : dataBanner.map((e) => `${e.field}: ${e.message}`);
 
   return (
     <PageFrame>
       <PageHeader
         title="Данные проекта"
+        className="gap-2 xl:gap-3"
+        shrinkContent
         actions={
           <DataHeaderActions
             onVariablesTab={onVariablesTab}
-            tablesTab={tab === "tables"}
+            tablesTab={tab === 'tables'}
             loaded={loaded}
             version={version}
             canWrite={canWrite}
@@ -143,43 +156,82 @@ export function DataPage({projectList, project, unavailable, listLoaded, onSelec
           />
         }
       >
-        <ProjectSelect projects={projectList} value={projectId} onChange={id => void switchProject(id)} />
-        <Tabs aria-label="Разделы данных проекта" value={tab} onValueChange={setTab} items={[
-          {value: "tables", label: "Таблицы", dirty: dataDirty},
-          {value: "variables", label: "Переменные", dirty: automationDirty},
-          {value: "history", label: "История таблиц"},
-        ]} />
+        <ProjectSelect
+          projects={projectList}
+          value={projectId}
+          onChange={(id) => void switchProject(id)}
+          className="min-w-24 max-w-36 lg:max-w-48"
+        />
+        <Tabs
+          className="shrink-0 max-lg:[&>button]:px-2"
+          aria-label="Разделы данных проекта"
+          value={tab}
+          onValueChange={setTab}
+          items={[
+            { value: 'tables', label: 'Таблицы', dirty: dataDirty },
+            { value: 'variables', label: 'Переменные', dirty: automationDirty },
+            { value: 'history', label: 'История таблиц' },
+          ]}
+        />
       </PageHeader>
 
       {project && loaded && !canWrite && <ReadOnlyBanner projectName={project.name} />}
 
       {banner.length > 0 && (
         <Banner layout="bar" tone="destructive" icon={CircleAlert}>
-          {banner.map((line, i) => <div key={i}>{line}</div>)}
+          {banner.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
           {onVariablesTab && (
-            <div>Эти нарушения исправляются на странице <Link href="/automation" className="underline">«Автоматизация»</Link>.</div>
+            <div>
+              Эти нарушения исправляются на странице{' '}
+              <Link href="/automation" className="underline">
+                «Автоматизация»
+              </Link>
+              .
+            </div>
           )}
         </Banner>
       )}
 
       {projectId == null ? (
-        <ProjectPlaceholder listLoaded={listLoaded} projectCount={projectList.length} unavailable={unavailable} />
+        <ProjectPlaceholder
+          listLoaded={listLoaded}
+          projectCount={projectList.length}
+          unavailable={unavailable}
+        />
       ) : !loaded ? (
         <Spinner label="Загрузка…" fill />
       ) : (
-        <DataTabContent tab={tab} projectId={projectId} canWrite={canWrite} tables={tables} variables={variables} />
+        <DataTabContent
+          tab={tab}
+          projectId={projectId}
+          canWrite={canWrite}
+          tables={tables}
+          variables={variables}
+        />
       )}
 
       {canWrite && anyDirty && (
         <UnsavedNotice
-          details={[dataDirty && "таблицы", automationDirty && "переменные"].filter(Boolean).join(", ")}
+          details={[dataDirty && 'таблицы', automationDirty && 'переменные']
+            .filter(Boolean)
+            .join(', ')}
           onSave={() => void handleSaveAll()}
           onDiscard={() => void handleDiscardAll()}
           saving={saving}
-          saveBlockedReason={dataDirty && invalidCells > 0 ? `Есть ячейки с неверным значением: ${invalidCells}` : null}
+          saveBlockedReason={
+            dataDirty && invalidCells > 0
+              ? `Есть ячейки с неверным значением: ${invalidCells}`
+              : null
+          }
         />
       )}
-      {loaded && <FloatingHelp storageKey="help.data" title={DATA_HELP[tab].title}>{DATA_HELP[tab].body}</FloatingHelp>}
+      {loaded && (
+        <FloatingHelp storageKey="help.data" title={DATA_HELP[tab].title}>
+          {DATA_HELP[tab].body}
+        </FloatingHelp>
+      )}
     </PageFrame>
   );
 }

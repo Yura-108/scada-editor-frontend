@@ -1,26 +1,38 @@
-"use client";
+'use client';
 
-import React, {useEffect, useState} from "react";
-import {History, Radio} from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { History, Radio } from 'lucide-react';
 import {
-  ArchivePlayerBar, AutomationTaskPanel, FloatingWindowsLayer, MonitorActions, MonitorStatusBadges,
-  NoReleaseNotice, ProcedureHud, ProcedurePanel, registerMonitorDialogs, RejectedNotice,
-  useArchiveReplay, useMonitorMode, useMonitorWindows, useProcedureSync, useRuntimeEngine,
-} from "@/modules/monitor";
-import {Canvas, useEditorStore, SceneTabs} from "@/modules/editor";
-import {ProjectSelect} from "@/core/project";
-import {Select} from "@/shared/ui/field/Select";
-import {PageFrame} from "@/shared/ui/page/PageFrame";
-import {PageHeader} from "@/shared/ui/page/PageHeader";
-import {EmptyState} from "@/shared/ui/EmptyState";
-import {SegmentedControl} from "@/shared/ui/SegmentedControl";
-import {useMonitorRevoked, useMonitorSession} from "./useMonitorSession";
+  ArchivePlayerBar,
+  AutomationTaskPanel,
+  FloatingWindowsLayer,
+  MonitorActions,
+  MonitorStatusBadges,
+  NoReleaseNotice,
+  ProcedureHud,
+  ProcedurePanel,
+  registerMonitorDialogs,
+  RejectedNotice,
+  useArchiveReplay,
+  useMonitorMode,
+  useMonitorWindows,
+  useProcedureSync,
+  useRuntimeEngine,
+} from '@/modules/monitor';
+import { Canvas, useEditorStore, SceneTabs } from '@/modules/editor';
+import { ProjectSelect } from '@/core/project';
+import { Select } from '@/shared/ui/field/Select';
+import { PageFrame } from '@/shared/ui/page/PageFrame';
+import { PageHeader } from '@/shared/ui/page/PageHeader';
+import { EmptyState } from '@/shared/ui/EmptyState';
+import { SegmentedControl } from '@/shared/ui/SegmentedControl';
+import { useMonitorRevoked, useMonitorSession } from './useMonitorSession';
 
 // Окна монитора для меню элемента на холсте.
 registerMonitorDialogs();
 
 /** Вкладка выполнения процедур. Не схема — у неё нет `sceneId`, как у «Рецептов» в редакторе. */
-const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const;
+const PROCEDURES_TAB = { key: 'procedures', label: 'Процедуры' } as const;
 
 /**
  * Режим монитора: read-only просмотр сцены с живыми данными.
@@ -30,25 +42,33 @@ const PROCEDURES_TAB = {key: "procedures", label: "Процедуры"} as const
  * (автосейв здесь и не смонтирован — он живёт только в EditorClient).
  */
 export default function MonitorClient() {
-  const projectList = useEditorStore(s => s.projectList);
-  const currentProject = useEditorStore(s => s.currentProject);
-  const sceneList = useEditorStore(s => s.sceneList);
-  const scene = useEditorStore(s => s.scene);
-  const setCurrentProject = useEditorStore(s => s.setCurrentProject);
-  const loadScene = useEditorStore(s => s.loadScene);
-  const runtimeFlags = useEditorStore(s => s.projectRuntimeFlags);
-  const releaseVersionNo = useEditorStore(s => s.releaseVersionNo);
-  const releaseError = useEditorStore(s => s.releaseError);
+  const projectList = useEditorStore((s) => s.projectList);
+  const currentProject = useEditorStore((s) => s.currentProject);
+  const sceneList = useEditorStore((s) => s.sceneList);
+  const scene = useEditorStore((s) => s.scene);
+  const setCurrentProject = useEditorStore((s) => s.setCurrentProject);
+  const loadScene = useEditorStore((s) => s.loadScene);
+  const runtimeFlags = useEditorStore((s) => s.projectRuntimeFlags);
+  const releaseVersionNo = useEditorStore((s) => s.releaseVersionNo);
+  const releaseError = useEditorStore((s) => s.releaseError);
 
   useMonitorSession();
 
   const projectKey = currentProject?.id ?? null;
-  const {mode, setMode, isArchive} = useMonitorMode(projectKey);
+  const { mode, setMode, isArchive } = useMonitorMode(projectKey);
   useMonitorWindows(scene?.id ?? null, projectKey, isArchive);
 
   const engineActive = Boolean(scene && currentProject);
-  const {status, compileErrors, runtimeErrors, sessionId, statusDetail, isStale, subscribeTasks, archive} =
-    useRuntimeEngine(engineActive, mode);
+  const {
+    status,
+    compileErrors,
+    runtimeErrors,
+    sessionId,
+    statusDetail,
+    isStale,
+    subscribeTasks,
+    archive,
+  } = useRuntimeEngine(engineActive, mode);
   // Плеер — ровно один, здесь же: два применяли бы ленту дважды.
   const replayControls = useArchiveReplay(archive, engineActive && isArchive);
 
@@ -71,30 +91,43 @@ export default function MonitorClient() {
   // два опроса и по два тоста на событие.
   useProcedureSync();
 
-  const isLive = !isArchive && status === "live";
+  const isLive = !isArchive && status === 'live';
 
   return (
     <PageFrame>
-      {/* Тонкий тулбар: проект / сцена / индикатор соединения */}
-      {/* В одну строку на любой ширине: второстепенные подписи ниже xl сворачиваются до иконок
-          (полный текст — в подсказке), а не переносят панель на вторую строку. */}
-      <PageHeader title="Монитор" className="gap-2 xl:gap-3">
-
+      <PageHeader
+        title="Монитор"
+        className="gap-2 xl:gap-3"
+        shrinkContent
+        actions={
+          <MonitorStatusBadges
+            hasScene={Boolean(scene)}
+            isArchive={isArchive}
+            status={status}
+            statusDetail={statusDetail}
+            isStale={isStale}
+            compileErrors={compileErrors}
+            runtimeErrors={runtimeErrors}
+            releaseVersionNo={releaseVersionNo}
+          />
+        }
+      >
         <ProjectSelect
+          className="min-w-24 max-w-32 xl:max-w-48"
           projects={projectList}
           value={currentProject?.id}
-          onChange={(id) => setCurrentProject(projectList.find(p => p.id === id) ?? null)}
+          onChange={(id) => setCurrentProject(projectList.find((p) => p.id === id) ?? null)}
           // Помечаем только выключенные: это объясняет, почему у проекта не будет данных.
           // Пометка у рабочих была бы шумом — их большинство.
-          labelOf={(p) => `${p.name}${runtimeFlags[p.id] === false ? " — не в эксплуатации" : ""}`}
+          labelOf={(p) => `${p.name}${runtimeFlags[p.id] === false ? ' — не в эксплуатации' : ''}`}
         />
 
         <Select
           size="sm"
-          className="min-w-0 max-w-56 shrink"
+          className="min-w-24 max-w-32 xl:max-w-48"
           // На экране процедур схема не показана — и в списке её нет (#6 п. 3): выбор любой,
           // в том числе той же, возвращает к схеме.
-          value={showProcedures || scene?.id == null ? "" : String(scene.id)}
+          value={showProcedures || scene?.id == null ? '' : String(scene.id)}
           disabled={!currentProject}
           onValueChange={(v) => {
             const id = Number(v);
@@ -103,40 +136,31 @@ export default function MonitorClient() {
             if (id !== scene?.id) void loadScene(id);
           }}
           placeholder="Схема…"
-          options={sceneList.map(s => ({value: String(s.id), label: s.name}))}
+          options={sceneList.map((s) => ({ value: String(s.id), label: s.name }))}
         />
 
-        <div className="flex-1" />
-
         <SegmentedControl
+          className="ml-auto"
           aria-label="Режим монитора"
           value={mode}
-          onValueChange={m => {
+          onValueChange={(m) => {
             setMode(m);
             // Процедуры — живое управление, в архиве им не место.
-            if (m === "archive") { setShowProcedures(false); setShowTasks(false); }
+            if (m === 'archive') {
+              setShowProcedures(false);
+              setShowTasks(false);
+            }
           }}
           items={[
-            {value: "live", label: "Живые данные", icon: Radio, tone: "success"},
-            {value: "archive", label: "Архив", icon: History, tone: "warning", disabled: !scene},
+            { value: 'live', label: 'Живые данные', icon: Radio, tone: 'success' },
+            { value: 'archive', label: 'Архив', icon: History, tone: 'warning', disabled: !scene },
           ]}
         />
 
         <MonitorActions
           live={isLive && Boolean(sessionId)}
           showTasks={showTasks}
-          onToggleTasks={() => setShowTasks(v => !v)}
-        />
-
-        <MonitorStatusBadges
-          hasScene={Boolean(scene)}
-          isArchive={isArchive}
-          status={status}
-          statusDetail={statusDetail}
-          isStale={isStale}
-          compileErrors={compileErrors}
-          runtimeErrors={runtimeErrors}
-          releaseVersionNo={releaseVersionNo}
+          onToggleTasks={() => setShowTasks((v) => !v)}
         />
       </PageHeader>
 
@@ -147,11 +171,14 @@ export default function MonitorClient() {
           единственный способ открыть любую другую. Ни схемы, ни закреплённых — полоса
           не рисуется вовсе (SceneTabs вернёт null). */}
       <SceneTabs
-        activeKey={showProcedures ? PROCEDURES_TAB.key : (scene ? `scene:${scene.id}` : "")}
+        activeKey={showProcedures ? PROCEDURES_TAB.key : scene ? `scene:${scene.id}` : ''}
         onActivate={(key) => {
-          if (key === PROCEDURES_TAB.key) { setShowProcedures(true); return; }
+          if (key === PROCEDURES_TAB.key) {
+            setShowProcedures(true);
+            return;
+          }
           setShowProcedures(false);
-          const id = Number(key.slice("scene:".length));
+          const id = Number(key.slice('scene:'.length));
           // Без openSceneGuarded: монитор не редактирует, спрашивать про
           // несохранённые правки не о чем, палитра ему не нужна.
           if (Number.isSafeInteger(id) && id !== scene?.id) void loadScene(id);
@@ -170,25 +197,32 @@ export default function MonitorClient() {
       {/* «Фоновые задачи» — колонкой справа: висела поверх схемы и кнопок «Запустить» /
           «Повторить» без затемнения, и под ней было не видно содержимого (#6 п. 8). */}
       <div className="flex flex-1 min-h-0">
-      <div id="monitor-canvas" className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-card">
-        {showProcedures ? (
-          <ProcedurePanel />
-        ) : releaseError && !scene ? (
-          <NoReleaseNotice message={releaseError} />
-        ) : !isArchive && status === "rejected" ? (
-          <RejectedNotice detail={statusDetail} />
-        ) : scene ? (
-          <Canvas readOnly archive={isArchive} />
-        ) : (
-          <EmptyState size="sm" title={currentProject ? "Выберите схему" : "Выберите проект и схему"} className="h-full justify-center" />
-        )}
+        <div
+          id="monitor-canvas"
+          className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-card"
+        >
+          {showProcedures ? (
+            <ProcedurePanel />
+          ) : releaseError && !scene ? (
+            <NoReleaseNotice message={releaseError} />
+          ) : !isArchive && status === 'rejected' ? (
+            <RejectedNotice detail={statusDetail} />
+          ) : scene ? (
+            <Canvas readOnly archive={isArchive} />
+          ) : (
+            <EmptyState
+              size="sm"
+              title={currentProject ? 'Выберите схему' : 'Выберите проект и схему'}
+              className="h-full justify-center"
+            />
+          )}
 
-        {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
-        {!showProcedures && !isArchive && <ProcedureHud />}
-        {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
-        {!showProcedures && !isArchive && <FloatingWindowsLayer />}
-      </div>
-      {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
+          {/* Над вкладкой «Процедуры» HUD не нужен — он дублировал бы её и закрывал. */}
+          {!showProcedures && !isArchive && <ProcedureHud />}
+          {/* «Опции» и инспектор — плавающие окна над схемой, не модалки. */}
+          {!showProcedures && !isArchive && <FloatingWindowsLayer />}
+        </div>
+        {showTasks && <AutomationTaskPanel onClose={() => setShowTasks(false)} />}
       </div>
     </PageFrame>
   );
