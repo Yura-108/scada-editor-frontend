@@ -50,7 +50,8 @@ Contract: `docs/contract/frontend-contract-changes.md` (revision of 17.08.2026).
   on both sides and has been removed.
 - **History endpoints** are proxied under `/api/editor/history/{scenes|templates}/{id}/…` (`src/server/proxy/editorHistoryProxy.ts`). `docType` is whitelisted because it is interpolated into the backend URL; `kind` may repeat, so use `getAll`. Paging uses a `to = created_at` cursor, never an offset.
 - **Version preview** reuses `Canvas readOnly` (the monitor's path). Entering stashes live state in a module var, pauses `temporal`, and marks the scene saved so the dirty flag describes the version, not the user's work; exiting restores everything including `savedElementsSnapshot`. **Anything that can mutate or persist must bail on `versionPreview`** — `exportScene`, the autosave tick, the properties panel, and the unload warning (`hasUnsavedWork`, which reads the stash) all do. Crossing a document boundary (`loadScene`, `createScene`, `deleteScene`, `setCurrentProject`) calls `discardVersionPreview`, which drops the stash rather than restoring it into a different scene.
-- **«Вернуться к предыдущему сохранению» asks first** (#21 п. 4): `restorePreviousManualVersion` finds
-  the target with `findPreviousManualVersion` (unchanged: after a RESTORE the step back counts from
-  the restored source, so the button never loops) and shows «Вернуться к версии N?» with its time and
-  author before `restoreVersion`, like «Восстановить» in the history panel.
+- **«Вернуться к предыдущему сохранению»** (#21 п. 4) после восстановления из истории выбирает
+  версию, которая была текущей перед восстановлением. После возврата с панели следующий шаг
+  ищет более раннее ручное сохранение относительно содержимого на холсте. Вкладка хранит
+  номер версии, созданной кнопкой возврата. Перед записью `restoreVersion` под общим замком
+  проверяет, что подтверждение относится к той же схеме и актуальной серверной версии.

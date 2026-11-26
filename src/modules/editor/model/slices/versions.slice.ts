@@ -1,19 +1,30 @@
-import {toast} from "sonner";
-import {confirmModal} from "@/shared/ui/dialog/confirmModal";
-import {formatServerTime} from "@/shared/lib/serverTime";
-import type {EditorState} from "../editorStore";
+import { toast } from 'sonner';
+import { confirmModal } from '@/shared/ui/dialog/confirmModal';
+import { formatServerTime } from '@/shared/lib/serverTime';
+import type { EditorState } from '../editorStore';
 import {
   type VersionKind,
   type VersionListQuery,
   type VersionPreview,
   type VersionSummary,
-} from "@/core/project";
+} from '@/core/project';
 // переедут в core/scene вместе с остальным lib (шаг 8)
-import {dropScene, fetchCurrentVersion, fetchVersionAt, fetchVersionContent, fetchVersions, restoreVersionRequest} from "@/core/project";
-import {editorSession} from "../editorSession";
-import {editorStore} from "../editorStoreRef";
-import {replaceCanvasFromServer, withSaveLock} from "../saveFlow";
-import {findPreviousManualVersion, reportRestoreOutcome} from "../versionHistory";
+import {
+  dropScene,
+  fetchCurrentVersion,
+  fetchVersionAt,
+  fetchVersionContent,
+  fetchVersions,
+  restoreVersionRequest,
+} from '@/core/project';
+import { editorSession } from '../editorSession';
+import { editorStore } from '../editorStoreRef';
+import { replaceCanvasFromServer, withSaveLock } from '../saveFlow';
+import {
+  loadPreviousVersion,
+  rememberReturnedVersion,
+  reportRestoreOutcome,
+} from '../versionHistory';
 import {
   canWriteCurrentProject,
   enterVersionPreview,
@@ -21,7 +32,7 @@ import {
   markSceneSaved,
   refuseViewOnly,
   VERSIONS_PAGE_SIZE,
-} from "../editorStoreInternals";
+} from '../editorStoreInternals';
 
 /**
  * Зона «Версии» стора редактора: номер версии сцены, история версий, просмотр и
@@ -55,21 +66,67 @@ export interface VersionsSlice {
   versionPreview: VersionPreview | null;
 
   refreshSceneVersion: () => Promise<void>;
-  loadVersions: (opts?: VersionListQuery & {append?: boolean}) => Promise<void>;
+  loadVersions: (opts?: VersionListQuery & { append?: boolean }) => Promise<void>;
   /** Открывает версию в режиме просмотра (не трогая несохранённые правки). */
   previewVersion: (versionNo: number) => Promise<void>;
   /** Просмотр состояния на момент времени (ISO date-time). */
   previewVersionAt: (time: string) => Promise<void>;
   exitVersionPreview: () => void;
-  restoreVersion: (versionNo: number) => Promise<boolean>;
-  /** «Вернуться к предыдущему сохранению»: ближайшая MANUAL старше того, что на холсте
-   *  (для RESTORE — старше версии-источника, иначе шаг назад ходил бы по кругу). */
+  restoreVersion: (versionNo: number, expectedServerVersion?: number) => Promise<boolean>;
+  /** «Вернуться к предыдущему сохранению»: отмена восстановления или шаг к ручному сохранению. */
   restorePreviousManualVersion: () => Promise<boolean>;
 }
 
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
 ) => void;
+
+const warnOutdatedRestore = () => {
+  toast.warning('Схема обновилась. Откройте актуальную версию и повторите возврат.');
+  return false;
+};
+
+async function restorePreviousVersion(get: () => EditorState): Promise<boolean> {
+  const { scene, currentProject, sceneVersion, versionPreview } = get();
+  if (!scene || versionPreview) return false;
+  if (!canWriteCurrentProject()) return refuseViewOnly();
+  const isCurrent = () =>
+    get().scene?.id === scene.id &&
+    get().currentProject?.id === currentProject?.id &&
+    get().sceneVersion === sceneVersion &&
+    !get().versionPreview;
+
+  try {
+    const { head, previous } = await loadPreviousVersion(Number(scene.id), VERSIONS_PAGE_SIZE);
+    if (!isCurrent() || (sceneVersion != null && head?.version_no !== sceneVersion)) {
+      return warnOutdatedRestore();
+    }
+
+    if (!head || !previous) {
+      toast.info('Предыдущего сохранения нет');
+      return false;
+    }
+
+    // Раньше кнопка срабатывала сразу, без вопроса, хотя у «Восстановить» в истории он есть,
+    // и не говорила, к какой версии вернёт (#21 п. 4).
+    const ok = await confirmModal({
+      title: `Вернуться к версии ${previous.version_no}?`,
+      description:
+        `Версия ${previous.version_no} сохранена ${formatServerTime(previous.created_at)}, ${previous.user_name}. ` +
+        'Будет создана новая версия с её содержимым, история не переписывается. ' +
+        'Несохранённые изменения на холсте будут потеряны.',
+      confirmLabel: 'Вернуться',
+    });
+    if (!ok) return false;
+
+    if (!isCurrent()) return warnOutdatedRestore();
+    return await get().restoreVersion(previous.version_no, head.version_no);
+  } catch (err) {
+    console.error(err);
+    toast.error(getErrorMessage(err, 'Не удалось найти предыдущее сохранение'));
+    return false;
+  }
+}
 
 export const createVersionsSlice = (set: EditorSet, get: () => EditorState): VersionsSlice => ({
   sceneVersion: null,
@@ -84,15 +141,15 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     if (sceneId == null) return;
 
     try {
-      const version = await fetchCurrentVersion("scenes", Number(sceneId));
+      const version = await fetchCurrentVersion('scenes', Number(sceneId));
       // Сцену могли переключить, пока запрос летел — чужую версию не подставляем.
       if (get().scene?.id !== sceneId) return;
-      set({sceneVersion: version});
+      set({ sceneVersion: version });
     } catch (err) {
       // Молча: без версии редактор работает, а ругаться тостом на фоновый запрос,
       // которого пользователь не делал, нельзя. Первое сохранение просто уйдёт
       // без based_on_version, и бэкенд ответит 400 с внятной причиной.
-      console.warn("[versions] не удалось узнать текущую версию сцены:", err);
+      console.warn('[versions] не удалось узнать текущую версию сцены:', err);
     }
   },
   loadVersions: async (opts) => {
@@ -106,74 +163,76 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     // пользователя, а не молча показать все виды версий.
     const kinds = opts?.kinds ?? get().versionsKinds ?? undefined;
 
-    set({isVersionsLoading: true, ...(opts?.kinds ? {versionsKinds: opts.kinds} : {})});
+    set({ isVersionsLoading: true, ...(opts?.kinds ? { versionsKinds: opts.kinds } : {}) });
     try {
-      const page = await fetchVersions("scenes", Number(sceneId), {...opts, kinds, limit});
+      const page = await fetchVersions('scenes', Number(sceneId), { ...opts, kinds, limit });
       if (get().scene?.id !== sceneId) return;
 
-      set(state => ({
+      set((state) => ({
         // Дозагрузка курсором по `to` включительна, поэтому последняя показанная
         // строка приходит повторно — отсеиваем по version_no, иначе она задваивается.
         versions: append
-          ? [...state.versions, ...page.filter(v => !state.versions.some(x => x.version_no === v.version_no))]
+          ? [
+              ...state.versions,
+              ...page.filter((v) => !state.versions.some((x) => x.version_no === v.version_no)),
+            ]
           : page,
         versionsExhausted: page.length < limit,
       }));
     } catch (err) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось загрузить историю версий"));
+      toast.error(getErrorMessage(err, 'Не удалось загрузить историю версий'));
     } finally {
-      set({isVersionsLoading: false});
+      set({ isVersionsLoading: false });
     }
   },
   previewVersion: async (versionNo) => {
-    const {scene} = get();
+    const { scene } = get();
     if (!scene?.id) return;
 
     try {
-      const doc = await fetchVersionContent("scenes", Number(scene.id), versionNo);
-      const summary = get().versions.find(v => v.version_no === versionNo);
+      const doc = await fetchVersionContent('scenes', Number(scene.id), versionNo);
+      const summary = get().versions.find((v) => v.version_no === versionNo);
 
       enterVersionPreview(doc, scene, {
         versionNo,
-        kind: summary?.kind ?? "MANUAL",
-        userName: summary?.user_name ?? "",
-        createdAt: summary?.created_at ?? "",
+        kind: summary?.kind ?? 'MANUAL',
+        userName: summary?.user_name ?? '',
+        createdAt: summary?.created_at ?? '',
       });
     } catch (err) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось открыть версию"));
+      toast.error(getErrorMessage(err, 'Не удалось открыть версию'));
     }
   },
   previewVersionAt: async (time) => {
-    const {scene} = get();
+    const { scene } = get();
     if (!scene?.id) return;
 
     try {
-      const doc = await fetchVersionAt("scenes", Number(scene.id), time);
+      const doc = await fetchVersionAt('scenes', Number(scene.id), time);
       if (!doc) {
-        toast.info("На этот момент сохранённых версий ещё не было");
+        toast.info('На этот момент сохранённых версий ещё не было');
         return;
       }
 
       // Номер версии здесь может не прийти вовсе: `at` отдаёт документ в обычной
       // форме, а не запись истории. Подставлять 0 нельзя — плашка сказала бы
       // «версия 0», а кнопка «Восстановить» восстановила бы не то.
-      const versionNo = typeof doc.version_no === "number" ? doc.version_no : null;
-      const summary = versionNo != null
-        ? get().versions.find(v => v.version_no === versionNo)
-        : undefined;
+      const versionNo = typeof doc.version_no === 'number' ? doc.version_no : null;
+      const summary =
+        versionNo != null ? get().versions.find((v) => v.version_no === versionNo) : undefined;
 
       enterVersionPreview(doc, scene, {
         versionNo,
-        kind: summary?.kind ?? "MANUAL",
-        userName: summary?.user_name ?? "",
-        createdAt: summary?.created_at ?? "",
+        kind: summary?.kind ?? 'MANUAL',
+        userName: summary?.user_name ?? '',
+        createdAt: summary?.created_at ?? '',
         atTime: time,
       });
     } catch (err) {
       console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось загрузить состояние на момент времени"));
+      toast.error(getErrorMessage(err, 'Не удалось загрузить состояние на момент времени'));
     }
   },
   exitVersionPreview: () => {
@@ -184,7 +243,7 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
       // обязаны ПОЛНОСТЬЮ: без resume() история осталась бы на паузе навсегда, и
       // редактор молча перестал бы писать шаги undo.
       editorSession.versionPreviewStash = null;
-      set({versionPreview: null});
+      set({ versionPreview: null });
       if (wasPreviewing) editorStore().temporal.getState().resume();
       return;
     }
@@ -207,9 +266,13 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
 
     editorStore().temporal.getState().resume();
   },
-  restoreVersion: async (versionNo) => {
-    if (!get().scene?.id) return false;
+  restoreVersion: async (versionNo, expectedServerVersion) => {
+    const { scene, currentProject, sceneVersion } = get();
+    if (!scene?.id) return false;
     if (!canWriteCurrentProject()) return refuseViewOnly();
+    const projectId = currentProject?.id;
+    const isSameScene = () =>
+      get().scene?.id === scene.id && get().currentProject?.id === projectId;
 
     // Восстановление берёт ТОТ ЖЕ замок, что и сохранение. Без этого летящее
     // сохранение (ручное или автосейв) ложится на сервер уже ПОСЛЕ восстановления и
@@ -217,22 +280,43 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
     // это выглядит как «восстановление не сработало». Заодно замок сериализует два
     // восстановления подряд: побеждает нажатое последним, а не ответившее последним.
     return withSaveLock(async (): Promise<boolean> => {
-      const {scene} = get();
-      if (!scene?.id) return false;
+      if (!isSameScene()) return false;
+      if (!canWriteCurrentProject()) return refuseViewOnly();
 
       try {
+        if (expectedServerVersion != null) {
+          const latest = await fetchCurrentVersion('scenes', Number(scene.id));
+          if (
+            !isSameScene() ||
+            get().versionPreview ||
+            get().sceneVersion !== sceneVersion ||
+            latest !== expectedServerVersion
+          )
+            return warnOutdatedRestore();
+          if (!canWriteCurrentProject()) return refuseViewOnly();
+        }
         // Пустой ответ на непустой сцене — признак беды (см. ниже), поэтому надо
         // знать, было ли на холсте хоть что-то ДО восстановления.
         const hadElements = get().elements.length > 0;
 
-        const restored = await restoreVersionRequest("scenes", Number(scene.id), versionNo);
+        const generation = editorSession.documentGeneration;
+        const restored = await restoreVersionRequest('scenes', Number(scene.id), versionNo);
+        if (projectId != null) dropScene(projectId, scene.id);
+        if (
+          expectedServerVersion != null &&
+          restored.version_no != null &&
+          (restored.restored_from == null || restored.restored_from === versionNo)
+        ) {
+          rememberReturnedVersion(Number(scene.id), restored.version_no);
+        }
+        if (!isSameScene() || generation !== editorSession.documentGeneration) return false;
 
         // Восстановление дописывает историю новой версией — просмотр закрываем без
         // возврата отложенных правок: они относятся к состоянию, которое пользователь
         // только что осознанно заменил.
         editorSession.versionPreviewStash = null;
         if (get().versionPreview) editorStore().temporal.getState().resume();
-        set({versionPreview: null});
+        set({ versionPreview: null });
 
         // Ответу доверяем холст только когда он подтверждён контрактом и не пуст:
         //  - без `version_no` бэкенд ответил не по контракту, и форму дерева в ответе
@@ -245,14 +329,12 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         const trustResponse =
           restored.version_no != null && (restored.components.length > 0 || !hadElements);
 
-        // Восстановление записало новую версию — запись кэша сцен устарела.
-        const projectId = get().currentProject?.id;
-        if (projectId != null) dropScene(projectId, scene.id);
-
         await replaceCanvasFromServer(
-          get, scene, projectId,
+          get,
+          scene,
+          projectId,
           trustResponse && restored.version_no != null
-            ? {components: restored.components, version: restored.version_no}
+            ? { components: restored.components, version: restored.version_no }
             : null,
         );
 
@@ -261,11 +343,16 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         editorStore().temporal.getState().clear();
 
         if (trustResponse) {
-          set({sceneVersion: restored.version_no, saveConflict: null, staleBaseVersion: null, autosaveError: null});
+          set({
+            sceneVersion: restored.version_no,
+            saveConflict: null,
+            staleBaseVersion: null,
+            autosaveError: null,
+          });
           markSceneSaved(true);
         } else {
           // loadScene уже расставил elements/снимок и сам спросил текущую версию.
-          set({saveConflict: null, staleBaseVersion: null, autosaveError: null});
+          set({ saveConflict: null, staleBaseVersion: null, autosaveError: null });
         }
         void get().loadVersions();
 
@@ -273,43 +360,10 @@ export const createVersionsSlice = (set: EditorSet, get: () => EditorState): Ver
         return true;
       } catch (err) {
         console.error(err);
-        toast.error(getErrorMessage(err, "Не удалось восстановить версию"));
+        toast.error(getErrorMessage(err, 'Не удалось восстановить версию'));
         return false;
       }
     });
   },
-  restorePreviousManualVersion: async () => {
-    const sceneId = get().scene?.id;
-    if (sceneId == null) return false;
-    if (!canWriteCurrentProject()) return refuseViewOnly();
-
-    try {
-      // Все виды, а не только MANUAL — см. findPreviousManualVersion.
-      const all = await fetchVersions("scenes", Number(sceneId), {limit: VERSIONS_PAGE_SIZE});
-      const previous = findPreviousManualVersion(all, get().sceneVersion);
-
-      if (!previous) {
-        toast.info("Предыдущего ручного сохранения нет");
-        return false;
-      }
-
-      // Раньше кнопка срабатывала сразу, без вопроса, хотя у «Восстановить» в истории он есть,
-      // и не говорила, к какой версии вернёт (#21 п. 4).
-      const ok = await confirmModal({
-        title: `Вернуться к версии ${previous.version_no}?`,
-        description:
-          `Версия ${previous.version_no} сохранена ${formatServerTime(previous.created_at)}, ${previous.user_name}. ` +
-          "Будет создана новая версия с её содержимым, история не переписывается. " +
-          "Несохранённые изменения на холсте будут потеряны.",
-        confirmLabel: "Вернуться",
-      });
-      if (!ok) return false;
-
-      return await get().restoreVersion(previous.version_no);
-    } catch (err) {
-      console.error(err);
-      toast.error(getErrorMessage(err, "Не удалось найти предыдущее сохранение"));
-      return false;
-    }
-  },
+  restorePreviousManualVersion: () => restorePreviousVersion(get),
 });
