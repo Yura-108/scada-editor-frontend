@@ -68,7 +68,7 @@ export function LogRow({
   const title = logObjectTitle(log, typeName);
 
   return (
-    <tr className={cn('align-top', log.undoneAt && 'opacity-60', nested && 'bg-muted/40')}>
+    <tr className={cn('align-top', log.undoneAt && 'opacity-70', nested && 'bg-muted/30')}>
       <td className={`${journalTd} whitespace-nowrap tabular-nums`}>
         {nested ? '' : formatServerTime(log.createdAt)}
       </td>
@@ -81,14 +81,14 @@ export function LogRow({
           {logActionLabel(kind, log.commandType)}
         </Badge>
       </td>
-      <td className={`${journalTd} font-mono text-xs text-muted-foreground`}>#{log.id}</td>
+      <td className={`${journalTd} font-mono text-xs text-foreground/60`}>#{log.id}</td>
       <td className={journalTd}>
         <LogDetailsModal
           log={log}
           trigger={
             <button
               type="button"
-              className="text-xs text-primary-text hover:underline underline-offset-4"
+              className="text-xs text-primary hover:underline underline-offset-4"
             >
               подробнее
             </button>
