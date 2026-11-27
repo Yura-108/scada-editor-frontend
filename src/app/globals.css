@@ -22,6 +22,7 @@
      В shadcn-пресете здесь был нейтральный почти-чёрный, из-за чего главное
      действие редактора («Сохранить») визуально не отличалось от вторичных. */
   --primary: oklch(0.51 0.23 277);
+  --primary-text: var(--primary);
   --primary-foreground: oklch(0.985 0 0);
   /* Цвет обводки фокуса. Не `--ring` (нейтрально-серый из shadcn-пресета):
      на серых панелях редактора его почти не видно. */
@@ -79,8 +80,9 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.62 0.19 277);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.65 0.19 277);
+  --primary-text: oklch(0.78 0.12 277);
+  --primary-foreground: oklch(0.145 0 0);
   --focus-ring: oklch(0.72 0.16 277);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -135,7 +137,9 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-text: var(--primary-text);
   --color-primary-foreground: var(--primary-foreground);
+  --color-focus-ring: var(--focus-ring);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

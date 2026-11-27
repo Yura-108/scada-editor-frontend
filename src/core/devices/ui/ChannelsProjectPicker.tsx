@@ -1,20 +1,20 @@
-import {useEffect, useId, useState} from "react";
-import {toast} from "sonner";
-import {Building2, Download, FolderOpen} from 'lucide-react';
-import {cn} from "@/shared/lib/cn";
-import {Spinner} from "@/shared/ui/Spinner";
-import {Button} from "@/shared/ui/Button";
-import {MultiSelect} from "@/shared/ui/MultiSelect";
-import {loadParamTypes} from "../model/deviceDictionaries";
-import {useDeviceTreeStore} from "../model/deviceTreeStore";
-import {useRestoreLoadedProjects} from "../model/useRestoreLoadedProjects";
-import {useProjectSelection} from "./useProjectSelection";
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { Building2, Download, FolderOpen } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Spinner } from '@/shared/ui/Spinner';
+import { Button } from '@/shared/ui/Button';
+import { MultiSelect } from '@/shared/ui/MultiSelect';
+import { loadParamTypes } from '../model/deviceDictionaries';
+import { useDeviceTreeStore } from '../model/deviceTreeStore';
+import { useRestoreLoadedProjects } from '../model/useRestoreLoadedProjects';
+import { useProjectSelection } from './useProjectSelection';
 
-const compact = "h-8 px-3 text-sm shadow-none whitespace-nowrap";
+const compact = 'h-8 px-3 text-sm shadow-none whitespace-nowrap';
 
 interface Props {
   /** `toolbar` — в строку панели «Базы каналов»; `stacked` — столбиком внутри пустого дерева. */
-  layout?: "toolbar" | "stacked";
+  layout?: 'toolbar' | 'stacked';
 }
 
 /**
@@ -22,22 +22,22 @@ interface Props {
  * «Базы каналов», и в пустом дереве тегов «Автоматизации» и окна выбора тега: раньше там был
  * текст «выберите площадку и проект ниже», а ниже ничего не было.
  */
-export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
-  const loadNodes = useDeviceTreeStore(s => s.loadNodes);
-  const {selectedSites, setSelectedSites, selectedProjects, setSelectedProjects} = useProjectSelection();
+export default function ChannelsProjectPicker({ layout = 'toolbar' }: Props) {
+  const loadNodes = useDeviceTreeStore((s) => s.loadNodes);
+  const { selectedSites, setSelectedSites, selectedProjects, setSelectedProjects } =
+    useProjectSelection();
   // После F5 — снова загрузить проекты этой вкладки (#16 п. 9).
   useRestoreLoadedProjects();
 
-  const [availableSites, setAvailableSites] = useState<{value: string, label: string}[]>([]);
+  const [availableSites, setAvailableSites] = useState<{ value: string; label: string }[]>([]);
   const [sitesLoaded, setSitesLoaded] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState<{value: string, label: string}[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<{ value: string; label: string }[]>(
+    [],
+  );
 
   const [isFetchingSites, setIsFetchingSites] = useState(false);
   const [isFetchingProjects, setIsFetchingProjects] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const sitesLabelId = useId();
-  const projectsLabelId = useId();
 
   // 1. Загрузка списка площадок
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
         const res = await fetch('/api/device/site/');
         if (!res.ok) throw new Error('Ошибка сети при загрузке площадок');
         const sites: string[] = await res.json();
-        setAvailableSites(sites.map(site => ({value: site, label: site})));
+        setAvailableSites(sites.map((site) => ({ value: site, label: site })));
         setSitesLoaded(true);
       } catch (err) {
         toast.error('Не удалось загрузить список площадок');
@@ -75,23 +75,30 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
     const fetchProjects = async () => {
       setIsFetchingProjects(true);
       try {
-        const results = await Promise.all(selectedSites.map(async (siteValue) => {
-          const res = await fetch(`/api/device/hierarchy?site=${encodeURIComponent(siteValue)}`);
-          if (!res.ok) throw new Error(`Ошибка загрузки проектов для ${siteValue}`);
-          const projects: {nodes: {key: string}[], params: []} = await res.json();
-          return projects.nodes.map(proj => {
-            const parts = proj.key.split('.');
-            // Площадка в подписи нужна, только когда выбрано несколько: иначе она одна и та же.
-            const label = parts.pop() || '';
-            return {value: proj.key, label: selectedSites.length > 1 ? `${label} (${parts.join('.')})` : label};
-          });
-        }));
+        const results = await Promise.all(
+          selectedSites.map(async (siteValue) => {
+            const res = await fetch(`/api/device/hierarchy?site=${encodeURIComponent(siteValue)}`);
+            if (!res.ok) throw new Error(`Ошибка загрузки проектов для ${siteValue}`);
+            const projects: { nodes: { key: string }[]; params: [] } = await res.json();
+            return projects.nodes.map((proj) => {
+              const parts = proj.key.split('.');
+              // Площадка в подписи нужна, только когда выбрано несколько: иначе она одна и та же.
+              const label = parts.pop() || '';
+              return {
+                value: proj.key,
+                label: selectedSites.length > 1 ? `${label} (${parts.join('.')})` : label,
+              };
+            });
+          }),
+        );
         const allProjects = results.flat();
         if (cancelled) return;
 
         setAvailableProjects(allProjects);
         // Снятая площадка уносит свои проекты из выбора.
-        setSelectedProjects(prev => prev.filter(value => allProjects.some(p => p.value === value)));
+        setSelectedProjects((prev) =>
+          prev.filter((value) => allProjects.some((p) => p.value === value)),
+        );
       } catch (err) {
         if (cancelled) return;
         toast.error('Не удалось загрузить список проектов');
@@ -102,7 +109,9 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
     };
 
     void fetchProjects();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedSites, setSelectedProjects]);
 
   const handleLoad = async () => {
@@ -112,7 +121,12 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
       await loadNodes(selectedProjects);
       await loadParamTypes();
       const { nodesError } = useDeviceTreeStore.getState();
-      if (!nodesError) toast.success(selectedProjects.length > 1 ? `Загружено проектов: ${selectedProjects.length}` : 'Проект загружен');
+      if (!nodesError)
+        toast.success(
+          selectedProjects.length > 1
+            ? `Загружено проектов: ${selectedProjects.length}`
+            : 'Проект загружен',
+        );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
       toast.error(
@@ -129,23 +143,29 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
   // пустой список, а не 403 — иначе пользователь не узнал бы причину.
   if (sitesLoaded && availableSites.length === 0) {
     return (
-      <span className={cn("text-sm text-muted-foreground", layout === "stacked" && "block text-center")}>
+      <span
+        className={cn('text-sm text-muted-foreground', layout === 'stacked' && 'block text-center')}
+      >
         Нет доступных площадок — ветки каталога выдаёт администратор.
       </span>
     );
   }
 
-  const loadHint = selectedSites.length === 0 ? 'Сначала выберите площадку'
-    : selectedProjects.length === 0 ? 'Выберите один или несколько проектов'
-    : 'Загрузить устройства выбранных проектов в дерево';
-  const stacked = layout === "stacked";
+  const loadHint =
+    selectedSites.length === 0
+      ? 'Сначала выберите площадку'
+      : selectedProjects.length === 0
+        ? 'Выберите один или несколько проектов'
+        : 'Загрузить устройства выбранных проектов в дерево';
+  const stacked = layout === 'stacked';
 
   return (
-    <div className={cn(stacked ? "flex flex-col gap-2 w-full max-w-xs" : "contents [&>*]:shrink-0")}>
-      <span id={sitesLabelId} className="sr-only">Площадки</span>
+    <div
+      className={cn(stacked ? 'flex flex-col gap-2 w-full max-w-xs' : 'contents [&>*]:shrink-0')}
+    >
       <MultiSelect
-        labelId={sitesLabelId}
-        className={stacked ? "w-full" : "w-48"}
+        label="Площадка"
+        className={stacked ? 'w-full' : 'w-48'}
         options={availableSites}
         selected={selectedSites}
         onChange={setSelectedSites}
@@ -154,14 +174,13 @@ export default function ChannelsProjectPicker({layout = "toolbar"}: Props) {
         isLoading={isFetchingSites}
       />
 
-      <span id={projectsLabelId} className="sr-only">Проекты</span>
       <MultiSelect
-        labelId={projectsLabelId}
-        className={stacked ? "w-full" : "w-64 xl:w-80"} // шире там, где есть место: «Танки-нормализации-молока» обрезался и на 1366 px (#16 п. 12)
+        label="Проекты базы каналов"
+        className={stacked ? 'w-full' : 'w-64 xl:w-80'} // шире там, где есть место: «Танки-нормализации-молока» обрезался и на 1366 px (#16 п. 12)
         options={availableProjects}
         selected={selectedProjects}
         onChange={setSelectedProjects}
-        placeholder={selectedSites.length ? "Проект…" : "Сначала площадка"}
+        placeholder={selectedSites.length ? 'Проект…' : 'Сначала площадка'}
         icon={<FolderOpen />}
         disabled={selectedSites.length === 0}
         isLoading={isFetchingProjects}

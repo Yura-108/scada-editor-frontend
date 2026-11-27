@@ -57,9 +57,9 @@ export function RecipesPanel() {
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between gap-4">
         {/* Единый вид заголовка панели (как в «Слоях» и «Свойствах»). */}
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Рецепты
-        </h3>
+        </h2>
 
         {canEditRecipes && (
           <button

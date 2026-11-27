@@ -61,7 +61,7 @@ function HelpText({ help }: { help: SectionHelp }) {
         aria-expanded={expanded}
         aria-controls={detailsId}
         onClick={() => setExpanded((v) => !v)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary-text hover:underline"
       >
         {expanded ? 'Свернуть подробности' : 'Подробнее'}
         <ChevronDown size={14} aria-hidden className={expanded ? 'rotate-180' : undefined} />

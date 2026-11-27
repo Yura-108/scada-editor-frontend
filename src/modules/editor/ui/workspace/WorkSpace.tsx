@@ -83,7 +83,7 @@ export function WorkSpace() {
         className="relative flex-1 min-h-0 overflow-hidden"
       >
         {/* Центральная область (Холст). Занимает 100% места, находится под панелями */}
-        <main className="absolute inset-0  flex flex-col z-canvas">
+        <div className="absolute inset-0 flex flex-col z-canvas">
           {showEditorPanels && <ToolsPanel />}
 
           {/* Полоса вкладок — общий компонент с монитором (SceneTabs).
@@ -113,7 +113,7 @@ export function WorkSpace() {
           >
             {renderTabContent()}
           </div>
-        </main>
+        </div>
 
         <LeftPanel
           width={leftWidth}

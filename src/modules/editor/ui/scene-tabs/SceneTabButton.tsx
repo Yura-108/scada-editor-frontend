@@ -44,7 +44,7 @@ export function SceneTabButton(props: SceneTabButtonProps) {
         shrink && 'min-w-0 shrink',
         dragListeners && 'cursor-grab active:cursor-grabbing',
         isActive
-          ? 'text-primary border-b-2 border-primary'
+          ? 'text-primary-text border-b-2 border-primary'
           : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
       )}
       {...dragListeners}

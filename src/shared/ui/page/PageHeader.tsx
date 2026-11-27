@@ -38,7 +38,7 @@ export function PageHeader({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const shown = alwaysShowTitle ? 'flex' : 'hidden xl:flex';
+  const hiddenOnSmall = !alwaysShowTitle && 'max-xl:hidden';
 
   return (
     <div className="flex h-(--page-header-h) shrink-0 items-center gap-3 border-b bg-card px-4">
@@ -49,10 +49,32 @@ export function PageHeader({
           className,
         )}
       >
-        <div className={cn(shown, 'shrink-0 items-baseline gap-3')}>
-          {Icon && <Icon size={16} aria-hidden className="shrink-0 self-center text-primary" />}
-          <h1 className="text-sm font-semibold text-foreground">{title}</h1>
-          {description && <span className="text-xs text-muted-foreground">{description}</span>}
+        <div
+          className={cn(
+            'flex shrink-0 items-baseline gap-3',
+            !alwaysShowTitle && 'max-xl:contents',
+          )}
+        >
+          {Icon && (
+            <Icon
+              size={16}
+              aria-hidden
+              className={cn(hiddenOnSmall, 'shrink-0 self-center text-primary')}
+            />
+          )}
+          <h1
+            className={cn(
+              'text-sm font-semibold text-foreground',
+              !alwaysShowTitle && 'max-xl:sr-only',
+            )}
+          >
+            {title}
+          </h1>
+          {description && (
+            <span className={cn(hiddenOnSmall, 'text-xs text-muted-foreground')}>
+              {description}
+            </span>
+          )}
         </div>
         {children}
       </div>

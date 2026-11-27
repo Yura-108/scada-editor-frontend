@@ -1,15 +1,19 @@
 'use client';
 
-import {useMemo} from 'react';
+import { useMemo } from 'react';
 import { useLogsSearch } from '../model/useLogsSearch';
 import { useLogUndo } from '../model/useLogUndo';
-import {useParamTypeName} from "../model/useParamTypeName";
-import {groupLogs} from "../lib/groupLogs";
+import { useParamTypeName } from '../model/useParamTypeName';
+import { groupLogs } from '../lib/groupLogs';
 import {
-  journalTableBox, journalTbody, journalTh, journalThead, JournalEmptyRow,
+  journalTableBox,
+  journalTbody,
+  journalTh,
+  journalThead,
+  JournalEmptyRow,
 } from './journalUi';
-import {LogRow} from "./LogRow";
-import {LogBatchRows} from "./LogBatchRows";
+import { LogRow } from './LogRow';
+import { LogBatchRows } from './LogBatchRows';
 
 const COLUMNS = 7;
 
@@ -26,11 +30,16 @@ export default function LogsList() {
 
   // Три разных пустых состояния вместо одного: до первого запроса, «за период пусто» и
   // «фильтр ничего не нашёл» — раньше все три выглядели одинаково.
-  const empty = isLoading && filteredLogs.length === 0 ? 'Загрузка…'
-    : !hasSearched ? 'Выберите период и нажмите «Показать»'
-    : logs.length === 0 ? 'За выбранный период изменений нет'
-    : filteredLogs.length === 0 ? `Ничего не найдено по «${searchQuery}» — записей за период: ${logs.length}`
-    : null;
+  const empty =
+    isLoading && filteredLogs.length === 0
+      ? 'Загрузка…'
+      : !hasSearched
+        ? 'Выберите период и нажмите «Показать»'
+        : logs.length === 0
+          ? 'За выбранный период изменений нет'
+          : filteredLogs.length === 0
+            ? `Ничего не найдено по «${searchQuery}» — записей за период: ${logs.length}`
+            : null;
 
   return (
     <div className={journalTableBox}>
@@ -43,17 +52,28 @@ export default function LogsList() {
             <th className={journalTh}>Операция</th>
             <th className={journalTh}>№</th>
             <th className={journalTh}>Подробности</th>
-            <th className={journalTh} />
+            <th scope="col" className={journalTh}>
+              <span className="sr-only">Действия</span>
+            </th>
           </tr>
         </thead>
         <tbody className={journalTbody}>
           {empty ? (
             <JournalEmptyRow colSpan={COLUMNS}>{empty}</JournalEmptyRow>
-          ) : items.map(item => item.kind === 'batch' ? (
-            <LogBatchRows key={`batch:${item.batchId}`} logs={item.logs} typeName={typeName} onUndo={onUndo} />
           ) : (
-            <LogRow key={item.log.id} log={item.log} typeName={typeName} onUndo={onUndo} />
-          ))}
+            items.map((item) =>
+              item.kind === 'batch' ? (
+                <LogBatchRows
+                  key={`batch:${item.batchId}`}
+                  logs={item.logs}
+                  typeName={typeName}
+                  onUndo={onUndo}
+                />
+              ) : (
+                <LogRow key={item.log.id} log={item.log} typeName={typeName} onUndo={onUndo} />
+              ),
+            )
+          )}
         </tbody>
       </table>
     </div>

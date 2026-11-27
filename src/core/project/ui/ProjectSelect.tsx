@@ -1,30 +1,37 @@
-"use client";
+'use client';
 
-import React from "react";
-import {cn} from "@/shared/lib/cn";
-import {Select} from "@/shared/ui/field/Select";
+import React from 'react';
+import { cn } from '@/shared/lib/cn';
+import { Select } from '@/shared/ui/field/Select';
 
 /**
  * Выбор проекта в шапке раздела (монитор, автоматизация, данные). Что делать с выбором —
  * спросить про несохранённое, перечитать данные — решает раздел (`onChange`).
  * Уже 160px не сжимается: имя проекта должно читаться, на узком окне шапка прокручивается.
  */
-export function ProjectSelect({projects, value, onChange, labelOf, className}: {
-  projects: {id: number; name: string}[];
+export function ProjectSelect({
+  projects,
+  value,
+  onChange,
+  labelOf,
+  className,
+}: {
+  projects: { id: number; name: string }[];
   value: number | null | undefined;
   onChange: (id: number) => void;
   /** Подпись пункта; по умолчанию — имя проекта. */
-  labelOf?: (project: {id: number; name: string}) => string;
+  labelOf?: (project: { id: number; name: string }) => string;
   className?: string;
 }) {
   return (
     <Select
       size="sm"
-      className={cn("min-w-40 max-w-48", className)}
-      value={value == null ? "" : String(value)}
+      className={cn('min-w-40 max-w-48', className)}
+      value={value == null ? '' : String(value)}
       onValueChange={(v) => onChange(Number(v))}
       placeholder="Проект…"
-      options={projects.map(p => ({value: String(p.id), label: labelOf ? labelOf(p) : p.name}))}
+      aria-label="Проект"
+      options={projects.map((p) => ({ value: String(p.id), label: labelOf ? labelOf(p) : p.name }))}
     />
   );
 }

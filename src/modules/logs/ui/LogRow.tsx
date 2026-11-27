@@ -1,15 +1,21 @@
 'use client';
 
-import React from "react";
-import {cn} from "@/shared/lib/cn";
-import {Badge} from "@/shared/ui/Badge";
-import type {Tone} from "@/shared/ui/tone";
+import React from 'react';
+import { cn } from '@/shared/lib/cn';
+import { Badge } from '@/shared/ui/Badge';
+import type { Tone } from '@/shared/ui/tone';
 // Журнал базы каналов приходит без пояса — это UTC (см. shared/lib/serverTime).
-import {formatServerTime} from "@/shared/lib/serverTime";
-import type {LogEntry} from "../types/logs.type";
-import {logActionLabel, logObjectTitle, parseLogKind, type LogAction, type ParamTypeName} from "../lib/describeLog";
-import LogDetailsModal from "./LogDetailsModal";
-import {journalTd} from "./journalUi";
+import { formatServerTime } from '@/shared/lib/serverTime';
+import type { LogEntry } from '../types/logs.type';
+import {
+  logActionLabel,
+  logObjectTitle,
+  parseLogKind,
+  type LogAction,
+  type ParamTypeName,
+} from '../lib/describeLog';
+import LogDetailsModal from './LogDetailsModal';
+import { journalTd } from './journalUi';
 
 const ACTION_TONE: Record<LogAction, Tone> = {
   CREATE: 'success',
@@ -18,7 +24,15 @@ const ACTION_TONE: Record<LogAction, Tone> = {
 };
 
 /** Кнопка «Отменить» или отметка «отменено». */
-export function UndoCell({log, onUndo, title}: {log: LogEntry; onUndo: (log: LogEntry) => void; title: string}) {
+export function UndoCell({
+  log,
+  onUndo,
+  title,
+}: {
+  log: LogEntry;
+  onUndo: (log: LogEntry) => void;
+  title: string;
+}) {
   return log.undoneAt ? (
     <Badge title={`Отменено ${formatServerTime(log.undoneAt)}`}>отменено</Badge>
   ) : (
@@ -37,7 +51,12 @@ export function UndoCell({log, onUndo, title}: {log: LogEntry; onUndo: (log: Log
  * Строка одной записи журнала. Внутри раскрытой операции (`nested`) — с отступом и без
  * «Отменить»: отмена откатывает операцию целиком, кнопка у её заголовка.
  */
-export function LogRow({log, typeName, onUndo, nested = false}: {
+export function LogRow({
+  log,
+  typeName,
+  onUndo,
+  nested = false,
+}: {
   log: LogEntry;
   typeName: ParamTypeName;
   onUndo: (log: LogEntry) => void;
@@ -50,7 +69,9 @@ export function LogRow({log, typeName, onUndo, nested = false}: {
 
   return (
     <tr className={cn('align-top', log.undoneAt && 'opacity-60', nested && 'bg-muted/40')}>
-      <td className={`${journalTd} whitespace-nowrap tabular-nums`}>{nested ? '' : formatServerTime(log.createdAt)}</td>
+      <td className={`${journalTd} whitespace-nowrap tabular-nums`}>
+        {nested ? '' : formatServerTime(log.createdAt)}
+      </td>
       <td className={journalTd}>{nested ? '' : log.userName || '—'}</td>
       <td className={cn(journalTd, nested && 'pl-8')} title={`${what} №${log.entityId}`}>
         {title ?? `${what} №${log.entityId}`}
@@ -65,7 +86,10 @@ export function LogRow({log, typeName, onUndo, nested = false}: {
         <LogDetailsModal
           log={log}
           trigger={
-            <button type="button" className="text-xs text-primary hover:underline underline-offset-4">
+            <button
+              type="button"
+              className="text-xs text-primary-text hover:underline underline-offset-4"
+            >
               подробнее
             </button>
           }
