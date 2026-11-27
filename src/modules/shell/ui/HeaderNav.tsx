@@ -77,7 +77,7 @@ export default function HeaderNav({ isAdmin = false }: { isAdmin?: boolean }) {
         <nav
           ref={navRef}
           className="relative hidden md:flex min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden"
-          aria-label="Основная навигация"
+          aria-label="Разделы"
         >
           {/* Мерка: та же разметка с подписями, невидимая и вне потока. */}
           <div
@@ -157,7 +157,7 @@ export default function HeaderNav({ isAdmin = false }: { isAdmin?: boolean }) {
         {mobileOpen && (
           <nav
             id="mobile-nav"
-            aria-label="Основная навигация"
+            aria-label="Разделы"
             className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-dropdown min-w-52 rounded-xl border border-border bg-card p-1 shadow-2xl"
           >
             {navItems.map((item) => {

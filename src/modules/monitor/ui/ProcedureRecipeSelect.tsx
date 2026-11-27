@@ -1,12 +1,19 @@
-import React from "react";
-import {Select} from "@/shared/ui/field/Select";
+import React from 'react';
+import { Select } from '@/shared/ui/field/Select';
 
 /**
  * За какой процедурой следить — список рецептов проекта (HUD монитора и панель процедур).
  * Пусто — процедура не выбрана.
  */
-export function ProcedureRecipeSelect({recipes, recipeId, onWatch, placeholder, disabled, className}: {
-  recipes: {id: string; name: string}[];
+export function ProcedureRecipeSelect({
+  recipes,
+  recipeId,
+  onWatch,
+  placeholder,
+  disabled,
+  className,
+}: {
+  recipes: { id: string; name: string }[];
   recipeId: string | null;
   onWatch: (recipeId: string | null) => void;
   placeholder: string;
@@ -16,12 +23,13 @@ export function ProcedureRecipeSelect({recipes, recipeId, onWatch, placeholder, 
   return (
     <Select
       size="sm"
+      aria-label="Рецепт"
       className={className}
-      value={recipeId ?? ""}
+      value={recipeId ?? ''}
       disabled={disabled}
       onValueChange={(v) => onWatch(v || null)}
       placeholder={placeholder}
-      options={recipes.map(r => ({value: r.id, label: r.name}))}
+      options={recipes.map((r) => ({ value: r.id, label: r.name }))}
     />
   );
 }

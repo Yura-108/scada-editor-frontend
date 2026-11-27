@@ -1,7 +1,13 @@
 import React from 'react';
 import { Cpu } from 'lucide-react';
 import { getUser } from '@/server/auth/getUser';
-import { DocumentTitle, HeaderNav, LogoLink, SessionUserBootstrap, UserMenu } from '@/modules/shell';
+import {
+  DocumentTitle,
+  HeaderNav,
+  LogoLink,
+  SessionUserBootstrap,
+  UserMenu,
+} from '@/modules/shell';
 import EditorStoreBinding from './EditorStoreBinding';
 import { ThemeToggle } from '@/shared/ui/ThemeToggle';
 
@@ -21,6 +27,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-toast focus:rounded-lg focus:bg-card focus:px-4 focus:py-2 focus:text-foreground"
+      >
+        К содержимому
+      </a>
       {user && <SessionUserBootstrap login={user.login} admin={user.admin} />}
       <EditorStoreBinding />
       <DocumentTitle />

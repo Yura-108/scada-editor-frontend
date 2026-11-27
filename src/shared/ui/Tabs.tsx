@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import type {LucideIcon} from "lucide-react";
-import {cn} from "@/shared/lib/cn";
-import {handleTabListKey} from "@/shared/lib/tabListKeys";
+import React from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { handleTabListKey } from '@/shared/lib/tabListKeys';
 
 export interface TabItem<T extends string> {
   value: T;
@@ -23,8 +23,8 @@ export const tabId = (id: string, value: string) => `${id}-tab-${value}`;
  */
 export const tabPanelProps = (id: string, value: string) => ({
   id: `${id}-panel`,
-  role: "tabpanel" as const,
-  "aria-labelledby": tabId(id, value),
+  role: 'tabpanel' as const,
+  'aria-labelledby': tabId(id, value),
 });
 
 /**
@@ -44,7 +44,7 @@ export function Tabs<T extends string>({
   id,
   stretch = false,
   className,
-  "aria-label": ariaLabel,
+  'aria-label': ariaLabel,
 }: {
   value: T;
   onValueChange: (value: T) => void;
@@ -52,13 +52,13 @@ export function Tabs<T extends string>({
   id?: string;
   stretch?: boolean;
   className?: string;
-  "aria-label": string;
+  'aria-label': string;
 }) {
-  const values = items.map(item => item.value);
+  const values = items.map((item) => item.value);
 
   return (
-    <div role="tablist" aria-label={ariaLabel} className={cn("flex items-center gap-1", className)}>
-      {items.map(({value: itemValue, label, icon: Icon, dirty, title}) => {
+    <div role="tablist" aria-label={ariaLabel} className={cn('flex items-center gap-1', className)}>
+      {items.map(({ value: itemValue, label, icon: Icon, dirty, title }) => {
         const selected = itemValue === value;
         return (
           <button
@@ -73,11 +73,11 @@ export function Tabs<T extends string>({
             onClick={() => onValueChange(itemValue)}
             onKeyDown={(e) => handleTabListKey(e, values, value, onValueChange)}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors",
-              stretch && "flex-1 justify-center",
+              'inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors',
+              stretch && 'flex-1 justify-center',
               selected
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                ? 'bg-primary/15 text-primary-text'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
             )}
           >
             {Icon && <Icon size={14} aria-hidden />}

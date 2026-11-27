@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, {useState} from "react";
-import {ChevronDown, CircleHelp, X} from "lucide-react";
-import {IconButton} from "./IconButton";
+import React, { useState } from 'react';
+import { ChevronDown, CircleHelp, X } from 'lucide-react';
+import { IconButton } from './IconButton';
 
 interface Props {
   /** Ключ запоминания «свёрнуто/развёрнуто» в браузере, например `help.data`. */
@@ -17,7 +17,7 @@ interface Props {
 const readOpen = (key: string): boolean => {
   try {
     // Впервые — открыта: новому пользователю справку надо увидеть, а не искать.
-    return localStorage.getItem(key) !== "0";
+    return localStorage.getItem(key) !== '0';
   } catch {
     return true;
   }
@@ -30,7 +30,7 @@ const readOpen = (key: string): boolean => {
  * Читает localStorage в начальном состоянии, поэтому монтировать её нужно только на клиенте
  * (после загрузки данных страницы), иначе разметка сервера и клиента разойдётся.
  */
-export function FloatingHelp({storageKey, title, children, more}: Props) {
+export function FloatingHelp({ storageKey, title, children, more }: Props) {
   const [open, setOpen] = useState(() => readOpen(storageKey));
   const [expanded, setExpanded] = useState(false);
   // Другая вкладка — другая справка: начинаем снова с краткой (подстройка во время рендера).
@@ -44,7 +44,7 @@ export function FloatingHelp({storageKey, title, children, more}: Props) {
     setOpen(next);
     setExpanded(false);
     try {
-      localStorage.setItem(storageKey, next ? "1" : "0");
+      localStorage.setItem(storageKey, next ? '1' : '0');
     } catch {
       // не запомнится между заходами — не страшно
     }
@@ -59,7 +59,8 @@ export function FloatingHelp({storageKey, title, children, more}: Props) {
         aria-label="Справка по разделу"
         className="fixed bottom-4 right-4 z-toolbar flex items-center gap-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 px-4 py-2.5 text-sm font-medium"
       >
-        <CircleHelp size={18} />Справка
+        <CircleHelp size={18} />
+        Справка
       </button>
     );
   }
@@ -74,18 +75,21 @@ export function FloatingHelp({storageKey, title, children, more}: Props) {
         <span className="flex-1 text-sm font-semibold text-foreground">{title}</span>
         <IconButton icon={X} label="Свернуть справку" onClick={() => toggle(false)} />
       </div>
-      <div className="overflow-y-auto px-4 py-3 text-sm text-foreground space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_b]:text-foreground [&_code]:text-xs [&_code]:px-1 [&_code]:rounded [&_code]:bg-muted">
+      <div
+        tabIndex={0}
+        className="overflow-y-auto px-4 py-3 text-sm text-foreground space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_b]:text-foreground [&_code]:text-xs [&_code]:px-1 [&_code]:rounded [&_code]:bg-muted"
+      >
         {children}
         {more && expanded && more}
         {more && (
           <button
             type="button"
-            onClick={() => setExpanded(v => !v)}
+            onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-4"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary-text hover:underline underline-offset-4"
           >
-            {expanded ? "Короче" : "Подробнее"}
-            <ChevronDown size={14} className={expanded ? "rotate-180" : undefined} />
+            {expanded ? 'Короче' : 'Подробнее'}
+            <ChevronDown size={14} className={expanded ? 'rotate-180' : undefined} />
           </button>
         )}
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { PinOff, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   DndContext,
   PointerSensor,
@@ -63,7 +63,7 @@ function SortableTabShell({
         opacity: isDragging ? 0.5 : 1,
       }}
       className={cn(
-        'group/tab flex items-center',
+        'flex items-center',
         shrink ? 'min-w-0 shrink' : 'shrink-0',
         hidden && 'pointer-events-none invisible absolute left-0',
       )}
@@ -139,7 +139,6 @@ export function SceneTabs({
   const pins = usePinnedScenesStore((s) => s.pins);
   const recipesIndex = usePinnedScenesStore((s) => s.recipesIndex);
   const hydratePins = usePinnedScenesStore((s) => s.hydrate);
-  const unpinScene = usePinnedScenesStore((s) => s.unpin);
   const reorderPins = usePinnedScenesStore((s) => s.reorder);
 
   // Закреплённые схемы принадлежат проекту: при его смене список другой.
@@ -288,28 +287,7 @@ export function SceneTabs({
     }
     return (
       <SortableTabShell key={tab.key} id={tab.key} hidden={hidden} shrink={shrink}>
-        {(dragListeners) => (
-          <>
-            {tabButtonNode(tab, dragListeners)}
-            {/* Открепить можно только схему: «Рецепты» — постоянная вкладка, её
-                перетаскивают, но не убирают.
-
-                Кнопка СОСЕДНЯЯ, а не вложенная: кнопка внутри кнопки невалидна, и
-                вложенный элемент сбил бы соответствие DOM-порядка `[role="tab"]` массиву
-                вкладок. Слушателей перетаскивания на ней нет — иначе её было бы не нажать. */}
-            {tab.sceneId !== null && (
-              <button
-                type="button"
-                onClick={() => unpinScene(tab.sceneId!)}
-                title={`Открепить «${tab.label}»`}
-                aria-label={`Открепить схему «${tab.label}»`}
-                className="ml-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-primary focus:opacity-100 group-hover/tab:opacity-100"
-              >
-                <PinOff size={12} />
-              </button>
-            )}
-          </>
-        )}
+        {(dragListeners) => tabButtonNode(tab, dragListeners)}
       </SortableTabShell>
     );
   };
@@ -346,20 +324,21 @@ export function SceneTabs({
     >
       {/* Перетаскиваются закреплённые схемы и «Рецепты». Текущая незакреплённая схема —
           вкладка временная, стоит последней и в сортировку не входит. */}
-      <div role="tablist" aria-label={ariaLabel} className="flex min-w-0 items-center gap-2">
-        <DndContext
-          sensors={tabDndSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleTabDragEnd}
-        >
+      {/* Служебное объявление dnd-kit остаётся снаружи tablist. Закреплением управляют в выборе схемы. */}
+      <DndContext
+        sensors={tabDndSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleTabDragEnd}
+      >
+        <div role="tablist" aria-label={ariaLabel} className="flex min-w-0 items-center gap-2">
           <SortableContext
             items={sortableTabKeys.filter((key) => !hiddenKeys.includes(key))}
             strategy={horizontalListSortingStrategy}
           >
             {tabs.map(renderTab)}
           </SortableContext>
-        </DndContext>
-      </div>
+        </div>
+      </DndContext>
       {hiddenTabs.length > 0 && (
         <PickerSelect
           aria-label={`Ещё ${hiddenTabs.length} вкладок`}

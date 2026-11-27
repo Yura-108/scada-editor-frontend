@@ -111,7 +111,7 @@ export function PickerSelect({
       <Popover.Trigger asChild disabled={disabled}>
         <button
           type="button"
-          aria-label={ariaLabel}
+          aria-label={current ? `${ariaLabel}: ${current}` : ariaLabel}
           title={title ?? current}
           className={cn(
             fieldBase,
@@ -129,6 +129,7 @@ export function PickerSelect({
 
       <Popover.Portal container={portalContainer}>
         <Popover.Content
+          aria-label={ariaLabel}
           align="start"
           sideOffset={4}
           // Фокус — на выбранную строку (или на поиск), а не на первую попавшуюся кнопку.

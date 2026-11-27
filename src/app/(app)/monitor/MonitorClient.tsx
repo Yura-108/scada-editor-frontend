@@ -124,6 +124,7 @@ export default function MonitorClient() {
 
         <Select
           size="sm"
+          aria-label="Схема"
           className="min-w-24 max-w-32 xl:max-w-48"
           // На экране процедур схема не показана — и в списке её нет (#6 п. 3): выбор любой,
           // в том числе той же, возвращает к схеме.
