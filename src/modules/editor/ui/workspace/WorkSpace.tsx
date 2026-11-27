@@ -12,6 +12,7 @@ import { usePersistedLayout } from './hooks/usePersistedLayout';
 import { useWorkspaceTabs } from './hooks/useWorkspaceTabs';
 import { LeftPanel } from './LeftPanel';
 import { RightPanel } from './RightPanel';
+import { EDITOR_HELP, RECIPES_HELP } from './editorHelp';
 import { useEditorStore } from '../../model/editorStore';
 
 // Вкладки-не-схемы для SceneTabs. На уровне модуля, а не литералом в JSX: новый объект
@@ -64,7 +65,7 @@ export function WorkSpace() {
     // Каркас как у остальных разделов: шапка с выбором проекта и схемы, под ней рабочая
     // область. Сама область не прокручивается — внешний скролл заблокирован.
     <PageFrame>
-      <EditorHeader />
+      <EditorHeader help={showEditorPanels ? EDITOR_HELP : RECIPES_HELP} />
       <div
         ref={rootRef}
         // Вся геометрия панелей выражена CSS-переменными, а не пропсами с числами:

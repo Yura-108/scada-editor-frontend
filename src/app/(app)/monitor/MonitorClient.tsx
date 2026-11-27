@@ -26,6 +26,7 @@ import { PageFrame } from '@/shared/ui/page/PageFrame';
 import { PageHeader } from '@/shared/ui/page/PageHeader';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
+import { MONITOR_HELP } from './monitorHelp';
 import { useMonitorRevoked, useMonitorSession } from './useMonitorSession';
 
 // Окна монитора для меню элемента на холсте.
@@ -97,6 +98,7 @@ export default function MonitorClient() {
     <PageFrame>
       <PageHeader
         title="Монитор"
+        help={MONITOR_HELP[showProcedures ? 'procedures' : mode]}
         className="gap-2 xl:gap-3"
         shrinkContent
         actions={
