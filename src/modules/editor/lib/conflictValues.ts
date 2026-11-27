@@ -18,6 +18,21 @@ export type ConflictColumns = {
 
 const MAX_TEXT = 60;
 
+/**
+ * Структурные ключи, которые не должны попадать в окно конфликта.
+ * Соответствует STRUCTURAL_KEYS в transformElements.ts.
+ */
+const STRUCTURAL_KEYS = new Set([
+  'composition',
+  'isComponent',
+  'zIndex',
+  'monitorMenu',
+  'trend',
+  'monitorView',
+  'canvas',
+  'optionsWindow',
+]);
+
 /** Геометрия правится в блоке «Геометрия», а не схемами полей — подписи здесь. */
 const GEOMETRY_LABELS: Record<string, string> = {
   x: 'Положение X',
@@ -108,9 +123,9 @@ export function conflictColumns(base?: string, yours?: string, theirs?: string):
 
   const fields = objects.map((o) => (o ? flattenImage(o) : undefined));
   const keys = [...new Set(fields.flatMap((o) => (o ? [...o.keys()] : [])))];
-  const differing = keys.filter((key) =>
-    fields.some((o) => !isEqual(o?.get(key), fields[0]?.get(key))),
-  );
+  const differing = keys
+    .filter((key) => !STRUCTURAL_KEYS.has(key))
+    .filter((key) => fields.some((o) => !isEqual(o?.get(key), fields[0]?.get(key))));
   const column = (o: Map<string, unknown> | undefined): ConflictLine[] =>
     o ? differing.map((key) => fieldLine(key, o.get(key))) : [];
   return { base: column(fields[0]), yours: column(fields[1]), theirs: column(fields[2]) };
