@@ -42,7 +42,16 @@ const ready = {
 
 async function inspect(page, label) {
   if (!(await page.evaluate(() => Boolean(window.axe)))) await page.addScriptTag({ path: axePath });
-  const { violations } = await page.evaluate(() => window.axe.run());
+  const { violations } = await page.evaluate(async () => {
+    // Проверяем открытые меню и панели после перехода, иначе axe измеряет промежуточную прозрачность.
+    await new Promise(requestAnimationFrame);
+    const transitions = document.getAnimations().filter(
+      (animation) => animation.playState === 'running'
+        && Number.isFinite(animation.effect?.getComputedTiming().endTime),
+    );
+    await Promise.all(transitions.map((animation) => animation.finished.catch(() => {})));
+    return window.axe.run();
+  });
   for (const { id, impact, nodes } of violations) {
     console.error(`[${label}] ${id} (${impact}): ${nodes.length}`);
     for (const node of nodes.slice(0, 5)) {
