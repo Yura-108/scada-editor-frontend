@@ -1,17 +1,42 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { CircleHelp, KeyRound, User } from 'lucide-react';
+import { CircleHelp, KeyRound, User, ChevronRight } from 'lucide-react';
 import LogoutButton from './LogoutButton';
 import { useModalStore } from '@/shared/ui/dialog/modalStore';
-import { setSectionHelpHidden, useSectionHelpHidden } from '@/shared/lib/sectionHelpVisibility';
+import {
+  setSectionHelpHidden,
+  setAllSectionHelpHidden,
+  useAnySectionHelpHidden,
+} from '@/shared/lib/sectionHelpVisibility';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-/** Меню пользователя в шапке: восстановление подсказок, смена пароля и выход. */
+// Известные разделы со справкой — для меню пользователя.
+const HELP_SECTIONS: { id: string; label: string }[] = [
+  { id: 'editor', label: 'Редактор' },
+  { id: 'recipes', label: 'Рецепты' },
+  { id: 'monitor-live', label: 'Монитор — Живые данные' },
+  { id: 'monitor-procedures', label: 'Монитор — Процедуры' },
+  { id: 'monitor-archive', label: 'Монитор — Архив' },
+  { id: 'actions', label: 'Журнал действий' },
+  { id: 'log', label: 'Логирование' },
+  { id: 'channels', label: 'База каналов' },
+  { id: 'automation-tasks', label: 'Автоматизация — Задачи' },
+  { id: 'automation-watchdog', label: 'Автоматизация — Watchdog' },
+  { id: 'automation-history', label: 'Автоматизация — История' },
+  { id: 'data-tables', label: 'Данные — Таблицы' },
+  { id: 'data-variables', label: 'Данные — Переменные' },
+  { id: 'data-history', label: 'Данные — История' },
+  { id: 'admin-users', label: 'Администрирование — Пользователи' },
+  { id: 'admin-branches', label: 'Администрирование — Ветки' },
+];
+
+/** Меню пользователя в шапке: восстановление подсказок по разделу, смена пароля и выход. */
 export default function UserMenu({ login }: { login: string }) {
   const openModal = useModalStore((s) => s.openModal);
-  const helpHidden = useSectionHelpHidden();
+  const anyHidden = useAnySectionHelpHidden();
   const [open, setOpen] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -55,20 +80,58 @@ export default function UserMenu({ login }: { login: string }) {
               Вы вошли как <b>{login}</b>
             </div>
           )}
-          {helpHidden && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setSectionHelpHidden(false);
-                setOpen(false);
-                triggerRef.current?.focus();
-              }}
-              className="flex items-center gap-3 w-full px-4 py-3 text-left text-muted-foreground hover:bg-accent/60 rounded-xl"
-            >
-              <CircleHelp className="w-5 h-5 shrink-0" aria-hidden />
-              <span className="font-medium">Показывать подсказки</span>
-            </button>
+          {anyHidden && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="true"
+                aria-expanded={showHelpMenu}
+                onClick={() => setShowHelpMenu((v) => !v)}
+                className="flex items-center gap-3 w-full px-4 py-3 text-left text-muted-foreground hover:bg-accent/60 rounded-xl"
+              >
+                <CircleHelp className="w-5 h-5 shrink-0" aria-hidden />
+                <span className="font-medium flex-1">Показывать подсказки</span>
+                <ChevronRight
+                  size={14}
+                  className={showHelpMenu ? 'rotate-90' : undefined}
+                  aria-hidden
+                />
+              </button>
+              {showHelpMenu && (
+                <div className="ml-2 mt-1 border-l border-border pl-2 space-y-1">
+                  {HELP_SECTIONS.map(({ id, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setSectionHelpHidden(id, false);
+                        setOpen(false);
+                        triggerRef.current?.focus();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent/60 hover:text-foreground rounded-lg"
+                    >
+                      <CircleHelp className="w-4 h-4 shrink-0" aria-hidden />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAllSectionHelpHidden(false);
+                      setOpen(false);
+                      triggerRef.current?.focus();
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs font-medium text-primary hover:bg-accent/60 rounded-lg"
+                  >
+                    <CircleHelp className="w-4 h-4 shrink-0" aria-hidden />
+                    <span>Показать все подсказки</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
           <button
             type="button"

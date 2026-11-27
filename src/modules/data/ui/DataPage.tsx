@@ -134,6 +134,7 @@ export function DataPage({
       <PageHeader
         title="Данные проекта"
         help={DATA_HELP[tab]}
+        helpSectionId={`data-${tab}`}
         className="gap-2 xl:gap-3"
         shrinkContent
         actions={

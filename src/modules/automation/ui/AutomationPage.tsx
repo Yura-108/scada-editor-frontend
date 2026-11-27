@@ -78,6 +78,7 @@ export function AutomationPage({
       <PageHeader
         title="Автоматизация"
         help={AUTOMATION_HELP[tab]}
+        helpSectionId={`automation-${tab}`}
         actions={
           <AutomationHeaderActions doc={doc} canWrite={canWrite} unsavedCount={unsavedCount} />
         }

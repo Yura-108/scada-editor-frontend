@@ -11,6 +11,9 @@ import { CatalogSection, Demo } from '../CatalogSection';
 
 type Tab = 'tables' | 'vars' | 'settings';
 
+// Демо-идентификатор раздела для каталога UI.
+const DEMO_SECTION_ID = 'ui-catalog-demo';
+
 export function NavigationSection() {
   return (
     <CatalogSection
@@ -26,7 +29,7 @@ export function NavigationSection() {
 function Navigation() {
   const id = useId();
   const [tab, setTab] = useState<Tab>('tables');
-  const helpHidden = useSectionHelpHidden();
+  const helpHidden = useSectionHelpHidden(DEMO_SECTION_ID);
   const items = [
     { value: 'tables', label: 'Таблицы', icon: Table2 },
     { value: 'vars', label: 'Переменные', icon: Database, dirty: true },
@@ -78,6 +81,7 @@ function Navigation() {
               body: <p>Выберите проект, чтобы увидеть его таблицы и переменные.</p>,
               more: <p>Серверные скрипты используют данные из этих таблиц.</p>,
             }}
+            helpSectionId={DEMO_SECTION_ID}
             actions={
               <>
                 <Badge tone="warning">Не сохранено</Badge>
@@ -91,7 +95,7 @@ function Navigation() {
           </PageHeader>
         </div>
         {helpHidden && (
-          <Button size="sm" onClick={() => setSectionHelpHidden(false)}>
+          <Button size="sm" onClick={() => setSectionHelpHidden(DEMO_SECTION_ID, false)}>
             Показывать подсказки
           </Button>
         )}

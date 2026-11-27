@@ -34,6 +34,7 @@ export default function ChannelsToolbar() {
     <PageHeader
       title="База каналов"
       help={CHANNELS_HELP}
+      helpSectionId="channels"
       actions={
         // Импорт создаёт НОВЫЙ проект: после отчёта он сам подгружается в дерево и появляется
         // в списке проектов слева.

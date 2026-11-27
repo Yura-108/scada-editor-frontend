@@ -153,6 +153,7 @@ export default function ActionsClient() {
       <PageHeader
         title="Журнал действий"
         help={ACTIONS_HELP}
+        helpSectionId="actions"
         description="Нажатия операторов в мониторе, управление процедурами и ручные записи тегов"
         alwaysShowTitle
       />

@@ -12,12 +12,23 @@ import { ScenePicker } from './ScenePicker';
  * статусы справа. Открытием списков управляет она: после выбора проекта сразу
  * раскрывается выбор схемы.
  */
-export function EditorHeader({ help }: { help: SectionHelp }) {
+export function EditorHeader({
+  help,
+  helpSectionId,
+}: {
+  help: SectionHelp;
+  helpSectionId: string;
+}) {
   const [projectOpen, setProjectOpen] = useState(false);
   const [sceneOpen, setSceneOpen] = useState(false);
 
   return (
-    <PageHeader title="Редактор" actions={<EditorStatusBadges />} help={help}>
+    <PageHeader
+      title="Редактор"
+      actions={<EditorStatusBadges />}
+      help={help}
+      helpSectionId={helpSectionId}
+    >
       <ProjectPicker
         open={projectOpen}
         onOpenChange={setProjectOpen}

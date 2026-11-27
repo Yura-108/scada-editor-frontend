@@ -99,6 +99,7 @@ export default function MonitorClient() {
       <PageHeader
         title="Монитор"
         help={MONITOR_HELP[showProcedures ? 'procedures' : mode]}
+        helpSectionId={`monitor-${showProcedures ? 'procedures' : mode}`}
         className="gap-2 xl:gap-3"
         shrinkContent
         actions={

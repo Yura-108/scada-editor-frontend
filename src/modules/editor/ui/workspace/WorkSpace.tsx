@@ -65,7 +65,10 @@ export function WorkSpace() {
     // Каркас как у остальных разделов: шапка с выбором проекта и схемы, под ней рабочая
     // область. Сама область не прокручивается — внешний скролл заблокирован.
     <PageFrame>
-      <EditorHeader help={showEditorPanels ? EDITOR_HELP : RECIPES_HELP} />
+      <EditorHeader
+        help={showEditorPanels ? EDITOR_HELP : RECIPES_HELP}
+        helpSectionId={showEditorPanels ? 'editor' : 'recipes'}
+      />
       <div
         ref={rootRef}
         // Вся геометрия панелей выражена CSS-переменными, а не пропсами с числами:

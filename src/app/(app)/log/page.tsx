@@ -84,6 +84,7 @@ export default function LogsPage() {
       <PageHeader
         title="Логирование"
         help={LOG_HELP}
+        helpSectionId="log"
         description="Изменения устройств и параметров в базе каналов — с возможностью отмены"
         alwaysShowTitle
       />

@@ -82,6 +82,7 @@ export default function AdminClient() {
       <PageHeader
         title="Администрирование"
         help={ADMIN_HELP[tab]}
+        helpSectionId={`admin-${tab}`}
         icon={ShieldCheck}
         alwaysShowTitle
         actions={

@@ -14,8 +14,8 @@ export interface SectionHelp {
   more: ReactNode;
 }
 
-export function PageHelp({ help }: { help: SectionHelp }) {
-  const hidden = useSectionHelpHidden();
+export function PageHelp({ help, sectionId }: { help: SectionHelp; sectionId: string }) {
+  const hidden = useSectionHelpHidden(sectionId);
   const container = usePortalContainer();
   const titleId = useId();
 
@@ -42,14 +42,14 @@ export function PageHelp({ help }: { help: SectionHelp }) {
               <IconButton icon={X} size="xs" label="Свернуть справку" />
             </Popover.Close>
           </div>
-          <HelpText key={help.title} help={help} />
+          <HelpText key={help.title} help={help} sectionId={sectionId} />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
   );
 }
 
-function HelpText({ help }: { help: SectionHelp }) {
+function HelpText({ help, sectionId }: { help: SectionHelp; sectionId: string }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
 
@@ -73,12 +73,12 @@ function HelpText({ help }: { help: SectionHelp }) {
         <button
           type="button"
           onClick={() => {
-            setSectionHelpHidden(true);
-            toast.info('Подсказки скрыты. Их можно вернуть в меню пользователя.');
+            setSectionHelpHidden(sectionId, true);
+            toast.info('Подсказка скрыта. Вернуть можно в меню пользователя.');
           }}
           className="text-xs text-muted-foreground hover:text-foreground hover:underline"
         >
-          Больше не показывать подсказки
+          Больше не показывать эту подсказку
         </button>
       </div>
     </div>

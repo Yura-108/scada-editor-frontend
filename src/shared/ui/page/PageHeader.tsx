@@ -15,6 +15,7 @@ import { PageHelp, type SectionHelp } from './PageHelp';
  * `className` — для строки с содержимым (например, свой `gap`).
  * `actions` также подходит для статусов, которые должны оставаться на виду.
  * `help` добавляет кнопку «?» у правого края шапки.
+ * `helpSectionId` — идентификатор раздела для настройки скрытия справки по разделу.
  */
 export function PageHeader({
   title,
@@ -22,6 +23,7 @@ export function PageHeader({
   description,
   actions,
   help,
+  helpSectionId,
   alwaysShowTitle = false,
   shrinkContent = false,
   className,
@@ -33,6 +35,8 @@ export function PageHeader({
   description?: React.ReactNode;
   actions?: React.ReactNode;
   help?: SectionHelp;
+  /** Идентификатор раздела для настройки скрытия справки по разделу. */
+  helpSectionId?: string;
   alwaysShowTitle?: boolean;
   shrinkContent?: boolean;
   className?: string;
@@ -81,7 +85,7 @@ export function PageHeader({
       {actions && (
         <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">{actions}</div>
       )}
-      {help && <PageHelp help={help} />}
+      {help && helpSectionId && <PageHelp help={help} sectionId={helpSectionId} />}
     </div>
   );
 }
