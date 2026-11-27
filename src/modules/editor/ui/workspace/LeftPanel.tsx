@@ -88,19 +88,15 @@ export function LeftPanel({
         </div>
       </div>
 
-      {/* Кнопка РАЗВЕРНУТЬ левую панель (висит снаружи) — с подписью: одна иконка в углу
-          была незаметна. aria-hidden + tabIndex={-1}, когда кнопка скрыта: `opacity-0
-          pointer-events-none` убирает её только от мыши, из порядка Tab — нет. */}
+      {/* Кнопка раскрытия висит снаружи и доступна, пока панель свёрнута. */}
       <button
         id="left-panel-expand"
         type="button"
         onClick={() => togglePanel(true)}
         aria-label={`Развернуть левую панель: ${tabLabel}`}
         title="Развернуть левую панель"
-        aria-hidden={visible || !showEditorPanels}
-        tabIndex={!visible && showEditorPanels ? 0 : -1}
-        className={`absolute top-4 left-full flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-xs font-medium bg-card border border-border rounded-r-md text-muted-foreground hover:bg-accent hover:text-foreground shadow-xl transition-opacity ${
-          !visible && showEditorPanels ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`absolute top-4 left-full flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-xs font-medium bg-card border border-border rounded-r-md text-foreground hover:bg-accent shadow-xl ${
+          visible || !showEditorPanels ? 'invisible' : ''
         }`}
       >
         <PanelLeft size={16} />

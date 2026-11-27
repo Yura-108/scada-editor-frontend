@@ -73,10 +73,8 @@ export function RightPanel({
         onClick={() => togglePanel(true)}
         aria-label="Развернуть панель «Свойства»"
         title="Развернуть панель свойств"
-        aria-hidden={visible || !showEditorPanels}
-        tabIndex={!visible && showEditorPanels ? 0 : -1}
-        className={`absolute top-4 right-full flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-xs font-medium bg-card border border-border rounded-l-md text-muted-foreground hover:bg-accent hover:text-foreground shadow-xl transition-opacity ${
-          !visible && showEditorPanels ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`absolute top-4 right-full flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-xs font-medium bg-card border border-border rounded-l-md text-foreground hover:bg-accent shadow-xl ${
+          visible || !showEditorPanels ? 'invisible' : ''
         }`}
       >
         <PanelRight size={16} />
