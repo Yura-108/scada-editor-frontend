@@ -7,9 +7,10 @@ import * as z from 'zod';
 import { CircleAlert, Eye, EyeOff, Lock, LogIn, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginSchema } from '@/core/access';
-import {Input} from "@/shared/ui/field/Input";
-import {Spinner} from "@/shared/ui/Spinner";
-import {Banner} from "@/shared/ui/Banner";
+import { Field } from '@/shared/ui/field/Field';
+import { Input } from '@/shared/ui/field/Input';
+import { Spinner } from '@/shared/ui/Spinner';
+import { Banner } from '@/shared/ui/Banner';
 import { LeaveNotice } from './LeaveNotice';
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -80,51 +81,38 @@ export default function LoginPage() {
         </div>
 
         {/* useSearchParams без Suspense не даёт собрать страницу статически. */}
-        <Suspense fallback={null}><LeaveNotice /></Suspense>
+        <Suspense fallback={null}>
+          <LeaveNotice />
+        </Suspense>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Логин: значок человека — раньше здесь был конверт, а человек стоял у пароля (#5). */}
-          <div className="space-y-2">
+          {/* Подпись постоянная (#32): placeholder пропадает при вводе и не заменяет label. */}
+          <Field label="Логин" error={errors.login?.message}>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-4 w-4 text-muted-foreground" />
               </div>
               <Input
                 {...register('login')}
-                id="login"
                 type="text"
                 // Без autoComplete менеджеры паролей не предлагают сохранённую пару.
                 autoComplete="username"
-                placeholder="Логин"
-                aria-invalid={!!errors.login}
-                aria-describedby={errors.login ? 'login-error' : undefined}
                 className="pl-10"
               />
             </div>
-            {errors.login && (
-              <p
-                id="login-error"
-                className="text-sm text-destructive"
-              >
-                {errors.login.message}
-              </p>
-            )}
-          </div>
+          </Field>
 
           {/* Пароль */}
-          <div className="space-y-2">
+          <Field label="Пароль" error={errors.password?.message}>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-muted-foreground" />
               </div>
               <Input
                 {...register('password')}
-                id="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                placeholder="Пароль"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
                 className="pl-10 pr-10"
               />
               <button
@@ -135,26 +123,16 @@ export default function LoginPage() {
                 title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && (
-              <p
-                id="password-error"
-                className="text-sm text-destructive"
-              >
-                {errors.password.message}
-              </p>
-            )}
-          </div>
+          </Field>
 
           {/* Ошибка от сервера */}
           {serverError && (
-            <Banner tone="destructive" icon={CircleAlert}>{serverError}</Banner>
+            <Banner tone="destructive" icon={CircleAlert}>
+              {serverError}
+            </Banner>
           )}
 
           {/* Кнопка */}
