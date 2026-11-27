@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { PageHelp, type SectionHelp } from './PageHelp';
 
 /**
  * Шапка раздела — одна строка 48px: название, затем выбор проекта и вкладки (`children`),
@@ -13,12 +14,14 @@ import { cn } from '@/shared/lib/cn';
  * `alwaysShowTitle` — для раздела, где в строке почти ничего нет (администрирование).
  * `className` — для строки с содержимым (например, свой `gap`).
  * `actions` также подходит для статусов, которые должны оставаться на виду.
+ * `help` добавляет кнопку «?» у правого края шапки.
  */
 export function PageHeader({
   title,
   icon: Icon,
   description,
   actions,
+  help,
   alwaysShowTitle = false,
   shrinkContent = false,
   className,
@@ -29,6 +32,7 @@ export function PageHeader({
   /** Пояснение к разделу — приглушённо после названия, только на широком окне. */
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  help?: SectionHelp;
   alwaysShowTitle?: boolean;
   shrinkContent?: boolean;
   className?: string;
@@ -55,6 +59,7 @@ export function PageHeader({
       {actions && (
         <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">{actions}</div>
       )}
+      {help && <PageHelp help={help} />}
     </div>
   );
 }

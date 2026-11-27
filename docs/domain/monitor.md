@@ -2,6 +2,8 @@
 
 > Перенесено из CLAUDE.md без изменений. Держите в актуальном состоянии при правках этой области.
 
+Кнопка «?» в шапке открывает [справку](section-help.md) для текущего режима монитора, вкладки «Процедуры» или «Архива».
+
 ## Where the monitor reads the scene from
 
 - The open project, scene, scene list and release number live in the **editor store** (loading a

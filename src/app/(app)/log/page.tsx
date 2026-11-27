@@ -1,19 +1,45 @@
 'use client';
 
-import {useEffect} from "react";
-import {CircleAlert, RefreshCw} from "lucide-react";
-import {useShallow} from "zustand/react/shallow";
+import { useEffect } from 'react';
+import { CircleAlert, RefreshCw } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import {
-  journalFilterBar, JournalField, JournalPresets, LogsList, toLocalInput, useLogsFilterStore, useLogsSearch,
-} from "@/modules/logs";
-import {Banner} from "@/shared/ui/Banner";
-import {Button} from "@/shared/ui/Button";
-import {PageFrame} from "@/shared/ui/page/PageFrame";
-import {PageHeader} from "@/shared/ui/page/PageHeader";
-import {Spinner} from "@/shared/ui/Spinner";
-import {Input} from "@/shared/ui/field/Input";
+  journalFilterBar,
+  JournalField,
+  JournalPresets,
+  LogsList,
+  toLocalInput,
+  useLogsFilterStore,
+  useLogsSearch,
+} from '@/modules/logs';
+import { Banner } from '@/shared/ui/Banner';
+import { Button } from '@/shared/ui/Button';
+import { PageFrame } from '@/shared/ui/page/PageFrame';
+import { PageHeader } from '@/shared/ui/page/PageHeader';
+import type { SectionHelp } from '@/shared/ui/page/PageHelp';
+import { Spinner } from '@/shared/ui/Spinner';
+import { Input } from '@/shared/ui/field/Input';
 
 const DAY_MS = 24 * 3600_000;
+const LOG_HELP = {
+  title: 'Логирование',
+  body: (
+    <p>
+      Здесь видны изменения в базе каналов. Выберите период и нажмите «Показать», чтобы узнать, кто
+      менял устройства и параметры.
+    </p>
+  ),
+  more: (
+    <ul>
+      <li>Введите часть имени пользователя, чтобы отфильтровать загруженные записи.</li>
+      <li>
+        Раскройте запись, чтобы сверить изменения. Для записей, у которых доступна кнопка
+        «Отменить», можно вернуть прежние данные.
+      </li>
+      <li>Запуски процедур и записи значений из монитора ищите в «Журнале действий».</li>
+    </ul>
+  ),
+} satisfies SectionHelp;
 
 /**
  * Логи базы каналов: кто и что менял в устройствах и параметрах, с отменой.
@@ -22,11 +48,18 @@ const DAY_MS = 24 * 3600_000;
  * (без запроса) и отмена записи.
  */
 export default function LogsPage() {
-  const {fromDate, toDate, searchQuery, setFromDate, setToDate, setSearchQuery} = useLogsFilterStore(useShallow(s => ({
-    fromDate: s.fromDate, toDate: s.toDate, searchQuery: s.searchQuery,
-    setFromDate: s.setFromDate, setToDate: s.setToDate, setSearchQuery: s.setSearchQuery,
-  })));
-  const {isLoading, error, search} = useLogsSearch();
+  const { fromDate, toDate, searchQuery, setFromDate, setToDate, setSearchQuery } =
+    useLogsFilterStore(
+      useShallow((s) => ({
+        fromDate: s.fromDate,
+        toDate: s.toDate,
+        searchQuery: s.searchQuery,
+        setFromDate: s.setFromDate,
+        setToDate: s.setToDate,
+        setSearchQuery: s.setSearchQuery,
+      })),
+    );
+  const { isLoading, error, search } = useLogsSearch();
 
   // Первый показ — последние сутки, как в журнале действий: раньше страница открывалась пустой
   // и ждала, пока выберут даты.
@@ -50,21 +83,38 @@ export default function LogsPage() {
     <PageFrame>
       <PageHeader
         title="Логирование"
+        help={LOG_HELP}
         description="Изменения устройств и параметров в базе каналов — с возможностью отмены"
         alwaysShowTitle
       />
-      <form className={journalFilterBar} onSubmit={e => { e.preventDefault(); search(); }}>
+      <form
+        className={journalFilterBar}
+        onSubmit={(e) => {
+          e.preventDefault();
+          search();
+        }}
+      >
         <JournalField label="С">
-          <Input size="sm" type="datetime-local" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          <Input
+            size="sm"
+            type="datetime-local"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
         </JournalField>
         <JournalField label="По">
-          <Input size="sm" type="datetime-local" value={toDate} onChange={e => setToDate(e.target.value)} />
+          <Input
+            size="sm"
+            type="datetime-local"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
         </JournalField>
         <JournalField label="Пользователь">
           <Input
             size="sm"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="часть имени"
             title="Фильтрует уже загруженные записи, без нового запроса"
           />
@@ -76,7 +126,11 @@ export default function LogsPage() {
         <JournalPresets onPick={applyPreset} />
       </form>
 
-      {error && <Banner layout="bar" tone="destructive" icon={CircleAlert}>{error}</Banner>}
+      {error && (
+        <Banner layout="bar" tone="destructive" icon={CircleAlert}>
+          {error}
+        </Banner>
+      )}
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="max-w-6xl mx-auto space-y-4">
