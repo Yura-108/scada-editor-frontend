@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Banner } from '@/shared/ui/Banner';
-import { FloatingHelp } from '@/shared/ui/FloatingHelp';
 import { Spinner } from '@/shared/ui/Spinner';
 import { Tabs } from '@/shared/ui/Tabs';
 import { UnsavedNotice } from '@/shared/ui/UnsavedNotice';
@@ -134,6 +133,7 @@ export function DataPage({
     <PageFrame>
       <PageHeader
         title="Данные проекта"
+        help={DATA_HELP[tab]}
         className="gap-2 xl:gap-3"
         shrinkContent
         actions={
@@ -226,11 +226,6 @@ export function DataPage({
               : null
           }
         />
-      )}
-      {loaded && (
-        <FloatingHelp storageKey="help.data" title={DATA_HELP[tab].title}>
-          {DATA_HELP[tab].body}
-        </FloatingHelp>
       )}
     </PageFrame>
   );

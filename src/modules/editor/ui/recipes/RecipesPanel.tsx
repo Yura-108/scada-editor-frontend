@@ -7,7 +7,6 @@ import { Spinner } from '@/shared/ui/Spinner';
 import { Banner } from '@/shared/ui/Banner';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
-import { FloatingHelp } from '@/shared/ui/FloatingHelp';
 import { useEditorStore } from '../../model/editorStore';
 import { useRecipes } from '../../api/recipes';
 import { Recipe } from '@/core/project';
@@ -29,18 +28,6 @@ import { useRecipeDrafts } from './useRecipeDrafts';
  * принадлежит действию шага.
  */
 const NO_RECIPES: Recipe[] = []; // общий пустой список: `?? []` давал бы новый массив на каждый рендер
-
-/** «Подробнее» справки вкладки. */
-const RECIPES_HELP_MORE = (
-  <ul>
-    <li>Теги рецепта выбираются из базы каналов: «Создать рецепт» → «Выбрать из базы каналов».</li>
-    <li>Значения уставок правятся прямо в таблице: раскройте рецепт и выберите шаг.</li>
-    <li>
-      После сохранения выпустите проект («Выпуски проекта») и назначьте выпуск prod — иначе монитор
-      рецепт не увидит.
-    </li>
-  </ul>
-);
 
 export function RecipesPanel() {
   const projectId = useEditorStore((s) => s.currentProject?.id ?? null);
@@ -181,20 +168,6 @@ export function RecipesPanel() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {/* Справка — в «?» справа внизу, как в «Автоматизации» и «Данных проекта» (#11 п. 12). */}
-      {projectId != null && (
-        <FloatingHelp storageKey="help.recipes" title="Рецепты" more={RECIPES_HELP_MORE}>
-          <p>
-            Рецепт — процедура над тегами ПЛК: шаги по порядку, на каждом записываются значения
-            тегов, потом рецепт ждёт перехода к следующему шагу.
-          </p>
-          <p>
-            Выполняется в мониторе, вкладка «Процедуры». До мойки рецепт доходит только с выпуском
-            проекта.
-          </p>
-        </FloatingHelp>
       )}
     </div>
   );
